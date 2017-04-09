@@ -31,7 +31,7 @@ static void SRXAFSCB_ProbeUuid(struct work_struct *);
 static void SRXAFSCB_TellMeAboutYourself(struct work_struct *);
 
 #define CM_NAME(name) \
-	const char afs_SRXCB##name##_name[] __tracepoint_string =	\
+	char afs_SRXCB##name##_name[] __tracepoint_string =	\
 		"CB." #name
 
 /*
