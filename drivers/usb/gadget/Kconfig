@@ -151,6 +151,15 @@ config USB_ANDROID_SAMSUNG_COMPOSITE
 	  Multi Configuration.
 	  If you enable this option, android composite will be changed.
 
+config USB_ANDROID_SAMSUNG_MTP
+	boolean "Samsung MTP function"
+	depends on USB_G_ANDROID && !SEC_FACTORY
+	help
+	  Provides Media Transfer Protocol (MTP) support
+	  for samsung gadget driver.
+	  If you enable this option,
+	  google mtp will be changed to samsung mtp.
+
 config USB_DUN_SUPPORT
 	boolean "DUN support function"
 	depends on USB_G_ANDROID
