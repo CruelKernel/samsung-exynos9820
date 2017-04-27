@@ -62,7 +62,7 @@ ifeq ($(CONFIG_SEC_FACTORY),y)
 	usb_f_mtp-y             := f_mtp.o
 	obj-$(CONFIG_USB_F_MTP) += usb_f_mtp.o
 else
-ifeq ($(CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE),y)
+ifeq ($(CONFIG_USB_ANDROID_SAMSUNG_MTP),y)
 	usb_f_mtp_samsung-y     := f_mtp_samsung.o
 	obj-$(CONFIG_USB_F_MTP) += usb_f_mtp_samsung.o
 else
