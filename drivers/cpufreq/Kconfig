@@ -242,6 +242,12 @@ config CPUFREQ_DT_PLATDEV
 
 	  If in doubt, say N.
 
+config FINGERPRINT_BOOST
+	bool "Fingerprint Boost"
+	default n
+	help
+	  Boosts available CPUs to max frequency on fingerprint sensor input.
+
 if X86
 source "drivers/cpufreq/Kconfig.x86"
 endif
