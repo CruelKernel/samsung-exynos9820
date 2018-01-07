@@ -312,3 +312,8 @@ config PM_GENERIC_DOMAINS_OF
 
 config CPU_PM
 	bool
+
+config BOEFFLA_WL_BLOCKER
+	bool "Boeffla generic wakelock blocker driver"
+	depends on PM
+	default N
