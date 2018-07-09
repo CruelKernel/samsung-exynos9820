@@ -87,7 +87,9 @@ AS		+= -EB
 ifeq ($(ld-name),gold)
 LDFLAGS		+= -EB -maarch64_elf64_be_vec
 else
-LDFLAGS		+= -EB -maarch64elfb
+# We must use the linux target here, since distributions don't tend to package
+# the ELF linker scripts with binutils, and this results in a build failure.
+LDFLAGS		+= -EB -maarch64linuxb
 endif
 UTS_MACHINE	:= aarch64_be
 else
@@ -97,7 +99,7 @@ AS		+= -EL
 ifeq ($(ld-name),gold)
 LDFLAGS		+= -EL -maarch64_elf64_le_vec
 else
-LDFLAGS		+= -EL -maarch64elf
+LDFLAGS		+= -EL -maarch64linux # See comment above
 endif
 UTS_MACHINE	:= aarch64
 endif
