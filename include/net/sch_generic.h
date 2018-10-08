@@ -130,7 +130,6 @@ static inline void qdisc_run_end(struct Qdisc *qdisc)
 {
 	write_seqcount_end(&qdisc->running);
 }
-
 static inline bool qdisc_may_bulk(const struct Qdisc *qdisc)
 {
 	return qdisc->flags & TCQ_F_ONETXQUEUE;
@@ -166,7 +165,6 @@ struct Qdisc_class_ops {
 	unsigned long		(*bind_tcf)(struct Qdisc *, unsigned long,
 					u32 classid);
 	void			(*unbind_tcf)(struct Qdisc *, unsigned long);
-
 	/* rtnetlink specific */
 	int			(*dump)(struct Qdisc *, unsigned long,
 					struct sk_buff *skb, struct tcmsg*);
@@ -277,7 +275,7 @@ struct tcf_block {
 
 static inline void qdisc_cb_private_validate(const struct sk_buff *skb, int sz)
 {
-	struct qdisc_skb_cb *qcb __maybe_unused;
+	struct qdisc_skb_cb __maybe_unused *qcb;
 
 	BUILD_BUG_ON(sizeof(skb->cb) < offsetof(struct qdisc_skb_cb, data) + sz);
 	BUILD_BUG_ON(sizeof(qcb->data) < sz);
