@@ -200,6 +200,9 @@ config EXYNOS_SECURE_LOG
 	help
 	  Support Exynos Secure Log
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
 config EXYNOS_KERNEL_PROTECTION
 	bool "Exynos Kernel Code Protection"
 	help
