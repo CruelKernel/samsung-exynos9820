@@ -1234,7 +1234,7 @@ struct device_attribute mdnie_dev_attrs[] = {
 	__PANEL_ATTR_RW(scenario, 0664),
 	__PANEL_ATTR_RW(accessibility, 0664),
 	__PANEL_ATTR_RW(bypass, 0664),
-	__PANEL_ATTR_RW(lux, 0000),
+	__PANEL_ATTR_RW(lux, 0664),
 	__PANEL_ATTR_RO(mdnie, 0444),
 	__PANEL_ATTR_RW(sensorRGB, 0664),
 	__PANEL_ATTR_RW(whiteRGB, 0664),
