@@ -670,6 +670,6 @@ void dd_hex_key_dump(const char* tag, uint8_t *data, size_t data_len)
 	}
 	buf[buf_len - 1] = '\0';
 	printk(KERN_ERR
-		"[%s] %s(len=%d) : %s\n", "DEK_DBG", tag, data_len, buf);
+		"[%s] %s(len=%zu) : %s\n", "DEK_DBG", tag, data_len, buf);
 	kfree(buf);
 }
