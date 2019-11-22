@@ -110,7 +110,7 @@ void uh_fault_handler(void)
 		exception_class = esr_ec_unknown_reason;
 	pr_alert("=============uH fault handler logging=============\n");
 	pr_alert("%s",exception_class_string[exception_class]);
-	pr_alert("[System registers]\n", cpu);
+	pr_alert("[System registers CPU: %u]\n", cpu);
 	pr_alert("ESR_EL2: %x\tHCR_EL2: %llx\tHPFAR_EL2: %llx\n",
 		 uh_handler_data->esr_el2.bits,
 		 uh_handler_data->hcr_el2, uh_handler_data->hpfar_el2);
