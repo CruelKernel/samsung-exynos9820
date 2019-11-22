@@ -236,7 +236,7 @@ static int fimc_is_secure_face(struct fimc_is_core *core,
 			if (ret != 0) {
 				err("[SMC] SMC_SECCAM_PREPARE fail(%d)", ret);
 			} else {
-				info("[SMC] Call SMC_SECCAM_PREPARE ret(%d) / state(%d->%d)\n",
+				info("[SMC] Call SMC_SECCAM_PREPARE ret(%d) / state(%lu->%d)\n",
 					ret, core->secure_state, FIMC_IS_STATE_SECURED);
 				core->secure_state = FIMC_IS_STATE_SECURED;
 			}
@@ -252,7 +252,7 @@ static int fimc_is_secure_face(struct fimc_is_core *core,
 			if (ret != 0) {
 				err("[SMC] SMC_SECCAM_UNPREPARE fail(%d)\n", ret);
 			} else {
-				info("[SMC] Call SMC_SECCAM_UNPREPARE ret(%d) / smc_state(%d->%d)\n",
+				info("[SMC] Call SMC_SECCAM_UNPREPARE ret(%d) / smc_state(%lu->%d)\n",
 					ret, core->secure_state, FIMC_IS_STATE_UNSECURE);
 				core->secure_state = FIMC_IS_STATE_UNSECURE;
 			}
