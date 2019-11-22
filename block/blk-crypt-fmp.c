@@ -31,7 +31,7 @@ static void *blk_crypt_fmp_alloc_aes_xts(void)
 	}
 
 	if (IS_ERR(bctx)) {
-		pr_debug("error allocating diskciher '%s' transform: %d",
+		pr_debug("error allocating diskciher '%s' transform: %ld",
 			cipher_str, PTR_ERR(bctx));
 		return bctx;
 	}
@@ -68,7 +68,7 @@ static int __init blk_crypt_alg_fmp_init(void)
 	blk_crypt_handle = blk_crypt_alg_register(NULL, "xts(aes)",
 				BLK_CRYPT_MODE_INLINE_PRIVATE, &fmp_hw_xts_cbs);
 	if (IS_ERR(blk_crypt_handle)) {
-		pr_err("%s: failed to register alg(xts(aes)), err:%d\n",
+		pr_err("%s: failed to register alg(xts(aes)), err:%ld\n",
 			__func__, PTR_ERR(blk_crypt_handle) );
 		blk_crypt_handle = NULL;
 	}
