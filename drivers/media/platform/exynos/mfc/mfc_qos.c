@@ -521,7 +521,7 @@ static int __mfc_qos_get_freq_by_bps(struct mfc_dev *dev, unsigned long total_bp
 	int i;
 
 	if (total_bps > dev->pdata->max_Kbps[0]) {
-		mfc_debug(4, "[QoS] overspec bps %d > %d\n",
+		mfc_debug(4, "[QoS] overspec bps %lu > %d\n",
 				total_bps, dev->pdata->max_Kbps[0]);
 		return dev->bitrate_table[dev->pdata->num_mfc_freq - 1].mfc_freq;
 	}
@@ -990,7 +990,7 @@ static int __mfc_qos_get_bps_section(struct mfc_ctx *ctx, u32 bytesused)
 	/* Standardization to high bitrate spec */
 	if (!CODEC_HIGH_PERF(ctx))
 		ctx->Kbps = dev->bps_ratio * ctx->Kbps;
-	mfc_debug(3, "[QoS] %d Kbps, average %lld Kbits per frame\n", ctx->Kbps, avg_Kbits);
+	mfc_debug(3, "[QoS] %d Kbps, average %lu Kbits per frame\n", ctx->Kbps, avg_Kbits);
 
 	ctx->bitrate_index++;
 	if (ctx->bitrate_index == MAX_TIME_INDEX) {
