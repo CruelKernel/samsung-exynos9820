@@ -1383,7 +1383,7 @@ static long jsqz_ioctl(struct file *filp,
 		return ret;
 	}
 	default:
-		dev_err(jsqz_device->dev, "%s: Unknown ioctl cmd %x, %x\n",
+		dev_err(jsqz_device->dev, "%s: Unknown ioctl cmd %x, %lx\n",
 			__func__, cmd, HWJSQZ_IOC_PROCESS);
 		return -EINVAL;
 	}
