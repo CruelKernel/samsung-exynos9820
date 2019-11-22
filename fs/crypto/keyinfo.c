@@ -319,7 +319,7 @@ static int prepare_inline_encryption(struct super_block *sb, struct fscrypt_info
 	cipher_str = mode->cipher_str + INLINE_PREFIX_LEN;
 	bctx = blk_crypt_get_context(bdev, cipher_str);
 	if (IS_ERR(bctx)) {
-		pr_err("%s : failed to get blk_crypt context (transform: %s, err: %d)",
+		pr_err("%s : failed to get blk_crypt context (transform: %s, err: %ld)",
 				__func__, cipher_str, PTR_ERR(bctx));
 		return PTR_ERR(bctx);
 	}
