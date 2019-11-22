@@ -689,7 +689,7 @@ TRACE_EVENT(ems_select_service_cpu,
 		__entry->backup_cpu		= backup_cpu;
 	),
 
-	TP_printk("comm=%s pid=%d best_cpu=%d backup_cpu",
+	TP_printk("comm=%s pid=%d best_cpu=%d backup_cpu=%d",
 			__entry->comm, __entry->pid, __entry->best_cpu, __entry->backup_cpu)
 );
 
