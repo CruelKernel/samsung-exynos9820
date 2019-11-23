@@ -666,7 +666,7 @@ int fimc_is_mcu_erase(struct v4l2_subdev *subdev, u32 address, size_t len)
 			xmit_bytes = 2 * erase.count;
 			*((uint8_t *)&pbuf[ix]) = fimc_is_mcu_checksum(xmit, xmit_bytes);
 			xmit_bytes++;
-			info("mcu xmit_bytess = %d, erase.count = %d");
+			info("mcu xmit_bytes = %d, erase.count = %d", xmit_bytes, erase.count);
 
 			/* transmit parameter */
 			ret = i2c_master_send(client, xmit, xmit_bytes);
@@ -1596,7 +1596,7 @@ int fimc_is_mcu_set_aperture(struct v4l2_subdev *subdev, int onoff)
 	return true;
 
 exit:
-	info("% Do not set aperture. onoff = %d", __FUNCTION__, onoff);
+	info("%s Do not set aperture. onoff = %d", __FUNCTION__, onoff);
 
 	return false;
 }
