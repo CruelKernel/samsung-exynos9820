@@ -2811,15 +2811,13 @@ static int dhd_wait_for_file_dump(dhd_pub_t *dhdp)
 	DHD_OS_WAKE_LOCK(dhdp);
 	/* check for hal started and only then send event if not clear dump state here */
 	if (wl_cfg80211_is_hal_started(cfg)) {
-		int timeleft = 0;
-
 		DHD_ERROR(("[DUMP] %s: HAL started. send urgent event\n", __FUNCTION__));
 		dhd_dbg_send_urgent_evt(dhdp, NULL, 0);
 
 		DHD_ERROR(("%s: wait to clear dhd_bus_busy_state: 0x%x\n",
 			__FUNCTION__, dhdp->dhd_bus_busy_state));
-		timeleft = dhd_os_busbusy_wait_bitmask(dhdp,
-				&dhdp->dhd_bus_busy_state, DHD_BUS_BUSY_IN_HALDUMP, 0);
+		dhd_os_busbusy_wait_bitmask(dhdp,
+			&dhdp->dhd_bus_busy_state, DHD_BUS_BUSY_IN_HALDUMP, 0);
 		if ((dhdp->dhd_bus_busy_state & DHD_BUS_BUSY_IN_HALDUMP) != 0) {
 			DHD_ERROR(("%s: Timed out dhd_bus_busy_state=0x%x\n",
 					__FUNCTION__, dhdp->dhd_bus_busy_state));
