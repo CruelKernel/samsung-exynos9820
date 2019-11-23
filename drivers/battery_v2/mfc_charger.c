@@ -5370,8 +5370,8 @@ ssize_t mfc_store_attrs(struct device *dev,
 	struct power_supply *psy = dev_get_drvdata(dev);
 	struct mfc_charger_data *charger = power_supply_get_drvdata(psy);
 	const ptrdiff_t offset = attr - mfc_attrs;	
+	unsigned int header, data_com, data_val;
 	int x, ret;
-	u8 header, data_com, data_val;
 
 	dev_info(charger->dev, "%s \n", __func__);
 
@@ -5399,8 +5399,9 @@ ssize_t mfc_store_attrs(struct device *dev,
 		break;
 	case MFC_PACKET:
 		if (sscanf(buf, "0x%4x 0x%4x 0x%4x\n", &header, &data_com, &data_val) == 3) {
-			dev_info(charger->dev, "%s 0x%x, 0x%x, 0x%x \n", __func__, header, data_com, data_val);
-			mfc_send_packet(charger, header, data_com, &data_val, 1);
+			u8 u8header = header, u8data_com = u8data_com, u8data_val = data_val;
+			dev_info(charger->dev, "%s 0x%x, 0x%x, 0x%x \n", __func__, u8header, u8data_com, u8data_val);
+			mfc_send_packet(charger, u8header, u8data_com, &u8data_val, 1);
 		}
 		ret = count;
 		break;
