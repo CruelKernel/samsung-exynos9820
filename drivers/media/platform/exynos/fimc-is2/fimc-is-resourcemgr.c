@@ -343,7 +343,7 @@ static int fimc_is_resourcemgr_allocmem(struct fimc_is_resourcemgr *resourcemgr)
 	}
 	minfo->total_size += minfo->pb_taaisp->size;
 
-	info("[RSC] TAAISP_DMA memory size (aligned) : %08lx\n", TAAISP_DMA_SIZE);
+	info("[RSC] TAAISP_DMA memory size (aligned) : %08lx\n", (unsigned long) TAAISP_DMA_SIZE);
 
 	/* ME/DRC buffer */
 #if (MEDRC_DMA_SIZE > 0)
@@ -354,7 +354,7 @@ static int fimc_is_resourcemgr_allocmem(struct fimc_is_resourcemgr *resourcemgr)
 		return -ENOMEM;
 	}
 
-	info("[RSC] ME_DRC memory size (aligned) : %08lx\n", MEDRC_DMA_SIZE);
+	info("[RSC] ME_DRC memory size (aligned) : %08lx\n", (unsigned long) MEDRC_DMA_SIZE);
 
 	minfo->total_size += minfo->pb_medrc->size;
 #endif
@@ -623,7 +623,7 @@ static int fimc_is_resourcemgr_alloc_secure_mem(struct fimc_is_resourcemgr *reso
 		return -ENOMEM;
 	}
 
-	info("[RSC] TAAISP_DMA_S memory size (aligned) : %08lx\n", TAAISP_DMA_SIZE);
+	info("[RSC] TAAISP_DMA_S memory size (aligned) : %08lx\n", (unsigned long) TAAISP_DMA_SIZE);
 
 	/* ME/DRC buffer */
 #if (MEDRC_DMA_SIZE > 0)
@@ -636,7 +636,7 @@ static int fimc_is_resourcemgr_alloc_secure_mem(struct fimc_is_resourcemgr *reso
 		return -ENOMEM;
 	}
 
-	info("[RSC] ME_DRC_S memory size (aligned) : %08lx\n", MEDRC_DMA_SIZE);
+	info("[RSC] ME_DRC_S memory size (aligned) : %08lx\n", (unsigned long) MEDRC_DMA_SIZE);
 #endif
 
 	return 0;
