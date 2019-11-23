@@ -1621,7 +1621,7 @@ static inline int decon_doze_wake_lock(struct decon_device *decon,
 			usleep_range(1000, 1100);
 
 		if (time_is_before_jiffies(timeout_jiffies)) {
-			decon_err("%s timeout(elapsed %d msec)\n",
+			decon_err("%s timeout(elapsed %lu msec)\n",
 					__func__, timeout);
 		}
 	}
