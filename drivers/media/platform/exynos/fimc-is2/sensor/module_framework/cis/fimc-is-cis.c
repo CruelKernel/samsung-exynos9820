@@ -645,7 +645,7 @@ int sensor_cis_set_initial_exposure(struct v4l2_subdev *subdev)
 	if (cis->use_initial_ae) {
 		cis->init_ae_setting = cis->last_ae_setting;
 
-		dbg_sensor(1, "[MOD:D:%d] %s short(exp:%d/again:%d/dgain:%d), long(exp:%d/again:%d/dgain:%d)\n",
+		dbg_sensor(1, "[MOD:D:%d] %s short(exp:%llu/again:%d/dgain:%d), long(exp:%llu/again:%d/dgain:%d)\n",
 			cis->id, __func__, cis->init_ae_setting.exposure, cis->init_ae_setting.analog_gain,
 			cis->init_ae_setting.digital_gain, cis->init_ae_setting.long_exposure,
 			cis->init_ae_setting.long_analog_gain, cis->init_ae_setting.long_digital_gain);
