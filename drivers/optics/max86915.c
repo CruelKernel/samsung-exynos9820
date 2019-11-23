@@ -4658,7 +4658,7 @@ static int max86915_power_ctrl(struct max86915_device_data *data, int onoff)
 	if (data->i2c_1p8 != NULL) {
 		regulator_i2c_1p8 = regulator_get(NULL, data->i2c_1p8);
 		if (IS_ERR(regulator_i2c_1p8) || regulator_i2c_1p8 == NULL) {
-			HRM_err("%s - get i2c_1p8 regulator failed, %d\n", __func__, PTR_ERR(regulator_i2c_1p8));
+			HRM_err("%s - get i2c_1p8 regulator failed, %ld\n", __func__, PTR_ERR(regulator_i2c_1p8));
 			rc = -EINVAL;
 			regulator_i2c_1p8 = NULL;
 			goto get_i2c_1p8_failed;
@@ -4669,7 +4669,7 @@ static int max86915_power_ctrl(struct max86915_device_data *data, int onoff)
 		regulator_vdd_1p8 =
 			regulator_get(&data->client->dev, data->vdd_1p8);
 		if (IS_ERR(regulator_vdd_1p8) || regulator_vdd_1p8 == NULL) {
-			HRM_dbg("%s - get vdd_1p8 regulator failed, %d\n", __func__, PTR_ERR(regulator_vdd_1p8));
+			HRM_dbg("%s - get vdd_1p8 regulator failed, %ld\n", __func__, PTR_ERR(regulator_vdd_1p8));
 			regulator_vdd_1p8 = NULL;
 			goto get_vdd_1p8_failed;
 		}
