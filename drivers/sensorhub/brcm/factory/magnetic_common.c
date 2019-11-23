@@ -821,7 +821,7 @@ int load_magnetic_cal_param_from_nvm(u8 *data, u8 length)
 
 	cal_filp = filp_open(MAG_CAL_PARAM_FILE_PATH, O_CREAT | O_RDONLY | O_NOFOLLOW | O_NONBLOCK, 0660);
 	if (IS_ERR(cal_filp)) {
-		pr_err("[SSP] %s: filp_open failed, errno = %d\n", __func__, PTR_ERR(cal_filp));
+		pr_err("[SSP] %s: filp_open failed, errno = %ld\n", __func__, PTR_ERR(cal_filp));
 		set_fs(old_fs);
 		iRet = PTR_ERR(cal_filp);
 
