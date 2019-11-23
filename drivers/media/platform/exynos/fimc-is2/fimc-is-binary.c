@@ -354,7 +354,7 @@ int carve_binary_version(enum is_bin_type type, unsigned int hint, void *data, s
 	}
 
 	buf = bin_ver_info[type].get_buf(&bin_ver_info[type], hint);
-	memcpy(buf, &data[ofs], len);
+	memcpy(buf, &((char *)data)[ofs], len);
 	buf[len] = '\0';
 
 	info("%s version: %s\n", bin_names[bin_ver_info[type].get_name_idx(hint)],
