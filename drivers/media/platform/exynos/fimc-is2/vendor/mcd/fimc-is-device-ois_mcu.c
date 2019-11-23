@@ -3627,7 +3627,7 @@ int fimc_is_mcu_probe(struct i2c_client *client,
 	mcu = kzalloc(sizeof(struct fimc_is_mcu) * sensor_id_len, GFP_KERNEL);
 	if (!mcu) {
 		err("fimc_is_mcu is NULL");
-		ret -ENOMEM;
+		ret = -ENOMEM;
 		goto p_err;
 	}
 
@@ -3641,7 +3641,7 @@ int fimc_is_mcu_probe(struct i2c_client *client,
 	ois = kzalloc(sizeof(struct fimc_is_ois) * sensor_id_len, GFP_KERNEL);
 	if (!ois) {
 		err("fimc_is_ois is NULL");
-		ret -ENOMEM;
+		ret = -ENOMEM;
 		goto p_err;
 	}
 
@@ -3655,7 +3655,7 @@ int fimc_is_mcu_probe(struct i2c_client *client,
 	ois_device = kzalloc(sizeof(struct fimc_is_device_ois), GFP_KERNEL);
 	if (!ois_device) {
 		err("fimc_is_device_ois is NULL");
-		ret -ENOMEM;
+		ret = -ENOMEM;
 		goto p_err;
 	}
 
