@@ -142,7 +142,7 @@ static int rtc_resume(struct device *dev)
 	if (sleep_time.tv_sec >= 0)
 		timekeeping_inject_sleeptime64(&sleep_time);
 	else
-		pm_deferred_pr_dbg("rtc: suspended for 0.000 seconds (%lld)\n",
+		pm_deferred_pr_dbg("rtc: suspended for 0.000 seconds (%ld)\n",
 				sleep_time.tv_sec);
 	rtc_hctosys_ret = 0;
 	return 0;
