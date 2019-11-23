@@ -805,7 +805,7 @@ static int panel_notifier_callback(struct notifier_block *self, unsigned long ev
 		pr_info("[SSP] %s PANEL_EVENT_BL_CHANGED %d %d\n",
 				__func__, evdata->brightness, evdata->aor_ratio);
 	} else {
-		pr_info("[SSP] %s unknown event %d\n", __func__, event);
+		pr_info("[SSP] %s unknown event %lu\n", __func__, event);
 	}
 
 	// store these values for reset
