@@ -799,7 +799,7 @@ static ssize_t sx9330_avgthresh_show(struct device *dev,
 		(1 << (4 + MAIN_SENSOR)), &avgthresh);
 	avgthresh = (avgthresh & 0x3F000000) >> 24;
 
-	return snprintf(buf, PAGE_SIZE, "%ld\n", 16384 * avgthresh);
+	return snprintf(buf, PAGE_SIZE, "%u\n", 16384 * avgthresh);
 }
 
 static ssize_t sx9330_rawfilt_show(struct device *dev,
