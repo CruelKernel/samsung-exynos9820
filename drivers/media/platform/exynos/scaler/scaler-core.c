@@ -3588,7 +3588,7 @@ static int sc_m2m1shot_prepare_buffer(struct m2m1shot_context *m21ctx,
 				&buf_dma->plane[plane], dir, min_size);
 		if (ret) {
 			dev_err(ctx->sc_dev->dev,
-				"plane%d size %d is smaller than %d\n",
+				"plane%d size %zu is smaller than %u\n",
 				plane, buf_dma->plane[plane].bytes_used,
 				min_size);
 			m2m1shot_unmap_dma_buf(m21ctx->m21dev->dev,
