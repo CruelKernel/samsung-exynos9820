@@ -662,7 +662,7 @@ static struct attribute_group exynos_hiu_attr_group = {
 static int hiu_dt_parsing(struct device_node *dn)
 {
 	const char *buf;
-	unsigned int val;
+	unsigned int val = 0;
 	int ret = 0;
 
 	ret |= of_property_read_u32(dn, "operation-mode", &data->operation_mode);
