@@ -683,7 +683,7 @@ static int exynos_bcm_dbg_run_ctrl(struct exynos_bcm_ipc_base_info *ipc_base_inf
 					struct exynos_bcm_dbg_data *data)
 {
 	unsigned int cmd[4] = {0, 0, 0, 0};
-	unsigned int run, low_ktime, high_ktime;
+	unsigned int run = 0, low_ktime, high_ktime;
 	int ret = 0;
 	u64 ktime;
 	unsigned long flags;
