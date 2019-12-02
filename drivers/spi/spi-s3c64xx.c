@@ -960,7 +960,7 @@ static int s3c64xx_spi_transfer_one_message(struct spi_master *master,
 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
 
 		unsigned long flags;
-		int use_dma;
+		int use_dma = 0;
 
 		reinit_completion(&sdd->xfer_completion);
 
