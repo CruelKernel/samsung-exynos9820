@@ -372,7 +372,7 @@ void ion_debug_heap_init(struct ion_heap *heap)
 
 		path = dentry_path(heap->dev->heaps_debug_root,
 				   buf, 256);
-		perrfn("failed to create %s/%s", path, heap_file);
+		perrfn("failed to create %s/%s", path, heap->name);
 	}
 }
 
