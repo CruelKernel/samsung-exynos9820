@@ -354,7 +354,7 @@ detect_ldfw_err:
 	}
 
 	dev_info(&pdev->dev,
-		"Message buffer address[PA : %#lx, VA : %#lx], Message buffer size[%#lx]\n",
+		"Message buffer address[PA : %#lx, VA : %p], Message buffer size[%#lx]\n",
 		ldata.phys_addr, ldata.virt_addr, ldata.size);
 	dev_info(&pdev->dev, "Exynos Secure Log driver probe done!\n");
 
