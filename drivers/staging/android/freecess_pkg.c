@@ -252,7 +252,7 @@ static struct nf_hook_ops freecess_nf_ops[] = {
 
 static int __init kfreecess_pkg_init(void)
 {
-	int ret;
+	int ret = 0;
 	int i;
 	struct net *net;
 
