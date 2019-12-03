@@ -142,7 +142,7 @@ static u64 displayport_find_edid_max_pixelclock(void)
 				supported_videos[i].dv_timings.bt.pixelclock > max_pclk)
 			max_pclk = supported_videos[i].dv_timings.bt.pixelclock;
 	}
-	displayport_info("find max pclk : %ld\n", max_pclk);
+	displayport_info("find max pclk : %lld\n", max_pclk);
 	return max_pclk;
 }
 
@@ -167,7 +167,7 @@ static int displayport_check_edid_max_clock(struct displayport_device *displaypo
 	if (displayport->rx_edid_data.max_support_clk != 0) {
 		if (calc_pixel_clock > displayport->rx_edid_data.max_support_clk * MHZ) {
 			displayport_info("RX support Max TMDS Clock = %llu, but pixel clock = %llu\n",
-					displayport->rx_edid_data.max_support_clk * MHZ, calc_pixel_clock);
+					(u64) displayport->rx_edid_data.max_support_clk * MHZ, calc_pixel_clock);
 			ret_val = false;
 		}
 	} else
