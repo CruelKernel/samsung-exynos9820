@@ -2265,7 +2265,7 @@ static void decon_release_old_bufs(struct decon_device *decon,
 static int decon_set_hdr_info(struct decon_device *decon,
 		struct decon_reg_data *regs, int win_num, bool on)
 {
-	struct exynos_video_meta *video_meta;
+	struct exynos_video_meta *video_meta = NULL;
 #if defined(CONFIG_EXYNOS_DISPLAYPORT)
 	int ret = 0;
 #endif
