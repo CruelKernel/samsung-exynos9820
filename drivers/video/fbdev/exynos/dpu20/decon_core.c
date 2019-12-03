@@ -4690,7 +4690,7 @@ static int decon_probe(struct platform_device *pdev)
 
 	ret = create_wcg_sysfs(decon);
 	if (ret)
-		decon_err("DECON:ERR:%s:faield to create sysfs for wcg\n");
+		decon_err("DECON:ERR:%s:failed to create sysfs for wcg\n", __func__);
 #endif
 	dpu_init_win_update(decon);
 	decon_init_low_persistence_mode(decon);
