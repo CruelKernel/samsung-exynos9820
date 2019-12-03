@@ -3502,7 +3502,7 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 			v4l2_subdev_call(decon->dpp_sd[i], core, ioctl,
 					DPP_GET_RESTRICTION, &disp_res.dpp_ch[i]);
 
-			decon_info("DECON:INFO:%s:DPP_RESTRICTIONS:0x%x\n",
+			decon_info("DECON:INFO:%s:DPP_RESTRICTIONS:0x%lx\n",
 				__func__, disp_res.dpp_ch[i].attr);
 
 		}
