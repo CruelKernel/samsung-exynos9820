@@ -1185,7 +1185,7 @@ static int dpp_probe(struct platform_device *pdev)
 	if (IS_SUPPORT_WCG(attr))
 		dpp->attr |= (1 << DPP_ATTR_WCG);
 
-	dpp_info("DPP:INFO:%s:%x attr : %x", __func__, dpp->id, dpp->attr);
+	dpp_info("DPP:INFO:%s:%x attr : %lx", __func__, dpp->id, dpp->attr);
 #if 0
 	print_dpp_restrict(dpp->attr);
 #endif
