@@ -841,7 +841,7 @@ void DPU_EVENT_SHOW(struct seq_file *s, struct decon_device *decon)
 	int latest = idx;
 	struct timeval tv;
 	ktime_t prev_ktime;
-	struct dsim_device *dsim;
+	struct dsim_device *dsim = NULL;
 
 	if (IS_ERR_OR_NULL(decon->d.event_log))
 		return;
