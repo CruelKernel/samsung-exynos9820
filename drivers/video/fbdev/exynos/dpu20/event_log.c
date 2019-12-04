@@ -1987,7 +1987,7 @@ static int __init decon_event_log_setup(char *str)
 #else
 	if (reserve_bootmem(base - 8, size + 8, BOOTMEM_EXCLUSIVE)) {
 #endif
-		pr_err("%s: failed reserving size %d at base 0x%lx\n",
+		pr_err("%s: failed reserving size %zu at base 0x%lx\n",
 		       __func__, size, base);
 		goto setup_exit;
 	}
@@ -1997,7 +1997,7 @@ static int __init decon_event_log_setup(char *str)
 	rdx_mem_size = size;
 
 	pr_info("%s: *disp_rdx_log_ptr:%x\n", __func__, *rdx_mem_ptr);
-	pr_info("%s: disp_rdx_log_buf:%p disp_rdx_log_size:0x%llx\n",
+	pr_info("%s: disp_rdx_log_buf:%p disp_rdx_log_size:%zu\n",
 		__func__, rdx_mem_buf, rdx_mem_size);
 
 	return 1;
@@ -2024,14 +2024,14 @@ int decon_create_debugfs(struct decon_device *decon)
 		if (decon->id == 0) {
 			decon->d.event_log_header = rdx_mem_alloc(sizeof(struct dpu_log_header));
 			if (IS_ERR_OR_NULL(decon->d.event_log_header)) {
-				decon_warn("failed to alloc event log header buf[%d]. retry\n",
+				decon_warn("failed to alloc event log header buf[%zu]. retry\n",
 						sizeof(struct dpu_log_header));
 				continue;
 			}
 			real_size = sizeof(struct dpu_log_header) + sizeof(struct dpu_log) * event_cnt;
-			pr_info("%s alloc total size %llx\n", __func__, real_size);
+			pr_info("%s alloc total size %zu\n", __func__, real_size);
 			if (real_size >= rdx_mem_size) {
-				decon_warn("failed to alloc because over size[%d]. retry\n",
+				decon_warn("failed to alloc because over size[%zu]. retry\n",
 						real_size);
 				continue;
 			}
