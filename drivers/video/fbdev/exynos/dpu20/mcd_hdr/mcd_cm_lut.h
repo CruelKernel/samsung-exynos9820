@@ -480,12 +480,12 @@ static unsigned int TABLE_TMS_PQ[INDEX_TMAX][2] = {
 //*****************************************************************************************************//
 //***************************************** Bypass table **********************************************//
 //*****************************************************************************************************//
-static unsigned int   TABLE_TMS_BYPASS  = 0x00000100;
-static unsigned int * TABLE_SC_BYPASS   = 0;
-static unsigned int * TABLE_TM_BYPASS   = 0;
-static unsigned int * TABLE_GM_BYPASS   = 0;
-static unsigned int * TABLE_OETF_BYPASS = 0;
-static unsigned int * TABLE_EOTF_BYPASS = 0;
+static unsigned int   TABLE_TMS_BYPASS  __maybe_unused = 0x00000100;
+static unsigned int * TABLE_SC_BYPASS   __maybe_unused = 0;
+static unsigned int * TABLE_TM_BYPASS   __maybe_unused = 0;
+static unsigned int * TABLE_GM_BYPASS   __maybe_unused = 0;
+static unsigned int * TABLE_OETF_BYPASS __maybe_unused = 0;
+static unsigned int * TABLE_EOTF_BYPASS __maybe_unused = 0;
 
 //*****************************************************************************************************//
 //************************************** Indexed Gamut table ******************************************//
