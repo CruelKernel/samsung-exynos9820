@@ -1425,7 +1425,7 @@ static int abox_rdma_hw_params(struct snd_pcm_substream *substream,
 			dev_info(dev, "dma buffer changed\n");
 		}
 	} else if (data->buf_type == BUFFER_TYPE_ION) {
-		dev_info(dev, "ion_buffer %s bytes(%d) size(%d)\n",
+		dev_info(dev, "ion_buffer %s bytes(%zu) size(%zu)\n",
 				__func__,
 				buffer_bytes, data->ion_buf.size);
 	} else {
