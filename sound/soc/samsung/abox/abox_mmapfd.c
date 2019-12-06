@@ -122,7 +122,7 @@ int abox_ion_alloc(struct abox_platform_data *data,
 			buf->kva);
 
 	if (ret < 0) {
-		dev_err(dev, "Failed to iommu_map(%#lx): %d\n",
+		dev_err(dev, "Failed to iommu_map(%#llx): %d\n",
 				buf->iova, ret);
 
 		goto error_iommu_map_sg;
