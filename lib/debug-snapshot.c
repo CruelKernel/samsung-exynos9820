@@ -493,7 +493,7 @@ static int dbg_snapshot_sfr_dump_init(struct device_node *np)
 
 static int __init dbg_snapshot_remap(void)
 {
-	unsigned long i, j;
+	size_t i, j;
 	unsigned long flags = VM_NO_GUARD | VM_MAP;
 	unsigned int enabled_count = 0;
 	pgprot_t prot = __pgprot(PROT_NORMAL_NC);
@@ -508,7 +508,7 @@ static int __init dbg_snapshot_remap(void)
 			page_size = dss_items[i].entry.size / PAGE_SIZE;
 			pages = kzalloc(sizeof(struct page *) * page_size, GFP_KERNEL);
 			page = phys_to_page(dss_items[i].entry.paddr);
-			pr_info("%s: %2d: paddr: 0x%x\n", __func__, i, dss_items[i].entry.paddr);
+			pr_info("%s: %2zu: paddr: 0x%lx\n", __func__, i, dss_items[i].entry.paddr);
 
 			for (j = 0; j < page_size; j++)
 				pages[j] = page++;
