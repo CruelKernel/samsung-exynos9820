@@ -457,7 +457,7 @@ void g2d_destroy_tasks(struct g2d_device *g2d_dev)
 static struct g2d_task *g2d_create_task(struct g2d_device *g2d_dev, int id)
 {
 	struct g2d_task *task;
-	int i, ret;
+	int i, ret = 0;
 
 	task = kzalloc(sizeof(*task), GFP_KERNEL);
 	if (!task)
