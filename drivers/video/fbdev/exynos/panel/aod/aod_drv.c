@@ -836,7 +836,7 @@ exit_digital_ioctl:
 }
 
 
-static __aod_ictl_set_parial_scan(struct aod_dev_info *aod, unsigned long arg)
+static int __aod_ictl_set_parial_scan(struct aod_dev_info *aod, unsigned long arg)
 {
 
 	int ret = 0;
