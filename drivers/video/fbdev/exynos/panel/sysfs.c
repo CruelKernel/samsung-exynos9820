@@ -363,7 +363,7 @@ static ssize_t gamma_interpolation_test_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	ret = sscanf(buf, "%x %x %x %x %x %x",
+	ret = sscanf(buf, "%hhx %hhx %hhx %hhx %hhx %hhx",
 						&write_buf[0], &write_buf[1], &write_buf[2],
 						&write_buf[3], &write_buf[4], &write_buf[5]);
 	if (ret != 6) {
