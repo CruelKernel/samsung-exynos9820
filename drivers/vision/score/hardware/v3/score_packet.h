@@ -18,7 +18,7 @@
 #define MIN_PACKET_SIZE (sizeof(struct score_host_packet) + \
 		sizeof(struct score_host_packet_info))
 
-#define MAX_PACKET_SIZE		(2048)
+#define MAX_PACKET_SIZE		(2048UL)
 
 enum score_host_packet_version {
 	HOST_PKT_V1 = 0x1,

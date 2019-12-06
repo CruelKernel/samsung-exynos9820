@@ -471,7 +471,7 @@ static int __score_scq_translate_packet(struct score_frame *frame)
 	if (packet_size < MIN_PACKET_SIZE ||
 			packet_size > MAX_PACKET_SIZE) {
 		ret = -EINVAL;
-		score_err("packet size is invalid (%u/MIN:%zu/MAX:%zu)\n",
+		score_err("packet size is invalid (%u/MIN:%lu/MAX:%lu)\n",
 				packet_size, MIN_PACKET_SIZE, MAX_PACKET_SIZE);
 		goto p_err;
 	}
