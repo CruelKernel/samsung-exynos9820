@@ -987,7 +987,7 @@ void abox_request_dram_on(struct device *dev, unsigned int id, bool on)
 
 	ret = regmap_write(regmap, ABOX_SYSPOWER_CTRL, val);
 	if (ret < 0) {
-		dev_err(dev, "syspower write failed\n", ret);
+		dev_err(dev, "syspower write failed (%d)\n", ret);
 		return;
 	}
 
