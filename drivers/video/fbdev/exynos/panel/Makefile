@@ -5,6 +5,8 @@
 # Licensed under GPLv2
 #
 
+ccflags-y += $(call cc-disable-warning, unused-variable)
+
 obj-$(CONFIG_EXYNOS_MIPI_DSIM) += timenval.o panel.o panel_bl.o dimming.o panel_drv.o panel_irc.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3HF3) += s6e3hf3/s6e3hf3.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3HF4) += s6e3hf4/s6e3hf4.o
