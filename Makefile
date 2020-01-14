@@ -429,7 +429,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -Xassembler -march=armv8-a+lse \
-		   -std=gnu89
+		   -std=gnu89 -pipe
 
 ifdef CONFIG_CC_WERROR
 KBUILD_CFLAGS	+= -Werror
