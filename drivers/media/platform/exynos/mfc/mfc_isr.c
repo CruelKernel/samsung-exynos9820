@@ -676,7 +676,6 @@ static void __mfc_handle_frame(struct mfc_ctx *ctx,
 	if (dst_frame_status == MFC_REG_DEC_STATUS_DECODING_EMPTY) {
 		if (ctx->state == MFCINST_RES_CHANGE_FLUSH) {
 			struct mfc_timestamp *temp_ts = NULL;
-			struct mfc_bitrate *temp_bitrate = NULL;
 
 			mfc_debug(2, "[DRC] Last frame received after resolution change\n");
 			__mfc_handle_frame_all_extracted(ctx);
@@ -697,15 +696,6 @@ static void __mfc_handle_frame(struct mfc_ctx *ctx,
 			ctx->ts_is_full = 0;
 			mfc_qos_reset_last_framerate(ctx);
 			mfc_qos_set_framerate(ctx, DEC_DEFAULT_FPS);
-
-			/* empty the bitrate queue */
-			while (!list_empty(&ctx->bitrate_list)) {
-				temp_bitrate = list_entry((&ctx->bitrate_list)->next,
-						struct mfc_bitrate, list);
-				list_del(&temp_bitrate->list);
-			}
-			ctx->bitrate_index = 0;
-			ctx->bitrate_is_full = 0;
 
 			goto leave_handle_frame;
 		} else {

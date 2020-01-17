@@ -109,9 +109,10 @@ enum power_supply_ext_property {
 
 enum rx_device_type {
 	NO_DEV = 0,
+	OTHER_DEV,
 	SS_GEAR,
 	SS_PHONE,
-	OTHER_DEV,
+	SS_BUDS,
 };
 
 enum sec_battery_usb_conf {

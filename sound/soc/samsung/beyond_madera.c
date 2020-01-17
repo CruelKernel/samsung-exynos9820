@@ -124,8 +124,6 @@ static struct clk *xclkout;
 static int beyond_madera_panic_cb(struct notifier_block *nb,
 					unsigned long event, void *data)
 {
-	/* abox_debug_string_update(); */
-
 	return NOTIFY_OK;
 }
 
@@ -1719,7 +1717,6 @@ static int beyond_vss_state_put(struct snd_kcontrol *kcontrol,
 			return -EAGAIN;
 		}
 
-		abox_debug_string_update();
 #ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
 		return -EPERM;
 #else

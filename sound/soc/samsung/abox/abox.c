@@ -1856,6 +1856,10 @@ static void abox_system_ipc_handler(struct device *dev,
 					ABOX_DBG_DUMP_FIRMWARE, type);
 			abox_dbg_dump_mem(dev, data, ABOX_DBG_DUMP_FIRMWARE,
 					type);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+			abox_debug_string_update(system_msg->param1, 
+					abox_addr_to_kernel_addr(data, system_msg->bundle.param_s32[0]));
+#endif
 			break;
 		default:
 			abox_dbg_print_gpr(dev, data);
@@ -1863,12 +1867,15 @@ static void abox_system_ipc_handler(struct device *dev,
 					type);
 			abox_dbg_dump_mem(dev, data, ABOX_DBG_DUMP_FIRMWARE,
 					type);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+			if (system_msg->param1 > TYPE_ABOX_UNDEFEXCEPTION)
+				abox_debug_string_update(TYPE_ABOX_UNDEFEXCEPTION, NULL);
+			else
+				abox_debug_string_update(system_msg->param1, NULL);
+#endif
 			break;
 		}
 		abox_failsafe_report(dev);
-#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
-		abox_debug_string_update();
-#endif
 		break;
 	}
 	default:
@@ -2547,15 +2554,24 @@ static int abox_modem_notifier(struct notifier_block *nb,
 	case MODEM_EVENT_RESET:
 		system_msg->msgtype = ABOX_RESET_VSS;
 		break;
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+		abox_debug_string_update(TYPE_MODEM_CPCRASH, NULL);
+#endif
 	case MODEM_EVENT_EXIT:
 		system_msg->msgtype = ABOX_STOP_VSS;
 		abox_dbg_print_gpr(dev, data);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+		abox_debug_string_update(TYPE_MODEM_CPCRASH, NULL);
+#endif
 		break;
 	case MODEM_EVENT_ONLINE:
 		system_msg->msgtype = ABOX_START_VSS;
 		break;
 	case MODEM_EVENT_WATCHDOG:
 		system_msg->msgtype = ABOX_WATCHDOG_VSS;
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+		abox_debug_string_update(TYPE_MODEM_CPCRASH, NULL);
+#endif
 		break;
 	default:
 		system_msg->msgtype = 0;

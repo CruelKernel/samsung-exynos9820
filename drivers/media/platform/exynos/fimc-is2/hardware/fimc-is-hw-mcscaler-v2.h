@@ -179,7 +179,7 @@ struct fimc_is_hw_mcsc_cap {
 #define SUBBLK_MAX	(3)
 struct fimc_is_hw_mcsc {
 	struct	hw_mcsc_setfile setfile[SENSOR_POSITION_MAX][FIMC_IS_MAX_SETFILE];
-	struct	hw_mcsc_setfile *cur_setfile[SENSOR_POSITION_MAX];
+	struct	hw_mcsc_setfile *cur_setfile[SENSOR_POSITION_MAX][FIMC_IS_STREAM_COUNT];
 	struct	fimc_is_hw_mcsc_cap cap;
 
 	u32	in_img_format;

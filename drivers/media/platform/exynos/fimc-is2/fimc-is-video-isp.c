@@ -263,9 +263,10 @@ static int fimc_is_ixs_video_querycap(struct file *file, void *fh,
 {
 	struct fimc_is_core *isp = video_drvdata(file);
 
-	strncpy(cap->driver, isp->pdev->name, sizeof(cap->driver) - 1);
+	FIMC_BUG(!cap);
 
-	strncpy(cap->card, isp->pdev->name, sizeof(cap->card) - 1);
+	snprintf(cap->driver, sizeof(cap->driver), "%s", isp->pdev->name);
+	snprintf(cap->card, sizeof(cap->card), "%s", isp->pdev->name);
 	cap->bus_info[0] = 0;
 	cap->version = KERNEL_VERSION(1, 0, 0);
 	cap->capabilities = V4L2_CAP_STREAMING

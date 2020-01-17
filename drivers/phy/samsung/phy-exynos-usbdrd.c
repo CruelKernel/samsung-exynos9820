@@ -1442,22 +1442,30 @@ static int exynos_usbdrd_phy_tune(struct phy *phy, int phy_state)
 
 void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 {
-	int ret1, ret2, ret3;
+	int ret1 = 0;
+	int ret2 = 0;
+	int ret3 = 0;
 
 	dev_info(phy_drd->dev, "Turn %s LDO\n", on ? "on" : "off");
 
 	if (on) {
-		ret1 = regulator_enable(phy_drd->ldo10);
-		ret2 = regulator_enable(phy_drd->ldo11);
-		ret3 = regulator_enable(phy_drd->ldo12);
+		if (!regulator_is_enabled(phy_drd->ldo10))
+			ret1 = regulator_enable(phy_drd->ldo10);
+		if (!regulator_is_enabled(phy_drd->ldo11))
+			ret2 = regulator_enable(phy_drd->ldo11);
+		if (!regulator_is_enabled(phy_drd->ldo12))
+			ret3 = regulator_enable(phy_drd->ldo12);
 		if (ret1 || ret2 || ret3) {
 			dev_err(phy_drd->dev, "Failed to enable USB LDOs: %d %d %d\n",
 				ret1, ret2, ret3);
 		}
 	} else {
-		ret1 = regulator_disable(phy_drd->ldo10);
-		ret2 = regulator_disable(phy_drd->ldo11);
-		ret3 = regulator_disable(phy_drd->ldo12);
+		if (regulator_is_enabled(phy_drd->ldo10))
+			ret1 = regulator_disable(phy_drd->ldo10);
+		if (regulator_is_enabled(phy_drd->ldo11))
+			ret2 = regulator_disable(phy_drd->ldo11);
+		if (regulator_is_enabled(phy_drd->ldo12))
+			ret3 = regulator_disable(phy_drd->ldo12);
 		if (ret1 || ret2 || ret3) {
 			dev_err(phy_drd->dev, "Failed to disable USB LDOs: %d %d %d\n",
 				ret1, ret2, ret3);

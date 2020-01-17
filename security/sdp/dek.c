@@ -1347,12 +1347,18 @@ void queue_log_work(struct work_struct *log_work)
 	} else {
 		DEK_LOGE("dek_add_to_log - failed to allocate buffer\n");
 	}
+
+	kfree(logStruct);
 }
 
 void dek_add_to_log(int engine_id, char *buffer)
 {
 	log_entry_t *temp = (log_entry_t *)kmalloc(sizeof(log_entry_t), GFP_ATOMIC);
 	int len;
+	if (!temp) {
+		DEK_LOGE("failed to allocate memory for log entry\n");
+		return;
+	}
 	temp->engineId = engine_id;
 	len = (strlen(buffer) > LOG_ENTRY_BUF_SIZE) ? (LOG_ENTRY_BUF_SIZE - 1) : strlen(buffer);
 	memcpy(temp->buffer, buffer, len);

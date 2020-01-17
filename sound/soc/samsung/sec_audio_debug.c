@@ -20,12 +20,14 @@
 
 #include <linux/debugfs.h>
 #include <linux/io.h>
+#include <linux/iommu.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
+#include <linux/workqueue.h>
 
 #include <linux/sched/clock.h>
 
@@ -39,11 +41,17 @@
 #define DBG_STR_BUFF_SZ 256
 #define LOG_MSG_BUFF_SZ 512
 
+#define SEC_AUDIO_DEBUG_STRING_WQ_NAME "sec_audio_dbg_str_wq"
+
 struct sec_audio_debug_data {
 	char *dbg_str_buf;
 	unsigned long long mode_time;
 	unsigned long mode_nanosec_t;
 	struct mutex dbg_lock;
+	struct workqueue_struct *debug_string_wq;
+	struct work_struct debug_string_work;
+	enum abox_debug_err_type debug_err_type;
+	unsigned int *abox_dbg_addr;
 };
 
 static struct sec_audio_debug_data *p_debug_data;
@@ -70,12 +78,15 @@ int is_abox_wdma_enabled(int id)
 		+ ABOX_WDMA_CTRL) & ABOX_WDMA_ENABLE_MASK);
 }
 
-void abox_debug_string_update(void)
+static void abox_debug_string_update_workfunc(struct work_struct *wk)
 {
 	struct abox_data *data = abox_get_abox_data();
 	int i;
 	unsigned int len = 0;
-
+/*
+	struct sec_audio_debug_data *dbg_data = container_of(wk,
+					   struct sec_audio_debug_data, debug_string_work);
+*/
 	if (!p_debug_data)
 		return;
 
@@ -91,36 +102,91 @@ void abox_debug_string_update(void)
 		return;
 	}
 
-	if (!abox_is_on()) {
-		snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ, "Abox disabled");
-		goto buff_done;
-	}
+	switch (p_debug_data->debug_err_type) {
+	case TYPE_ABOX_DATAABORT:
+	case TYPE_ABOX_PREFETCHABORT:
+		len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len,
+					"ABOXERR%1d ", p_debug_data->debug_err_type);
 
-	for (i = 0; i <= 14; i++) {
+		if (!abox_is_on()) {
+			len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "Abox disabled");
+			goto buff_done;
+		}
+
+		if (p_debug_data->abox_dbg_addr == NULL) {
+			len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "GPR NULL");
+			goto buff_done;
+		}
+
+		for (i = 0; i <= 14; i++) {
+			len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+						"%08x ", *p_debug_data->abox_dbg_addr++);
+			if (len >= DBG_STR_BUFF_SZ - 1)
+				goto buff_done;
+		}
 		len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
-						"%08x ", readl(data->sfr_base + ABOX_CPU_R(i)));
+					"PC:%08x ", *p_debug_data->abox_dbg_addr++);
 		if (len >= DBG_STR_BUFF_SZ - 1)
 			goto buff_done;
+
+		len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+					"m%d:%05lu", data->audio_mode, (unsigned long) p_debug_data->mode_time);
+
+		break;
+	case TYPE_ABOX_OSERROR:
+	case TYPE_ABOX_UNDEFEXCEPTION:
+	case TYPE_ABOX_UNKNOWNERROR:
+		len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len,
+					"ABOXERR%1d ", p_debug_data->debug_err_type);
+
+		if (!abox_is_on()) {
+			len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "Abox disabled");
+			goto buff_done;
+		}
+
+		for (i = 0; i <= 14; i++) {
+			len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+							"%08x ", readl(data->sfr_base + ABOX_CPU_R(i)));
+			if (len >= DBG_STR_BUFF_SZ - 1)
+				goto buff_done;
+		}
+		len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+							"PC:%08x ", readl(data->sfr_base + ABOX_CPU_PC));
+		if (len >= DBG_STR_BUFF_SZ - 1)
+			goto buff_done;
+
+		len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+							"L2C:%08x ", readl(data->sfr_base + ABOX_CPU_L2C_STATUS));
+		if (len >= DBG_STR_BUFF_SZ - 1)
+			goto buff_done;
+
+		len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
+							"m%d:%05lu", data->audio_mode, (unsigned long) p_debug_data->mode_time);
+
+		break;
+	case TYPE_ABOX_VSSERROR:
+		len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "CP Crash");
+		break;
+	default:
+		pr_err("%s: unknown type %d\n", __func__, p_debug_data->debug_err_type);
+		break;
 	}
-	len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
-						"PC:%08x ", readl(data->sfr_base + ABOX_CPU_PC));
-	if (len >= DBG_STR_BUFF_SZ - 1)
-		goto buff_done;
-
-	len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
-						"L2C:%08x ", readl(data->sfr_base + ABOX_CPU_L2C_STATUS));
-	if (len >= DBG_STR_BUFF_SZ - 1)
-		goto buff_done;
-
-	len += snprintf(p_debug_data->dbg_str_buf + len, DBG_STR_BUFF_SZ - len,
-						"m%d:%05lu", data->audio_mode, (unsigned long) p_debug_data->mode_time);
 
 buff_done:
+	pr_info("%s: %s\n", __func__, p_debug_data->dbg_str_buf);
 	sec_debug_set_extra_info_aud(p_debug_data->dbg_str_buf);
 
 	kfree(p_debug_data->dbg_str_buf);
 	p_debug_data->dbg_str_buf = NULL;
 	mutex_unlock(&p_debug_data->dbg_lock);
+}
+
+void abox_debug_string_update(enum abox_debug_err_type type, void *addr)
+{
+	p_debug_data->debug_err_type = type;
+	p_debug_data->abox_dbg_addr = (unsigned int*) addr;
+
+	queue_work(p_debug_data->debug_string_wq, &p_debug_data->debug_string_work);
 }
 EXPORT_SYMBOL_GPL(abox_debug_string_update);
 
@@ -476,6 +542,16 @@ static int __init sec_audio_debug_init(void)
 	alloc_sec_audio_log(p_debug_bootlog_data, SZ_1K);
 	alloc_sec_audio_log(p_debug_pmlog_data, SZ_4K);
 
+	p_debug_data->debug_string_wq = create_singlethread_workqueue(
+						SEC_AUDIO_DEBUG_STRING_WQ_NAME);
+	if (p_debug_data->debug_string_wq == NULL) {
+		pr_err("%s: failed to creat debug_string_wq\n", __func__);
+		ret = -ENOENT;
+		goto err_pmlog_data;
+	}
+
+	INIT_WORK(&p_debug_data->debug_string_work, abox_debug_string_update_workfunc);
+
 	debugfs_create_file("log_enable",
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 			audio_debugfs, p_debug_log_data, &log_enable_fops);
@@ -505,6 +581,11 @@ static int __init sec_audio_debug_init(void)
 			audio_debugfs, NULL, &abox_qos_fops);
 
 	return 0;
+
+err_pmlog_data:
+	kfree_const(p_debug_pmlog_data->name);
+	kfree(p_debug_pmlog_data);
+	p_debug_pmlog_data = NULL;
 
 err_bootlog_data:
 	kfree_const(p_debug_bootlog_data->name);
@@ -549,6 +630,9 @@ static void __exit sec_audio_debug_exit(void)
 	if (p_debug_log_data)
 		kfree(p_debug_log_data);
 	p_debug_log_data = NULL;
+
+	destroy_workqueue(p_debug_data->debug_string_wq);
+	p_debug_data->debug_string_wq = NULL;
 
 	debugfs_remove_recursive(audio_debugfs);
 

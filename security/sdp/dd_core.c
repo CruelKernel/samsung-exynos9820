@@ -1422,6 +1422,8 @@ static void dd_write_metadata_work(struct work_struct *work) {
 
 	dd_verbose("dd_write_metadata_work %ld complete (i_state:0x%x)\n",
 			ioc_work->inode->i_ino, ioc_work->inode->i_state);
+
+	iput(ioc_work->inode);
 	kfree(ioc_work);
 }
 
@@ -1681,6 +1683,12 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		memcpy(ioc_work->name, ioc.u.xattr.name, MAX_XATTR_NAME_LEN);
 		memcpy(ioc_work->value, ioc.u.xattr.value, ioc.u.xattr.size);
 		ioc_work->size = ioc.u.xattr.size;
+
+		if (!igrab(ioc_work->inode)) {
+			dd_error("failed to grab inode refcount. this inode may be getting removed\n");
+			kfree(ioc_work);
+			return 0;
+		}
 
 		INIT_WORK(&ioc_work->work, dd_write_metadata_work);
 		queue_work(dd_ioctl_workqueue, &ioc_work->work);

@@ -96,7 +96,7 @@ int gyro_open_calibration(struct ssp_data *data)
 		pr_err("[SSP]: %s - Can't open calibration file(%d)\n", __func__, -iRet);
 		return iRet;
 	}
-
+	
 	iRet = vfs_read(cal_filp, (char *)&data->gyrocal, 3 * sizeof(int), &cal_filp->f_pos);
 	if (iRet < 0) {
 		pr_err("[SSP]: %s - Can't read gyro cal to file\n", __func__);
@@ -116,6 +116,7 @@ int save_gyro_caldata(struct ssp_data *data, s32 *iCalData)
 	int iRet = 0;
 	struct file *cal_filp = NULL;
 	mm_segment_t old_fs;
+	u8 gyro_mag_cal[25] = {0, };
 
 	data->gyrocal.x = iCalData[0];
 	data->gyrocal.y = iCalData[1];
@@ -127,19 +128,31 @@ int save_gyro_caldata(struct ssp_data *data, s32 *iCalData)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	cal_filp = filp_open(CALIBRATION_FILE_PATH, O_CREAT | O_TRUNC | O_WRONLY | O_NOFOLLOW | O_NONBLOCK, 0660);
+	cal_filp = filp_open(CALIBRATION_FILE_PATH, O_CREAT | O_RDWR | O_NOFOLLOW | O_NONBLOCK, 0660);
 	if (IS_ERR(cal_filp)) {
 		pr_err("[SSP]: %s - Can't open calibration file\n", __func__);
 		set_fs(old_fs);
 		iRet = PTR_ERR(cal_filp);
 		return -EIO;
 	}
-
+	
 	iRet = vfs_write(cal_filp, (char *)&data->gyrocal, 3 * sizeof(int), &cal_filp->f_pos);
 	if (iRet < 0) {
 		pr_err("[SSP]: %s - Can't write gyro cal to file\n", __func__);
 		iRet = -EIO;
 	}
+
+	cal_filp->f_pos = 0;
+	iRet = vfs_read(cal_filp, (char *)gyro_mag_cal, 25, &cal_filp->f_pos);
+	pr_err("[SSP]: %s, gyro_cal= %d %d %d %d %d %d %d %d %d %d %d %d", __func__,
+			gyro_mag_cal[0], gyro_mag_cal[1], gyro_mag_cal[2], gyro_mag_cal[3],
+			gyro_mag_cal[4], gyro_mag_cal[5], gyro_mag_cal[6], gyro_mag_cal[7],
+			gyro_mag_cal[8], gyro_mag_cal[9], gyro_mag_cal[10], gyro_mag_cal[11]);
+	pr_err("[SSP]: %s, mag_cal= %d %d %d %d %d %d %d %d %d %d %d %d %d", __func__,
+			gyro_mag_cal[12], gyro_mag_cal[13], gyro_mag_cal[14], gyro_mag_cal[15],
+			gyro_mag_cal[16], gyro_mag_cal[17], gyro_mag_cal[18], gyro_mag_cal[19],
+			gyro_mag_cal[20], gyro_mag_cal[21], gyro_mag_cal[22], gyro_mag_cal[23], gyro_mag_cal[24]);
+
 
 	filp_close(cal_filp, current->files);
 	set_fs(old_fs);

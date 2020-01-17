@@ -237,9 +237,9 @@ int fimc_is_hw_mcsc_update_djag_register(struct fimc_is_hw_ip *hw_ip,
 	fimc_is_scaler_set_djag_round_mode(hw_ip->regs, 1);
 
 #ifdef MCSC_USE_DEJAG_TUNING_PARAM
-	djag_tuneset = &hw_mcsc->cur_setfile[sensor_position]->djag[scale_index];
+	djag_tuneset = &hw_mcsc->cur_setfile[sensor_position][instance]->djag[scale_index];
 #if defined(USE_UVSP_CAC)
-	djag_wb = &hw_mcsc->cur_setfile[sensor_position]->djag_wb[scale_index];
+	djag_wb = &hw_mcsc->cur_setfile[sensor_position][instance]->djag_wb[scale_index];
 #endif
 #endif
 	fimc_is_scaler_set_djag_tunning_param(hw_ip->regs, djag_tuneset);

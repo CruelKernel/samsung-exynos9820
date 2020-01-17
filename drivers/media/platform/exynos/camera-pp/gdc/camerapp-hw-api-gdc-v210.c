@@ -197,7 +197,7 @@ void camerapp_hw_gdc_update_scale_parameters(void __iomem *base_addr, struct gdc
 				gdc_output_width, gdc_output_height);
 		out_scaled_height = 128 / MAX_OUTPUT_SCALER_RATIO;
 	} else if (gdc_crop_height < gdc_output_height) {
-		out_scaled_height = 128 * gdc_input_width / gdc_output_height;
+		out_scaled_height = 128 * gdc_input_height / gdc_output_height;
 	}
 
 	camerapp_sfr_set_field(base_addr, &gdc_regs[GDC_R_GDC_CONFIG],

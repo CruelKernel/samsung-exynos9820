@@ -82,6 +82,15 @@ extern int abox_core_show_gpr_min(char *buf, int len);
 extern u32 abox_core_read_gpr(int core_id, int gpr_id);
 
 /**
+ * read gpr value from gpr dump
+ * @param[in]	core_id	id of core
+ * @param[in]	gpr_id	id of gpr
+ * @param[in]	dump	address of gpr dump
+ * @return		value of gpr or 0
+ */
+extern u32 abox_core_read_gpr_dump(int core_id, int gpr_id, unsigned int *dump);
+
+/**
  * download firmware
  * @return		error code
  */

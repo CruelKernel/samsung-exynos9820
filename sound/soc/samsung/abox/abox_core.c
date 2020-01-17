@@ -367,6 +367,33 @@ u32 abox_core_read_gpr(int core_id, int gpr_id)
 	return ret;
 }
 
+u32 abox_core_read_gpr_dump(int core_id, int gpr_id, unsigned int *dump)
+{
+	struct abox_data *data = get_abox_data();
+	struct device *dev = &data->pdev->dev;
+	struct abox_core *core;
+	u32 *gpr = dump;
+	u32 ret = 0;
+
+	if (core_id > 2) {
+		dev_err(dev, "%s: wrong core_id(%d)\n", __func__, core_id);
+		return 0;
+	}
+
+	list_for_each_entry(core, &cores, list) {
+		if (core->id == core_id) {
+			if (gpr_id > core->gpr_count - 1)
+				break;
+			ret = *(gpr + gpr_id);
+			break;
+		}
+
+		gpr += core->gpr_count;
+	}
+
+	return ret;
+}
+
 static int abox_core_load_firmware(struct abox_core *core,
 		struct abox_core_firmware *fw)
 {

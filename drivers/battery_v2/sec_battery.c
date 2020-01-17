@@ -158,9 +158,10 @@ char *sec_bat_charge_mode_str[] = {
 
 char *sec_bat_rx_type_str[] = {
 	"No Dev",
+	"Other DEV",
 	"SS Gear",
 	"SS Phone",
-	"Other DEV",
+	"SS Buds",
 };
 
 extern int bootmode;
@@ -5854,8 +5855,12 @@ static int sec_wireless_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_WIRELESS_RX_TYPE:
 			battery->wc_rx_type = val->intval;
 #if defined(CONFIG_BATTERY_CISD)
-			if (battery->wc_rx_type)
-				battery->cisd.tx_data[battery->wc_rx_type+1]++;
+			if (battery->wc_rx_type) {
+				if (battery->wc_rx_type == SS_BUDS) {
+					battery->cisd.tx_data[SS_PHONE]--;
+				}
+				battery->cisd.tx_data[battery->wc_rx_type]++;
+			}
 #endif
 			cancel_delayed_work(&battery->wpc_tx_work);
 			wake_lock(&battery->wpc_tx_wake_lock);

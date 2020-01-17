@@ -3502,13 +3502,13 @@ void fimc_is_scaler_set_djag_dither_wb(void __iomem *base_addr, struct djag_wb_t
 #endif
 		return;
 
-	reg_val = fimc_is_hw_get_reg(base_addr, &mcsc_regs[MCSC_R_DJAG_DITHER_THRES]);
+	reg_val = fimc_is_hw_get_reg(base_addr, &mcsc_regs[MCSC_R_DJAG_DITHER_WB]);
 
 	reg_val = fimc_is_hw_set_field_value(reg_val, &mcsc_fields[MCSC_F_DJAG_DITHER_WHITE_LEVEL], wht);
 	reg_val = fimc_is_hw_set_field_value(reg_val, &mcsc_fields[MCSC_F_DJAG_DITHER_BLACK_LEVEL], blk);
 	reg_val = fimc_is_hw_set_field_value(reg_val, &mcsc_fields[MCSC_F_DJAG_DITHER_WB_THRES],
 		djag_wb->dither_wb_thres);
-	fimc_is_hw_set_reg(base_addr, &mcsc_regs[MCSC_R_DJAG_DITHER_THRES], reg_val);
+	fimc_is_hw_set_reg(base_addr, &mcsc_regs[MCSC_R_DJAG_DITHER_WB], reg_val);
 }
 
 /* for CAC */

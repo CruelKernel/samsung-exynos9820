@@ -31,10 +31,20 @@ struct sec_audio_log_data {
 	char *name;
 };
 
+enum abox_debug_err_type {
+	TYPE_ABOX_DATAABORT = 1,
+	TYPE_ABOX_PREFETCHABORT,
+	TYPE_ABOX_OSERROR,
+	TYPE_ABOX_VSSERROR,
+	TYPE_ABOX_UNDEFEXCEPTION,
+	TYPE_MODEM_CPCRASH = 9,
+	TYPE_ABOX_DEBUG_MAX,
+};
+
 #ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
 int is_abox_rdma_enabled(int id);
 int is_abox_wdma_enabled(int id);
-void abox_debug_string_update(void);
+void abox_debug_string_update(enum abox_debug_err_type type, void *addr);
 
 int register_debug_mixer(struct snd_soc_card *card);
 int alloc_sec_audio_log(struct sec_audio_log_data *p_dbg_log_data, size_t buffer_len);
@@ -94,10 +104,10 @@ inline int is_abox_wdma_enabled(int id)
 {
 	return 0;
 }
-inline void abox_gpr_string_update(void)
+inline void abox_debug_string_update(enum abox_debug_err_type type, void *addr)
 {}
 
-int register_debug_mixer(struct snd_soc_card *card)
+inline int register_debug_mixer(struct snd_soc_card *card)
 {
 	return -EACCES;
 }

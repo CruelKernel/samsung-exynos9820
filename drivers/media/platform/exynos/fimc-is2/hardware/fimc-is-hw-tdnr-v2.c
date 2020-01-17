@@ -171,7 +171,7 @@ static int fimc_is_hw_mcsc_check_tdnr_mode_pre(struct fimc_is_hw_ip *hw_ip,
 	 */
 #ifdef MCSC_DNR_USE_TUNING
 	sensor_position = hw_ip->hardware->sensor_position[atomic_read(&hw_ip->instance)];
-	tdnr_tuneset = &hw_mcsc->applied_setfile[sensor_position]->tdnr_contents;
+	tdnr_tuneset = &hw_mcsc->cur_setfile[sensor_position][frame->instance]->tdnr_contents;
 	setfile_tdnr_enable = tdnr_tuneset->tdnr_enable;
 #endif
 
@@ -861,7 +861,7 @@ static int fimc_is_hw_mcsc_cfg_tdnr_tuning_param(struct fimc_is_hw_ip *hw_ip,
 #ifdef MCSC_DNR_USE_TUNING
 	instance = atomic_read(&hw_ip->instance);
 	sensor_position = hw_ip->hardware->sensor_position[instance];
-	tdnr_tuneset = &hw_mcsc->setfile[sensor_position]->tdnr_contents;
+	tdnr_tuneset = &hw_mcsc->cur_setfile[sensor_position][frame->instance]->tdnr_contents;
 	use_tdnr_tuning = true;
 #endif
 

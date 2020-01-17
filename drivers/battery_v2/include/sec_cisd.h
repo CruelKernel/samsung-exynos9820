@@ -145,8 +145,7 @@ enum {
 };
 
 enum {
-	CISD_CABLE_INDEX = 0,
-	CISD_CABLE_TA,
+	CISD_CABLE_TA = 0,
 	CISD_CABLE_AFC,
 	CISD_CABLE_AFC_FAIL,
 	CISD_CABLE_QC,
@@ -159,12 +158,11 @@ enum {
 };
 
 enum {
-	TX_DATA_INDEX = 0,
-	TX_ON,
+	TX_ON = 0,
+	TX_OTHER,
 	TX_GEAR,
 	TX_PHONE,
-	TX_OTHER,
-
+	TX_BUDS,
 	TX_DATA_MAX,
 };
 

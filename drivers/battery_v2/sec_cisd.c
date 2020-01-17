@@ -37,8 +37,8 @@ const char *cisd_data_str_d[] = {
 	"VBAT_OVP_D", "USB_OVERHEAT_RAPID_CHANGE_D", "BUCK_OFF_D", "USB_OVERHEAT_ALONE_D", "DROP_SENSOR_D"
 };
 
-const char *cisd_cable_data_str[] = {"INDEX", "TA", "AFC", "AFC_FAIL", "QC", "QC_FAIL", "PD", "PD_HIGH", "HV_WC_20"};
-const char *cisd_tx_data_str[] = {"INDEX", "ON", "GEAR", "PHONE", "OTHER"};
+const char *cisd_cable_data_str[] = {"TA", "AFC", "AFC_FAIL", "QC", "QC_FAIL", "PD", "PD_HIGH", "HV_WC_20"};
+const char *cisd_tx_data_str[] = {"ON", "OTHER", "GEAR", "PHONE", "BUDS"};
 
 bool sec_bat_cisd_check(struct sec_battery_info *battery)
 {

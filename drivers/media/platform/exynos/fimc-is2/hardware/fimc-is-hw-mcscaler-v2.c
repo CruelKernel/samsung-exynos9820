@@ -269,7 +269,7 @@ int check_sc_core_running(struct fimc_is_hw_ip *hw_ip, struct fimc_is_hw_mcsc_ca
 static int fimc_is_hw_mcsc_open(struct fimc_is_hw_ip *hw_ip, u32 instance,
 	struct fimc_is_group *group)
 {
-	int ret = 0, i;
+	int ret = 0, i, j;
 	struct fimc_is_hw_mcsc *hw_mcsc;
 	struct fimc_is_hw_mcsc_cap *cap;
 	u32 output_id;
@@ -314,9 +314,10 @@ static int fimc_is_hw_mcsc_open(struct fimc_is_hw_ip *hw_ip, u32 instance,
 	msdbg_hw(2, "open: [G:0x%x], framemgr[%s]", instance, hw_ip,
 		GROUP_ID(group->id), hw_ip->framemgr->name);
 
-	for (i = 0; i < SENSOR_POSITION_MAX; i++)
-		hw_mcsc->cur_setfile[i] = NULL;
-
+	for (i = 0; i < SENSOR_POSITION_MAX; i++) {
+		for (j = 0; j < FIMC_IS_STREAM_COUNT; j++)
+			hw_mcsc->cur_setfile[i][j] = NULL;
+	}
 	if (check_sc_core_running(hw_ip, cap))
 		return 0;
 
@@ -1189,7 +1190,7 @@ static int fimc_is_hw_mcsc_apply_setfile(struct fimc_is_hw_ip *hw_ip, u32 scenar
 
 	hw_mcsc = (struct fimc_is_hw_mcsc *)hw_ip->priv_info;
 
-	hw_mcsc->cur_setfile[sensor_position] =
+	hw_mcsc->cur_setfile[sensor_position][instance] =
 		&hw_mcsc->setfile[sensor_position][setfile_index];
 
 	msinfo_hw("setfile (%d) scenario (%d)\n", instance, hw_ip,
@@ -1616,7 +1617,7 @@ int fimc_is_hw_mcsc_poly_phase(struct fimc_is_hw_ip *hw_ip, struct param_mcs_inp
 	vratio = (u32)((temp_height << MCSC_PRECISION) / poly_dst_height);
 
 	sensor_position = hw_ip->hardware->sensor_position[instance];
-	setfile = hw_mcsc->cur_setfile[sensor_position];
+	setfile = hw_mcsc->cur_setfile[sensor_position][instance];
 #if defined(MCSC_COEF_USE_TUNING)
 	sc_coef = &setfile->sc_coef;
 #else
@@ -1692,7 +1693,7 @@ int fimc_is_hw_mcsc_post_chain(struct fimc_is_hw_ip *hw_ip, struct param_mcs_inp
 	vratio = (u32)((temp_height << MCSC_PRECISION) / dst_height);
 
 	sensor_position = hw_ip->hardware->sensor_position[instance];
-	setfile = hw_mcsc->cur_setfile[sensor_position];
+	setfile = hw_mcsc->cur_setfile[sensor_position][instance];
 #if defined(MCSC_COEF_USE_TUNING)
 	sc_coef = &setfile->sc_coef;
 #else
@@ -2113,7 +2114,7 @@ int fimc_is_hw_mcsc_output_yuvrange(struct fimc_is_hw_ip *hw_ip, struct param_mc
 	hw_mcsc->yuv_range = yuv; /* save for ISP */
 
 	sensor_position = hw_ip->hardware->sensor_position[instance];
-	setfile = hw_mcsc->cur_setfile[sensor_position];
+	setfile = hw_mcsc->cur_setfile[sensor_position][instance];
 #if defined(MCSC_COEF_USE_TUNING)
 	sc_bchs = &setfile->sc_bchs[yuv];
 #else

@@ -54,9 +54,10 @@ extern unsigned int lpcharge;
 
 char *rx_device_type_str[] = {
 	"No Dev",
+	"Other Dev",
 	"Gear",
 	"Phone",
-	"Other Dev",
+	"Buds",
 };
 
 static struct device_attribute mfc_attrs[] = {
@@ -1359,6 +1360,16 @@ static void mfc_tx_handle_rx_packet(struct mfc_charger_data *charger)
 				} else {
 					pr_info("%s: TX entered PHM but no 3min timer\n", __func__);
 				}
+			}
+			break;
+		case WPC_COM_RX_ID:
+			if (val2_data == 0x70) {
+				charger->wc_rx_type = SS_BUDS;
+				pr_info("@Tx_Mode %s : Buds connected\n", __func__);
+
+				value.intval = charger->wc_rx_type;
+				psy_do_property("wireless", set,
+						POWER_SUPPLY_EXT_PROP_WIRELESS_RX_TYPE, value);
 			}
 			break;
 		default:

@@ -29,6 +29,7 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_vol_adc_cal),
 	SEC_BATTERY_ATTR(batt_vol_aver),
 	SEC_BATTERY_ATTR(batt_vol_adc_aver),
+	SEC_BATTERY_ATTR(batt_voltage_now),
 	SEC_BATTERY_ATTR(batt_current_ua_now),
 	SEC_BATTERY_ATTR(batt_current_ua_avg),
 	SEC_BATTERY_ATTR(batt_filter_cfg),
@@ -268,7 +269,15 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		break;
 	case BATT_VOL_ADC_AVER:
 		break;
-
+	case BATT_VOLTAGE_NOW:
+		{
+			value.intval = 0;
+			psy_do_property(battery->pdata->fuelgauge_name, get,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, value);
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+			        value.intval * 1000);
+		}
+		break;
 	case BATT_CURRENT_UA_NOW:
 		{
 			value.intval = SEC_BATTERY_CURRENT_UA;
@@ -1200,10 +1209,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			int j = 0;
 			int size = 0;
 
-			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->cable_data[CISD_CABLE_INDEX]);
+			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->cable_data[CISD_CABLE_TA]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = CISD_CABLE_INDEX + 1; j < CISD_CABLE_TYPE_MAX; j++) {
+			for (j = CISD_CABLE_TA + 1; j < CISD_CABLE_TYPE_MAX; j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, " %d", pcisd->cable_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
@@ -1220,17 +1229,17 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			int size = 0;
 
 			snprintf(temp_buf, sizeof(temp_buf), "\"%s\":\"%d\"",
-				cisd_cable_data_str[CISD_CABLE_INDEX], pcisd->cable_data[CISD_CABLE_INDEX]);
+				cisd_cable_data_str[CISD_CABLE_TA], pcisd->cable_data[CISD_CABLE_TA]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = CISD_CABLE_INDEX + 1; j < CISD_CABLE_TYPE_MAX; j++) {
+			for (j = CISD_CABLE_TA + 1; j < CISD_CABLE_TYPE_MAX; j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, ",\"%s\":\"%d\"",
 					cisd_cable_data_str[j], pcisd->cable_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
 
 			/* Clear Daily Cable Data */
-			for (j = CISD_CABLE_INDEX; j < CISD_CABLE_TYPE_MAX; j++)
+			for (j = CISD_CABLE_TA; j < CISD_CABLE_TYPE_MAX; j++)
 				pcisd->cable_data[j] = 0;
 
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
@@ -1243,10 +1252,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			int j = 0;
 			int size = 0;
 
-			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->tx_data[TX_DATA_INDEX]);
+			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->tx_data[TX_ON]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = TX_DATA_INDEX + 1; j < TX_DATA_MAX; j++) {
+			for (j = TX_ON + 1; j < TX_DATA_MAX; j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, " %d", pcisd->tx_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
@@ -1261,17 +1270,17 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			int size = 0;
 
 			snprintf(temp_buf, sizeof(temp_buf), "\"%s\":\"%d\"",
-				cisd_tx_data_str[TX_DATA_INDEX], pcisd->tx_data[TX_DATA_INDEX]);
+				cisd_tx_data_str[TX_ON], pcisd->tx_data[TX_ON]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = TX_DATA_INDEX + 1; j < TX_DATA_MAX; j++) {
+			for (j = TX_ON + 1; j < TX_DATA_MAX; j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, ",\"%s\":\"%d\"",
 					cisd_tx_data_str[j], pcisd->tx_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
 
 			/* Clear Daily Cable Data */
-			for (j = TX_DATA_INDEX; j < TX_DATA_MAX; j++)
+			for (j = TX_ON; j < TX_DATA_MAX; j++)
 				pcisd->tx_data[j] = 0;
 
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
@@ -1456,6 +1465,8 @@ ssize_t sec_bat_store_attrs(
 	case BATT_VOL_AVER:
 		break;
 	case BATT_VOL_ADC_AVER:
+		break;
+	case BATT_VOLTAGE_NOW:
 		break;
 	case BATT_CURRENT_UA_NOW:
 		break;
@@ -2663,7 +2674,7 @@ ssize_t sec_bat_store_attrs(
 			const char *p = buf;
 
 			pr_info("%s: %s\n", __func__, buf);
-			for (i = CISD_CABLE_INDEX; i < CISD_CABLE_TYPE_MAX; i++) {
+			for (i = CISD_CABLE_TA; i < CISD_CABLE_TYPE_MAX; i++) {
 				if (sscanf(p, "%10d%n", &pcisd->cable_data[i], &x) > 0) {
 					p += (size_t)x;
 				} else {
@@ -2684,7 +2695,7 @@ ssize_t sec_bat_store_attrs(
 			const char *p = buf;
 
 			pr_info("%s: %s\n", __func__, buf);
-			for (i = TX_DATA_INDEX; i < TX_DATA_MAX; i++) {
+			for (i = TX_ON; i < TX_DATA_MAX; i++) {
 				if (sscanf(p, "%10d%n", &pcisd->tx_data[i], &x) > 0) {
 					p += (size_t)x;
 				} else {
