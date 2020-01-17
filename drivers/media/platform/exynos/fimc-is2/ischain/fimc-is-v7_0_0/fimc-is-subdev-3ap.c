@@ -263,10 +263,9 @@ static int fimc_is_ischain_3ap_tag(struct fimc_is_subdev *subdev,
 				goto p_err;
 			}
 
-			if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+			if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id))
 				mdbg_pframe("ot_crop[%d, %d, %d, %d] on\n", device, subdev, ldr_frame,
 					otcrop->x, otcrop->y, otcrop->w, otcrop->h);
-			}
 		}
 
 		ret = fimc_is_ischain_buf_tag(device,
@@ -297,10 +296,9 @@ static int fimc_is_ischain_3ap_tag(struct fimc_is_subdev *subdev,
 				goto p_err;
 			}
 
-			if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+			if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id))
 				mdbg_pframe("ot_crop[%d, %d, %d, %d] off\n", device, subdev, ldr_frame,
 					otcrop->x, otcrop->y, otcrop->w, otcrop->h);
-			}
 		}
 
 		ldr_frame->txpTargetAddress[0] = 0;

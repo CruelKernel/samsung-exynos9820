@@ -85,6 +85,11 @@ static int abc_hub_resume(struct device *dev)
 
 static int abc_hub_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_SEC_ABC_HUB_COND
+	struct abc_hub_info *pinfo = platform_get_drvdata(pdev);
+	
+    mutex_destroy(&pinfo->pdata->cond_pdata.cond_lock);
+#endif
 	return 0;
 }
 

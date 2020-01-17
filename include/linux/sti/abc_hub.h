@@ -41,6 +41,7 @@ struct sub_cond_pdata {
 	int irq_number[DET_CONN_MAX_NUM_GPIOS];
 	unsigned int irq_type[DET_CONN_MAX_NUM_GPIOS];
 	int gpio_cnt;
+	struct mutex cond_lock;
 };
 #endif
 

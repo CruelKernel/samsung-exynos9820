@@ -169,7 +169,9 @@ int parse_cond_data(struct device *dev,
 int abc_hub_cond_init(struct device *dev)
 {
 	/* implement init sequence : return 0 if success, return -1 if fail */
-	//struct abc_hub_info *pinfo = dev_get_drvdata(dev);
+	struct abc_hub_info *pinfo = dev_get_drvdata(dev);
+	
+	mutex_init(&pinfo->pdata->cond_pdata.cond_lock);
 
 	return 0;
 }
@@ -209,7 +211,7 @@ void abc_hub_cond_enable(struct device *dev, int enable)
 	int i;
 	int ret;
 
-	pinfo->pdata->cond_pdata.enabled = enable;
+	mutex_lock(&pinfo->pdata->cond_pdata.cond_lock);
 
 	if (enable == ABC_HUB_ENABLED) {
 		SEC_CONN_PRINT("driver enabled.\n");
@@ -224,12 +226,22 @@ void abc_hub_cond_enable(struct device *dev, int enable)
 		ret = abc_hub_cond_irq_enable(dev, enable);
 		if (ret < 0)
 			SEC_CONN_PRINT("Interrupt not enabled.\n");
+		pinfo->pdata->cond_pdata.enabled = enable;
 	} else {
-		for (i = 0; i < pinfo->pdata->cond_pdata.gpio_cnt; i++) {
-			disable_irq(pinfo->pdata->cond_pdata.irq_number[i]);
-			free_irq(pinfo->pdata->cond_pdata.irq_number[i], pinfo);
+		if (pinfo->pdata->cond_pdata.enabled == ABC_HUB_ENABLED) {
+			for (i = 0; i < pinfo->pdata->cond_pdata.gpio_cnt; i++) {
+				if (pinfo->pdata->cond_pdata.irq_number[i]) {
+					disable_irq(pinfo->pdata->cond_pdata.irq_number[i]);
+					free_irq(pinfo->pdata->cond_pdata.irq_number[i], pinfo);
+				}
+			}
 		}
+		pinfo->pdata->cond_pdata.enabled = enable;
 	}
+	
+	mutex_unlock(&pinfo->pdata->cond_pdata.cond_lock);
+
+
 }
 
 MODULE_DESCRIPTION("Samsung ABC Hub Sub Module1(cond) Driver");
