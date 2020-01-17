@@ -881,8 +881,10 @@ static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
 		dump_stack();
 		raw_spin_unlock(&stop_lock);
 	}
+	if (system_state != SYSTEM_POWER_OFF &&
+	    system_state != SYSTEM_RESTART)
+		dbg_snapshot_save_context(regs);
 
-	dbg_snapshot_save_context(regs);
 	exynos_sdm_flush_secdram();
 
 	set_cpu_online(cpu, false);

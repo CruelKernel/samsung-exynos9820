@@ -131,7 +131,7 @@ static struct usb_interface_descriptor conn_gadget_interface_desc = {
 	.bNumEndpoints          = 2,
 	.bInterfaceClass        = 0xFF,
 	.bInterfaceSubClass     = 0x40,
-	.bInterfaceProtocol     = 1,
+	.bInterfaceProtocol     = 2,
 };
 
 static struct usb_endpoint_descriptor conn_gadget_superspeed_in_desc = {
@@ -857,6 +857,9 @@ static const struct file_operations conn_gadget_fops = {
 	.write = conn_gadget_write,
 	.poll = conn_gadget_poll,
 	.unlocked_ioctl = conn_gadget_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = conn_gadget_ioctl,
+#endif
 	.open = conn_gadget_open,
 	.release = conn_gadget_release,
 	.flush = conn_gadget_flush,
@@ -1090,7 +1093,12 @@ static ssize_t conn_gadget_usb_buffer_size_store(struct device *dev,
 		return size;
 	}
 
-	sscanf(buf, "%d", &value);
+	if (sscanf(buf, "%d", &value) != 1)
+		return -EINVAL;
+
+	if (value <= 0 || value > 128)
+		return -EINVAL;
+
 	kfifo_size = (value * 1024) * CONN_GADGET_DEFAULT_Q_SIZE;
 
 	rd_queue_buf = vmalloc(kfifo_size);

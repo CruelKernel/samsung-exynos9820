@@ -1845,18 +1845,25 @@ int fimc_is_vender_video_s_ctrl(struct v4l2_control *ctrl,
 		ctrl->id = VENDER_S_CTRL;
 		value = (unsigned int)ctrl->value;
 		captureIntent = (value >> 16) & 0x0000FFFF;
-		if (captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_DEBLUR_DYNAMIC_SHOT
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_OIS_DYNAMIC_SHOT
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_EXPOSURE_DYNAMIC_SHOT
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_MFHDR_DYNAMIC_SHOT
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_DYNAMIC_SHOT
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_HANDHELD
-			|| captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD) {
+		switch (captureIntent) {
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_DEBLUR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_OIS_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_EXPOSURE_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_MFHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_HANDHELD:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_VEHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_VENR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLS_FLASH:
 			captureCount = value & 0x0000FFFF;
-		} else {
+			break;
+		default:
 			captureIntent = ctrl->value;
 			captureCount = 0;
+			break;
 		}
+
 		device->group_3aa.intent_ctl.captureIntent = captureIntent;
 		device->group_3aa.intent_ctl.vendor_captureCount = captureCount;
 

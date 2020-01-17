@@ -128,9 +128,17 @@ static int stui_handler_init(void)
 	}
 	wake_lock_init(&tui_wakelock, WAKE_LOCK_SUSPEND, "TUI_WAKELOCK");
 	stui_device = device_create(tui_class, NULL, devno, NULL, STUI_DEV_NAME);
-	if (!IS_ERR(stui_device))
+	if (!IS_ERR(stui_device)) {
+		pr_info("[STUI] stui_handler_init -\n");
+		/* Registration on REE events */
+		if (stui_register_on_events() != 0) {
+			pr_err("[STUI] stui_register_on_events failed\n");
+			goto err_reg_events;
+		}
 		return 0;
+	}
 
+err_reg_events:
 	err = PTR_ERR(stui_device);
 	wake_lock_destroy(&tui_wakelock);
 
@@ -145,6 +153,7 @@ err_class_create:
 static void stui_handler_exit(void)
 {
 	pr_debug("[STUI] stui_handler_exit\n");
+	stui_unregister_from_events();
 	wake_lock_destroy(&tui_wakelock);
 	unregister_chrdev_region(stui_cdev.dev, 1);
 	cdev_del(&stui_cdev);

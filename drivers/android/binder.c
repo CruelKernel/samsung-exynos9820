@@ -3285,6 +3285,8 @@ static void binder_transaction(struct binder_proc *proc,
 	}
 	if (target_node && target_node->txn_security_ctx) {
 		u32 secid;
+		size_t added_size;
+
 		security_task_getsecid(proc->tsk, &secid);
 		ret = security_secid_to_secctx(secid, &secctx, &secctx_sz);
 		if (ret) {
@@ -3293,7 +3295,15 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error_line = __LINE__;
 			goto err_get_secctx_failed;
 		}
-		extra_buffers_size += ALIGN(secctx_sz, sizeof(u64));
+		added_size = ALIGN(secctx_sz, sizeof(u64));
+		extra_buffers_size += added_size;
+		if (extra_buffers_size < added_size) {
+			/* integer overflow of extra_buffers_size */
+			return_error = BR_FAILED_REPLY;
+			return_error_param = EINVAL;
+			return_error_line = __LINE__;
+			goto err_bad_extra_size;
+	}
 	}
 #ifdef CONFIG_DEBUG_SNAPSHOT_BINDER
 	dss_binder_transaction(reply, t, t->from ? t->from : thread, target_node ? target_node->debug_id : 0);
@@ -3321,7 +3331,7 @@ static void binder_transaction(struct binder_proc *proc,
 		//SAnP]
 		goto err_binder_alloc_buf_failed;
 	}
-		if (secctx) {
+	if (secctx) {
 		size_t buf_offset = ALIGN(tr->data_size, sizeof(void *)) +
 				    ALIGN(tr->offsets_size, sizeof(void *)) +
 				    ALIGN(extra_buffers_size, sizeof(void *)) -
@@ -3607,6 +3617,7 @@ err_copy_data_failed:
 	t->buffer->transaction = NULL;
 	binder_alloc_free_buf(&target_proc->alloc, t->buffer);
 err_binder_alloc_buf_failed:
+err_bad_extra_size:
 	if (secctx)
 		security_release_secctx(secctx, secctx_sz);
 err_get_secctx_failed:
@@ -3848,12 +3859,12 @@ static int binder_thread_write(struct binder_proc *proc,
 					binder_user_error(
 					"%d:%d BC_FREE_BUFFER u%016llx matched unreturned or currently freeing buffer\n",
 					proc->pid, thread->pid,
-					(u64)data_ptr);
+						(u64)data_ptr);
 				} else {
 					binder_user_error(
 					"%d:%d BC_FREE_BUFFER u%016llx no match\n",
 					proc->pid, thread->pid,
-					(u64)data_ptr);
+						(u64)data_ptr);
 				}
 				break;
 			}
@@ -4496,7 +4507,7 @@ retry:
 			struct task_struct *sender = t_from->proc->tsk;
 
 			trd->sender_pid = task_tgid_nr_ns(sender,
-							task_active_pid_ns(current));
+						task_active_pid_ns(current));
 		} else {
 			trd->sender_pid = 0;
 		}
@@ -4546,8 +4557,8 @@ retry:
 			     "%d:%d(%s:%s) %s %d %d:%d(%s:%s), cmd %d size %zd-%zd ptr %016llx-%016llx\n",
 			     proc->pid, thread->pid, proc->tsk->comm, thread->task->comm,
 			     (cmd == BR_TRANSACTION) ? "BR_TRANSACTION" :
-			     (cmd == BR_TRANSACTION_SEC_CTX) ?
-					"BR_TRANSACTION_SEC_CTX" : "BR_REPLY",	 
+				(cmd == BR_TRANSACTION_SEC_CTX) ?
+				     "BR_TRANSACTION_SEC_CTX" : "BR_REPLY",
 			     t->debug_id, t_from ? t_from->proc->pid : 0,
 			     t_from ? t_from->pid : 0,
 			     t_from ? t_from->proc->tsk->comm : "",

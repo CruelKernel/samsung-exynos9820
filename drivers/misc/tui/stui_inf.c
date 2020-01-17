@@ -9,9 +9,14 @@
  * published by the Free Software Foundation.
 */
 
+#include <decon.h>
+#include <linux/atomic.h>
 #include <linux/delay.h>
+#include <linux/fb.h>
 #include <linux/module.h>
+#include <linux/reboot.h>
 #include <linux/spinlock.h>
+#include <linux/types.h>
 #ifdef USE_TEE_CLIENT_API
 #include <tee_client_api.h>
 #endif /* USE_TEE_CLIENT_API */
@@ -25,12 +30,14 @@ static int tui_mode = STUI_MODE_OFF;
 static int tui_blank_cnt;
 static DEFINE_SPINLOCK(tui_lock);
 
+#ifdef USE_TEE_CLIENT_API
 static TEEC_UUID uuid = {
 	.timeLow = 0x0,
 	.timeMid = 0x0,
 	.timeHiAndVersion = 0x0,
 	.clockSeqAndNode = {0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x81},
 };
+#endif
 
 int stui_inc_blank_ref(void)
 {
@@ -125,6 +132,7 @@ int stui_clear_mask(int mask)
 EXPORT_SYMBOL(stui_clear_mask);
 
 #ifdef USE_TEE_CLIENT_API
+static atomic_t canceling = ATOMIC_INIT(0);
 int stui_cancel_session(void)
 {
 	TEEC_Context context;
@@ -137,25 +145,36 @@ int stui_cancel_session(void)
 	pr_info("[STUI] %s begin\n", __func__);
 
 	if (!(STUI_MODE_ALL & stui_get_mode())) {
-		pr_err("[STUI] session cancel is not needed\n", __func__);
+		pr_info("[STUI] session cancel is not needed\n");
+		return 0;
+	}
+
+	if (atomic_cmpxchg(&canceling, 0, 1) != 0) {
+		pr_info("[STUI] already canceling.\n");
 		return 0;
 	}
 
 	result = TEEC_InitializeContext(NULL, &context);
-	if (result != TEEC_SUCCESS)
+	if (result != TEEC_SUCCESS) {
+		pr_err("[STUI] TEEC_InitializeContext returned: 0x%x\n", result);
 		goto out;
+	}
 
 	result = TEEC_OpenSession(&context, &session, &uuid, TEEC_LOGIN_PUBLIC, NULL, NULL, NULL);
-	if (result != TEEC_SUCCESS)
+	if (result != TEEC_SUCCESS) {
+		pr_err("[STUI] TEEC_OpenSession returned: 0x%x\n", result);
 		goto finalize_context;
+	}
 
 	operation.paramTypes = TEEC_PARAM_TYPES(TEEC_NONE, TEEC_NONE, TEEC_NONE, TEEC_NONE);
 
 	result = TEEC_InvokeCommand(&session, TUI_REE_EXTERNAL_EVENT, &operation, NULL);
-	if (result != TEEC_SUCCESS)
+	if (result != TEEC_SUCCESS) {
+		pr_err("[STUI] TEEC_InvokeCommand returned: 0x%x\n", result);
 		goto close_session;
-	else
+	} else {
 		pr_info("[STUI] invoked cancel cmd\n");
+	}
 
 	TEEC_CloseSession(&session);
 	TEEC_FinalizeContext(&context);
@@ -172,6 +191,7 @@ int stui_cancel_session(void)
 		ret = 0;
 	}
 
+	atomic_set(&canceling, 0);
 	return ret;
 
 close_session:
@@ -179,6 +199,7 @@ close_session:
 finalize_context:
 	TEEC_FinalizeContext(&context);
 out:
+	atomic_set(&canceling, 0);
 	pr_err("[STUI] %s end, ret=%d, result=0x%x\n", __func__, ret, result);
 
 	return ret;
@@ -229,3 +250,94 @@ void trustedui_set_mode(int mode)
 EXPORT_SYMBOL(trustedui_set_mode);
 
 #endif /* CONFIG_SOC_EXYNOS3250 */
+
+static int stui_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
+
+static struct notifier_block stui_fb_notif = {
+	.notifier_call = stui_notifier_callback,
+};
+
+static struct notifier_block stui_reboot_nb = {
+	.notifier_call = stui_notifier_callback,
+};
+
+static int stui_is_decon_in_state_tui(const struct fb_info *const info)
+{
+	struct decon_win *win = NULL;
+	struct decon_device *decon = NULL;
+
+	if (info == NULL) {
+		pr_err("[STUI] %s: fb_info is null.\n", __func__);
+		return 0;
+	}
+
+	win = info->par;
+	if (win == NULL) {
+		pr_err("[STUI] %s: decon_win is null.\n", __func__);
+		return 0;
+	}
+
+	decon = win->decon;
+	if (decon == NULL) {
+		pr_err("[STUI] %s: decon is null.\n", __func__);
+		return 0;
+	}
+
+	pr_info("[STUI] %s: decon=%d, state=%d\n", __func__, decon->id, decon->state);
+	return (decon->state == DECON_STATE_TUI);
+}
+
+static int stui_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+	(void) data;
+
+	pr_info("[STUI] %s (start): event=%lu\n", __func__, event);
+
+	if (!(self == &stui_fb_notif && event == FB_EARLY_EVENT_BLANK)
+		&& self != &stui_reboot_nb) {
+		return NOTIFY_OK;
+	}
+
+	if (self == &stui_fb_notif && data != NULL) {
+		const struct fb_event *event_data = data;
+		const struct fb_info *info = event_data->info;
+
+		if (stui_is_decon_in_state_tui(info) == 0) {
+			pr_err("[STUI] %s is not state TUI\n", __func__);
+			return NOTIFY_OK;
+		}
+	}
+
+	stui_cancel_session();
+	pr_info("[STUI] %s (finish)\n", __func__);
+	return NOTIFY_OK;
+}
+
+int stui_register_on_events(void)
+{
+	int ret = -1;
+	pr_info("[STUI] %s (start)\n", __func__);
+	ret = fb_register_client(&stui_fb_notif);
+	if (ret != 0) {
+		pr_err("[STUI] Unable to register fb notifier (%d)\n", ret);
+		return ret;
+	}
+
+	ret = register_reboot_notifier(&stui_reboot_nb);
+	if (ret != 0) {
+		pr_err("[STUI] Unable to register reboot notifier (%d)\n", ret);
+		fb_unregister_client(&stui_fb_notif);
+		return ret;
+	}
+
+	pr_info("[STUI] %s (finish)\n", __func__);
+	return ret;
+}
+
+void stui_unregister_from_events(void)
+{
+	pr_info("[STUI] %s (start)\n", __func__);
+	fb_unregister_client(&stui_fb_notif);
+	unregister_reboot_notifier(&stui_reboot_nb);
+	pr_info("[STUI] %s (finish)\n", __func__);
+}

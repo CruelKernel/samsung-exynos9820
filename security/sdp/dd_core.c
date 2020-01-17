@@ -1549,8 +1549,10 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #else
 	case DD_IOCTL_ADD_KEY:
 		dd_info("DD_IOCTL_ADD_KEY");
-		return dd_add_master_key(ioc.u.add_key.userid,
+		err = dd_add_master_key(ioc.u.add_key.userid,
 				ioc.u.add_key.key, ioc.u.add_key.len);
+		secure_zeroout("add_key", ioc.u.add_key.key, ioc.u.add_key.len);
+		return err;
 	case DD_IOCTL_EVICT_KEY:
 		dd_info("DD_IOCTL_EVICT_KEY");
 		dd_evict_master_key(ioc.u.evict_key.userid);
