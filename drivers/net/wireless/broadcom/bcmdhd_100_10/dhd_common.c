@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 812478 2019-04-01 07:35:00Z $
+ * $Id: dhd_common.c 823731 2019-06-05 07:07:02Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -3804,7 +3804,7 @@ dhd_pktfilter_offload_set(dhd_pub_t * dhd, char *arg)
 	int				rc = -1;
 	uint32				mask_size;
 	uint32				pattern_size;
-	char				*argv[16], * buf = 0;
+	char				*argv[MAXPKT_ARG] = {0}, * buf = 0;
 	int				i = 0;
 	char				*arg_save = 0, *arg_org = 0;
 
@@ -3832,8 +3832,13 @@ dhd_pktfilter_offload_set(dhd_pub_t * dhd, char *arg)
 	}
 
 	argv[i] = bcmstrtok(&arg_save, " ", 0);
-	while (argv[i++])
+	while (argv[i++]) {
+		if (i >= MAXPKT_ARG) {
+			DHD_ERROR(("Invalid args provided\n"));
+			goto fail;
+		}
 		argv[i] = bcmstrtok(&arg_save, " ", 0);
+	}
 
 	i = 0;
 	if (argv[i] == NULL) {
@@ -4119,11 +4124,16 @@ dhd_arp_offload_enable(dhd_pub_t * dhd, int arp_enable)
 
 	retcode = retcode >= 0 ? 0 : retcode;
 	if (retcode)
-		DHD_TRACE(("%s: failed to enabe ARP offload to %d, retcode = %d\n",
+		DHD_ERROR(("%s: failed to enabe ARP offload to %d, retcode = %d\n",
 			__FUNCTION__, arp_enable, retcode));
 	else
+#ifdef DHD_LOG_DUMP
+		DHD_LOG_MEM(("%s: successfully enabed ARP offload to %d\n",
+			__FUNCTION__, arp_enable));
+#else
 		DHD_TRACE(("%s: successfully enabed ARP offload to %d\n",
 			__FUNCTION__, arp_enable));
+#endif /* DHD_LOG_DUMP */
 	if (arp_enable) {
 		uint32 version;
 		retcode = dhd_wl_ioctl_get_intiovar(dhd, "arp_version",
@@ -4152,6 +4162,15 @@ dhd_aoe_arp_clr(dhd_pub_t *dhd, int idx)
 	ret = dhd_iovar(dhd, idx, "arp_table_clear", NULL, 0, NULL, 0, TRUE);
 	if (ret < 0)
 		DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+	else {
+#ifdef DHD_LOG_DUMP
+		DHD_LOG_MEM(("%s: ARP table clear\n", __FUNCTION__));
+#else
+		DHD_TRACE(("%s: ARP table clear\n", __FUNCTION__));
+#endif /* DHD_LOG_DUMP */
+	}
+	/* mac address isn't cleared here but it will be cleared after dongle off */
+	dhd->hmac_updated = 0;
 }
 
 void
@@ -4166,6 +4185,13 @@ dhd_aoe_hostip_clr(dhd_pub_t *dhd, int idx)
 	ret = dhd_iovar(dhd, idx, "arp_hostip_clear", NULL, 0, NULL, 0, TRUE);
 	if (ret < 0)
 		DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+	else {
+#ifdef DHD_LOG_DUMP
+		DHD_LOG_MEM(("%s: ARP host ip clear\n", __FUNCTION__));
+#else
+		DHD_TRACE(("%s: ARP host ip clear\n", __FUNCTION__));
+#endif /* DHD_LOG_DUMP */
+	}
 }
 
 void
@@ -4179,11 +4205,17 @@ dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx)
 
 	ret = dhd_iovar(dhd, idx, "arp_hostip", (char *)&ipaddr, sizeof(ipaddr),
 			NULL, 0, TRUE);
-	if (ret)
-		DHD_TRACE(("%s: ARP ip addr add failed, ret = %d\n", __FUNCTION__, ret));
-	else
-		DHD_TRACE(("%s: sARP H ipaddr entry added \n",
-		__FUNCTION__));
+	if (ret < 0)
+		DHD_ERROR(("%s: ARP ip addr add failed, ret = %d\n", __FUNCTION__, ret));
+	else {
+		/* mac address is updated in the dongle */
+		dhd->hmac_updated = 1;
+#ifdef DHD_LOG_DUMP
+		DHD_LOG_MEM(("%s: ARP ip addr entry added \n", __FUNCTION__));
+#else
+		DHD_TRACE(("%s: ARP ip addr entry added \n", __FUNCTION__));
+#endif /* DHD_LOG_DUMP */
+	}
 }
 
 int

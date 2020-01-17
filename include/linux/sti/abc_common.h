@@ -105,6 +105,7 @@ struct abc_info {
 	int log_list_cnt;
 	char abc_str[ABC_BUFFER_MAX];
 	struct abc_platform_data *pdata;
+	struct mutex log_mutex;
 };
 
 extern void sec_abc_send_event(char *str);

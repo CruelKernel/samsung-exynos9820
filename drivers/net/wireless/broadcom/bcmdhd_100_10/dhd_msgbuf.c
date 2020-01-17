@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 813281 2019-04-04 08:56:10Z $
+ * $Id: dhd_msgbuf.c 825812 2019-06-17 12:08:59Z $
  */
 
 #include <typedefs.h>
@@ -9169,7 +9169,7 @@ dhd_prot_flow_ring_create(dhd_pub_t *dhd, flow_ring_node_t *flow_ring_node)
 		dhd_prot_flowrings_pool_release(dhd, flow_ring_node->flowid, flow_ring);
 		DHD_ERROR(("%s: Flow Create Req flowid %d - failure ring space\n",
 			__FUNCTION__, flow_ring_node->flowid));
-		DHD_RING_LOCK(ctrl_ring->ring_lock, flags);
+		DHD_RING_UNLOCK(ctrl_ring->ring_lock, flags);
 		return BCME_NOMEM;
 	}
 
@@ -10259,6 +10259,11 @@ dhd_prot_debug_info_print(dhd_pub_t *dhd)
 	DHD_ERROR(("\n ------- DUMPING VERSION INFORMATION ------- \r\n"));
 	DHD_ERROR(("DHD: %s\n", dhd_version));
 	DHD_ERROR(("Firmware: %s\n", fw_version));
+
+#ifdef DHD_FW_COREDUMP
+	DHD_ERROR(("\n ------- DUMPING CONFIGURATION INFORMATION ------ \r\n"));
+	DHD_ERROR(("memdump mode: %d\n", dhd->memdump_enabled));
+#endif /* DHD_FW_COREDUMP */
 
 	DHD_ERROR(("\n ------- DUMPING PROTOCOL INFORMATION ------- \r\n"));
 	DHD_ERROR(("ICPrevs: Dev %d, Host %d, active %d\n",

@@ -469,7 +469,13 @@ void report_scontext_data(struct ssp_data *data, int sensor_type,
 	memcpy(printbuf, scontextbuf, 72);
 	memcpy(&start, printbuf+4, sizeof(short));
 	memcpy(&end, printbuf+6, sizeof(short));
-	ssp_sensorhub_log("ssp_AlgoPacket", printbuf + 8, end - start + 1);
+
+	if (end - start + 1 <= 64) {
+		ssp_sensorhub_log("ssp_AlgoPacket", printbuf + 8, end - start + 1);
+	} else {
+		pr_err("[SSP] : ssp_AlgoPacket packet error start:%d end:%d", start, end);
+	}
+
 	mutex_lock(&data->indio_scontext_dev->mlock);
 	iio_push_to_buffers(data->indio_scontext_dev, scontextbuf);
 	mutex_unlock(&data->indio_scontext_dev->mlock);

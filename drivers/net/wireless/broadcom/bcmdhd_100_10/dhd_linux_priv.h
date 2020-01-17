@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_priv.h 786219 2018-10-25 00:12:24Z $
+ * $Id: dhd_linux_priv.h 823742 2019-06-05 08:37:45Z $
  */
 
 #ifndef __DHD_LINUX_PRIV_H__
@@ -357,8 +357,6 @@ typedef struct dhd_info {
 	struct mutex logdump_lock;
 	/* indicates mem_dump was scheduled as work queue or called directly */
 	bool scheduled_memdump;
-	/* indicates sssrdump is called directly instead of scheduling work queue */
-	bool no_wq_sssrdump;
 	struct work_struct dhd_hang_process_work;
 #ifdef DHD_HP2P
 	spinlock_t	hp2p_lock;

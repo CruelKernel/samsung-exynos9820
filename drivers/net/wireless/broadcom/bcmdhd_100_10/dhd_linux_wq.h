@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_wq.h 799739 2019-01-17 07:31:48Z $
+ * $Id: dhd_linux_wq.h 823742 2019-06-05 08:37:45Z $
  */
 #ifndef _dhd_linux_wq_h_
 #define _dhd_linux_wq_h_
@@ -39,7 +39,6 @@ enum _wq_event {
 	DHD_WQ_WORK_SET_MCAST_LIST,
 	DHD_WQ_WORK_IPV6_NDO,
 	DHD_WQ_WORK_HANG_MSG,
-	DHD_WQ_WORK_SSSR_DUMP,
 	DHD_WQ_WORK_DHD_LOG_DUMP,
 	DHD_WQ_WORK_PKTLOG_DUMP,
 	DHD_WQ_WORK_INFORM_DHD_MON,

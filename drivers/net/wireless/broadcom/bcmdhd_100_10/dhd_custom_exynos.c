@@ -23,7 +23,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_custom_exynos.c 797239 2018-12-31 00:59:21Z $
+ * $Id: dhd_custom_exynos.c 823711 2019-06-05 05:09:51Z $
  */
 #include <linux/device.h>
 #include <linux/gpio.h>
@@ -59,12 +59,15 @@
 #include <mach/gpio.h>
 #endif /* !CONFIG_ARCH_SWA100 && !CONFIG_MACH_UNIVERSAL7580 */
 #endif /* CONFIG_64BIT */
-
+#if defined(CONFIG_SEC_SYSFS)
 #if defined(CONFIG_MACH_UNIVERSAL7580) || defined(CONFIG_MACH_UNIVERSAL5430) || \
 	defined(CONFIG_MACH_UNIVERSAL5422)
 #include <mach/irqs.h>
 #endif /* CONFIG_MACH_UNIVERSAL7580 || CONFIG_MACH_UNIVERSAL5430 || CONFIG_MACH_UNIVERSAL5422 */
 #include <linux/sec_sysfs.h>
+#elif defined(CONFIG_DRV_SAMSUNG)
+#include <linux/sec_class.h>
+#endif /* CONFIG_SEC_SYSFS */
 
 #ifdef CONFIG_MACH_A7LTE
 #define PINCTL_DELAY 150

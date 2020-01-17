@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie.c 811075 2019-03-22 07:02:26Z $
+ * $Id: dhd_pcie.c 823742 2019-06-05 08:37:45Z $
  */
 
 /* include files */
@@ -961,9 +961,7 @@ dhdpcie_cto_recovery_handler(dhd_pub_t *dhd)
 		/* save core dump or write to a file */
 		if (!bus->is_linkdown && bus->dhd->memdump_enabled) {
 #ifdef DHD_SSSR_DUMP
-			if (bus->dhd->sssr_inited) {
-				dhdpcie_sssr_dump(bus->dhd);
-			}
+			bus->dhd->collect_sssr = TRUE;
 #endif /* DHD_SSSR_DUMP */
 			bus->dhd->memdump_type = DUMP_TYPE_CTO_RECOVERY;
 			dhdpcie_mem_dump(bus);
@@ -3550,9 +3548,7 @@ dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size)
 		/* save core dump or write to a file */
 		if (bus->dhd->memdump_enabled) {
 #ifdef DHD_SSSR_DUMP
-			if (bus->dhd->sssr_inited) {
-				dhdpcie_sssr_dump(bus->dhd);
-			}
+			bus->dhd->collect_sssr = TRUE;
 #endif /* DHD_SSSR_DUMP */
 			bus->dhd->memdump_type = DUMP_TYPE_DONGLE_TRAP;
 			dhdpcie_mem_dump(bus);
@@ -10813,15 +10809,9 @@ dhdpcie_sssr_dump(dhd_pub_t *dhd)
 		return BCME_ERROR;
 	}
 	dhd->sssr_dump_collected = TRUE;
-	dhd_schedule_sssr_dump(dhd, SSSR_DUMP_MODE_SSSR);
+	dhd_write_sssr_dump(dhd, SSSR_DUMP_MODE_SSSR);
 
 	return BCME_OK;
-}
-
-int
-dhd_bus_sssr_dump(dhd_pub_t *dhd)
-{
-	return dhdpcie_sssr_dump(dhd);
 }
 
 static int
@@ -10889,7 +10879,7 @@ dhdpcie_fis_dump(dhd_pub_t *dhd)
 		return BCME_ERROR;
 	}
 
-	dhd_schedule_sssr_dump(dhd, SSSR_DUMP_MODE_FIS);
+	dhd_write_sssr_dump(dhd, SSSR_DUMP_MODE_FIS);
 
 	return BCME_OK;
 }
