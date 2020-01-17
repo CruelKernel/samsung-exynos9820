@@ -1008,7 +1008,7 @@ inline int __fscrypt_sdp_thread_initialize(void *arg)
 	struct fscrypt_key *key;
 
 	if (unlikely(!sem))
-		return 0;
+		return -EINVAL;
 	if (sem->inode) {
 		inode = sem->inode;
 		key = &sem->key;
@@ -1035,7 +1035,7 @@ inline int __fscrypt_sdp_thread_set_sensitive(void *arg)
 	struct fscrypt_key *key;
 
 	if (unlikely(!sem))
-		return 0;
+		return -EINVAL;
 	if (sem->inode) {
 		inode = sem->inode;
 		key = &sem->key;
@@ -1065,7 +1065,7 @@ inline int __fscrypt_sdp_thread_convert_sdp_key(void *arg)
 	int rc = 0;
 
 	if (unlikely(!sem))
-		return 0;
+		return -EINVAL;
 	if (sem->inode) {
 		inode = sem->inode;
 		fek = &sem->key;
@@ -1123,10 +1123,126 @@ inline static const char *__thread_type_to_name(sdp_thread_type_t thread_type)
 		case SDP_THREAD_SET_SENSITIVE:
 			return "__fscrypt_sdp_thread_set_sensitive";
 		case SDP_THREAD_KEY_CONVERT:
-			return "__fscrypt_sdp_thread_set_sensitive";
+			return "__fscrypt_sdp_thread_convert_sdp_key";
 		default:
 			return "__fscrypt_sdp_thread_unknown";
 	}
+}
+
+inline static int (*__thread_type_to_func(sdp_thread_type_t thread_type))(void*)
+{
+	switch (thread_type) {
+		case SDP_THREAD_INITIALIZE:
+			return __fscrypt_sdp_thread_initialize;
+		case SDP_THREAD_SET_SENSITIVE:
+			return __fscrypt_sdp_thread_set_sensitive;
+		case SDP_THREAD_KEY_CONVERT:
+			return __fscrypt_sdp_thread_convert_sdp_key;
+		default:
+			return NULL;
+	}
+}
+
+/*
+ * This function is to build up the sdp essential material to perform
+ * sdp operations, and ship the material into the sem pointer taken over.
+ *
+ * The data shall be raw fek, and the data length shall be the key size.
+ */
+inline int fscrypt_sdp_build_sem(struct inode *inode,
+									void *data, unsigned int data_len,
+									sdp_thread_type_t thread_type,
+									sdp_ess_material **sem)
+{
+	int res = 0;
+	struct fscrypt_info *ci = inode->i_crypt_info; // Will never be null.
+	sdp_ess_material *__sem;
+
+	if (unlikely(
+			!data || data_len > FS_MAX_KEY_SIZE))
+		return -EINVAL;
+
+	__sem = *sem = kmalloc(sizeof(sdp_ess_material), GFP_ATOMIC);
+	if (unlikely(!__sem))
+		return -ENOMEM;
+
+	if (thread_type == SDP_THREAD_INITIALIZE
+			&& !fscrypt_sdp_is_to_sensitive(ci)) {
+		// To initialize non-sensitive file, cekey is required.
+		__sem->inode = inode;
+		res = fscrypt_get_encryption_kek(__sem->inode, ci, &__sem->key);
+		if (unlikely(res)) {
+			DEK_LOGD("sdp_build_sem: failed to get kek (err:%d)\n", res);
+		}
+	}
+	else {
+		__sem->inode = inode;
+		__sem->key.mode = 0;
+		__sem->key.size = data_len;
+		memcpy(__sem->key.raw, data, data_len);
+	}
+	return res;
+}
+
+/*
+ * The function is supposed to manage the sem taken over.
+ */
+inline int fscrypt_sdp_run_thread_if_required(struct inode *inode,
+								sdp_thread_type_t thread_type,
+								sdp_ess_material *sem)
+{
+	int res = -1;
+	int is_required = 1;
+	int (*task_func)(void *data);
+	struct task_struct *task = NULL;
+	sdp_ess_material *__sem = sem;
+
+	if (unlikely(!__sem))
+		return -EINVAL;
+
+	/*
+	 * If the inode is on ext4 and the current has a journal_info,
+	 * then it is deemed as being in write context.
+	 */
+	if (inode->i_sb->s_magic == EXT4_SUPER_MAGIC &&
+			current->journal_info) {
+		is_required = 0;
+	}
+
+	task_func = __thread_type_to_func(thread_type);
+	if (unlikely(!task_func)) {
+		DEK_LOGD("sdp_run_thread: failed due to invalid task function - %s\n",
+				__thread_type_to_name(thread_type));
+		goto out;
+	}
+
+	if (is_required) {
+		if (igrab(inode)) {
+			task = kthread_run(task_func, (void *)__sem, __thread_type_to_name(thread_type));
+		}
+		if(IS_ERR_OR_NULL(task)) {
+			if (IS_ERR(task)) {
+				res = PTR_ERR(task);
+				memzero_explicit(__sem, sizeof(sdp_ess_material));
+				iput(inode);
+			}
+		} else {
+			DEK_LOGD("sdp_run_thread: left behind - %s\n",
+					__thread_type_to_name(thread_type));
+			res = 0;
+		}
+	} else {
+		if (igrab(inode)) {
+			res = task_func((void *)__sem);
+		}
+		DEK_LOGD("sdp_run_thread: finished task - %s = %d\n",
+				__thread_type_to_name(thread_type), res);
+	}
+
+out:
+	if (res)
+		kzfree(__sem);
+	return res;
 }
 
 inline int fscrypt_sdp_run_thread(struct inode *inode,
@@ -1418,6 +1534,7 @@ inline void __fscrypt_sdp_finalize_tasks(struct inode *inode,
 {
 	int res = 0;
 	sdp_thread_type_t thread_type;
+	sdp_ess_material *sem = NULL;
 
 	if (ci->ci_sdp_info->sdp_flags & SDP_IS_DIRECTORY)
 		return;
@@ -1433,27 +1550,36 @@ inline void __fscrypt_sdp_finalize_tasks(struct inode *inode,
 	if (ci->ci_sdp_info->sdp_flags & SDP_DEK_IS_UNINITIALIZED)
 	{
 		thread_type = SDP_THREAD_INITIALIZE;
-		DEK_LOGD("Run initialize thread\n");
+		DEK_LOGD("Run initialize task\n");
 	}
 	else if (ci->ci_sdp_info->sdp_flags & SDP_DEK_TO_SET_SENSITIVE)
 	{
 		thread_type = SDP_THREAD_SET_SENSITIVE;
-		DEK_LOGD("Run set sensitive thread\n");
+		DEK_LOGD("Run set sensitive task\n");
 	}
 	else if (ci->ci_sdp_info->sdp_flags & SDP_DEK_TO_CONVERT_KEY_TYPE)
 	{
 		thread_type = SDP_THREAD_KEY_CONVERT;
-		DEK_LOGD("Run key convert thread\n");
+		DEK_LOGD("Run key convert task\n");
 	}
 	else
 	{
 		return;
 	}
 
-	res = fscrypt_sdp_run_thread(inode, (void *)raw_key, key_len, thread_type);
+	res = fscrypt_sdp_build_sem(inode, (void *)raw_key, key_len, thread_type, &sem);
 	if (res) {
-		DEK_LOGE("finalize_tasks: failed to run sdp thread (%s, err:%d)\n",
-				 __thread_type_to_name(thread_type), res);
+		DEK_LOGE("finalize_tasks: failed to build up sem (%s, err:%d)\n",
+				__thread_type_to_name(thread_type), res);
+		kzfree(sem);
+		return;
+	}
+
+	// From hence, the sem shall be managed/freed by its referrer.
+	res = fscrypt_sdp_run_thread_if_required(inode, thread_type, sem);
+	if (res) {
+		DEK_LOGE("finalize_tasks: failed to run task (%s, err:%d)\n",
+				__thread_type_to_name(thread_type), res);
 	}
 	return;
 }

@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.c 806003 2019-02-21 02:30:10Z $
+ * $Id: wl_android.c 811456 2019-03-26 02:58:10Z $
  */
 
 #include <linux/module.h>
@@ -495,8 +495,10 @@ typedef enum {
 	HEAD_SAR_BACKOFF_ENABLE = 0,
 	GRIP_SAR_BACKOFF_DISABLE,
 	GRIP_SAR_BACKOFF_ENABLE,
-	NR_SAR_BACKOFF_DISABLE,
-	NR_SAR_BACKOFF_ENABLE,
+	NR_mmWave_SAR_BACKOFF_DISABLE,
+	NR_mmWave_SAR_BACKOFF_ENABLE,
+	NR_Sub6_SAR_BACKOFF_DISABLE,
+	NR_Sub6_SAR_BACKOFF_ENABLE,
 	SAR_BACKOFF_DISABLE_ALL
 } sar_modes;
 
@@ -5469,9 +5471,11 @@ wl_android_set_sarlimit_txctrl(struct net_device *dev, const char* string_num)
 	 *  0 : HEAD SAR enabled
 	 *  1 : GRIP SAR disabled
 	 *  2 : GRIP SAR enabled
-	 *  3 : NR SAR disabled
-	 *  4 : NR SAR enabled
-	 *  5 : SAR BACKOFF disabled all
+	 *  3 : NR mmWave SAR disabled
+	 *  4 : NR mmWave SAR enabled
+	 *  5 : NR Sub6 SAR disabled
+	 *  6 : NR Sub6 SAR enabled
+	 *  7 : SAR BACKOFF disabled all
 	 * The 'SAR BACKOFF disabled all' index should be the end of the mode.
 	 */
 	if ((mode < HEAD_SAR_BACKOFF_DISABLE) || (mode > SAR_BACKOFF_DISABLE_ALL)) {
@@ -7422,7 +7426,8 @@ wl_android_check_priv_cmd_errors(struct net_device *dev)
 	/* Trigger HANG event only if memdump mode is enabled
 	 * due to customer's request
 	 */
-	if (memdump_mode && (priv_cmd_errors > NUMBER_SEQUENTIAL_PRIVCMD_ERRORS)) {
+	if (memdump_mode == DUMP_MEMFILE_BUGON &&
+		(priv_cmd_errors > NUMBER_SEQUENTIAL_PRIVCMD_ERRORS)) {
 		WL_ERR(("Send HANG event due to sequential private cmd errors\n"));
 		priv_cmd_errors = 0;
 #ifdef DHD_FW_COREDUMP

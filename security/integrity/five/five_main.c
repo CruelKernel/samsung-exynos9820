@@ -566,7 +566,8 @@ static int __init init_five(void)
 {
 	int error;
 
-	g_five_workqueue = create_freezable_workqueue("five_wq");
+	g_five_workqueue = alloc_workqueue("%s", WQ_FREEZABLE | WQ_MEM_RECLAIM,
+						0, "five_wq");
 	if (!g_five_workqueue)
 		return -ENOMEM;
 

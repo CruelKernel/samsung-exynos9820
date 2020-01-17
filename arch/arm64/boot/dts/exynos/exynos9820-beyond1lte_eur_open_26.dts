@@ -13,20 +13,21 @@
 /plugin/;
 #include "exynos9820-sensorhub.dtsi"
 #include "exynos9820-display-lcd.dtsi"
-#include "battery_data_beyond0lte_19.dtsi"
-#include "exynos9820-beyond0lte_if-pmic-max77705.dtsi"
+#include "battery_data_beyondlte_19.dtsi"
+#include "exynos9820-evt1-beyond1lte_motor.dtsi"
+#include "exynos9820-evt1-beyond1lte_if-pmic-max77705.dtsi"
 #include <dt-bindings/clock/exynos9820.h>
 #include <dt-bindings/pci/pci.h>
 #include "exynos9820-bootargs_ext.dtsi"
-#include "exynos9820-beyond0lte_camera.dtsi"
-#include "exynos9820-beyond0lte_common.dtsi"
-#include "exynos9820-beyond0lte_fingerprint_20.dtsi"
-#include "exynos9820-beyond0lte_eur_open_gpio_06b.dtsi"
-#include "exynos9820-beyond0lte_optics-r00.dtsi"
+#include "exynos9820-beyond1lte_camera.dtsi"
+#include "exynos9820-beyond1lte_common.dtsi"
+#include "exynos9820-beyond1lte_fingerprint_00.dtsi"
+#include "exynos9820-beyond1lte_eur_open_gpio_07.dtsi"
+#include "exynos9820-beyond1lte_optics-r00.dtsi"
 
 / {
-	compatible = "samsung,BEYOND0LTE EUR OPEN 25", "samsung,EXYNOS9820";
-	dtbo-hw_rev = <25>;
+	compatible = "samsung,BEYOND1LTE EUR OPEN 26", "samsung,EXYNOS9820";
+	dtbo-hw_rev = <26>;
    	dtbo-hw_rev_end = <255>;
 
 	fragment@model {
@@ -35,7 +36,7 @@
 			#address-cells = <2>;
 			#size-cells = <1>;
 
-			model = "Samsung BEYOND0LTE EUR OPEN 25 board based on EXYNOS9820";
+			model = "Samsung BEYOND1LTE EUR OPEN 26 board based on EXYNOS9820";
 			pinctrl@15850000 {
 				bt_hostwake: bt-hostwake {
 					samsung,pins = "gpa2-3";
@@ -52,7 +53,6 @@
 					samsung,pin-pud-pdn = <0>;
 				};
 			};
-
 			pinctrl@15C30000 {
 				bt_en: bt-en {
 					samsung,pins = "gpm8-0";
@@ -167,14 +167,14 @@
 
 &spi_17 {
 	BCM4773@0 {
-		ssp-acc-position = <7>;
+		ssp-acc-position = <4>;
 		ssp-mag-position = <7>;
-		ssp-mag-array = /bits/ 8 <134 84 91 63 237 222 0 69 210 54 152 123 240 164 0 249 255 30 62 41 190
-					252 95 253 10 184 249>;
-		ssp-thermi-up = /bits/ 16 <3230 3202 3162 3112 3049 2972 2880 2764 2644 2503 2355 2199 2030 1863
-					1683 1487 1323 1186 1050 915 805 699 610>;
-		ssp-thermi-sub = /bits/ 16 <3234 3205 3167 3117 3053 2978 2887 2764 2650 2512 2358 2205 2034 1863
-					1686 1472 1313 1196 1057 936 817 714 625>;
+		ssp-mag-array = /bits/ 8 <105 83 186 37 145 10 0 219 211 55 95 238 225 25 0 168 255 108 134 7 
+					191 253 92 99 10 153 28>;
+		ssp-thermi-up = /bits/ 16 <3232 3206 3169 3123 3062 2993 2905 2792 2681 2549 2397 2235 2063
+					1891 1716 1546 1385 1234 1089 955 838 730 637>;
+		ssp-thermi-sub = /bits/ 16 <3240 3216 3177 3129 3076 2998 2912 2806 2689 2553 2406 2248 2073
+					1902 1731 1560 1399 1247 1098 970 847 745 652>;
 	};
 };
 
@@ -221,3 +221,41 @@
 		smpl_warn_dev2= <1>; 
 	};
 };
+
+&hsi2c_14 {
+    gpios = <&gpp2 4 0 &gpp2 5 0>;
+    clock-frequency = <400000>;
+ 
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+ 
+    sx9330-i2c@28 {
+        compatible = "sx9330";
+        reg = <0x28>;
+        status = "okay";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&grip_irq>;
+
+        interrupt-parent = <&gpa3>;
+        interrupts = <0 0 0>;
+ 
+        sx9330,nirq-gpio = <&gpa3 0 0>;
+ 
+        sx9330,scanperiod_reg = <0x00000032>; /* scanperiod : 102ms */
+        sx9330,gnrlctrl2_reg = <0x00FF0002>;
+        sx9330,afeparamsph0_reg = <0x0000021F>;
+        sx9330,afephph0_reg = <0x3FBB8548>;
+        sx9330,adcfiltph0_reg = <0x0510101D>;
+        sx9330,afeparamsph1_reg = <0x00001E2F>;  /* again : 9.9pF, sampling freq : 111.11 khz */
+        sx9330,adcfiltph1_reg = <0x00104615>;    /* threshold : 2450 */
+        sx9330,avgbfilt_reg = <0x60600C00>;   /* AVGPOSFILT : 1/256, AVGNEGFILT : 1/2 */
+        sx9330,avgafilt_reg = <0x00000000>;
+        sx9330,advdig3_reg = <0x00000000>;
+        sx9330,advdig4_reg = <0x00000000>;
+        sx9330,refcorra_reg = <0x00000000>;
+
+    };
+};
+

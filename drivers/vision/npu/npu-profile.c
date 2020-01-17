@@ -123,7 +123,7 @@ static int alloc_profile_data(struct npu_profile_control *profile_ctl)
 		npu_err("npu_memory_alloc for profile buffer memory, ret(%d)\n", ret);
 		goto err_exit;
 	}
-	npu_info("profiling buffer allocated, size(%lu) / dv(%pad) / kv(%p)",
+	npu_info("profiling buffer allocated, size(%lu) / dv(%pad) / kv(%pK)",
 		profile_ctl->buf.size, &profile_ctl->buf.daddr, profile_ctl->buf.vaddr);
 
 	/* Save pointer */
@@ -204,7 +204,7 @@ static int request_profile_ctl_to_hw(struct npu_profile_control *profile_ctl,
 			nw.ncp_addr.vaddr = buf_handle->vaddr;
 			nw.ncp_addr.daddr = buf_handle->daddr;
 			nw.ncp_addr.size = (u32)buf_handle->size;
-			npu_dbg("prepare profile start command: cmd(%u) v(%p) d(%pad) size(%zu)\n",
+			npu_dbg("prepare profile start command: cmd(%u) v(%pK) d(%pad) size(%zu)\n",
 				nw.cmd, nw.ncp_addr.vaddr, &nw.ncp_addr.daddr, nw.ncp_addr.size);
 		} else {
 			npu_err("buf_handle is null on profile start command.\n");
@@ -320,7 +320,7 @@ static int npu_profile_stop(struct npu_profile_control *profile_ctl)
 
 	fw_probe_start = &profile_data->point[fw_probe_meta->start_idx];
 	fw_probe_size = sizeof(struct probe_point) * fw_probe_meta->total_count;
-	npu_dbg("fw profile invalidate addr(%p), size(%ld)\n",
+	npu_dbg("fw profile invalidate addr(%pK), size(%ld)\n",
 		fw_probe_start, fw_probe_size);
 	__dma_unmap_area(fw_probe_start, fw_probe_size, DMA_FROM_DEVICE);
 
@@ -744,7 +744,7 @@ int npu_profile_probe(struct npu_system *system)
 
 	/* Save PWM register address */
 	profile_ctl->pwm = system->pwm_npu.vaddr + TCNTO0_OFF;
-	probe_info("PWM timer address = %p\n", profile_ctl->pwm);
+	probe_info("PWM timer address = %pK\n", profile_ctl->pwm);
 
 	/* Initialize state keeper */
 	npu_statekeeper_initialize(
@@ -899,7 +899,7 @@ static inline void __profile_point(
 	}
 
 	pt = &(profile_ctl_ref->profile_data->point[write_idx]);
-	npu_dbg("profiling data is written to (%p), index(%d)\n", pt, write_idx);
+	npu_dbg("profiling data is written to (%pK), index(%d)\n", pt, write_idx);
 
 	pt->id = point_id;
 	pt->timestamp = readl(profile_ctl_ref->pwm);

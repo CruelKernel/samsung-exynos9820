@@ -534,7 +534,7 @@ int __ncp_ion_map(struct npu_session *session, struct drv_usr_share *usr_data)
 		kfree(ncp_mem_buf);
 		goto p_err;
 	}
-	npu_info("ncp_ion_map(0x%pad), vaddr(0x%p)\n", &ncp_mem_buf->daddr, ncp_mem_buf->vaddr);
+	npu_info("ncp_ion_map(0x%pad), vaddr(0x%pK)\n", &ncp_mem_buf->daddr, ncp_mem_buf->vaddr);
 	ret = __update_ncp_info(session, ncp_mem_buf);
 	ret = add_ion_mem(session, ncp_mem_buf, opt);
 p_err:
@@ -553,7 +553,7 @@ int __get_session_info(struct npu_session *session, struct vs4l_graph *info)
 	}
 	ret = copy_from_user((void *)usr_data, (void *)info->addr, sizeof(struct drv_usr_share));
 	ret = __set_unique_id(session, usr_data);
-	npu_utrace("usr_data(0x%p), ncp_size(%u)\n", session, usr_data, usr_data->ncp_size);
+	npu_utrace("usr_data(0x%pK), ncp_size(%u)\n", session, usr_data, usr_data->ncp_size);
 	ret = copy_to_user((void *)info->addr, (void *)usr_data, sizeof(struct drv_usr_share));
 	ret = __ncp_ion_map(session, usr_data);
 	if (ret) {
@@ -777,7 +777,7 @@ int __second_parsing_ncp(
 				npu_utrace("(*WGT_av + %u)->av_index = %u\n"
 					"(*WGT_av + %u)->size = %zu\n"
 					"(*WGT_av + %u)->daddr = 0x%pad\n"
-					"(*WGT_av + %u)->vaddr = 0x%p\n",
+					"(*WGT_av + %u)->vaddr = 0x%pK\n",
 					session,
 					*WGT_cnt, (*WGT_av + (*WGT_cnt))->av_index,
 					*WGT_cnt, (*WGT_av + (*WGT_cnt))->size,
@@ -858,7 +858,7 @@ int __ion_alloc_IOFM(struct npu_session *session, struct temp_av **temp_IFM_av, 
 	u32 IOFM_cnt = session->IOFM_cnt;
 
 	IOFM_mem_buf = kzalloc(sizeof(struct npu_memory_buffer) * VISION_MAX_BUFFER, GFP_KERNEL);
-	npu_udbg("ion alloc IOFM(0x%p)\n", session, IOFM_mem_buf);
+	npu_udbg("ion alloc IOFM(0x%pK)\n", session, IOFM_mem_buf);
 
 	for (i = 0; i < VISION_MAX_BUFFER; i++) {
 		(IOFM_mem_buf + i)->size = IOFM_cnt * sizeof(struct address_vector);
@@ -867,9 +867,9 @@ int __ion_alloc_IOFM(struct npu_session *session, struct temp_av **temp_IFM_av, 
 			npu_uerr("npu_memory_alloc is fail(%d).\n", session, ret);
 			goto p_err;
 		}
-		npu_udbg("(IOFM_mem_buf + %d)->vaddr(0x%p), daddr(0x%pad), size(%zu)\n",
+		npu_udbg("(IOFM_mem_buf + %d)->vaddr(0x%pK), daddr(0x%pad), size(%zu)\n",
 			session, i, (IOFM_mem_buf + i)->vaddr, &(IOFM_mem_buf + i)->daddr, (IOFM_mem_buf + i)->size);
-		npu_udbg("(IOFM_mem_buf + %d)->vaddr(0x%p), daddr(0x%pad), size(%zu)\n",
+		npu_udbg("(IOFM_mem_buf + %d)->vaddr(0x%pK), daddr(0x%pad), size(%zu)\n",
 			session, i, (IOFM_mem_buf + i)->vaddr, &(IOFM_mem_buf + i)->daddr, (IOFM_mem_buf + i)->size);
 	}
 
@@ -945,9 +945,9 @@ int __ion_alloc_IMB(struct npu_session *session, struct temp_av **temp_IMB_av)
 			goto p_err;
 		}
 		(av + (*temp_IMB_av + i)->index)->m_addr = (IMB_mem_buf + i)->daddr;
-		npu_udbg("(IMB_mem_buf + %d)->vaddr(0x%p), daddr(0x%pad), size(%zu)\n",
+		npu_udbg("(IMB_mem_buf + %d)->vaddr(0x%pK), daddr(0x%pad), size(%zu)\n",
 			session, i, (IMB_mem_buf + i)->vaddr, &(IMB_mem_buf + i)->daddr, (IMB_mem_buf + i)->size);
-		npu_udbg("(IMB_mem_buf + %d)->vaddr(0x%p), daddr(0x%pad), size(%zu)\n",
+		npu_udbg("(IMB_mem_buf + %d)->vaddr(0x%pK), daddr(0x%pad), size(%zu)\n",
 			session, i, (IMB_mem_buf + i)->vaddr, &(IMB_mem_buf + i)->daddr, (IMB_mem_buf + i)->size);
 	}
 	ret = add_ion_mem(session, IMB_mem_buf, opt);
@@ -1573,7 +1573,7 @@ int npu_session_param(struct npu_session *session, struct vs4l_param_list *plist
 			ret = (*p_fn)(session, param, &retval);
 			if (ret != S_PARAM_NOMB) {
 				/* Handled */
-				npu_udbg("Handled by handler at [%p] ret = %d\n",
+				npu_udbg("Handled by handler at [%pK] ret = %d\n",
 					session, *p_fn, ret);
 				break;
 			}

@@ -126,7 +126,7 @@ __attribute__((unused)) static int load_fw_utc_vector(struct npu_session *sess, 
 	npu_info("Store log is disabled, until next resume.\n");
 
 	/* Load file contents to memory */
-	npu_info("Loading FW test vector[%s] to vaddr[%p], len = %zuB\n",
+	npu_info("Loading FW test vector[%s] to vaddr[%pK], len = %zuB\n",
 		vector_path, dram_buf->vaddr, vector_len);
 	if (!dram_buf->vaddr) {
 		npu_err("DRAM buffer is not initialized.\n");
@@ -135,7 +135,7 @@ __attribute__((unused)) static int load_fw_utc_vector(struct npu_session *sess, 
 	}
 	ret = npu_binary_read(&vector_binary, dram_buf->vaddr, vector_len);
 	if (ret) {
-		npu_err("npu_binary_read([%s], %p, %zu) failed : %d\n",
+		npu_err("npu_binary_read([%s], %pK, %zu) failed : %d\n",
 			vector_path, dram_buf->vaddr, vector_len, ret);
 		ret = -EFAULT;
 		goto err_exit;
@@ -174,7 +174,7 @@ static int fw_utc_save_result_cb(struct npu_session *sess, struct nw_result resu
 	npu_info("FW test result received : [%u]\n", result.result_code);
 
 	if (sess != ft_handle->cur_sess) {
-		npu_warn("Session mismatch [%p] / [%p]. Something wrong.\n",
+		npu_warn("Session mismatch [%pK] / [%pK]. Something wrong.\n",
 			sess, ft_handle->cur_sess);
 	} else {
 		/* Wake-up user thread */

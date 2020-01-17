@@ -181,7 +181,7 @@ void npu_store_log_init(char *buf_addr, const size_t size)
 	npu_log.wr_pos = 0;
 	spin_unlock_irqrestore(&npu_log_lock, intr_flags);
 
-	npu_info("Store log memory initialized : %p[Len = %zu]\n", buf_addr, size);
+	npu_info("Store log memory initialized : %pK[Len = %zu]\n", buf_addr, size);
 }
 
 void npu_store_log_deinit(void)
@@ -197,7 +197,7 @@ void npu_store_log_deinit(void)
 		msleep(NPU_STORE_LOG_FLUSH_INTERVAL_MS);
 	}
 
-	npu_info("Store log memory deinitializing : %p -> NULL\n", npu_log.st_buf);
+	npu_info("Store log memory deinitializing : %pK -> NULL\n", npu_log.st_buf);
 	spin_lock_irqsave(&npu_log_lock, intr_flags);
 	npu_log.st_buf = NULL;
 	npu_log.st_size = 0;
@@ -237,7 +237,7 @@ void npu_fw_report_deinit(void)
 	wake_up_all(&fw_report.wq);
 	msleep(NPU_STORE_LOG_FLUSH_INTERVAL_MS);
 
-	npu_info("fw_report memory deinitializing : %p -> NULL\n", fw_report.st_buf);
+	npu_info("fw_report memory deinitializing : %pK -> NULL\n", fw_report.st_buf);
 	spin_lock_irqsave(&fw_report_lock, intr_flags);
 	fw_report.st_buf = NULL;
 	fw_report.st_size = 0;
@@ -327,7 +327,7 @@ static int npu_store_log_fops_open(struct inode *inode, struct file *file)
 
 	npu_store_log_set_offset(robj, 0);
 
-	npu_info("fd open robj @ %p\n", robj);
+	npu_info("fd open robj @ %pK\n", robj);
 	return 0;
 
 err_exit:
@@ -350,7 +350,7 @@ static int npu_fw_report_fops_open(struct inode *inode, struct file *file)
 	/* TODO: It would be more useful if read_pos can start from circular queue tail */
 	file->private_data = robj;
 
-	npu_info("fd open robj @ %p\n", robj);
+	npu_info("fd open robj @ %pK\n", robj);
 	return 0;
 
 err_exit:
@@ -367,7 +367,7 @@ static int npu_fw_report_fops_close(struct inode *inode, struct file *file)
 	BUG_ON(!robj);
 	BUG_ON(robj->magic != READ_OBJ_MAGIC);
 
-	npu_info("fd close robj @ %p\n", robj);
+	npu_info("fd close robj @ %pK\n", robj);
 	kfree(robj);
 
 	return 0;
@@ -386,7 +386,7 @@ static int npu_store_log_fops_close(struct inode *inode, struct file *file)
 	/* Decrease reference counter */
 	atomic_dec_if_positive(&npu_log.fs_ref);
 
-	npu_info("fd close robj @ %p\n", robj);
+	npu_info("fd close robj @ %pK\n", robj);
 	kfree(robj);
 
 	return 0;
@@ -416,7 +416,7 @@ static ssize_t __npu_store_log_fops_read(struct npu_store_log_read_obj *robj, ch
 		npu_log.st_buf[npu_log.last_dump_mark_pos] = NPU_LOG_DUMP_MARK;
 	}
 
-	pr_debug("Buf = %p, Read pos = %zu, Read len = %zu\n", npu_log.st_buf, robj->read_pos, copy_len);
+	pr_debug("Buf = %pK, Read pos = %zu, Read len = %zu\n", npu_log.st_buf, robj->read_pos, copy_len);
 
 	return copy_len;
 }
@@ -733,7 +733,7 @@ int npu_debug_memdump8(u8 *start, u8 *end)
 	offset = 0;
 
 	memset(sentence, 0, sizeof(sentence));
-	snprintf(sentence, sizeof(sentence), "[V] Memory Dump8(%p ~ %p)", start, end);
+	snprintf(sentence, sizeof(sentence), "[V] Memory Dump8(%pK ~ %pK)", start, end);
 
 	while (cur < end) {
 		if ((items % 16) == 0) {
@@ -743,7 +743,7 @@ int npu_debug_memdump8(u8 *start, u8 *end)
 			printk(KERN_INFO "%s\n", sentence);
 #endif
 			offset = 0;
-			snprintf(term, sizeof(term), "[V] %p:      ", cur);
+			snprintf(term, sizeof(term), "[V] %pK:      ", cur);
 			snprintf(&sentence[offset], sizeof(sentence) - offset, "%s", term);
 			offset += strlen(term);
 			items = 0;
@@ -783,7 +783,7 @@ int npu_debug_memdump16(u16 *start, u16 *end)
 	offset = 0;
 
 	memset(sentence, 0, sizeof(sentence));
-	snprintf(sentence, sizeof(sentence), "[V] Memory Dump16(%p ~ %p)", start, end);
+	snprintf(sentence, sizeof(sentence), "[V] Memory Dump16(%pK ~ %pK)", start, end);
 
 	while (cur < end) {
 		if ((items % 16) == 0) {
@@ -793,7 +793,7 @@ int npu_debug_memdump16(u16 *start, u16 *end)
 			printk(KERN_INFO "%s\n", sentence);
 #endif
 			offset = 0;
-			snprintf(term, sizeof(term), "[V] %p:      ", cur);
+			snprintf(term, sizeof(term), "[V] %pK:      ", cur);
 			snprintf(&sentence[offset], sizeof(sentence) - offset, "%s", term);
 			offset += strlen(term);
 			items = 0;
@@ -832,7 +832,7 @@ int npu_debug_memdump32(u32 *start, u32 *end)
 	offset = 0;
 
 	memset(sentence, 0, sizeof(sentence));
-	snprintf(sentence, sizeof(sentence), "[V] Memory Dump32(%p ~ %p)", start, end);
+	snprintf(sentence, sizeof(sentence), "[V] Memory Dump32(%pK ~ %pK)", start, end);
 
 	while (cur < end) {
 		if ((items % 8) == 0) {
@@ -842,7 +842,7 @@ int npu_debug_memdump32(u32 *start, u32 *end)
 			printk(KERN_INFO "%s\n", sentence);
 #endif
 			offset = 0;
-			snprintf(term, sizeof(term), "[V] %p:      ", cur);
+			snprintf(term, sizeof(term), "[V] %pK:      ", cur);
 			snprintf(&sentence[offset], sizeof(sentence) - offset, "%s", term);
 			offset += strlen(term);
 			items = 0;
@@ -881,11 +881,12 @@ int npu_debug_memdump32_by_memcpy(u32 *start, u32 *end)
 
 	cur = start;
 	items = 0;
+	j = k = l = 0;
 
 	memset(sentence, 0, sizeof(sentence));
 	memset(strString, 0, sizeof(strString));
 	memset(strHexa, 0, sizeof(strHexa));
-	j = sprintf(sentence, "[V] Memory Dump32(%p ~ %p)", start, end);
+	j = sprintf(sentence, "[V] Memory Dump32(%pK ~ %pK)", start, end);
 	while (cur < end) {
 		if ((items % 4) == 0) {
 			j += sprintf(sentence + j, "%s   %s", strHexa, strString);
@@ -895,7 +896,7 @@ int npu_debug_memdump32_by_memcpy(u32 *start, u32 *end)
 			pr_info("%s\n", sentence);
 #endif
 			j = 0; items = 0; k = 0; l = 0;
-			j = sprintf(sentence, "[V] %p:      ", cur);
+			j = sprintf(sentence, "[V] %pK:      ", cur);
 			items = 0;
 		}
 		memcpy_fromio(term, cur, sizeof(term));

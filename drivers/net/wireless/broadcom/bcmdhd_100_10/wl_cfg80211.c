@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 804256 2019-02-12 12:01:28Z $
+ * $Id: wl_cfg80211.c 811456 2019-03-26 02:58:10Z $
  */
 /* */
 #include <typedefs.h>
@@ -16614,7 +16614,8 @@ static void wl_scan_timeout(unsigned long data)
 	}
 
 #if defined(DHD_KERNEL_SCHED_DEBUG) && defined(DHD_FW_COREDUMP)
-	if (prev_memdump_mode && !dhd_query_bus_erros(dhdp) &&
+	if (prev_memdump_mode == DUMP_MEMFILE_BUGON &&
+		!dhd_query_bus_erros(dhdp) &&
 		((cfg->scan_deq_time < cfg->scan_enq_time) ||
 		dhd_bus_query_dpc_sched_errors(dhdp))) {
 		WL_ERR(("****SCAN event timeout due to scheduling problem\n"));

@@ -23,7 +23,6 @@ bool check_dma_done(struct fimc_is_hw_ip *hw_ip, u32 instance_id, u32 fcount)
 {
 	bool ret = false;
 	struct fimc_is_frame *frame;
-	struct fimc_is_frame *list_frame;
 	struct fimc_is_framemgr *framemgr;
 	int wq_id0 = WORK_MAX_MAP, wq_id1 = WORK_MAX_MAP;
 	int wq_id2 = WORK_MAX_MAP, wq_id3 = WORK_MAX_MAP;
@@ -42,11 +41,33 @@ bool check_dma_done(struct fimc_is_hw_ip *hw_ip, u32 instance_id, u32 fcount)
 
 	FIMC_BUG(!framemgr);
 
+flush_wait_done_frame:
 	framemgr_e_barrier_common(framemgr, 0, flags);
 	frame = peek_frame(framemgr, FS_HW_WAIT_DONE);
 	framemgr_x_barrier_common(framemgr, 0, flags);
 
-	if (frame == NULL) {
+	if (frame) {
+		u32 frame_fcount = frame->fcount;
+
+		if (frame->num_buffers == 1)
+			frame_fcount += frame->cur_buf_index;
+
+		if (unlikely(frame_fcount < fcount)) {
+			/* Flush the old frame which is in HW_WAIT_DONE state & retry. */
+			mswarn_hw("queued_count(%d) [ddk:%d,hw:%d] invalid frame(F:%d,idx:%d)",
+					instance_id, hw_ip,
+					framemgr->queued_count[FS_HW_WAIT_DONE],
+					fcount, hw_fcount,
+					frame_fcount, frame->cur_buf_index);
+			fimc_is_hardware_frame_ndone(hw_ip, frame, frame->instance, IS_SHOT_INVALID_FRAMENUMBER);
+			goto flush_wait_done_frame;
+		} else if (unlikely(frame_fcount > fcount)) {
+			mswarn_hw("%s:[F%d] Too early frame. Skip it.", instance_id, hw_ip,
+					__func__, frame_fcount);
+			return true;
+		}
+	} else {
+		/* Flush the old frame which is in HW_CONFIGURE state & skip dma_done. */
 flush_config_frame:
 		framemgr_e_barrier_common(framemgr, 0, flags);
 		frame = peek_frame(framemgr, FS_HW_CONFIGURE);
@@ -76,43 +97,6 @@ flush_config_frame:
 			instance_id, hw_ip,
 			fcount, hw_fcount,
 			frame->fcount, frame->cur_buf_index, frame->num_buffers);
-
-	if (((frame->num_buffers > 1) && (fcount != frame->fcount))
-		|| ((frame->num_buffers == 1) && (fcount != (frame->fcount + frame->cur_buf_index)))) {
-		framemgr_e_barrier_common(framemgr, 0, flags);
-		list_frame = find_frame(framemgr, FS_HW_WAIT_DONE, frame_fcount,
-					(void *)(ulong)fcount);
-		framemgr_x_barrier_common(framemgr, 0, flags);
-		if (list_frame == NULL) {
-			mswarn_hw("queued_count(%d) [ddk:%d,hw:%d] invalid frame(F:%d,idx:%d)",
-				instance_id, hw_ip,
-				framemgr->queued_count[FS_HW_WAIT_DONE],
-				fcount, hw_fcount,
-				frame->fcount, frame->cur_buf_index);
-flush_wait_done_frame:
-			framemgr_e_barrier_common(framemgr, 0, flags);
-			frame = peek_frame(framemgr, FS_HW_WAIT_DONE);
-			if (frame) {
-				if (unlikely(frame->fcount < fcount)) {
-					framemgr_x_barrier_common(framemgr, 0, flags);
-					fimc_is_hardware_frame_ndone(hw_ip, frame, frame->instance, IS_SHOT_INVALID_FRAMENUMBER);
-					goto flush_wait_done_frame;
-				} else if (unlikely(frame->fcount > fcount)) {
-					mswarn_hw("%s:[F%d] Too early frame. Skip it.",
-							instance_id, hw_ip,
-							__func__, frame->fcount);
-					framemgr_x_barrier_common(framemgr, 0, flags);
-					return true;
-				}
-			} else {
-				framemgr_x_barrier_common(framemgr, 0, flags);
-				return true;
-			}
-			framemgr_x_barrier_common(framemgr, 0, flags);
-		} else {
-			frame = list_frame;
-		}
-	}
 
 	switch (hw_ip->id) {
 	case DEV_HW_3AA0:

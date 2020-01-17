@@ -42,7 +42,7 @@ int mailbox_init(volatile struct mailbox_hdr *header)
 	u32 cur_ofs;
 	volatile struct mailbox_ctrl ctrl[MAX_MAILBOX];
 
-	npu_info("mailbox initialize: start, header base at %p\n", header);
+	npu_info("mailbox initialize: start, header base at %pK\n", header);
 	npu_info("mailbox initialize: wait for firmware boot signature.\n");
 	ret = wait_for_mem_value(&(header->signature1), MAILBOX_SIGNATURE1, 3000);
 	if (ret) {
@@ -108,7 +108,7 @@ static int wait_for_mem_value(volatile u32 *addr, const u32 expected, int ms_tim
 		msleep(1);
 	}
 	/* Timed-out */
-	npu_err("timeout after waiting %d(ms). Current value: [0x%08x]@%p\n",
+	npu_err("timeout after waiting %d(ms). Current value: [0x%08x]@%pK\n",
 		ms_timeout, v, addr);
 	return -ETIMEDOUT;
 ok_exit:
@@ -176,7 +176,7 @@ static inline u32 __copy_command_from_line(char *base, u32 sgmt_len, u32 rptr, v
 static inline u32 __copy_command_to_line(char *base, u32 sgmt_len, u32 wptr, const void *cmd, u32 cmd_size)
 {
 	/* need to reimplement accroding to user environment */
-	//npu_info("base : %p\t Move : %08X\t dst : %p\n",
+	//npu_info("base : %pK\t Move : %08X\t dst : %pK\n",
 	//	base, LINE_TO_SGMT(sgmt_len, wptr), (base + LINE_TO_SGMT(sgmt_len, wptr)));
 	//npu_info("sgmt_len : %d\t wptr : %d\t size of Cmd : %d\n", sgmt_len, wptr, cmd_size);
 	memcpy_toio(base + LINE_TO_SGMT(sgmt_len, wptr), cmd, cmd_size);

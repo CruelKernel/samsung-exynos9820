@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 806742 2019-02-25 11:40:46Z $
+ * $Id: dhd_msgbuf.c 811456 2019-03-26 02:58:10Z $
  */
 
 #include <typedefs.h>
@@ -7477,7 +7477,7 @@ dhd_msgbuf_iovar_timeout_dump(dhd_pub_t *dhd)
 		dhd->rxcnt_timeout, prot->curr_ioctl_cmd, prot->ioctl_trans_id,
 		prot->ioctl_state, dhd->busstate, prot->ioctl_received));
 #if defined(DHD_KERNEL_SCHED_DEBUG) && defined(DHD_FW_COREDUMP)
-		if (dhd->is_sched_error && dhd->memdump_enabled) {
+		if (dhd->is_sched_error && dhd->memdump_enabled == DUMP_MEMFILE_BUGON) {
 			/* change g_assert_type to trigger Kernel panic */
 			g_assert_type = 2;
 			/* use ASSERT() to trigger panic */

@@ -33,14 +33,14 @@ static int get_vs4l_ctrl64(struct vs4l_ctrl *kp, struct vs4l_ctrl __user *up)
 	int ret;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_ctrl))) {
-		vision_err("access failed from user ptr(%p)\n", up);
+		vision_err("access failed from user ptr(%pK)\n", up);
 		ret = -EFAULT;
 		goto p_err_ctrl;
 	}
 
 	ret = copy_from_user(kp, (void __user *)up, sizeof(struct vs4l_ctrl));
 	if (ret) {
-		vision_err("copy_from_user failed(%d) from %p\n", ret, up);
+		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
 		goto p_err_ctrl;
 	}
 
@@ -58,14 +58,14 @@ static int get_vs4l_graph64(struct vs4l_graph *kp, struct vs4l_graph __user *up)
 	int ret;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_graph))) {
-		vision_err("access failed from user ptr(%p)\n", up);
+		vision_err("access failed from user ptr(%pK)\n", up);
 		ret = -EFAULT;
 		goto p_err_graph;
 	}
 
 	ret = copy_from_user(kp, (void __user *)up, sizeof(struct vs4l_graph));
 	if (ret) {
-		vision_err("copy_from_user failed(%d) from %p\n", ret, up);
+		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
 		goto p_err_graph;
 	}
 
@@ -85,7 +85,7 @@ static int get_vs4l_format64(struct vs4l_format_list *kp, struct vs4l_format_lis
 	struct vs4l_format *kformats_ptr;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_format_list))) {
-		vision_err("access failed from user ptr(%p)\n", up);
+		vision_err("access failed from user ptr(%pK)\n", up);
 		ret = -EFAULT;
 		goto p_err_format;
 	}
@@ -93,7 +93,7 @@ static int get_vs4l_format64(struct vs4l_format_list *kp, struct vs4l_format_lis
 	ret = copy_from_user((void *)kp, (void __user *)up,
 				sizeof(struct vs4l_format_list));
 	if (ret) {
-		vision_err("copy_from_user failed(%d) from %p\n", ret, up);
+		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
 		goto p_err_format;
 	}
 
@@ -136,14 +136,14 @@ static int get_vs4l_param64(struct vs4l_param_list *kp, struct vs4l_param_list _
 	struct vs4l_param *kparams_ptr;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_param_list))) {
-		vision_err("access failed from user ptr(%p)\n", up);
+		vision_err("access failed from user ptr(%pK)\n", up);
 		ret = -EFAULT;
 		goto p_err_param;
 	}
 
 	ret = copy_from_user(kp, (void __user *)up, sizeof(struct vs4l_param_list));
 	if (ret) {
-		vision_err("copy_from_user failed(%d) from %p\n", ret, up);
+		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
 		goto p_err_param;
 	}
 
@@ -187,21 +187,21 @@ static int get_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_cont
 	struct vs4l_buffer *kbuffer_ptr = NULL;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(struct vs4l_container_list))) {
-		vision_err("access failed from user ptr(%p)\n", up);
+		vision_err("access failed from user ptr(%pK)\n", up);
 		ret = -EFAULT;
 		goto p_err;
 	}
 
 	ret = copy_from_user(kp, (void __user *)up, sizeof(struct vs4l_container_list));
 	if (ret) {
-		vision_err("copy_from_user failed(%d) from %p\n", ret, up);
+		vision_err("copy_from_user failed(%d) from %pK\n", ret, up);
 		goto p_err;
 	}
 
 	/* container_list -> (vs4l_container)containers[count] -> (vs4l_buffer)buffers[count] */
 	size = kp->count * sizeof(struct vs4l_container);
 	if (!access_ok(VERIFY_READ, (void __user *)kp->containers, size)) {
-		vision_err("access to containers ptr failed (%p)\n",
+		vision_err("access to containers ptr failed (%pK)\n",
 				kp->containers);
 		ret = -EFAULT;
 		goto p_err;
@@ -229,7 +229,7 @@ static int get_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_cont
 
 		if (!access_ok(VERIFY_READ, (void __user *)
 					kp->containers[i].buffers, size)) {
-			vision_err("access to containers ptr failed (%p)\n",
+			vision_err("access to containers ptr failed (%pK)\n",
 					kp->containers[i].buffers);
 			ret = -EFAULT;
 			goto p_err_buffer;
@@ -285,7 +285,7 @@ static void put_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_con
 	int i;
 
 	if (!access_ok(VERIFY_WRITE, up, sizeof(struct vs4l_container_list)))
-		vision_err("Cannot access to user ptr(%p)\n", up);
+		vision_err("Cannot access to user ptr(%pK)\n", up);
 
 	if (put_user(kp->flags, &up->flags) ||
 		put_user(kp->index, &up->index) ||
@@ -302,7 +302,7 @@ static void put_vs4l_container64(struct vs4l_container_list *kp, struct vs4l_con
 		put_user(kp->timestamp[4].tv_usec, &up->timestamp[4].tv_usec) ||
 		put_user(kp->timestamp[5].tv_sec, &up->timestamp[5].tv_sec) ||
 		put_user(kp->timestamp[5].tv_usec, &up->timestamp[5].tv_usec)) {
-		vision_err("Copy_to_user failed (%p -> %p)\n", kp, up);
+		vision_err("Copy_to_user failed (%pK -> %pK)\n", kp, up);
 	}
 
 	for (i = 0; i < kp->count; ++i)

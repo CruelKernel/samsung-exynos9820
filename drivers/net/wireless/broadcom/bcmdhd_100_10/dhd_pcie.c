@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie.c 808929 2019-03-11 11:48:05Z $
+ * $Id: dhd_pcie.c 811456 2019-03-26 02:58:10Z $
  */
 
 /* include files */
@@ -6433,7 +6433,7 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 				__FUNCTION__, bus->dhd->is_sched_error ?
 				" due to scheduling problem" : "", bus->dhd->d3ackcnt_timeout));
 #if defined(DHD_KERNEL_SCHED_DEBUG) && defined(DHD_FW_COREDUMP)
-			if (bus->dhd->is_sched_error && cur_memdump_mode) {
+			if (bus->dhd->is_sched_error && cur_memdump_mode == DUMP_MEMFILE_BUGON) {
 				/* change g_assert_type to trigger Kernel panic */
 				g_assert_type = 2;
 				/* use ASSERT() to trigger panic */

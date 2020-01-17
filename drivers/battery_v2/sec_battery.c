@@ -2117,8 +2117,7 @@ static bool sec_bat_temperature_check(
 			return false;
 		}
 		/* dose not need buck control at low temperature */
-		if (battery->health == POWER_SUPPLY_HEALTH_OVERHEATLIMIT ||
-			battery->health == POWER_SUPPLY_HEALTH_OVERHEAT) {
+		if (battery->health == POWER_SUPPLY_HEALTH_OVERHEAT) {
 			if((battery->charger_mode == SEC_BAT_CHG_MODE_BUCK_OFF) &&
 				(battery->voltage_now < (battery->pdata->swelling_drop_float_voltage / battery->pdata->chg_float_voltage_conv))) {
 				pr_info("%s: Vnow(%dmV) < %dmV has dropped enough to get buck on mode \n", __func__,

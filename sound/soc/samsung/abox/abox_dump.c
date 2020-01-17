@@ -326,12 +326,12 @@ int abox_dump_register_buffer(struct device *dev, int id, const char *name,
 		return -EINVAL;
 	}
 
-	if (abox_dump_get_buffer_info(id)) {
+	info = &abox_dump_list[id];
+	if (!strcmp(info->name, name)) {
 		dev_dbg(dev, "already registered dump: %d\n", id);
 		return 0;
 	}
 
-	info = &abox_dump_list[id];
 	mutex_init(&info->lock);
 	info->id = id;
 	strncpy(info->name, name, sizeof(info->name) - 1);

@@ -29,6 +29,7 @@ struct panel_dimming_info {
 	struct brightness_table *brt_tbl;
 	struct maptbl *dimming_maptbl;
 	bool dim_flash_on;
+	s32 *dim_flash_gamma_offset;
 	struct panel_irc_info *irc_info;
 };
 

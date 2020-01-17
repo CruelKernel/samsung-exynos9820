@@ -132,7 +132,7 @@ int CLKGate23_SOC_HWACG_read(struct npu_system *system)
 		offset = CLKGate23_HWACG_regs[i].offset;
 		base = CLKGate23_HWACG_regs[i].iomem_area;
 		reg_addr = base->vaddr + offset;
-		npu_info("v, reg_addr(0x%p)\n", reg_addr);
+		npu_info("v, reg_addr(0x%pK)\n", reg_addr);
 
 		v = readl(reg_addr) & 0xffffffff;
 		npu_info("read cpu_on_regs, v(0x%x)\n", v);
@@ -165,14 +165,14 @@ int CLKGate23_SOC_HWACG_qch_disable(struct npu_system *system)
 		mask = CLKGate23_HWACG_regs[i].mask;
 
 		reg_addr = base->vaddr + offset;
-		npu_dbg("qch_on, v, reg_addr(0x%p)\n", reg_addr);
+		npu_dbg("qch_on, v, reg_addr(0x%pK)\n", reg_addr);
 
 		v = readl(reg_addr) & 0xffffffff;
 		npu_dbg("qch_on,  read cpu_on_regs, v(0x%x)\n", v);
 
 		v = (v & (~mask)) | (val & mask);
 		writel(v, (void *)(reg_addr));
-		npu_dbg("written on, (0x%08x) at (%p)\n", v, reg_addr);
+		npu_dbg("written on, (0x%08x) at (%pK)\n", v, reg_addr);
 	}
 
 	return ret;
@@ -202,14 +202,14 @@ int CLKGate23_SOC_HWACG_qch_enable(struct npu_system *system)
 		mask = CLKGate23_HWACG_regs[i].mask;
 
 		reg_addr = base->vaddr + offset;
-		npu_dbg("qch clk off, reg_addr(0x%p)\n", reg_addr);
+		npu_dbg("qch clk off, reg_addr(0x%pK)\n", reg_addr);
 
 		v = readl(reg_addr) & 0xffffffff;
 		npu_dbg("qch clk off, read cpu_on_regs, val(0x%x)\n", v);
 
 		v = (v & (~mask)) | (val & mask);
 		writel(v, (void *)(reg_addr));
-		npu_dbg("written off (0x%08x) at (%p)\n", v, reg_addr);
+		npu_dbg("written off (0x%08x) at (%pK)\n", v, reg_addr);
 	}
 
 	return ret;
@@ -518,7 +518,7 @@ int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 		return ret;
 	}
 
-	npu_info("DRAM log buffer for firmware: size(%d) / dv(%pad) / kv(%p)",
+	npu_info("DRAM log buffer for firmware: size(%d) / dv(%pad) / kv(%pK)",
 		 DRAM_FW_LOG_BUF_SIZE, &dram_fw_log_buf.daddr, dram_fw_log_buf.vaddr);
 
 	/* Initialize memory logger dram log buf */
@@ -532,7 +532,7 @@ int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 		}
 		npu_fw_report_init(fw_report_buf.vaddr, fw_report_buf.size);
 	} else {//Case of fw_report is already allocated by ion memory
-		npu_dbg("fw_report is already initialized - %p.\n", fw_report_buf.vaddr);
+		npu_dbg("fw_report is already initialized - %pK.\n", fw_report_buf.vaddr);
 	}
 
 	/* Initialize firmware utc handler with dram log buf */
@@ -719,7 +719,7 @@ int npu_system_release(struct npu_system *system, struct platform_device *pdev)
 
 static inline void print_iomem_area(const char *pr_name, const struct npu_iomem_area *mem_area)
 {
-	npu_info(KERN_CONT "(%8s) Phy(0x%08x)-(0x%08llx) Virt(%p) Size(%llu)\n",
+	npu_info(KERN_CONT "(%8s) Phy(0x%08x)-(0x%08llx) Virt(%pK) Size(%llu)\n",
 		pr_name, mem_area->paddr, mem_area->paddr + mem_area->size,
 		mem_area->vaddr, mem_area->size);
 }
@@ -1115,21 +1115,21 @@ static int npu_firmware_load(struct npu_system *system)
 	v = 1;
 #endif
 	if (v != 0) {
-		npu_dbg("firmware load : clear TCU SRAM at %p, Len(%llu)\n",
+		npu_dbg("firmware load : clear TCU SRAM at %pK, Len(%llu)\n",
 			system->tcu_sram.vaddr, system->tcu_sram.size);
 		/* Using memset here causes unaligned access fault.
 		Refer: https://patchwork.kernel.org/patch/6362401/ */
 		memset_io(system->tcu_sram.vaddr, 0, system->tcu_sram.size);
-		npu_dbg("firmware load: clear IDP SRAM at %p, Len(%llu)\n",
+		npu_dbg("firmware load: clear IDP SRAM at %pK, Len(%llu)\n",
 			system->idp_sram.vaddr, system->idp_sram.size);
 		memset_io(system->idp_sram.vaddr, 0, system->idp_sram.size);
 	}
 #else
-	npu_dbg("firmware load: clear firmware signature at %p(u64)\n",
+	npu_dbg("firmware load: clear firmware signature at %pK(u64)\n",
 		system->tcu_sram.vaddr + system->tcu_sram.size - sizeof(u64));
 	writel(0, system->tcu_sram.vaddr + system->tcu_sram.size - sizeof(u64));
 #endif
-	npu_dbg("firmware load: read and locate firmware to %p\n", system->tcu_sram.vaddr);
+	npu_dbg("firmware load: read and locate firmware to %pK\n", system->tcu_sram.vaddr);
 	ret = npu_firmware_file_read(&system->binary, system->tcu_sram.vaddr, system->tcu_sram.size);
 	if (ret) {
 		npu_err("error(%d) in npu_binary_read\n", ret);
@@ -1374,7 +1374,7 @@ static int init_iomem_area(struct npu_system *system)
 		size = init_data[i].end - init_data[i].start;
 		iomem = devm_ioremap_nocache(&(system->pdev->dev), init_data[i].start, size);
 		if (IS_ERR_OR_NULL(iomem)) {
-			probe_err("fail(%p) in devm_ioremap_nocache(0x%08x, %u)\n",
+			probe_err("fail(%pK) in devm_ioremap_nocache(0x%08x, %u)\n",
 				  iomem, init_data[i].start, size);
 			ret = -EFAULT;
 			goto err_exit;
@@ -1382,7 +1382,7 @@ static int init_iomem_area(struct npu_system *system)
 		init_data[i].area_info->vaddr = iomem;
 		init_data[i].area_info->paddr = init_data[i].start;
 		init_data[i].area_info->size = size;
-		probe_trace("Paddr[%08x]-[%08x] => Mapped @[%p], Length = %llu\n",
+		probe_trace("Paddr[%08x]-[%08x] => Mapped @[%pK], Length = %llu\n",
 			   init_data[i].start, init_data[i].end,
 			   init_data[i].area_info->vaddr, init_data[i].area_info->size);
 	}
@@ -1408,12 +1408,12 @@ static inline void __write_hw_reg(const struct npu_iomem_area *base, u32 offset,
 	}
 	reg_addr = base->vaddr + offset;
 	v = readl(reg_addr);
-	npu_dbg("setting register pa(0x%08x) va(%p) cur(0x%08x) val(0x%08x) mask(0x%08x)\n",
+	npu_dbg("setting register pa(0x%08x) va(%pK) cur(0x%08x) val(0x%08x) mask(0x%08x)\n",
 		base->paddr + offset, reg_addr,	v, val, mask);
 
 	v = (v & (~mask)) | (val & mask);
 	writel(v, (void *)(reg_addr));
-	npu_dbg("written (0x%08x) at (%p)\n", v, reg_addr);
+	npu_dbg("written (0x%08x) at (%pK)\n", v, reg_addr);
 }
 
 /*
@@ -1465,7 +1465,7 @@ __attribute__((unused)) static int set_sfr(const u32 sfr_addr, const u32 value, 
 
 	iomem = ioremap_nocache(sfr_addr, sizeof(u32));
 	if (IS_ERR_OR_NULL(iomem)) {
-		probe_err("fail(%p) in ioremap_nocache(0x%08x)\n",
+		probe_err("fail(%pK) in ioremap_nocache(0x%08x)\n",
 			  iomem, sfr_addr);
 		ret = -EFAULT;
 		goto err_exit;
@@ -1494,7 +1494,7 @@ __attribute__((unused)) static int get_sfr(const u32 sfr_addr)
 
 	iomem = ioremap_nocache(sfr_addr, sizeof(u32));
 	if (IS_ERR_OR_NULL(iomem)) {
-		probe_err("fail(%p) in ioremap_nocache(0x%08x)\n",
+		probe_err("fail(%pK) in ioremap_nocache(0x%08x)\n",
 			  iomem, sfr_addr);
 		ret = -EFAULT;
 		goto err_exit;
@@ -1506,7 +1506,7 @@ __attribute__((unused)) static int get_sfr(const u32 sfr_addr)
 	reg_addr = area_info.vaddr;
 
 	v = readl(reg_addr);
-	npu_trace("get_sfr, vaddr(0x%p), paddr(0x%08x), val(0x%x)\n",
+	npu_trace("get_sfr, vaddr(0x%pK), paddr(0x%08x), val(0x%x)\n",
 		area_info.vaddr, area_info.paddr, v);
 
 	ret = 0;

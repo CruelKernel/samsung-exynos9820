@@ -784,6 +784,37 @@ s64 interpolation(s64 from, s64 to, int cur_step, int total_step)
 	return num;
 }
 
+int gamma_table_add_offset(s32 (*src)[MAX_COLOR], s32 (*ofs)[MAX_COLOR],
+		s32 (*out)[MAX_COLOR], struct tp *tp, int nr_tp)
+{
+	int v, c, upper, res;
+
+	if (unlikely(!tp || nr_tp == 0 || !src|| !ofs || !out)) {
+		pr_err("%s, invalid parameter (tp %d, nr_tp %d, src %d, ofs %d, out %d)\n",
+				__func__, !!tp, nr_tp, !!src, !!ofs, !!out);
+		return -EINVAL;
+	}
+
+	for (v = 0; v < nr_tp; v++) {
+		upper = (1 << tp[v].bits) - 1;
+		for_each_color(c) {
+			res = src[v][c] + ofs[v][c];
+			if (res < 0)
+				res = 0;
+			if (res > upper)
+				res = upper;
+
+			out[v][c] = res;
+#ifdef DEBUG_DIMMING
+			pr_info("%s, src %d, ofs %d, out %d\n",
+					__func__, src[v][c], ofs[v][c], out[v][c]);
+#endif
+		}
+	}
+
+	return 0;
+}
+
 int gamma_table_interpolation(s32 (*from)[MAX_COLOR], s32 (*to)[MAX_COLOR],
 		s32 (*out)[MAX_COLOR], int nr_tp, int cur_step, int total_step)
 {

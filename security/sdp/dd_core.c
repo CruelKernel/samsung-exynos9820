@@ -37,6 +37,9 @@
 
 #define TIMEOUT_PENDING_REQ (5*1000)
 
+#ifdef CONFIG_FSCRYPT_SDP
+extern int fscrypt_sdp_get_storage_type(struct dentry *target_dentry);
+#endif
 extern int fscrypt_inline_encrypted(const struct inode *inode);
 extern int fscrypt_set_bio_cryptd(const struct inode *inode, struct bio *bio);
 
@@ -1778,6 +1781,9 @@ struct dd_info *alloc_dd_info(struct inode *inode) {
 	uid_t calling_uid = from_kuid(&init_user_ns, current_uid());
 	unsigned char master_key[256];
 	int rc = 0;
+#ifdef CONFIG_FSCRYPT_SDP
+	sdp_fs_command_t *cmd = NULL;
+#endif
 
 	if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
 		dd_error("alloc_dd_info: failed to read dd crypt context ino:%ld\n", inode->i_ino);
@@ -1803,6 +1809,22 @@ struct dd_info *alloc_dd_info(struct inode *inode) {
 
 	if (dd_policy_gid_restriction(crypt_context.policy.flags)) {
 		if(enforce_caller_gid(calling_uid)) {
+#ifdef CONFIG_FSCRYPT_SDP
+			int partition_id = -1;
+			struct dentry *de = NULL;
+			de = d_find_alias(inode);
+			if (de) {
+				partition_id = fscrypt_sdp_get_storage_type(de);
+			}
+
+			cmd = sdp_fs_command_alloc(FSOP_AUDIT_FAIL_DE_ACCESS,
+					current->tgid, crypt_context.policy.userid, partition_id,
+					inode->i_ino, -EACCES, GFP_KERNEL);
+			if (cmd) {
+				sdp_fs_request(cmd, NULL);
+				sdp_fs_command_free(cmd);
+			}
+#endif
 			dd_error("gid restricted.. calling-uid:%d ino:%ld\n", calling_uid, inode->i_ino);
 			return ERR_PTR(-EACCES);
 		}

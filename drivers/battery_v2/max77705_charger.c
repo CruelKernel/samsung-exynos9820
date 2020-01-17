@@ -71,6 +71,7 @@ static int max77705_get_vbus_state(struct max77705_charger_data *charger);
 static int max77705_get_charger_state(struct max77705_charger_data *charger);
 static void max77705_enable_aicl_irq(struct max77705_charger_data *charger);
 static void max77705_chg_set_mode_state(struct max77705_charger_data *charger, unsigned int state);
+static void max77705_set_switching_frequency(struct max77705_charger_data *charger, int frequency);
 
 static bool is_wcin_port(struct max77705_charger_data *charger)
 {
@@ -308,6 +309,15 @@ static int max77705_get_charging_health(struct max77705_charger_data *charger)
 
 	max77705_read_reg(charger->i2c, MAX77705_CHG_REG_DETAILS_01, &reg_data);
 	reg_data = ((reg_data & MAX77705_BAT_DTLS) >> MAX77705_BAT_DTLS_SHIFT);
+
+	if (charger->enable_noise_wa) {
+		psy_do_property("battery", get,
+				POWER_SUPPLY_PROP_CAPACITY, value);
+		if ((value.intval >= 80) && (charger->switching_freq != MAX77705_CHG_FSW_3MHz))
+			max77705_set_switching_frequency(charger, MAX77705_CHG_FSW_3MHz);
+		else if ((value.intval < 80) && (charger->switching_freq != MAX77705_CHG_FSW_1_5MHz))
+			max77705_set_switching_frequency(charger, MAX77705_CHG_FSW_1_5MHz);
+	}
 
 	pr_info("%s: reg_data(0x%x)\n", __func__, reg_data);
 	switch (reg_data) {
@@ -743,6 +753,9 @@ static void max77705_set_switching_frequency(struct max77705_charger_data *charg
 			(frequency << CHG_CNFG_08_REG_FSW_SHIFT),
 			CHG_CNFG_08_REG_FSW_MASK);
 	max77705_read_reg(charger->i2c, MAX77705_CHG_REG_CNFG_08, &cnfg_08);
+
+	charger->switching_freq = frequency;
+
 	pr_info("%s : CHG_CNFG_08(0x%02x)\n", __func__, cnfg_08);	
 }
 
@@ -2502,6 +2515,9 @@ static int max77705_charger_parse_dt(struct max77705_charger_data *charger)
 		charger->enable_sysovlo_irq =
 		    of_property_read_bool(np, "battery,enable_sysovlo_irq");
 
+		charger->enable_noise_wa =
+		    of_property_read_bool(np, "battery,enable_noise_wa");
+
 		ret = of_property_read_u32(np, "battery,chg_float_voltage",
 					   &pdata->chg_float_voltage);
 		if (ret) {
@@ -2640,6 +2656,8 @@ static int max77705_charger_probe(struct platform_device *pdev)
 		charger->cable_type = SEC_BATTERY_CABLE_WIRELESS;
 	charger->input_current = max77705_get_input_current(charger);
 	charger->charging_current = max77705_get_charge_current(charger);
+	charger->switching_freq = MAX77705_CHG_FSW_1_5MHz;
+
 
 	if (max77705_read_reg
 	    (max77705->i2c, MAX77705_PMIC_REG_PMICREV, &reg_data) < 0) {

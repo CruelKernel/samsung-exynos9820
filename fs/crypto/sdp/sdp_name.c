@@ -12,7 +12,7 @@ struct fscrypt_sdp_renament {
 	struct inode *inode;
 };
 
-static int fscrypt_sdp_get_storage_type(struct dentry *target_dentry)
+int fscrypt_sdp_get_storage_type(struct dentry *target_dentry)
 {
 	if (!target_dentry)
 		return FSCRYPT_SDP_NAME_FUNC_ERROR;
@@ -48,6 +48,7 @@ static int fscrypt_sdp_get_storage_type(struct dentry *target_dentry)
 		return p_type;
 	}
 }
+EXPORT_SYMBOL(fscrypt_sdp_get_storage_type);
 
 void fscrypt_sdp_check_chamber_event(struct inode *old_dir, struct dentry *old_dentry,
 					struct inode *new_dir, struct dentry *new_dentry)

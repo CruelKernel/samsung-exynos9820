@@ -9,8 +9,7 @@
  * published by the Free Software Foundation.
 */
 #include "exynos9820-beyond2lte_mst.dtsi"
-#include "exynos9820-beyond0lte_motor.dtsi"
-#include "exynos9820-beyond0lte_input_common.dtsi"
+#include "exynos9820-beyond1lte_input_common.dtsi"
 #include "modem-s5000ap-sipc-pdata.dtsi"
 
 / {
@@ -701,16 +700,19 @@
 					samsung,pin-drv = <0>;
 				};
 			};
+
 			sec_detect_conn {
 				compatible = "samsung,sec_detect_conn";
-				sec,det_conn_gpios = <&gpm23 0 0>;				/* UB_CON_DET */
+				sec,det_conn_gpios = <&gpm23 0 0           /* UB_CON_DET */
+				                      &gpm18 0 0>;         /* CAM_CON_DET */
 
-				sec,det_conn_name = "UB_CONNECT";
+				sec,det_conn_name = "UB_CONNECT", "CAM_CONNECT";
 
-				sec,det_conn_irq_type = <3>; /* UB_CON_DETECT BOTH EDGE*/
+				sec,det_conn_irq_type = <3>, /* UB_CON_DETECT BOTH EDGE*/
+				                        <3>; /* CAM_DETECT BOTH EDGE*/
 
 				pinctrl-names = "default";
-				pinctrl-0 = <&ub_detect_conn_setting>;
+				pinctrl-0 = <&ub_detect_conn_setting &cam_detect_conn_setting>;
 			};
 
 			wlan {
@@ -744,9 +746,9 @@
 				thermistor_name = "sec-ap-thermistor";
 				id = <0>;
 
-				adc_array = <243 303 360 378 506 595 697 820 968 1133
-					  1316 1513 1724 1955 2185 2416 2650 2867 3079 3251
-					  3411 3533 3652>;
+				adc_array = <251 314 371 437 521 591 702 821 965 1135
+					  1324 1517 1726 1947 2178 2415 2649 2881 3071 3264
+					  3406 3516 3633>;
 				temp_array = <900 850 800 750 700 650 600 550 500 450
 					  400 350 300 250 200 150 100 50 0 (-50)
 					  (-100) (-150) (-200)>;
@@ -762,9 +764,9 @@
 				thermistor_name = "sec-wf-thermistor";
 				id = <1>;
 
-				adc_array = <243 303 360 378 506 595 697 820 968 1133
-					  1316 1513 1724 1955 2185 2416 2650 2867 3079 3251
-					  3411 3533 3652>;
+				adc_array = <275 324 380 450 528 619 729 856 1003 1161
+					  1345 1545 1766 1980 2222 2457 2685 2901 3102 3279
+					  3426 3551 3659>;
 				temp_array = <900 850 800 750 700 650 600 550 500 450
 					  400 350 300 250 200 150 100 50 0 (-50)
 					  (-100) (-150) (-200)>;
@@ -780,12 +782,13 @@
 				thermistor_name = "sec-pa-thermistor";
 				id = <2>;
 
-				adc_array = <386 481 620 773 957 1171 1397 1635 1872 2107
-					  2345 2561 2764 2949 3113 3261 3382 3485 3581 3674
-					  3724 3780 3834>;
+				adc_array = <357 467 599 763 933 1063 1263 1489 1725 1961
+					2184 2422 2634 2835 2995 3162 3300 3421 3523 3615
+					3687 3754 3806>;
+
 				temp_array = <(-200) (-150) (-100) (-50) 0 50 100 150 200 250
-					   300 350 400 450 500 550 600 650 700 750
-					   800 850 900>;
+					300 350 400 450 500 550 600 650 700 750
+					800 850 900>;
 
 				io-channels = <&exynos_adc 7>;
 				io-channel-names = "adc-pa-temp";
@@ -823,13 +826,15 @@
 				status = "okay";
 
 				pinctrl-names = "default";
-				pinctrl-0 = <&ub_detect_conn_setting>;
+				pinctrl-0 = <&ub_detect_conn_setting &cam_detect_conn_setting>;
 
 				cond {
-					cond,det_conn_gpios = <&gpm23 0 0>;            /* UB_CON_DET */
+					cond,det_conn_gpios = <&gpm23 0 0            /* UB_CON_DET */
+				                      &gpm18 0 0>;          /* CAM_CON_DET */
 
-					cond,name="ub_cond";
-					cond,det_conn_irq_type = <3>; /* UB_CON_DETECT BOTH EDGE*/
+					cond,name="ub_cond","cam_cond";
+					cond,det_conn_irq_type = <3>, /* UB_CON_DETECT BOTH EDGE*/
+								<3>; /* CAM_DETECT BOTH EDGE*/
 				};
 
 				bootc {
@@ -864,7 +869,7 @@
 
 					cl2 {
 						qos,label="BIG";
-						qos,delay_time=<7>;
+						qos,delay_time=<10>;
 						qos,table_size=<20>;
 						qos,table=<2730000 2600000 2470000 2340000 2236000 2080000 1976000 1820000 1664000
 							1560000 1456000 1378000 1248000 1144000 1040000 936000 819000 728000 624000
@@ -1136,8 +1141,6 @@
 		samsung,pin-function = <0>;
 		samsung,pin-pud = <0>;
 		samsung,pin-drv = <0>;
-		samsung,pin-con-pdn =<2>;
-		samsung,pin-pud-pdn = <0>;
 	};
 };
 
@@ -1147,7 +1150,7 @@
 };
 
 &dsim_0 {
-	lcd_info = <&s6e3fa7_beyond0>;
+	lcd_info = <&s6e3ha9_beyond1>;
 	/* reset, power */
 	gpios = <&gpa3 4 0x1>;
 };
@@ -1742,6 +1745,12 @@
 				regulator-boot-on;
 			};
 
+			_ldo3_reg: s2mpb02-ldo3 {
+				regulator-name = "VDDD_1.05V_SUB";
+				regulator-min-microvolt = <1050000>;
+				regulator-max-microvolt = <1050000>;
+			};
+
 			_ldo4_reg: s2mpb02-ldo4 {
 				regulator-name = "VDDD_1.05V_WIDESUB";
 				regulator-min-microvolt = <1050000>;
@@ -1760,14 +1769,14 @@
 				regulator-max-microvolt = <1800000>;
 			};
 
-			_ldo8_reg: s2mpb02-ldo8 {
-				regulator-name = "VDDIO_1.8V_WIDESUB";
+			_ldo7_reg: s2mpb02-ldo7 {
+				regulator-name = "VDDIO_1.8V_SUB";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
 			};
 
-			_ldo9_reg: s2mpb02-ldo9 {
-				regulator-name = "S2MPB02_LDO9";
+			_ldo8_reg: s2mpb02-ldo8 {
+				regulator-name = "VDDIO_1.8V_WIDESUB";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
 			};
@@ -1776,6 +1785,18 @@
 				regulator-name = "VDDD_1.8V_OIS";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
+			};
+
+			_ldo11_reg: s2mpb02-ldo11 {
+				regulator-name = "VDDA_2.8V_SUB";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+			};
+
+			_ldo12_reg: s2mpb02-ldo12 {
+				regulator-name = "VDDAF_2.8V_SUB";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
 			};
 
 			_ldo13_reg: s2mpb02-ldo13 {
@@ -2085,6 +2106,13 @@
 		samsung,pin-drv = <0>;
 	};
 
+	cam_detect_conn_setting: cam_detect_conn_setting {
+		samsung,pins = "gpm18-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
 	amp_int: amp-int {
 		samsung,pins = "gpm24-0";
 		samsung,pin-function = <0xf>;
@@ -2321,7 +2349,7 @@ expander_reset_active: expander_reset_active {
 
     status = "okay";
 
-	ddi_info = <&s6e3fa7_beyond0>;
+	ddi_info = <&s6e3ha9_beyond1>;
 	gpio,lcd-reset = <&gpa3 4 0x1>;
 	gpio,disp-det = <&gpg2 2 0x0>;
 	gpio,ub-con-det = <&gpm23 0 0>;
@@ -2340,13 +2368,15 @@ expander_reset_active: expander_reset_active {
 	};
 
 	panel-lookup {
-		panel-name = "s6e3fa7_beyond0_a3_s0_default", "s6e3fa7_beyond0_a3_s0_utype", "s6e3fa7_beyond0_a3_s0_preliminary";
-		panel-ddi-info = <&s6e3fa7_beyond0>;
+		panel-name = "s6e3ha9_beyond1_a3_s0_default", "s6e3ha9_beyond1_a3_s0_utype", "s6e3ha9_beyond1_a3_s0_preliminary";
+		panel-ddi-info = <&s6e3ha9_beyond1 &s6e3ha9_beyond1_1440x2960>;
 		panel-lut = <
-			0x000000 0x300000 0x2 0x0  /* S6E3FA7 1080x2280 L-Cut PANEL */
-			0x000000 0x0F0000 0x1 0x0  /* S6E3FA7 1080x2280 U-Type PANEL */
+			0x000000 0x300000 0x2 0x1  /* S6E3HA9 1440x2960 TEMPORARY PANEL */
+			0x100000 0x300000 0x2 0x0  /* S6E3HA9 1440x3040 L-Cut PANEL */
+			0x000000 0x0F0000 0x1 0x0  /* S6E3HA9 1440x3040 U-Type PANEL */
+
 			/* default panel */
-			0x000000 0x000000 0x0 0x0  /* not found */
+			0x000000 0x000000 0x0 0x0  /* S6E3HA9 1440x3040 PANEL */
 		>;
 	};
 };
@@ -2375,8 +2405,8 @@ expander_reset_active: expander_reset_active {
 		sx9330,afeparamsph0_reg = <0x0000021F>;
 		sx9330,afephph0_reg = <0x3FBB8548>;
 		sx9330,adcfiltph0_reg = <0x0510101D>;
-		sx9330,afeparamsph1_reg = <0x00001E0F>;  /* again : 9.9pF, sampling freq : 200 khz */
-		sx9330,adcfiltph1_reg = <0x00105715>;    /* threshold : 4020 */
+		sx9330,afeparamsph1_reg = <0x0000082F>;  /* again : 3.3pF, sampling freq : 111.11 khz */
+		sx9330,adcfiltph1_reg = <0x0010B115>;    /* threshold : 15665 */
 		sx9330,avgbfilt_reg = <0x60600C00>;   /* AVGPOSFILT : 1/256, AVGNEGFILT : 1/2 */
 		sx9330,avgafilt_reg = <0x00000000>;
 		sx9330,advdig3_reg = <0x00000000>;
@@ -2407,15 +2437,15 @@ expander_reset_active: expander_reset_active {
 	camera {
 		compatible = "exynos9820-ion";
 		ion,heapname = "camera_heap";
-		reg = <0x0 0x99000000 0xE400000>;
+		reg = <0x0 0x99000000 0x1B800000>;
 		ion,recyclable;
 	};
 };
 
 &spi_17 {
         BCM4773@0 {
-                ssp-ap-type = <0>;
-         };
+        	ssp-ap-type = <1>;
+        };
 };
 
 &mcdhdr_0 {

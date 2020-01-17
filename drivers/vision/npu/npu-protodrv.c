@@ -433,7 +433,7 @@ int register_session_ref(struct npu_session *sess)
 	}
 
 	list_add_tail(&sess_entry->list, &sess_ref->entry_list);
-	npu_udbg("session ref @%p registered.\n", sess, sess_entry);
+	npu_udbg("session ref @%pK registered.\n", sess, sess_entry);
 
 	return 0;
 
@@ -465,14 +465,14 @@ int drop_session_ref(const npu_uid_t uid)
 	}
 	/* Check entries */
 	if (!list_empty(&sess_entry->frame_list)) {
-		npu_warn("frame list for UID [%u] is not empty. First is at %p\n",
+		npu_warn("frame list for UID [%u] is not empty. First is at %pK\n",
 			uid, list_first_entry_or_null(&sess_entry->frame_list, struct proto_req_frame, sess_ref_list));
 	}
 	if (!list_empty(&sess_entry->nw_list)) {
-		npu_warn("network mgmt. list for UID [%u] is not empty. First is at %p\n",
+		npu_warn("network mgmt. list for UID [%u] is not empty. First is at %pK\n",
 			uid, list_first_entry_or_null(&sess_entry->nw_list, struct proto_req_nw, sess_ref_list));
 	}
-	npu_info("[U%u]session ref @%p dropped.\n", uid, sess_entry);
+	npu_info("[U%u]session ref @%pK dropped.\n", uid, sess_entry);
 
 	/* Remove from Linked list */
 	list_del_init(&sess_entry->list);
@@ -509,13 +509,13 @@ int link_session_frame(struct proto_req_frame *req_frame)
 		return -EINVAL;
 	}
 	if (is_list_used(&req_frame->sess_ref_list)) {
-		npu_uerr("frame seemed to belong other session. next pointer is %p\n"
+		npu_uerr("frame seemed to belong other session. next pointer is %pK\n"
 			, frame, req_frame->sess_ref_list.next);
 		return -EFAULT;
 	}
 	INIT_LIST_HEAD(&req_frame->sess_ref_list);
 	list_add_tail(&req_frame->sess_ref_list, &sess_entry->frame_list);
-	npu_ufdbg("frame linked to ref@%p.\n", frame, sess_entry);
+	npu_ufdbg("frame linked to ref@%pK.\n", frame, sess_entry);
 	return 0;
 }
 
@@ -540,13 +540,13 @@ int link_session_nw(struct proto_req_nw *req_nw)
 		return -EINVAL;
 	}
 	if (is_list_used(&req_nw->sess_ref_list)) {
-		npu_uerr("network mgmt. seemed to belong other session. next pointer is %p\n"
+		npu_uerr("network mgmt. seemed to belong other session. next pointer is %pK\n"
 			, nw, req_nw->sess_ref_list.next);
 		return -EFAULT;
 	}
 	INIT_LIST_HEAD(&req_nw->sess_ref_list);
 	list_add_tail(&req_nw->sess_ref_list, &sess_entry->nw_list);
-	npu_udbg("NW linked to ref@%p.\n", nw, sess_entry);
+	npu_udbg("NW linked to ref@%pK.\n", nw, sess_entry);
 	return 0;
 }
 
@@ -572,13 +572,13 @@ int unlink_session_frame(struct proto_req_frame *req_frame)
 			goto found_match;
 		}
 	}
-	npu_uferr("frame does not belong to session ref@%p.\n", frame, sess_entry);
+	npu_uferr("frame does not belong to session ref@%pK.\n", frame, sess_entry);
 	return -EINVAL;
 
 found_match:
 #endif /* UNLINK_CHECK_OWNERSHIP */
 	list_del_init(&req_frame->sess_ref_list);
-	npu_ufdbg("frame unlinked from ref@%p.\n", frame, sess_entry);
+	npu_ufdbg("frame unlinked from ref@%pK.\n", frame, sess_entry);
 	return 0;
 }
 
@@ -610,13 +610,13 @@ int unlink_session_nw(struct proto_req_nw *req_nw)
 			goto found_match;
 		}
 	}
-	npu_uerr("network mgmt. does not belong to session ref@%p.\n", nw, sess_entry);
+	npu_uerr("network mgmt. does not belong to session ref@%pK.\n", nw, sess_entry);
 	return -EINVAL;
 
 found_match:
 #endif /* UNLINK_CHECK_OWNERSHIP */
 	list_del_init(&req_nw->sess_ref_list);
-	npu_uinfo("NW unlinked from ref@%p.\n", nw, sess_entry);
+	npu_uinfo("NW unlinked from ref@%pK.\n", nw, sess_entry);
 	return 0;
 }
 
@@ -933,13 +933,13 @@ int session_fault_listener(void)
 				OFM_cnt = OFM_info->address_vector_cnt;
 
 				for (idx1 = 0; idx1 < IFM_cnt; idx1++) {
-					npu_info("- %u %d %p %pad %zu\n",
+					npu_info("- %u %d %pK %pad %zu\n",
 						(IFM_addr + idx1)->av_index, MEMORY_TYPE_IN_FMAP,
 						(IFM_addr + idx1)->vaddr, &((IFM_addr + idx1)->daddr),
 						(IFM_addr + idx1)->size);
 				}
 				for (idx1 = 0; idx1 < OFM_cnt; idx1++) {
-					npu_info("- %u %d %p %pad %zu\n",
+					npu_info("- %u %d %pK %pad %zu\n",
 						(OFM_addr + idx1)->av_index, MEMORY_TYPE_OT_FMAP,
 						(OFM_addr + idx1)->vaddr, &((OFM_addr + idx1)->daddr),
 						(OFM_addr + idx1)->size);
@@ -1011,12 +1011,12 @@ int session_fault_listener(void)
 					OFM_addr = OFM_info->addr_info;
 
 					for (idx1 = 0; idx1 < IFM_cnt; idx1++) {
-						npu_info("- %zu %d %p %pad %zu\n",
+						npu_info("- %zu %d %pK %pad %zu\n",
 							idx1, MEMORY_TYPE_IN_FMAP, (IFM_addr + idx1)->vaddr,
 							&((IFM_addr + idx1)->daddr), (IFM_addr + idx1)->size);
 					}
 					for (idx1 = 0; idx1 < OFM_cnt; idx1++) {
-						npu_info("- %zu %d %p %pad %zu\n",
+						npu_info("- %zu %d %pK %pad %zu\n",
 							idx1, MEMORY_TYPE_OT_FMAP, (OFM_addr + idx1)->vaddr,
 							&((OFM_addr + idx1)->daddr), (OFM_addr + idx1)->size);
 					}
@@ -1024,12 +1024,12 @@ int session_fault_listener(void)
 				IMB_addr = session->IMB_info;
 				WGT_addr = session->WGT_info;
 				for (idx1 = 0; idx1 < IMB_cnt; idx1++) {
-					npu_info("- %zu %d %p %pad %zu\n",
+					npu_info("- %zu %d %pK %pad %zu\n",
 						idx1, MEMORY_TYPE_IM_FMAP, (IMB_addr + idx1)->vaddr,
 						&((IMB_addr + idx1)->daddr), (IMB_addr + idx1)->size);
 				}
 				for (idx1 = 0; idx1 < WGT_cnt; idx1++) {
-					npu_info("- %zu %d %p %pad %zu\n",
+					npu_info("- %zu %d %pK %pad %zu\n",
 						idx1, MEMORY_TYPE_WEIGHT, (WGT_addr + idx1)->vaddr,
 						&((WGT_addr + idx1)->daddr), (WGT_addr + idx1)->size);
 				}
@@ -1132,7 +1132,7 @@ static int nw_mgmt_op_get_request(struct proto_req_nw *target)
 
 			sess = target->nw.session;
 			if (sess && sess->ncp_info.ncp_addr.vaddr) {
-				npu_info("T32_TRACE: NCP at d:0x%p\n", sess->ncp_info.ncp_addr.vaddr);
+				npu_info("T32_TRACE: NCP at d:0x%pK\n", sess->ncp_info.ncp_addr.vaddr);
 			} else {
 				npu_info("T32_TRACE: Cannot locate NCP.\n");
 			}
@@ -1845,7 +1845,7 @@ static int npu_protodrv_handler_nw_completed(void)
 
 				case NPU_NW_CMD_CLEAR_CB:
 					/* Always success */
-					entry->nw.result_code == NPU_ERR_NO_ERROR;
+					entry->nw.result_code = NPU_ERR_NO_ERROR;
 					npu_udbg("complete CLEAR_CB\n", &entry->nw);
 
 					/* Leave assertion if this message is request other than emergency mode */
@@ -2278,8 +2278,8 @@ static size_t stat_to_string(const struct lsm_state_stat *stat, char *outbuf, co
 		ts_max_init = ns_to_timespec(stat->max_init[i]);
 		ret = scnprintf(outbuf, remain_len,
 				"Average curr age %ld.%09ldns, init age %ld.%09ldns\n"
-				" Max curr age %ld.%09ldns - entry at [%p]\n"
-				" Max init age %ld.%09ldns - entry at [%p]\n",
+				" Max curr age %ld.%09ldns - entry at [%pK]\n"
+				" Max init age %ld.%09ldns - entry at [%pK]\n",
 				ts_avg_curr.tv_sec, ts_avg_curr.tv_nsec,
 				ts_avg_init.tv_sec, ts_avg_init.tv_nsec,
 				ts_max_curr.tv_sec, ts_max_curr.tv_nsec, stat->max_curr_entry[i],
@@ -2541,7 +2541,7 @@ int proto_drv_probe(struct npu_device *npu_device)
 	npu_proto_drv.npu_device = npu_device;
 
 #ifdef T32_GROUP_TRACE_SUPPORT
-	probe_info("T32_TRACE: to do trace, use following T32 command.\n Break.Set 0x%p\n",
+	probe_info("T32_TRACE: to do trace, use following T32 command.\n Break.Set 0x%pK\n",
 		   t32_trace_ncp_load);
 #endif
 

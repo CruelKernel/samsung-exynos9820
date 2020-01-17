@@ -96,7 +96,7 @@ int npu_buffer_q_is_available(void)
 
 void npu_buffer_q_register_cb(LLQ_task_t cb)
 {
-	npu_info("callback for buffer_q: [%p]\n", cb);
+	npu_info("callback for buffer_q: [%pK]\n", cb);
 	BUG_ON(!cb);
 	ctx.buffer_q_callback = cb;
 }
@@ -119,7 +119,7 @@ void npu_buffer_q_notify_done(const struct npu_frame *frame)
 				frame->src_queue, frame->input, frame->output, flags);
 			npu_ufinfo("Succeeded frame_id = [%u]\n", frame, frame->frame_id);
 		} else
-			npu_ufinfo("Skip calling queue_done[queue=%p, in=%p, out=%p]\n",
+			npu_ufinfo("Skip calling queue_done[queue=%pK, in=%pK, out=%pK]\n",
 				frame, frame->src_queue, frame->input, frame->output);
 	} else {
 		npu_warn("not defined: queue_done\n");
@@ -154,7 +154,7 @@ int npu_ncp_mgmt_is_available(void)
 
 void npu_ncp_mgmt_register_cb(LLQ_task_t cb)
 {
-	npu_info("callback for ncp_mgmt(%p)\n", cb);
+	npu_info("callback for ncp_mgmt(%pK)\n", cb);
 	BUG_ON(!cb);
 	ctx.ncp_mgmt_callback = cb;
 }
@@ -165,7 +165,7 @@ int npu_ncp_mgmt_save_result(
 	struct nw_result result)
 {
 	if (notify_func) {
-		npu_dbg("notify_func invoked. sess=%p, result=0x%08x\n",
+		npu_dbg("notify_func invoked. sess=%pK, result=0x%08x\n",
 			sess, result.result_code);
 		return notify_func(sess, result);
 	} else {

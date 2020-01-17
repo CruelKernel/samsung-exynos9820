@@ -40,7 +40,7 @@
 		samsung,pin-drv = <0>;
 	};
 	motor_boost_en: motor-boost-en {
-		samsung,pins = "gpg0-7";
+		samsung,pins = "gpg1-7";
 		samsung,pin-function = <1>;
 		samsung,pin-val = <1>;
 		samsung,pin-pud = <0>;
@@ -48,12 +48,11 @@
 		samsung,pin-pud-pdn = <0>;
 	};
 	motor_boost_en_sleep: motor-boost-en-sleep {
-		samsung,pins = "gpg0-7";
+		samsung,pins = "gpg1-7";
 		samsung,pin-con-pdn = <0>;
 		samsung,pin-pud-pdn = <0>;
 	};
 };
-
 
 &hsi2c_45 {
 	#address-cells = <1>;

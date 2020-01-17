@@ -300,7 +300,7 @@ ok_exit:
 	case 0:
 		npu_info("success in load_golden_file: (%s, %luB length)\n",
 			 obj->file_name, obj->size);
-		npu_dbg("loaded file on (%p)\n", obj->img_vbuf);
+		npu_dbg("loaded file on (%pK)\n", obj->img_vbuf);
 		break;
 	default:
 		npu_err("fail(%d) in load_golden_file %s\n",
@@ -342,7 +342,7 @@ static int npu_golden_set_open(struct inode *inode, struct file *file)
 	BUG_ON(!file);
 	mutex_lock(&npu_golden_ctx.lock);
 
-	npu_info("start in npu_golden_set_open, npu_golden_ctx = @%p\n", &npu_golden_ctx);
+	npu_info("start in npu_golden_set_open, npu_golden_ctx = @%pK\n", &npu_golden_ctx);
 
 	/* Destroy last golden setting */
 	if (npu_golden_ctx.data.flags.valid) {
@@ -404,7 +404,7 @@ static int npu_golden_set_close(struct inode *inode, struct file *file)
 	list_for_each_entry(f, &npu_golden_ctx.data.file_list, list) {
 		ret = load_golden_file(f);
 		if (ret) {
-			npu_err("fail in load_golden_file on entry(%p).\n", f);
+			npu_err("fail in load_golden_file on entry(%pK).\n", f);
 			ret = -EFAULT;
 			goto err_exit;
 		}
@@ -690,7 +690,7 @@ static int set_golden_idx(const char ch, struct parse_buf *parse_buf)
 	golden_file->av_index = golden_idx;
 	list_add_tail(&golden_file->list, &npu_golden_ctx.data.file_list);
 
-	npu_dbg("adding new_golden_file entry: IDX(%d), Ptr(%p)\n",
+	npu_dbg("adding new_golden_file entry: IDX(%d), Ptr(%pK)\n",
 		golden_file->av_index, golden_file);
 
 	/* reset parse_buf */
@@ -718,7 +718,7 @@ static int set_golden_file(const char ch, struct parse_buf *parse_buf)
 	strncpy(golden_file->file_name, parse_buf->token_char, parse_buf->idx);
 	golden_file->file_name[parse_buf->idx] = '\0';
 
-	npu_dbg("golden file entry set: IDX(%d), filename(%s), Ptr(%p)\n",
+	npu_dbg("golden file entry set: IDX(%d), filename(%s), Ptr(%pK)\n",
 		golden_file->av_index, golden_file->file_name, golden_file);
 
 	/* reset parse_buf */
@@ -1030,7 +1030,7 @@ static int __npu_golden_compare(const struct npu_frame *frame)
 	session = frame->session;
 	ncp_header = (struct ncp_header *)(session->ncp_info.ncp_addr.vaddr);
 
-	npu_dbg("golden compare: starting with frame @ %p, result at %p\n [cur=%zu len=%zu cop=%zu]",
+	npu_dbg("golden compare: starting with frame @ %pK, result at %pK\n [cur=%zu len=%zu cop=%zu]",
 		 frame, result->out_buf, result->out_buf_cur, result->out_buf_len, result->copied_len);
 
 	if (!ncp_header) {
@@ -1141,7 +1141,7 @@ static int __npu_golden_compare(const struct npu_frame *frame)
 		/* Cache invalidation */
 		__dma_map_area(target_entry->vaddr, target_entry->size, DMA_FROM_DEVICE);
 
-		npu_ufdbg("golden compare Golden[%p:%zuB] / Target[%p:%zuB]\n",
+		npu_ufdbg("golden compare Golden[%pK:%zuB] / Target[%pK:%zuB]\n",
 			frame, golden_entry->img_vbuf, golden_entry->size,
 			target_entry->vaddr, target_entry->size);
 		/* Finally, comparing contents */

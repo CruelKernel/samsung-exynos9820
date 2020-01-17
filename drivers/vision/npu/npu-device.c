@@ -216,7 +216,7 @@ static int npu_iommu_fault_handler(struct iommu_domain *domain,
 {
 	struct npu_device	*device = token;
 
-	dev_err(dev, "%s() is called with fault addr(0x%lx), mode(%p), state(%p))\n",
+	dev_err(dev, "%s() is called with fault addr(0x%lx), mode(%pK), state(%pK))\n",
 			__func__, fault_addr, &device->mode, &device->state);
 
 	npu_util_dump_handle_error_k(device);

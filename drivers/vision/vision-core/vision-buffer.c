@@ -279,7 +279,7 @@ static int __vb_map_dmabuf(
 
 	daddr = ion_iovmm_map(attachment, 0, size, DMA_BIDIRECTIONAL, 0);
 	if (IS_ERR_VALUE(daddr)) {
-		vision_err("Failed to allocate iova (err 0x%p)\n", &daddr);
+		vision_err("Failed to allocate iova (err %pad)\n", &daddr);
 		ret = -ENOMEM;
 		goto p_err;
 	}
@@ -287,7 +287,7 @@ static int __vb_map_dmabuf(
 
 	vaddr = dma_buf_vmap(buffer->dma_buf);
 	if (IS_ERR(vaddr)) {
-		vision_err("Failed to get vaddr (err 0x%p)\n", &vaddr);
+		vision_err("Failed to get vaddr (err %pK)\n", vaddr);
 		ret = -EFAULT;
 		goto p_err;
 	}
@@ -295,7 +295,7 @@ static int __vb_map_dmabuf(
 
 	complete_suc = true;
 
-	//vision_info("__vb_map_dmabuf, size(%d), daddr(0x%x), vaddr(0x%p)\n",
+	//vision_info("__vb_map_dmabuf, size(%d), daddr(0x%x), vaddr(0x%pK)\n",
 		//size, daddr, vaddr);
 p_err:
 	if (complete_suc != true)

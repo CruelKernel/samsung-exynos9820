@@ -405,6 +405,8 @@ static inline s64 disp_pow_round(s64 num, u32 digits)
 			disp_pow(10, digits)) * disp_pow(10, digits);
 }
 int process_dimming(struct dimming_info *);
+int gamma_table_add_offset(s32 (*src)[MAX_COLOR], s32 (*ofs)[MAX_COLOR],
+		s32 (*out)[MAX_COLOR], struct tp *tp, int nr_tp);
 int gamma_table_interpolation(s32 (*from)[MAX_COLOR], s32 (*to)[MAX_COLOR],
 		s32 (*out)[MAX_COLOR], int nr_tp, int cur_step, int total_step);
 void get_dimming_gamma(struct dimming_info *dim_info, u32 luminance, u8 *output,

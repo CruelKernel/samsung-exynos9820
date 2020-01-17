@@ -14,9 +14,10 @@
 &hsi2c_10 {
 	status = "okay";
 	touchscreen@48 {
-		sec,project_name = "BEYOND0", "G970";
-		sec,firmware_name = "tsp_sec/y761_beyond0_phole.bin";
+		sec,project_name = "BEYOND1", "G973";
+		sec,firmware_name = "tsp_sec/y771_beyond1_phole.bin";
+		support_fod;
 		sec,tclm_level = <2>;
-		sec,afe_base = <0x0205>;
+		sec,afe_base = <0x0206>;
 	};
 };

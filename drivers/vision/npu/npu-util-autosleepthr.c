@@ -58,16 +58,16 @@ static void dump_auto_sleep_thread(const struct auto_sleep_thread *ctx)
 	BUG_ON(!ctx);
 	BUG_ON(!ctx->thread_ref);
 
-	npu_dbg("--Auto sleep thread at %p --\n"
-		"thread_ref = %p {\n"
+	npu_dbg("--Auto sleep thread at %pK --\n"
+		"thread_ref = %pK {\n"
 		"\tstate = %ld\n"
 		"\tpid = %u\n"
 		"\ttgid = %u\n"
-		"\tset_child_tid = %p\n"
+		"\tset_child_tid = %pK\n"
 		"name = %s\n"
-		"do_task = %p\n"
-		"check_work = %p\n"
-		"task_param = {.data = %p}\n"
+		"do_task = %pK\n"
+		"check_work = %pK\n"
+		"task_param = {.data = %pK}\n"
 		"no_activity_threshold = %d\n"
 		"thr_state = %d\n"
 		"----------------------------\n",
@@ -103,7 +103,7 @@ static int auto_sleep_thread_thrfunc(void *data)
 	struct auto_sleep_thread *thrctx = (struct auto_sleep_thread *)data;
 	int no_activity_cnt = 0;
 
-	npu_info("ASThread[%s] thrfunc is initiated. ctx = %p\n"
+	npu_info("ASThread[%s] thrfunc is initiated. ctx = %pK\n"
 		 , thrctx->name, thrctx);
 	/* Execute thread task */
 	BUG_ON(!thrctx);
@@ -112,7 +112,7 @@ static int auto_sleep_thread_thrfunc(void *data)
 	while (!kthread_should_stop()) {
 		/* Execute thread task */
 		if (!(thrctx->do_task)) {
-			npu_trace("no do_task defined. terminating AST. thrctx(%p)\n", thrctx);
+			npu_trace("no do_task defined. terminating AST. thrctx(%pK)\n", thrctx);
 			return 0;
 		}
 		num_activity = thrctx->do_task(&(thrctx->task_param));
@@ -169,7 +169,7 @@ int auto_sleep_thread_create(struct auto_sleep_thread *newthr, const char *print
 	newthr->no_activity_threshold = DEFAULT_NO_ACTIVITY_THRESHOLD;
 	auto_sleep_thread_set_state(newthr, THREAD_STATE_INITIALIZED);
 
-	npu_info("Creating Auto Sleep Thread(%s): Completed - newthr(%p), do_task(%p)\n",
+	npu_info("Creating Auto Sleep Thread(%s): Completed - newthr(%pK), do_task(%pK)\n",
 		 newthr->name, newthr, newthr->do_task);
 	return 0;
 }
@@ -179,7 +179,7 @@ int auto_sleep_thread_start(struct auto_sleep_thread *thrctx, struct auto_sleep_
 {
 	BUG_ON(!thrctx);
 	BUG_ON(thrctx->thread_ref);	/* Should not have thread object */
-	npu_info("Starting Autho Sleep Thread[%s] : Starting - newthr = %p, do_task = %p\n",
+	npu_info("Starting Autho Sleep Thread[%s] : Starting - newthr = %pK, do_task = %pK\n",
 		 thrctx->name, thrctx, thrctx->do_task);
 
 	/* Initialize companion objects */
@@ -192,10 +192,10 @@ int auto_sleep_thread_start(struct auto_sleep_thread *thrctx, struct auto_sleep_
 	thrctx->thread_ref = kthread_run(auto_sleep_thread_thrfunc, thrctx, thrctx->name);
 	dump_auto_sleep_thread(thrctx);
 	if (IS_ERR(thrctx->thread_ref)) {
-		npu_err("NPU: kthread_run failed(%p) [%s]\n", thrctx->thread_ref, thrctx->name);
+		npu_err("NPU: kthread_run failed(%pK) [%s]\n", thrctx->thread_ref, thrctx->name);
 		return -EFAULT;
 	}
-	npu_info("Starting Auto Sleep Thread[%s] : Completed - newthr = %p, do_task = %p\n",
+	npu_info("Starting Auto Sleep Thread[%s] : Completed - newthr = %pK, do_task = %pK\n",
 		 thrctx->name, thrctx, thrctx->do_task);
 	return 0;
 }
@@ -212,7 +212,7 @@ int auto_sleep_thread_terminate(struct auto_sleep_thread *thrctx)
 	BUG_ON(!thrctx);
 	BUG_ON(!thrctx->thread_ref);
 
-	npu_info("terminating auto sleep thread(%s) : starting - newthr(%p), do_task(%p)\n",
+	npu_info("terminating auto sleep thread(%s) : starting - newthr(%pK), do_task(%pK)\n",
 		 thrctx->name, thrctx, thrctx->do_task);
 
 	dump_auto_sleep_thread(thrctx);

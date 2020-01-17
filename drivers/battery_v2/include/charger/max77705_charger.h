@@ -366,6 +366,8 @@ struct max77705_charger_data {
 	u8		cnfg00_mode;
 	int uvlo_attach_flag;
 	int uvlo_attach_cable_type;
+ 
+	int switching_freq;
 
 	int		irq_bypass;
 	int		irq_batp;
@@ -401,6 +403,8 @@ struct max77705_charger_data {
 	int		jig_gpio;
 
 	bool enable_sysovlo_irq;
+	bool enable_noise_wa;
+
 	int irq_sysovlo;
 	struct wake_lock sysovlo_wake_lock;
 

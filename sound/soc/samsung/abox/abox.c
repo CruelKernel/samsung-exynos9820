@@ -2527,6 +2527,9 @@ static int abox_modem_notifier(struct notifier_block *nb,
 	ABOX_IPC_MSG msg;
 	struct IPC_SYSTEM_MSG *system_msg = &msg.msg.system;
 
+	if (!abox_is_on())
+		return NOTIFY_DONE;
+
 	dev_info(&data->pdev->dev, "%s(%lu)\n", __func__, action);
 
 	msg.ipcid = IPC_SYSTEM;
@@ -2536,8 +2539,7 @@ static int abox_modem_notifier(struct notifier_block *nb,
 		break;
 	case MODEM_EVENT_EXIT:
 		system_msg->msgtype = ABOX_STOP_VSS;
-		if (abox_is_on())
-			abox_dbg_print_gpr(dev, data);
+		abox_dbg_print_gpr(dev, data);
 		break;
 	case MODEM_EVENT_ONLINE:
 		system_msg->msgtype = ABOX_START_VSS;

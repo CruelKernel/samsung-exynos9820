@@ -125,7 +125,7 @@ void dbg_print_error(void)
 
 void dbg_print_ncp_header(struct ncp_header *nhdr)
 {
-	npu_info("============= ncp_header at %p =============\n", nhdr);
+	npu_info("============= ncp_header at %pK =============\n", nhdr);
 	npu_info("mabic_number1 \t: 0X%X\n", nhdr->magic_number1);
 	npu_info("hdr_version \t\t: 0X%X\n", nhdr->hdr_version);
 	npu_info("hdr_size \t\t: 0X%X\n", nhdr->hdr_size);
@@ -144,14 +144,14 @@ void dbg_print_ncp_header(struct ncp_header *nhdr)
 
 void dbg_print_interface(void)
 {
-	npu_info("=============  interface at %p =============\n", &interface);
-	npu_info("mbox_hdr \t\t: 0x%p\n", interface.mbox_hdr);
+	npu_info("=============  interface at %pK =============\n", &interface);
+	npu_info("mbox_hdr \t\t: 0x%pK\n", interface.mbox_hdr);
 	npu_info("mbox_hdr.max_slot \t: %d\n", interface.mbox_hdr->max_slot);
 	npu_info("mbox_hdr.version \t: %d\n", interface.mbox_hdr->version);
 	npu_info("mbox_hdr.signature2 \t: 0X%x\n", interface.mbox_hdr->signature2);
 	npu_info("mbox_hdr.signature1 \t: 0X%x\n", interface.mbox_hdr->signature1);
-	npu_info("sfr \t\t\t: 0x%p\n", interface.sfr);
-	npu_info("addr \t\t\t: 0x%p\n", interface.addr);
+	npu_info("sfr \t\t\t: 0x%pK\n", interface.sfr);
+	npu_info("addr \t\t\t: 0x%pK\n", interface.addr);
 }
 
 
@@ -244,7 +244,7 @@ static ssize_t get_ncp_hdr_size(const struct npu_nw *nw)
 	ncp_header = (struct ncp_header *)nw->ncp_addr.vaddr;
 	//dbg_print_ncp_header(ncp_header);
 	if (ncp_header->magic_number1 != NCP_MAGIC1) {
-		npu_info("invalid MAGIC of NCP header (0x%08x) at (%p)", ncp_header->magic_number1, ncp_header);
+		npu_info("invalid MAGIC of NCP header (0x%08x) at (%pK)", ncp_header->magic_number1, ncp_header);
 		return -EINVAL;
 	}
 	return ncp_header->hdr_size;

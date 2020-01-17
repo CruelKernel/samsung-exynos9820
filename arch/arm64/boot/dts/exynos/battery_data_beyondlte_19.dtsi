@@ -9,17 +9,26 @@
  * published by the Free Software Foundation.
  */
 
-#include "battery_data_beyond0lte_common.dtsi"
+#include "battery_data_beyondlte_common.dtsi"
 
 / {
 	fragment@battery {
 		target-path = "/";
 		__overlay__ {
 			battery {
-				battery,wpc_en = <&expander_gpios 8 0>;
+				battery,wpc_en = <&gpg0 1 0>;
 			};
 		}; /* end of __overlay__ */
 	}; /* end of fragment */
+};
+
+&pinctrl_5 {
+	wpc_en: wpc-en {
+		samsung,pins = "gpg0-1";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
 };
 
 

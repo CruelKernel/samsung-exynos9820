@@ -119,11 +119,11 @@ void ram_dump_fault_listner(struct npu_device *npu)
 
 	if (tcu_dump_addr) {
 		memcpy_fromio(tcu_dump_addr, system->tcu_sram.vaddr, system->tcu_sram.size);
-		pr_err("NPU TCU SRAM dump - %p / %paB\n", tcu_dump_addr, &system->tcu_sram.size);
+		pr_err("NPU TCU SRAM dump - %pK / %paB\n", tcu_dump_addr, &system->tcu_sram.size);
 	}
 	if (idp_dump_addr) {
 		memcpy_fromio(idp_dump_addr, system->idp_sram.vaddr, system->idp_sram.size);
-		pr_err("NPU IDP SRAM dump - %p / %paB\n", idp_dump_addr, &system->idp_sram.size);
+		pr_err("NPU IDP SRAM dump - %pK / %paB\n", idp_dump_addr, &system->idp_sram.size);
 	}
 	/* tcu_dump_addr and idp_dump_addr are not freed, because we expect them left on ramdump */
 
@@ -180,7 +180,7 @@ static ssize_t __npu_sram_dump_read(
 
 	memcpy_fromio((void *)tmp_buf, sram_vaddr, sram_size);
 	for (i = 0; i < sram_size / sizeof(u32); i += 4) {
-		npu_info("SRAM %p -> %p : %08x %08x %08x %08x\n",
+		npu_info("SRAM %pK -> %pK : %08x %08x %08x %08x\n",
 				sram_vaddr + i * sizeof(u32), tmp_buf + i,
 				*(tmp_buf + i), *(tmp_buf + i + 1),
 				*(tmp_buf + i + 2), *(tmp_buf + i + 3));
@@ -196,7 +196,7 @@ static ssize_t __npu_sram_dump_read(
 		// return copied size (target size - uncopied size)
 		ret = sram_size - ret;
 	} else {
-		npu_info("buffer inaccessible : 0x%p (%zd)\n", outbuf, sram_size);
+		npu_info("buffer inaccessible : 0x%pK (%zd)\n", outbuf, sram_size);
 		// no copy, return target size
 		ret = sram_size;
 	}
@@ -218,7 +218,7 @@ static ssize_t __NPU_SRAM##_sram_dump_read(	\
 		struct file *file, char __user *buf, size_t count, loff_t *offp)	\
 {	\
 	BUG_ON(!npu_memdump.__NPU_SRAM##_sram.vaddr);	\
-	npu_info(#__NPU_SRAM " SRAM dump : va 0x%p + %zx (pa 0x%x + %zx), 0x%zx bytes\n",	\
+	npu_info(#__NPU_SRAM " SRAM dump : va 0x%pK + %zx (pa 0x%x + %zx), 0x%zx bytes\n",	\
 			npu_memdump.__NPU_SRAM##_sram.vaddr,	\
 			__NPU_SRAM##_sram_dump_offset,		\
 			npu_memdump.__NPU_SRAM##_sram.paddr,	\
@@ -273,15 +273,15 @@ int npu_util_memdump_probe(struct npu_system *system)
 	atomic_set(&npu_memdump.registered, 0);
 	npu_memdump.tcu_sram = system->tcu_sram;
 	npu_memdump.idp_sram = system->idp_sram;
-	probe_info("%s: paddr = %08x / vaddr = %p\n", FW_MEM_LOG_NAME,
-		   system->tcu_sram.paddr + MEM_LOG_OFFSET,
-		   system->tcu_sram.vaddr + MEM_LOG_OFFSET);
+	probe_info("%s: paddr = %08x\n", FW_MEM_LOG_NAME,
+		   system->tcu_sram.paddr + MEM_LOG_OFFSET
+		   );
 #ifdef CONFIG_EXYNOS_NPU_DEBUG_SRAM_DUMP
-	probe_info("%s: paddr = %08x / vaddr = %p\n", TCU_SRAM_DUMP_SYSFS_NAME,
-		   system->tcu_sram.paddr, system->tcu_sram.vaddr);
+	probe_info("%s: paddr = %08x\n", TCU_SRAM_DUMP_SYSFS_NAME,
+		system->tcu_sram.paddr);
 	tcu_sram_dump_size = system->tcu_sram.size;
-	probe_info("%s: paddr = %08x / vaddr = %p\n", IDP_SRAM_DUMP_SYSFS_NAME,
-		   system->idp_sram.paddr, system->idp_sram.vaddr);
+	probe_info("%s: paddr = %08x\n", IDP_SRAM_DUMP_SYSFS_NAME,
+		system->idp_sram.paddr);
 	idp_sram_dump_size = system->idp_sram.size;
 #endif
 	return 0;

@@ -273,7 +273,8 @@ static int samsung_abox_gic_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(dev, data->irq, abox_gic_irq_handler,
-		IRQF_TRIGGER_RISING, pdev->name, dev);
+			IRQF_TRIGGER_RISING | IRQF_GIC_MULTI_TARGET,
+			pdev->name, dev);
 	if (ret < 0) {
 		dev_err(dev, "Failed to request irq\n");
 		return ret;

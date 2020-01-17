@@ -38,6 +38,7 @@
 #define FSOP_AUDIT_FAIL_ENCRYPT		51
 #define FSOP_AUDIT_FAIL_DECRYPT		52
 #define FSOP_AUDIT_FAIL_ACCESS		53
+#define FSOP_AUDIT_FAIL_DE_ACCESS	54
 
 // opcode, ret, inode
 typedef void (*fs_request_cb_t)(int, int, unsigned long);

@@ -266,7 +266,7 @@ int npu_binary_write(struct npu_binary *binary,
 	fp = filp_open(binary->fpath1, O_RDWR | O_CREAT, 0);
 	if (IS_ERR_OR_NULL(fp)) {
 		set_fs(old_fs);
-		npu_err("fail(%p) in filp_open\n", fp);
+		npu_err("fail(%pK) in filp_open\n", fp);
 		ret = -EBADF;
 		goto p_err;
 	}

@@ -1,0 +1,325 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+/plugin/;
+#include "exynos9820-sensorhub.dtsi"
+#include "exynos9820-display-lcd.dtsi"
+#include "battery_data_beyondlte_19.dtsi"
+#include "exynos9820-evt1-beyond1lte_motor.dtsi"
+#include "exynos9820-evt1-beyond1lte_if-pmic-max77705.dtsi"
+#include <dt-bindings/clock/exynos9820.h>
+#include <dt-bindings/pci/pci.h>
+#include "exynos9820-bootargs_ext.dtsi"
+#include "exynos9820-beyond1lte_camera.dtsi"
+#include "exynos9820-beyond1lte_common.dtsi"
+#include "exynos9820-beyond1lte_fingerprint_00.dtsi"
+#include "exynos9820-beyond1lte_eur_open_gpio_04.dtsi"
+#include "exynos9820-beyond1lte_optics-r00.dtsi"
+
+/ {
+	compatible = "samsung,BEYOND1LTE EUR OPEN 23", "samsung,EXYNOS9820";
+	dtbo-hw_rev = <23>;
+   	dtbo-hw_rev_end = <23>;
+
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			model = "Samsung BEYOND1LTE EUR OPEN 23 board based on EXYNOS9820";
+			pinctrl@15850000 {
+				bt_hostwake: bt-hostwake {
+					samsung,pins = "gpa2-3";
+					samsung,pin-function = <0>;
+					samsung,pin-pud = <1>;
+				};
+			};
+			pinctrl@10430000 {
+				bt_btwake: bt-btwake {
+					samsung,pins = "gpg2-0";
+					samsung,pin-function = <1>;
+					samsung,pin-pud = <0>;
+					samsung,pin-con-pdn = <3>;
+					samsung,pin-pud-pdn = <0>;
+				};
+			};
+			pinctrl@15C30000 {
+				bt_en: bt-en {
+					samsung,pins = "gpm8-0";
+					samsung,pin-function = <1>;
+					samsung,pin-pud = <0>;
+					samsung,pin-con-pdn = <3>;
+					samsung,pin-pud-pdn = <0>;
+				};
+			};
+			bluetooth {
+				compatible = "samsung,bcm43xx";
+				gpios = <&gpm8 0 0   /*BT_EN*/
+				&gpg2 0 0    /*BT_WAKE*/
+				&gpa2 3 0xF    /*BT_HOST_WAKE*/ >;
+				pinctrl-names = "default";
+				pinctrl-0=<&bt_hostwake &bt_btwake &bt_en>;
+				status = "okay";
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+
+	fragment@camera {
+		target-path = "/";
+		__overlay__ {
+			/* Ultra Wide CAMERA */
+			fimc_is_sensor_3p9: fimc-is_sensor_3p9@2D {
+				power_seq_id = <1>;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+}; /* end of root */
+
+&pinctrl_6 {
+	spi7_bus_suspend: spi7-bus-suspend {
+		samsung,pins = "gpp4-2", "gpp4-1", "gpp4-0";
+		samsung,pin-function = <0>;	/* INPUT */
+		samsung,pin-pud = <1>;		/* DOWN */
+		samsung,pin-drv = <0>;
+	};
+	spi7_cs_suspend: spi7-cs-suspend {
+		samsung,pins = "gpp4-3";
+		samsung,pin-function = <0>;	/* INPUT */
+		samsung,pin-pud = <1>;		/* DOWN */
+		samsung,pin-drv = <0>;
+	};
+};
+
+/* SPI USI_PERIC1_USI06_SPI */
+&spi_7 {
+	status = "okay";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	pinctrl-names = "ese_active", "ese_suspend";
+	pinctrl-0 = <&spi7_bus &spi7_cs>;
+	pinctrl-1 = <&spi7_bus_suspend &spi7_cs_suspend>;
+
+	ese_spi@0 {
+		compatible = "ese_p3";
+		reg = <0>;
+		spi-max-frequency = <13000000>;
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		p3-vdd-1p8= "VDD_ESE_1P8";
+
+		clocks = <&clock GATE_USI06_USI>, <&clock DOUT_CLK_PERIC1_USI06_USI>;
+		clock-names = "pclk", "sclk";
+		ese_p3,cs-gpio = <&gpp4 3 0>;
+
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+			samsung,spi-chip-select-mode = <0>;
+		};
+	};
+};
+
+&pinctrl_6 {
+	nfc_en: nfc-en {
+		samsung,pins = "gpp6-2";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+
+	nfc_firm: nfc-firm {
+		samsung,pins = "gpp6-3";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+};
+
+&hsi2c_20 {
+	gpios = <&gpp5 0 0 &gpp5 1 0>;
+	status = "okay";
+	clock-frequency = <400000>;
+
+	sec-nfc@27 {
+		compatible = "sec-nfc";
+		reg = <0x27>;
+
+		interrupts = <2 0 0>;
+		interrupt-parent = <&gpa1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&nfc_en &nfc_firm>;
+
+		sec-nfc,ven-gpio = <&gpp6 2 0>;
+		sec-nfc,irq-gpio = <&gpa1 2 0>;
+		sec-nfc,firm-gpio = <&gpp6 3 0>;
+		sec-nfc,clk_req-gpio = <&gpa2 6 0xf>;
+		sec-nfc,clk_use = <2>;
+		sec-nfc,nfc_pvdd = "VDD_NFC_1P8";
+
+		clocks = <&clock OSC_NFC>;
+		clock-names = "oscclk_nfc";
+		sec-nfc,nfc_ap_clk;
+		sec-nfc,ldo_control;
+	};
+};
+
+&spi_17 {
+	BCM4773@0 {
+		ssp-acc-position = <4>;
+		ssp-mag-position = <7>;
+		ssp-mag-array = /bits/ 8 <105 83 186 37 145 10 0 219 211 55 95 238 225 25 0 168 255 108 134 7 
+					191 253 92 99 10 153 28>;
+		ssp-thermi-up = /bits/ 16 <3232 3206 3169 3123 3062 2993 2905 2792 2681 2549 2397 2235 2063
+					1891 1716 1546 1385 1234 1089 955 838 730 637>;
+		ssp-thermi-sub = /bits/ 16 <3240 3216 3177 3129 3076 2998 2912 2806 2689 2553 2406 2248 2073
+					1902 1731 1560 1399 1247 1098 970 847 745 652>;
+	};
+};
+
+&pinctrl_2 {
+		shub_ap_int_copr: shub-ap-int-copr {
+			samsung,pins = "gpm9-0";
+			samsung,pin-function = <0>;
+			samsung,pin-pud = <0>;
+			samsung,pin-drv = <0>;
+		};
+};
+
+&pinctrl_5 {
+	aux_oe: aux-oe {
+		samsung,pins = "gpg1-6";
+		samsung,pin-function = <1>; 
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+
+	sbu_sel: sbu-sel {
+		samsung,pins = "gpg4-0";
+		samsung,pin-function = <1>; 
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+};
+
+&displayport {
+	status = "okay";
+	dp,aux_sw_oe = <&gpg1 6 0>;
+	dp,sbu_sw_sel = <&gpg4 0 0>;
+	dp,usb_con_sel = <&gpg0 4 0>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&aux_oe &sbu_sel>;
+};
+
+&speedy {
+	s2mps19mfd@00 {
+		smpl_warn_en = <1>; /* 1 : enable , 0 : disable */
+		smpl_warn_dev2= <1>; 
+	};
+};
+
+/* PERIC1 CAM1 */
+&hsi2c_1 {
+	status = "disabled";
+};
+
+/* PERIC1 CAM2 */
+&hsi2c_2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	fimc-is-3p9@2D {
+		compatible = "samsung,exynos5-fimc-is-cis-3p9";
+		reg = <0x2D>; /* 1 bit right shift */
+		id = <4>; /* matching fimc_is_sensor id */
+		setfile = "setA";
+		status = "okay";
+	};
+
+	rear2_eeprom@51 { /* Ultra wide eeprom */
+		compatible = "samsung,rear2-eeprom-i2c";
+		reg = <0x51>;
+
+		rom_power_position = <4>;
+		rom_size = <0x4000>;
+		cal_map_es_version = <10>;
+		camera_module_es_version = "A";
+		/*skip_cal_loading;*/
+
+		/* Beyond_Rear_Cal_Map_V010_20180709_for_ALL */
+		/* 0 header */
+		header_crc_check_list = <0x0000 0x00FB 0x00FC>;
+		/* 0 master LSC */
+		/* 1 master all */
+		crc_check_list = <0x0100 0x1AFB 0x1AFC
+							0x2200 0x22DF 0x22FC>;
+
+		/* Master */
+		rom_header_version_start_addr = <0x40>;
+		rom_header_cal_data_start_addr = <0x100>;
+
+		rom_header_cal_map_ver_start_addr = <0x50>;
+		rom_header_isp_setfile_ver_start_addr = <0x54>;
+		rom_header_project_name_start_addr = <0x5E>;
+
+		rom_header_module_id_addr = <0xAE>; /* 0xA8 + reserved bytes */
+		rom_header_sensor_id_addr = <0xB8>;
+
+		rom_header_mtf_data_addr = <0x66>;
+
+		rom_awb_master_addr = <0x2200>;
+		rom_awb_module_addr = <0x2224>;
+	};
+};
+
+&hsi2c_14 {
+    gpios = <&gpp2 4 0 &gpp2 5 0>;
+    clock-frequency = <400000>;
+ 
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+ 
+    sx9330-i2c@28 {
+        compatible = "sx9330";
+        reg = <0x28>;
+        status = "okay";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&grip_irq>;
+
+        interrupt-parent = <&gpa3>;
+        interrupts = <0 0 0>;
+ 
+        sx9330,nirq-gpio = <&gpa3 0 0>;
+ 
+        sx9330,scanperiod_reg = <0x00000032>; /* scanperiod : 102ms */
+        sx9330,gnrlctrl2_reg = <0x00FF0002>;
+        sx9330,afeparamsph0_reg = <0x0000021F>;
+        sx9330,afephph0_reg = <0x3FBB8548>;
+        sx9330,adcfiltph0_reg = <0x0510101D>;
+        sx9330,afeparamsph1_reg = <0x00001E2F>;  /* again : 9.9pF, sampling freq : 111.11 khz */
+        sx9330,adcfiltph1_reg = <0x00104615>;    /* threshold : 2450 */
+        sx9330,avgbfilt_reg = <0x60600C00>;   /* AVGPOSFILT : 1/256, AVGNEGFILT : 1/2 */
+        sx9330,avgafilt_reg = <0x00000000>;
+        sx9330,advdig3_reg = <0x00000000>;
+        sx9330,advdig4_reg = <0x00000000>;
+        sx9330,refcorra_reg = <0x00000000>;
+
+    };
+};
+

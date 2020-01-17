@@ -28,7 +28,6 @@
 				position = <0>;	/* Rear:0. Front:1. Rear_sub:2. Secure:3. */
 				id = <0>; /* fimc_is_sensor id */
 				mclk_ch = <0>;
-				power_seq_id = <1>;
 				sensor_i2c_ch = <0>; /* SENSOR_CONTROL_I2C0 */
 
 				rom_type = <2>; /* ROM_TYPE_EEPROM */
@@ -62,6 +61,58 @@
 
 				aperture {
 					product_name = <100>; /* NOTHING */
+				};
+			};
+
+			/* REAR2 CAMERA */
+			fimc_is_sensor_3m3: fimc-is_sensor_3m3@5A {
+				compatible = "samsung,sensor-module-3m3";
+
+				pinctrl-names = "pin0", "pin1", "pin2", "release";
+				pinctrl-0 = <>;
+				pinctrl-1 = <&sensor_mclk0_out>;
+				pinctrl-2 = <&sensor_mclk0_fn>;
+				pinctrl-3 = <>;
+
+				position = <2>; /* Rear:0. Front:1, Tele:2 */
+				id = <2>; /* fimc_is_sensor id */
+				mclk_ch = <0>;
+				sensor_i2c_ch = <2>; /* SENSOR_CONTROL_I2C2 */
+
+				rom_type = <2>; /* ROM_TYPE_EEPROM */
+				rom_id = <0>;
+				rom_cal_index = <1>;
+				rom_dualcal_id = <0>;
+				rom_dualcal_index = <1>;
+
+				gpio_mclk = <&gpc1 4 0x1>; /* mclk shared with wide-cam */
+				gpio_reset = <&gpg3 0 0x1>; /* sensor reset */
+				gpio_ois_reset = <&gpg0 6 0x1>; /* ois reset */
+				gpio_subcam_sel = <&gpg4 3 0x1>; /* sub cam sel */
+
+				status = "okay";
+
+				af {
+					product_name = <18>; /* ACTUATOR_NAME_AK737X : ak7371 or ak7374 */
+					i2c_ch = <3>; /* SENSOR_CONTROL_I2C3 */
+				};
+
+				flash {
+					product_name = <11>; /* FLASH_GPIO */
+				};
+
+				preprocessor {
+					product_name = <100>; /* NOTHING */
+				};
+
+				ois {
+					product_name = <100>; /* NOTHING */
+				};
+
+				mcu {
+					product_name = <1>; /* STM32 */
+					i2c_addr = <0x51>;
+					i2c_ch = <3>; /* SENSOR_CONTROL_I2C3 */
 				};
 			};
 
@@ -109,7 +160,7 @@
 
 			fimc_is_flash_gpio: fimc-is-flash-gpio@0 {
 				compatible = "samsung,sensor-flash-s2mpb02";
-				id = <0 4>;
+				id = <0 2 4>;
 				status = "okay";
 
 				torch-gpio = <&gpg2 4 0x1>;
@@ -137,6 +188,7 @@
 
 				gpio_mclk = <&gpc1 5 0x1>;
 				gpio_reset = <&gpg2 5 0x1>; /* sensor reset */
+				gpio_subcam_sel = <&gpg4 3 0x1>; /* sub cam sel */
 				status = "okay";
 
 				af {
@@ -164,7 +216,7 @@
 	vender {
 		rear_sensor_id = <37>; /* 2L4 */
 		front_sensor_id = <38>; /* 3J1 */
-		rear2_sensor_id = <0>; /* SENSOR_NAME_NOTHING */
+		rear2_sensor_id = <33>; /* 3M3 */
 		front2_sensor_id = <0>; /* SENSOR_NAME_NOTHING */
 		rear3_sensor_id = <40>; /* 3P9 */
 		use_module_check;
@@ -174,9 +226,9 @@
 		aperture_sensor_index = <0>;
 		mcu_sensor_index = <0>;
 
-		max_supported_camera = <4>;
-		supported_cameraId = <0 1 23 50>;
-		/* REAR, FRONT, DUAL_REAR_PORTRAIT, REAR_3RD */
+		max_supported_camera = <7>;
+		supported_cameraId = <0 1 20 21 23 50 52>;
+		/* REAR, FRONT, DUAL_REAR_ZOOM, TELE, WIDE, REAR_2ND, REAR_3RD */
 
 		/* sysfs camera id */
 		max_camera_num = <5>;
@@ -223,7 +275,17 @@
 			valid = <0>;		/* 0 : INVALID , 1 : VALID   */
 		};
 		camera_info4 {			// 4 : sysfs rear3
-			valid = <0>;		/* 0 : INVALID , 1 : VALID   */
+			internal_id = <2>;	// 4 : tele
+			isp = <0>;			/* 0 : INT , 1 : EXT , 2 : SOC */
+			cal_memory = <2>;	/* 0 : N , 1 : FROM , 2 : EEPROM , 3 : OTP  */
+			read_version = <0>;	/* 0 : SYSFS , 1 : CAMON */
+			core_voltage = <0>;	/* 0 : N , 1 : Y  */
+			upgrade = <0>;		/* 0 : N , 1 : SYSFS , 2 : CAMON */
+			fw_write = <0>;		/* 0 : N,  1 : OS, 2 : SD, 3 : ALL */
+			fw_dump = <0>;		/* 0 : N , 1 : Y  */
+			companion = <0>;	/* 0 : N , 1 : Y  */
+			ois = <1>;			/* 0 : N , 1 : Y  */
+			valid = <1>;		/* 0 : INVALID , 1 : VALID   */
 		};
 	};
 
@@ -724,6 +786,14 @@
 		samsung,pin-drv = <0>;
 	};
 
+	/* PERIC1 USI07_I2C */
+	hsi2c19_bus_in: hsi2c19-bus-in {
+		samsung,pins = "gpp4-6", "gpp4-7";
+		samsung,pin-function = <0>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
 	/* PERIC1 USI08_I2C */
 	hsi2c21_bus_in: hsi2c21-bus-in {
 		samsung,pins = "gpp5-2", "gpp5-3";
@@ -865,7 +935,7 @@
 	mcu@51 {
 		compatible = "samsung,exynos5-fimc-is-ois-mcu";
 		reg = <0x51>;
-		id = <0>;
+		id = <0 2>;
 		gpio_mcu_reset = <&gpg0 6 0x1>; /* ois reset */
 		gpio_mcu_boot0 = <&gpm29 0 0x1>; /* mcu boot0 */
 	};
@@ -978,6 +1048,17 @@
 		vendor_use_sleep_mode;
 	};
 
+	fimc-is-actuator@0F {
+		compatible = "samsung,exynos5-fimc-is-actuator-ak737x";
+		reg = <0x0F>;
+		id = <2>; /* matching sensor id */
+		/* AK7374: addr 0xF3, data 0x0E */
+		vendor_product_id = <0xF3 0x0E>;
+		vendor_first_pos = <120>;
+		vendor_first_delay = <2000>;
+		vendor_use_sleep_mode;
+	};
+
 	rear_eeprom@50 {
 		compatible = "samsung,rear-eeprom-i2c";
 		reg = <0x50>;
@@ -999,7 +1080,11 @@
 							0x4400 0x75DF 0x75FC>;
 
 		/* 0 u-wide dual cal data */
-		dual_crc_check_list = <0x7600 0x7EFB 0x7EFC>;
+		/* 1 tele LSC */
+		/* 2 tele dual cal data */
+		dual_crc_check_list = <0x7600 0x7EFB 0x7EFC
+								0x7F00 0x98FB 0x98FC
+								0xA000 0xB7DF 0xB7FC>;
 
 		/* Master */
 		rom_header_version_start_addr = <0x50>;
@@ -1019,19 +1104,19 @@
 		rom_awb_module_addr = <0x7474>;
 
 		rom_af_cal_macro_addr = <0x7430>;
-		/* rom_af_cal_d50_addr = <0x7428>; */ /* b0 has no tele camera */
+		rom_af_cal_d50_addr = <0x7428>;
 		rom_af_cal_pan_addr = <0x7424>;
 
 		/* Slave 0 */
-		/* rom_header_sensor2_version_start_addr = <0x40>; */
-		/* rom_header_sensor2_id_addr = <0xC8>; */
-		/* rom_header_sensor2_mtf_data_addr = <0x14C>; */
+		rom_header_sensor2_version_start_addr = <0x40>;
+		rom_header_sensor2_id_addr = <0xC8>;
+		rom_header_sensor2_mtf_data_addr = <0x14C>;
 
-		/* rom_sensor2_awb_master_addr = <0xAE60>; */
-		/* rom_sensor2_awb_module_addr = <0xAE84>; */
+		rom_sensor2_awb_master_addr = <0xAE60>;
+		rom_sensor2_awb_module_addr = <0xAE84>;
 
-		/* rom_sensor2_af_cal_d50_addr = <0xAE38>; */
-		/* rom_sensor2_af_cal_pan_addr = <0xAE34>; */
+		rom_sensor2_af_cal_d50_addr = <0xAE38>;
+		rom_sensor2_af_cal_pan_addr = <0xAE34>;
 
 		/* Dual cal slave 0 - Ultra wide */
 		rom_dualcal_slave0_start_addr = <0x7600>;
@@ -1041,10 +1126,40 @@
 		rom_dualcal_slave0_tilt_list = <0x7660 0x7664 0x7668 0x76C0 0x76C4
 										0x7DE0 0x7DE4 0x7DE8 0x7600>;
 
+		/* Dual cal slave 1 - Tele */
+		rom_dualcal_slave1_start_addr = <0xAF10>;
+		rom_dualcal_slave1_size = <0x800>; /* 2048 */
+		/* x y z sx sy */
+		/* range max_err avg_err dll_version*/
+		rom_dualcal_slave1_tilt_list = <0xAF70 0xAF74 0xAF78 0xAFD0 0xAFD4
+										0xB6F0 0xB6F4 0xB6F8 0xAF10>;
+
 		/* sensor ois - xgg ygg xcoef ycoef xsupper ysupper calmark */
 		/* sensor2 ois - xgg ygg xcoef ycoef xsupper ysupper calmark */
 		rom_ois_list = <0x7550 0x7554 0xB625 0xB627 0x7578 0x757A 0x7570
 						0xB730 0xB734 0xB629 0xB62B 0xB758 0xB75A 0xB750>;
+	};
+};
+
+/* USI07_USI_I2C */
+&hsi2c_19 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	gpios = <&gpp4 6 0 &gpp4 7 0>;
+	status = "okay";
+	clock-frequency = <400000>;
+	samsung,reset-before-trans;
+
+	pinctrl-names = "default","on_i2c","off_i2c";
+	pinctrl-0 = <&hsi2c19_bus_in>;
+	pinctrl-1 = <&hsi2c19_bus>;
+	pinctrl-2 = <&hsi2c19_bus_in>;
+
+	fimc-is-3m3@2D {
+		compatible = "samsung,exynos5-fimc-is-cis-3m3";
+		reg = <0x2D>; /* 1 bit right shift */
+		id = <2>; /* matching fimc_is_sensor id */
+		setfile = "setA";
 	};
 };
 

@@ -431,8 +431,57 @@ static int generate_brt_step_table(struct brightness_table *brt_tbl)
 	return ret;
 }
 
-
 #ifdef CONFIG_SUPPORT_DIM_FLASH
+static int adjust_gamma_table(struct panel_info *panel_data, int id)
+{
+	struct panel_dimming_info *panel_dim_info;
+	struct maptbl *tbl = NULL;
+	s32 (*out_gamma_tbl)[MAX_COLOR] = NULL;
+	s32 (*nor_gamma_tbl)[MAX_COLOR] = NULL;
+	s32 (*ofs_gamma_tbl)[MAX_COLOR] = NULL;
+	struct tp *tp;
+	int nr_luminance;
+	int i, nr_tp, ret = 0;
+
+	panel_dim_info = panel_data->panel_dim_info[id];
+	tp = panel_dim_info->dim_init_info.tp;
+	nr_tp = panel_dim_info->dim_init_info.nr_tp;
+	nr_luminance = panel_dim_info->nr_luminance;
+
+	out_gamma_tbl = kzalloc(sizeof(s32) * nr_tp * MAX_COLOR, GFP_KERNEL);
+	nor_gamma_tbl = kzalloc(sizeof(s32) * nr_tp * MAX_COLOR, GFP_KERNEL);
+
+#ifdef CONFIG_SUPPORT_HMD
+	tbl = find_panel_maptbl_by_index(panel_data,
+			(id == PANEL_BL_SUBDEV_TYPE_HMD) ? HMD_GAMMA_MAPTBL : GAMMA_MAPTBL);
+#else
+	tbl = find_panel_maptbl_by_index(panel_data, GAMMA_MAPTBL);
+#endif
+
+	if (unlikely(!tbl)) {
+		pr_err("%s panel_bl-%d gamma_maptbl not found\n", __func__, id);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < nr_luminance; i++) {
+		ofs_gamma_tbl = (s32 (*)[MAX_COLOR])&panel_dim_info->dim_flash_gamma_offset[i * nr_tp * MAX_COLOR];
+		gamma_ctoi_with_dummy(nor_gamma_tbl, &tbl->arr[i *
+				sizeof_row(tbl)], nr_tp);
+		gamma_table_add_offset(nor_gamma_tbl, ofs_gamma_tbl, out_gamma_tbl, tp, nr_tp);
+		gamma_itoc((u8 *)&tbl->arr[i * sizeof_row(tbl)],
+				out_gamma_tbl, nr_tp);
+	}
+
+	pr_info("%s done\n", __func__);
+
+err:
+	kfree(out_gamma_tbl);
+	kfree(nor_gamma_tbl);
+
+	return ret;
+}
+
 static int generate_gamma_table_using_flash(struct panel_info *panel_data, int id)
 {
 	struct maptbl *tbl = NULL;
@@ -467,6 +516,9 @@ static int generate_gamma_table_using_flash(struct panel_info *panel_data, int i
 				(id == PANEL_BL_SUBDEV_TYPE_HMD) ?
 				DIM_FLASH_HMD_GAMMA : DIM_FLASH_GAMMA,
 				i, 0, sizeof_row(tbl));
+
+	if (panel_data->panel_dim_info[id]->dim_flash_gamma_offset)
+		ret = adjust_gamma_table(panel_data, id);
 
 	pr_info("%s panel_bl-%d done\n", __func__, id);
 
