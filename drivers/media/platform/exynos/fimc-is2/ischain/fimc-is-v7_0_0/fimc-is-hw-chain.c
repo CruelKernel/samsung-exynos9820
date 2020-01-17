@@ -688,7 +688,8 @@ int fimc_is_hw_camif_cfg(void *sensor_data)
 			goto err_invalid_dma_ch;
 		}
 
-		minfo("DMA #%d VC #%d input(%d)\n", sensor, dma_ch, vc, mux_val);
+		if (!ret)
+			minfo("DMA #%d VC #%d input(%d)\n", sensor, dma_ch, vc, mux_val);
 	}
 
 err_invalid_dma_ch:

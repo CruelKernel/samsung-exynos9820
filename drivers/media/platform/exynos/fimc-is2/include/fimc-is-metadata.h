@@ -44,6 +44,7 @@ struct rational {
 #define CAMERA2_MAX_AVAILABLE_MODE		21
 #define CAMERA2_MAX_FACES			16
 #define CAMERA2_MAX_VENDER_LENGTH		400
+#define CAMERA2_AWB_VENDER_LENGTH		415
 #define CAMERA2_MAX_IPC_VENDER_LENGTH		1086
 #define CAMERA2_MAX_PDAF_MULTIROI_COLUMN	13
 #define CAMERA2_MAX_PDAF_MULTIROI_ROW		9
@@ -1193,7 +1194,8 @@ struct camera2_aa_dm {
 	uint32_t			vendor_luxIndex;       
 	uint32_t			vendor_luxStandard;
 	int32_t				vendor_aeStats4VO[8];
-	uint32_t			vendor_reserved[10];
+	int32_t				vendor_multiFrameEv;
+	uint32_t			vendor_reserved[9];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;
@@ -1541,7 +1543,7 @@ struct camera2_ae_udm {
 
 struct camera2_awb_udm {
 	uint32_t	vsLength;
-	uint32_t	vendorSpecific[CAMERA2_MAX_VENDER_LENGTH];
+	uint32_t	vendorSpecific[CAMERA2_AWB_VENDER_LENGTH];
 
 	/** vendor specific2 length */
 	uint32_t	vs2Length;

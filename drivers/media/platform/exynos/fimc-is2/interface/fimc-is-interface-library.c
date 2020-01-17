@@ -1961,6 +1961,19 @@ static void fimc_is_get_hybrid_fd_data(u32 instance,
 	}
 }
 
+void fimc_is_get_binary_version(char **buf, unsigned int type, unsigned int hint)
+{
+	char *p;
+
+	*buf = get_binary_version(type, hint);
+
+	if (type == IS_BIN_LIBRARY) {
+		p = strrchr(*buf, ']');
+		if (p)
+			*buf = p + 1;
+	}
+}
+
 void set_os_system_funcs(os_system_func_t *funcs)
 {
 	funcs[0] = (os_system_func_t)fimc_is_log_write_console;
@@ -2038,36 +2051,12 @@ void set_os_system_funcs(os_system_func_t *funcs)
 	funcs[68] = (os_system_func_t)fimc_is_alloc_dma_medrc;
 	funcs[69] = (os_system_func_t)fimc_is_free_dma_medrc;
 
+	funcs[91] = (os_system_func_t)fimc_is_get_binary_version;
 	/* TODO: re-odering function table */
 	funcs[99] = (os_system_func_t)fimc_is_event_write;
 }
 
 #ifdef USE_RTA_BINARY
-void fimc_is_get_version(char **ddk, char **rta, char **setfile, char **companion)
-{
-	char *p;
-
-	if (ddk) {
-		*ddk = fimc_is_ischain_get_version(FIMC_IS_BIN_DDK_LIBRARY);
-		p = strrchr(*ddk, ']');
-		if (p)
-			*ddk = p+1;
-	}
-	if (rta) {
-		*rta = fimc_is_ischain_get_version(FIMC_IS_BIN_RTA_LIBRARY);
-		p = strrchr(*rta, ']');
-		if (p)
-			*rta = p+1;
-	}
-	if (setfile)
-		*setfile = fimc_is_ischain_get_version(FIMC_IS_BIN_SETFILE);
-	if (companion)
-		*companion = fimc_is_ischain_get_version(FIMC_IS_BIN_COMPANION);
-
-	if (ddk && rta && setfile && companion)
-		info("%s ddk:%s rta:%s setfile:%s companion:%s", __func__, *ddk, *rta, *setfile, *companion);
-}
-
 void set_os_system_funcs_for_rta(os_system_func_t *funcs)
 {
 	/* Index 0 => log, assert */
@@ -2119,7 +2108,7 @@ void set_os_system_funcs_for_rta(os_system_func_t *funcs)
 
 	/* Index 90 => misc */
 	funcs[90] = (os_system_func_t)fimc_is_get_usec;
-	funcs[91] = (os_system_func_t)fimc_is_get_version;
+	funcs[91] = (os_system_func_t)fimc_is_get_binary_version;
 }
 #endif
 
@@ -2378,7 +2367,8 @@ int fimc_is_load_ddk_bin(int loadType)
 		}
 	}
 
-	fimc_is_ischain_version(FIMC_IS_BIN_DDK_LIBRARY, bin.data, bin.size);
+	carve_binary_version(IS_BIN_LIBRARY, IS_BIN_LIB_HINT_DDK,
+						bin.data, bin.size);
 	release_binary(&bin);
 
 	gPtr_lib_support.log_ptr = 0;
@@ -2394,7 +2384,8 @@ int fimc_is_load_ddk_bin(int loadType)
 	return 0;
 
 fail:
-	fimc_is_ischain_version(FIMC_IS_BIN_DDK_LIBRARY, bin.data, bin.size);
+	carve_binary_version(IS_BIN_LIBRARY, IS_BIN_LIB_HINT_DDK,
+						bin.data, bin.size);
 	release_binary(&bin);
 	return ret;
 }
@@ -2554,7 +2545,8 @@ int fimc_is_load_rta_bin(int loadType)
 		}
 	}
 
-	fimc_is_ischain_version(FIMC_IS_BIN_RTA_LIBRARY, bin.data, bin.size);
+	carve_binary_version(IS_BIN_LIBRARY, IS_BIN_LIB_HINT_RTA,
+						bin.data, bin.size);
 	release_binary(&bin);
 
 	set_os_system_funcs_for_rta(os_system_funcs);
@@ -2571,7 +2563,8 @@ int fimc_is_load_rta_bin(int loadType)
 	return ret;
 
 fail:
-	fimc_is_ischain_version(FIMC_IS_BIN_RTA_LIBRARY, bin.data, bin.size);
+	carve_binary_version(IS_BIN_LIBRARY, IS_BIN_LIB_HINT_RTA,
+						bin.data, bin.size);
 	release_binary(&bin);
 	return ret;
 }

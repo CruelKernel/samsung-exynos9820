@@ -202,9 +202,6 @@ int fimc_is_ischain_start_wrap(struct fimc_is_device_ischain *device,
 int fimc_is_ischain_stop_wrap(struct fimc_is_device_ischain *device,
 	struct fimc_is_group *group);
 
-void fimc_is_ischain_version(enum fimc_is_bin_type type, const char *load_bin, u32 size);
-char* fimc_is_ischain_get_version(enum fimc_is_bin_type type);
-
 /* PAF_RDMA subdev */
 int fimc_is_ischain_paf_open(struct fimc_is_device_ischain *device,
 	struct fimc_is_video_ctx *vctx);

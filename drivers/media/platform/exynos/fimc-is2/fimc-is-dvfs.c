@@ -350,6 +350,7 @@ p_again:
 
 int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 {
+	int ret;
 	struct fimc_is_core *core;
 	struct fimc_is_dvfs_ctrl *dvfs_ctrl;
 	struct fimc_is_dvfs_scenario_ctrl *external_ctrl;
@@ -393,13 +394,20 @@ int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 			continue;
 		}
 
-		if ((scenarios[i].ext_check_func(device, position, resol, fps,
-			stream_cnt, sensor_map, dual_info)) > 0) {
+		ret = scenarios[i].ext_check_func(device, position, resol, fps,
+				stream_cnt, sensor_map, dual_info);
+		switch (ret) {
+		case DVFS_MATCHED:
 			scenario_id = scenarios[i].scenario_id;
 			external_ctrl->cur_scenario_id = scenario_id;
 			external_ctrl->cur_scenario_idx = i;
 			external_ctrl->cur_frame_tick = scenarios[i].keep_frame_tick;
 			return scenario_id;
+		case DVFS_SKIP:
+			return -EAGAIN;
+		case DVFS_NOT_MATCHED:
+		default:
+			continue;
 		}
 	}
 
@@ -623,7 +631,6 @@ void fimc_is_dual_mode_update(struct fimc_is_device_ischain *device,
 		dual_info->max_fps_slave = frame->shot->ctl.aa.aeTargetFpsRange[1];
 		break;
 	default:
-		err("invalid dual sensor position: %d", sensor->position);
 		return;
 	}
 

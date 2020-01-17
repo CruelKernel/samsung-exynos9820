@@ -297,9 +297,9 @@ int callback_bbd_on_mcu_ready(void *ssh_data, bool ready)
  */
  void makeResetInfoString(char *src, char *dst)
 {
-        int i, idx = 0, totalLen = (int)strlen(src);
+        int i, idx = 0, dstLen = (int)strlen(dst), totalLen = (int)strlen(src);
         
-        for(i = 0; i < totalLen; i++) {
+        for(i = 0; i < totalLen && idx < dstLen; i++) {
             if(src[i] == '"' || src[i] == '<' || src[i] == '>')
                 continue;
             if(src[i] == ';')
@@ -322,16 +322,17 @@ int callback_bbd_on_control(void *ssh_data, const char *str_ctrl)
 	} else if (strstr(str_ctrl, BBD_CTRL_LHD_STOP)) {
 		int prefixLen = (int)strlen(BBD_CTRL_LHD_STOP) + 1; //puls one is for blank ex) "LHD:STOP "
 		int totalLen = (int)strlen(str_ctrl);
+		int copyLen = totalLen - prefixLen <= sizeof(data->resetInfo) ? totalLen - prefixLen : sizeof(data->resetInfo);
+
+		memcpy(data->resetInfo, str_ctrl + prefixLen, copyLen);
 		
-		memcpy(data->resetInfo, str_ctrl + prefixLen, totalLen - prefixLen);
-		
-			if(totalLen != prefixLen) {
-					
-					/* this value is used on debug work func */
-					memset(data->resetInfoDebug, 0, sizeof(data->resetInfoDebug));
-					makeResetInfoString(data->resetInfo, data->resetInfoDebug);
-					data->resetInfoDebugTime = get_current_timestamp();
-			}
+		if(totalLen != prefixLen) {			
+			/* this value is used on debug work func */
+			memset(data->resetInfoDebug, 0, sizeof(data->resetInfoDebug));
+			makeResetInfoString(data->resetInfo, data->resetInfoDebug);
+			data->resetInfoDebugTime = get_current_timestamp();
+		}
+
 	} else if (strstr(str_ctrl, SSP_GET_HW_REV)) {
 		return data->ap_rev;
 	} else if (strstr(str_ctrl, SSP_GET_AP_REV)) {

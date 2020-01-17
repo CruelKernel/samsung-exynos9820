@@ -1295,6 +1295,8 @@
 	snps,elastic_buf_mode_quirk;
 	usb3-lpm-capable;
 	snps,usb3_lpm_capable;
+	snps,has-lpm-erratum;
+	snps,lpm-nyet-threshold = <0>;
 	adj-sof-accuracy = <1>;
 	/*
 	 * dis-u2-freeclk-exists-quirk, dis_u2_susphy_quirk are alternative.

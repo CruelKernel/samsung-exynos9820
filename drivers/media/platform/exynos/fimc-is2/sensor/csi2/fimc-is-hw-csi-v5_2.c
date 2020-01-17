@@ -839,16 +839,7 @@ int csi_hw_vcdma_cmn_dump(u32 __iomem *base_reg)
 
 int csi_hw_phy_dump(u32 __iomem *base_reg, u32 instance)
 {
-	info("CSI PHY SFR DUMP (v%d.%d[.%d[.%d]])\n",
-		fimc_is_hw_get_field(base_reg, &csi_regs[CSIS_R_CSIS_VERSION],
-			&csi_fields[CSIS_F_MAJOR]),
-		fimc_is_hw_get_field(base_reg, &csi_regs[CSIS_R_CSIS_VERSION],
-			&csi_fields[CSIS_F_MINOR]),
-		fimc_is_hw_get_field(base_reg, &csi_regs[CSIS_R_CSIS_VERSION],
-			&csi_fields[CSIS_F_REVISION]),
-		fimc_is_hw_get_field(base_reg, &csi_regs[CSIS_R_CSIS_VERSION],
-			&csi_fields[CSIS_F_DERIVATIVE]));
-
+	info("CSI PHY SFR DUMP\n");
 	fimc_is_hw_dump_regs(base_reg, csi_phy_regs[instance], PHY_REG_CNT);
 
 	return 0;

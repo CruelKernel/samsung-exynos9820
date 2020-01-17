@@ -819,7 +819,52 @@ static struct fimc_is_reg csi_phy_regs[CSI_ID_MAX][PHY_REG_CNT] = {
 		{0x0F50, "SD3_DESKEW_CON4"},
 	},
 
-	/* MOD_M0[S4]S4S4(S2+S2) --> CSI #1 */
+	/* MOD_M0S4[S4]S4(S2+S2) --> CSI #1 */
+	{
+		{0x2B04, "SC_GNR_CON1"},
+		{0x2B0C, "SC_ANA_CON1"},
+		{0x2B10, "SC_ANA_CON2"},
+		{0x2B14, "SC_ANA_CON3"},
+		{0x2B30, "SC_TIME_CON0"},
+
+		{0x2C04, "SD0_GNR_CON1"},
+		{0x2C0C, "SD0_ANA_CON1"},
+		{0x2C10, "SD0_ANA_CON2"},
+		{0x2C14, "SD0_ANA_CON3"},
+		{0x2C24, "SD0_ANA_CON7"},
+		{0x2C30, "SD0_TIME_CON0"},
+		{0x2C34, "SD0_TIME_CON1"},
+		{0x2C50, "SD0_DESKEW_CON4"},
+
+		{0x2D04, "SD1_GNR_CON1"},
+		{0x2D0C, "SD1_ANA_CON1"},
+		{0x2D10, "SD1_ANA_CON2"},
+		{0x2D14, "SD1_ANA_CON3"},
+		{0x2D24, "SD1_ANA_CON7"},
+		{0x2D30, "SD1_TIME_CON0"},
+		{0x2D34, "SD1_TIME_CON1"},
+		{0x2D50, "SD1_DESKEW_CON4"},
+
+		{0x2E04, "SD2_GNR_CON1"},
+		{0x2E0C, "SD2_ANA_CON1"},
+		{0x2E10, "SD2_ANA_CON2"},
+		{0x2E14, "SD2_ANA_CON3"},
+		{0x2E24, "SD2_ANA_CON7"},
+		{0x2E30, "SD2_TIME_CON0"},
+		{0x2E34, "SD2_TIME_CON1"},
+		{0x2E50, "SD2_DESKEW_CON4"},
+
+		{0x2F04, "SD3_GNR_CON1"},
+		{0x2F0C, "SD3_ANA_CON1"},
+		{0x2F10, "SD3_ANA_CON2"},
+		{0x2F14, "SD3_ANA_CON3"},
+		{0x2F24, "SD3_ANA_CON7"},
+		{0x2F30, "SD3_TIME_CON0"},
+		{0x2F34, "SD3_TIME_CON1"},
+		{0x2F50, "SD3_DESKEW_CON4"},
+	},
+
+	/* MOD_M0[S4]S4S4(S2+S2) --> CSI #2 */
 	{
 		{0x2304, "SC_GNR_CON1"},
 		{0x230C, "SC_ANA_CON1"},
@@ -864,50 +909,6 @@ static struct fimc_is_reg csi_phy_regs[CSI_ID_MAX][PHY_REG_CNT] = {
 		{0x2750, "SD3_DESKEW_CON4"},
 	},
 
-	/* MOD_M0S4[S4]S4(S2+S2) --> CSI #2 */
-	{
-		{0x2B04, "SC_GNR_CON1"},
-		{0x2B0C, "SC_ANA_CON1"},
-		{0x2B10, "SC_ANA_CON2"},
-		{0x2B14, "SC_ANA_CON3"},
-		{0x2B30, "SC_TIME_CON0"},
-
-		{0x2C04, "SD0_GNR_CON1"},
-		{0x2C0C, "SD0_ANA_CON1"},
-		{0x2C10, "SD0_ANA_CON2"},
-		{0x2C14, "SD0_ANA_CON3"},
-		{0x2C24, "SD0_ANA_CON7"},
-		{0x2C30, "SD0_TIME_CON0"},
-		{0x2C34, "SD0_TIME_CON1"},
-		{0x2C50, "SD0_DESKEW_CON4"},
-
-		{0x2D04, "SD1_GNR_CON1"},
-		{0x2D0C, "SD1_ANA_CON1"},
-		{0x2D10, "SD1_ANA_CON2"},
-		{0x2D14, "SD1_ANA_CON3"},
-		{0x2D24, "SD1_ANA_CON7"},
-		{0x2D30, "SD1_TIME_CON0"},
-		{0x2D34, "SD1_TIME_CON1"},
-		{0x2D50, "SD1_DESKEW_CON4"},
-
-		{0x2E04, "SD2_GNR_CON1"},
-		{0x2E0C, "SD2_ANA_CON1"},
-		{0x2E10, "SD2_ANA_CON2"},
-		{0x2E14, "SD2_ANA_CON3"},
-		{0x2E24, "SD2_ANA_CON7"},
-		{0x2E30, "SD2_TIME_CON0"},
-		{0x2E34, "SD2_TIME_CON1"},
-		{0x2E50, "SD2_DESKEW_CON4"},
-
-		{0x2F04, "SD3_GNR_CON1"},
-		{0x2F0C, "SD3_ANA_CON1"},
-		{0x2F10, "SD3_ANA_CON2"},
-		{0x2F14, "SD3_ANA_CON3"},
-		{0x2F24, "SD3_ANA_CON7"},
-		{0x2F30, "SD3_TIME_CON0"},
-		{0x2F34, "SD3_TIME_CON1"},
-		{0x2F50, "SD3_DESKEW_CON4"},
-	},
 
 	/* MOD_M0S4S4[S4]([S2]+S2) --> CSI #3 */
 	{

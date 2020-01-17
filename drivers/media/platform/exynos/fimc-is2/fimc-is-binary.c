@@ -16,6 +16,66 @@
 #include <linux/firmware.h>
 
 #include "fimc-is-binary.h"
+#include "exynos-fimc-is-sensor.h"
+
+/* the version storage of each library binary */
+struct lib_ver { char v[LIBRARY_VER_LEN + 1]; };
+static struct lib_ver lib_ver_s[IS_BIN_LIB_HINT_RTA + 1];
+/* the version stroage of each sensor setfile by position */
+struct set_ver { char v[SETFILE_VER_LEN + 1]; };
+static struct set_ver set_ver_s[SENSOR_POSITION_MAX];
+
+static const char * const bin_names[] = { "DDK", "RTA", "SETFILE" };
+
+static char *library_get_buf(const struct is_bin_ver_info *info, unsigned int hint)
+{
+	struct lib_ver *s = (struct lib_ver *)info->s;
+
+	return s[hint].v;
+}
+
+static unsigned int library_get_name_idx(unsigned int hint)
+{
+
+	if (hint == IS_BIN_LIB_HINT_RTA)
+		return 1; /* RTA */
+
+	return 0; /* DDK */
+}
+
+static char *setfile_get_buf(const struct is_bin_ver_info *info, unsigned int hint)
+{
+	struct set_ver *s = (struct set_ver *)info->s;
+
+	return s[hint].v;
+}
+
+static unsigned int setfile_get_name_idx(unsigned int hint)
+{
+	return 2; /* SETFILE */
+}
+
+static const struct is_bin_ver_info bin_ver_info[] = {
+	{
+		.type		= IS_BIN_LIBRARY,
+		.maxhint	= IS_BIN_LIB_HINT_RTA + 1,
+		.offset		= LIBRARY_VER_OFS,
+		.length		= LIBRARY_VER_LEN,
+		.s		= &lib_ver_s,
+		.get_buf	= library_get_buf,
+		.get_name_idx	= library_get_name_idx,
+	},
+	{
+		.type		= IS_BIN_SETFILE,
+		.maxhint	= SENSOR_POSITION_MAX,
+		.offset		= SETFILE_VER_OFS,
+		.length		= SETFILE_VER_LEN,
+		.s		= &set_ver_s,
+		.get_buf	= setfile_get_buf,
+		.get_name_idx	= setfile_get_name_idx,
+	},
+	{},
+};
 
 static noinline_for_stack long get_file_size(struct file *file)
 {
@@ -254,4 +314,73 @@ int was_loaded_by(struct fimc_is_binary *bin)
 		return 0;	/* from file system */
 	else
 		return -EINVAL;
+}
+
+/*
+ * carve_binary_version: update the version of a binary to use in the future
+ * @type: a binary type for IS
+ * @hint: a hint to distinguish between same type binaries
+ * @data: buffer of a loaded binary
+ * @size: size of a loaded binary
+ */
+/* FIXME: void carve_binary_version(enum is_bin_type type, int hint, struct fimc_is_binary *bin) */
+int carve_binary_version(enum is_bin_type type, unsigned int hint, void *data, size_t size)
+{
+	int ofs, len;
+	char *buf;
+
+	if (type >= ARRAY_SIZE(bin_ver_info)) {
+		pr_err("unknown type binary(%d)\n", type);
+		return -EINVAL;
+	}
+
+	if (hint >= bin_ver_info[type].maxhint) {
+		pr_warn("invalid hint(%d) to carved-out\n", hint);
+		return -EINVAL;
+	}
+
+	ofs = size - bin_ver_info[type].offset;
+	if (ofs <= 0) {
+		pr_warn("out of range offset(size: %d <= offset: %d)\n", size,
+					bin_ver_info[type].offset);
+		return -EINVAL;
+	}
+
+	len = bin_ver_info[type].length;
+	if ((ofs + len) > size) {
+		pr_warn("too long version length (binary: %d < version: %d)\n",
+						size, (ofs + len));
+		len -= ((ofs + len) - size);
+	}
+
+	buf = bin_ver_info[type].get_buf(&bin_ver_info[type], hint);
+	memcpy(buf, &data[ofs], len);
+	buf[len] = '\0';
+
+	info("%s version: %s\n", bin_names[bin_ver_info[type].get_name_idx(hint)],
+									buf);
+
+	return 0;
+}
+
+/*
+ * get_binary_version: retrun the version string of a binary
+ * @type: a binary type for IS
+ * @hint: a hint to distinguish between same type binaries
+ *	library: DDK(0), RTA(1)
+ *	setfile: sensor position
+ */
+char *get_binary_version(enum is_bin_type type, unsigned int hint)
+{
+	if (type >= ARRAY_SIZE(bin_ver_info)) {
+		pr_err("unknown type binary(%d)\n", type);
+		return NULL;
+	}
+
+	if (hint >= bin_ver_info[type].maxhint) {
+		pr_warn("invalid binary hint(%d)\n", hint);
+		return NULL;
+	}
+
+	return bin_ver_info[type].get_buf(&bin_ver_info[type], hint);
 }

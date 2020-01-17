@@ -145,7 +145,7 @@
 #define FIMC_IS_ROM_OIS_MAX_LIST 14
 
 #ifdef USE_BINARY_PADDING_DATA_ADDED
-#define FIMC_IS_HEADER_VER_OFFSET   (FIMC_IS_HEADER_VER_SIZE+FIMC_IS_SIGNATURE_SIZE)
+#define FIMC_IS_HEADER_VER_OFFSET   (FIMC_IS_HEADER_VER_SIZE+IS_SIGNATURE_LEN)
 #else
 #define FIMC_IS_HEADER_VER_OFFSET   (FIMC_IS_HEADER_VER_SIZE)
 #endif
@@ -281,7 +281,7 @@ struct fimc_is_rom_info {
 	char		header_ver[FIMC_IS_HEADER_VER_SIZE + 1];
 	char		header2_ver[FIMC_IS_HEADER_VER_SIZE + 1];
 	char		cal_map_ver[FIMC_IS_CAL_MAP_VER_SIZE + 1];
-	char		setfile_ver[FIMC_IS_SETFILE_VER_SIZE + 1];
+	char		setfile_ver[SETFILE_VER_LEN + 1];
 
 	char		load_fw_name[50];		/* DDK */
 	char		load_rta_fw_name[50];	/* RTA */

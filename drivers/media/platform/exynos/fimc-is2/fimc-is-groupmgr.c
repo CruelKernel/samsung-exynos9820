@@ -677,7 +677,7 @@ p_retry:
 }
 
 static void fimc_is_group_s_leader(struct fimc_is_group *group,
-	struct fimc_is_subdev *leader)
+	struct fimc_is_subdev *leader, bool force)
 {
 	struct fimc_is_subdev *subdev;
 
@@ -688,6 +688,11 @@ static void fimc_is_group_s_leader(struct fimc_is_group *group,
 	subdev->leader = leader;
 
 	list_for_each_entry(subdev, &group->subdev_list, list) {
+		/*
+		 * TODO: Remove this error check logic.
+		 * For MC-scaler group, this warning message could be printed
+		 * because each capture node is shared by different output node.
+		 */
 		if (leader->vctx && subdev->vctx &&
 			(leader->vctx->refcount < subdev->vctx->refcount)) {
 			mgwarn("Invalid subdev instance (%s(%u) < %s(%u))",
@@ -695,7 +700,9 @@ static void fimc_is_group_s_leader(struct fimc_is_group *group,
 				leader->name, leader->vctx->refcount,
 				subdev->name, subdev->vctx->refcount);
 		}
-		subdev->leader = leader;
+
+		if (force || test_bit(FIMC_IS_SUBDEV_OPEN, &subdev->state))
+			subdev->leader = leader;
 	}
 }
 
@@ -828,7 +835,7 @@ static void fimc_is_groupmgr_votf_change_path(struct fimc_is_group *group,
 		child = group->child;
 		leader = &group->leader;
 		while (child) {
-			fimc_is_group_s_leader(child, leader);
+			fimc_is_group_s_leader(child, leader, false);
 			child = child->child;
 		}
 		break;
@@ -841,7 +848,7 @@ static void fimc_is_groupmgr_votf_change_path(struct fimc_is_group *group,
 		child = group->child;
 		leader = &vprev->leader;
 		while (child) {
-			fimc_is_group_s_leader(child, leader);
+			fimc_is_group_s_leader(child, leader, false);
 			child = child->child;
 		}
 
@@ -1155,7 +1162,8 @@ int fimc_is_groupmgr_init(struct fimc_is_groupmgr *groupmgr,
 		mdbgd_group("source vid : %02d\n", group, source_vid);
 		if (source_vid) {
 			leader = &group->leader;
-			fimc_is_group_s_leader(group, leader);
+			/* Set force flag to initialize every leader in subdev. */
+			fimc_is_group_s_leader(group, leader, true);
 
 			if (prev) {
 				group->prev = prev;
@@ -1382,7 +1390,7 @@ int fimc_is_groupmgr_init(struct fimc_is_groupmgr *groupmgr,
 			sibling->tail = next;
 			next->head = sibling;
 			leader = &sibling->leader;
-			fimc_is_group_s_leader(next, leader);
+			fimc_is_group_s_leader(next, leader, false);
 		} else if (test_bit(FIMC_IS_GROUP_VIRTUAL_OTF_INPUT, &next->state)) {
 			group->vnext = next;
 			next->vprev = group;

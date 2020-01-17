@@ -3367,7 +3367,8 @@ int fimc_is_sensor_front_start(struct fimc_is_device_sensor *device,
 		scenario_id = fimc_is_dvfs_sel_external(device);
 		if (scenario_id >= 0) {
 			struct fimc_is_dvfs_scenario_ctrl *external_ctrl = dvfs_ctrl->external_ctrl;
-			minfo("[ISC:D] tbl[%d] external scenario(%d)-[%s]\n", device,
+
+			minfo("[SEN:D] tbl[%d] external scenario(%d)-[%s]\n", device,
 				dvfs_ctrl->dvfs_table_idx, scenario_id,
 				external_ctrl->scenarios[external_ctrl->cur_scenario_idx].scenario_nm);
 			fimc_is_set_dvfs((struct fimc_is_core *)device->private_data, NULL, scenario_id);

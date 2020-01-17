@@ -1486,6 +1486,13 @@ static long jsqz_ioctl(struct file *filp,
 				"%s: Failed to read userdata\n", __func__);
 			return -EFAULT;
 		}
+		
+		if ((data.user_task.num_of_buf > MAX_BUF_NUM - 1) || (data.user_task.num_of_buf < 1)) {
+			dev_err(jsqz_device->dev,
+				"%s: number of buffer is wrong, num_of_buf is %d\n",
+				__func__, data.user_task.num_of_buf);
+			return -EINVAL;
+		}
 
 		dev_dbg(jsqz_device->dev
 			, "%s: user data copied, now launching processing...\n"
@@ -1604,6 +1611,12 @@ static long jsqz_compat_ioctl32(struct file *filp,
     				task.user_task.buf_out[i].userptr = data.buf_out[i].userptr;
     			task.user_task.buf_out[i].type = data.buf_out[i].type;
     		}
+    	}
+    	else {
+    		dev_err(jsqz_device->dev,
+				"%s: number of buffer is wrong, num_of_buf is %d\n",
+				__func__, task.user_task.num_of_buf);
+			return -EINVAL;
     	}
 
 		/*

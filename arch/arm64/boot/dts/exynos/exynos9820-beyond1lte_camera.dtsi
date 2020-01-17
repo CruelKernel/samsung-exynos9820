@@ -732,10 +732,16 @@
 			video_high_speed_60fps_capture_int = <DVFS_INT_L4>;
 			video_high_speed_60fps_capture_hpg = <1>;
 
-			ext_front_int_cam = <DVFS_INT_CAM_L0>;
-			ext_front_cam = <DVFS_CAM_L0>;
-			ext_front_mif = <DVFS_MIF_L1>;
-			ext_front_int = <DVFS_INT_L0>;
+			ext_rear_int_cam = <DVFS_INT_CAM_L5>;
+			ext_rear_cam = <DVFS_CAM_L1>;
+			ext_rear_mif = <DVFS_MIF_L4>;
+			ext_rear_int = <DVFS_INT_L4>;
+			ext_rear_hpg = <1>;
+
+			ext_front_int_cam = <DVFS_INT_CAM_L5>;
+			ext_front_cam = <DVFS_CAM_L1>;
+			ext_front_mif = <DVFS_MIF_L4>;
+			ext_front_int = <DVFS_INT_L4>;
 			ext_front_hpg = <1>;
 
 			ext_secure_int_cam = <DVFS_INT_CAM_L5>;

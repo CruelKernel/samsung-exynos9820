@@ -21,6 +21,8 @@
 #include <linux/clk-provider.h>
 #include <linux/clkdev.h>
 
+#include <soc/samsung/exynos-pd.h>
+
 #include <exynos-fimc-is.h>
 #include <fimc-is-config.h>
 
@@ -82,7 +84,6 @@ struct fimc_is_clk fimc_is_clk_list[] = {
 	REGISTER_CLK("MUX_CIS_CLK3"),
 	REGISTER_CLK("MUX_CIS_CLK4"),
 };
-
 
 int fimc_is_set_rate(struct device *dev,
 	const char *name, ulong frequency)
@@ -285,7 +286,7 @@ ulong fimc_is_get_rate_dt(struct device *dev,
 	}
 
 	rate_target = clk_get_rate(target);
-	pr_info("[@] %s : %ldMhz\n", conid, rate_target/1000000);
+	pr_info("[@] %s: %ldMhz\n", conid, rate_target/1000000);
 
 	return rate_target;
 }
@@ -343,58 +344,66 @@ static void exynos9820_fimc_is_print_clk_reg(void)
 
 static int exynos9820_fimc_is_print_clk(struct device *dev)
 {
+	struct exynos_pm_domain *exynos_pd;
+
 	pr_info("FIMC-IS CLOCK DUMP\n");
 
-	fimc_is_get_rate_dt(dev, "GATE_ISPHQ_CMU_ISPHQ");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_ISPHQ");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_VGEN_LITE_ISPHQ");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_ISPHQ_C2COM");
-
-	fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPLP_BUS");
-	fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPLP_GDC");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_MC_SCALER");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_ISPLP");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_GDC");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_VGEN_LITE");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_ISPLP_C2");
-
-	fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPPRE_BUS");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS0");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS1");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS2");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS3");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PDP_TOP_DMA");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_3AA0");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_3AA1");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PDP_TOP_CORE_TOP");
+	exynos_pd = exynos_pd_lookup_name("pd-isppre");
+	if (exynos_pd_status(exynos_pd) == 1) {
+		fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPPRE_BUS");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS0");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS1");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS2");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS3");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PDP_TOP_DMA");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_3AA0");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_3AA1");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PDP_TOP_CORE_TOP");
 #ifdef CONFIG_SOC_EXYNOS9820_EVT0
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSISX4_PDP_RDMA");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSISX4_PDP_RDMA");
 #endif
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE1");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS4");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSISX4_PDP_DMA");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE2");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE1");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSIS4");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_CSISX4_PDP_DMA");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_VGEN_LITE2");
 #ifdef CONFIG_SOC_EXYNOS9820_EVT0
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PAFSTAT0");
-	fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PAFSTAT1");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PAFSTAT0");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPPRE_PAFSTAT1");
 #endif
 
-	fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_VRA2_BUS");
-	fimc_is_get_rate_dt(dev, "GATE_VRA2");
-	fimc_is_get_rate_dt(dev, "DOUT_CLK_VRA2_BUSP");
+		fimc_is_get_rate_dt(dev, "CIS_CLK0");
+		fimc_is_get_rate_dt(dev, "CIS_CLK1");
+		fimc_is_get_rate_dt(dev, "CIS_CLK2");
+		fimc_is_get_rate_dt(dev, "CIS_CLK3");
+		fimc_is_get_rate_dt(dev, "CIS_CLK4");
+	}
 
-	fimc_is_get_rate_dt(dev, "CIS_CLK0");
-	fimc_is_get_rate_dt(dev, "CIS_CLK1");
-	fimc_is_get_rate_dt(dev, "CIS_CLK2");
-	fimc_is_get_rate_dt(dev, "CIS_CLK3");
-	fimc_is_get_rate_dt(dev, "CIS_CLK4");
+	exynos_pd = exynos_pd_lookup_name("pd-isplp");
+	if (exynos_pd_status(exynos_pd) == 1) {
+		fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPLP_BUS");
+		fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_ISPLP_GDC");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_MC_SCALER");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_ISPLP");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_GDC");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_VGEN_LITE");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPLP_ISPLP_C2");
+	}
 
-	fimc_is_get_rate_dt(dev, "MUX_CIS_CLK0");
-	fimc_is_get_rate_dt(dev, "MUX_CIS_CLK1");
-	fimc_is_get_rate_dt(dev, "MUX_CIS_CLK2");
-	fimc_is_get_rate_dt(dev, "MUX_CIS_CLK3");
-	fimc_is_get_rate_dt(dev, "MUX_CIS_CLK4");
+	exynos_pd = exynos_pd_lookup_name("pd-isphq");
+	if (exynos_pd_status(exynos_pd) == 1) {
+		fimc_is_get_rate_dt(dev, "GATE_ISPHQ_CMU_ISPHQ");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_ISPHQ");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_VGEN_LITE_ISPHQ");
+		fimc_is_get_rate_dt(dev, "GATE_IS_ISPHQ_ISPHQ_C2COM");
+	}
+
+	exynos_pd = exynos_pd_lookup_name("pd-vra2");
+	if (exynos_pd_status(exynos_pd) == 1) {
+		fimc_is_get_rate_dt(dev, "UMUX_CLKCMU_VRA2_BUS");
+		fimc_is_get_rate_dt(dev, "GATE_VRA2");
+		fimc_is_get_rate_dt(dev, "DOUT_CLK_VRA2_BUSP");
+	}
 
 	exynos9820_fimc_is_print_clk_reg();
 

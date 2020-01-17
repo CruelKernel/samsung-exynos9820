@@ -1477,6 +1477,7 @@ static int mfc_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 	INIT_LIST_HEAD(&dev->qos_queue);
+	spin_lock_init(&dev->qos_lock);
 #endif
 
 	/* default FW alloc is added */
