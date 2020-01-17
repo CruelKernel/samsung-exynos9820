@@ -2286,7 +2286,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dp_pmic_irq>;
 		s2dos05,s2dos05_int = <&gpa1 4 0>;
-		adc_mode = <1>; /* 0 : disable, 1 : current meter, 2 : power meter */
+		adc_mode = <2>; /* 0 : disable, 1 : current meter, 2 : power meter */
 		adc_sync_mode = <2>; /* 1 : sync mode, 2 : async mode */
 		regulators {
 			dp_buck: s2dos05-buck1 {

@@ -31,6 +31,11 @@
 #include <linux/debug-snapshot.h>
 #include <linux/debugfs.h>
 #include <linux/interrupt.h>
+#ifdef CONFIG_SEC_PM
+#include <linux/sec_sysfs.h>
+
+struct device *ap_sub_pmic_dev;
+#endif /* CONFIG_SEC_PM */
 
 static struct s2mps20_info *s2mps20_static_info;
 static struct regulator_desc regulators[S2MPS20_REGULATOR_MAX];
@@ -734,6 +739,10 @@ static int s2mps20_pmic_probe(struct platform_device *pdev)
 	}
 
 	s2mps20_oi_function(iodev);
+
+#ifdef CONFIG_SEC_PM
+	ap_sub_pmic_dev = sec_device_create(NULL, "ap_sub_pmic");
+#endif /* CONFIG_SEC_PM */
 
 #ifdef CONFIG_DEBUG_FS
 	dbgi2c = s2mps20->i2c;

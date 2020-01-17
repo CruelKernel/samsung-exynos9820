@@ -76,6 +76,8 @@
 #define MFC_REG_NAL_QUEUE_INPUT_EXE_COUNT			0xF090
 #define MFC_REG_NAL_QUEUE_INFO					0xF094
 
+#define MFC_REG_FIRMWARE_STATUS_INFO				0xF0A4
+
 /* Decoder Registers */
 #define MFC_REG_D_CRC_CTRL					0xF0B0
 #define MFC_REG_D_DEC_OPTIONS					0xF0B4

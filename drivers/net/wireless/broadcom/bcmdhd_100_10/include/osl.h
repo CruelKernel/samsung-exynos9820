@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: osl.h 787121 2018-10-31 12:46:54Z $
+ * $Id: osl.h 813270 2019-04-04 08:03:55Z $
  */
 
 #ifndef _osl_h_
@@ -101,6 +101,10 @@ typedef void  (*osl_wreg_fn_t)(void *ctx, volatile void *reg, unsigned int val, 
 #ifndef OSL_LOCALTIME_NS
 #define OSL_LOCALTIME_NS()	(OSL_SYSUPTIME_US() * NSEC_PER_USEC)
 #endif /* OSL_LOCALTIME_NS */
+
+#ifndef OSL_SYSTZTIME_US
+#define OSL_SYSTZTIME_US()	OSL_SYSUPTIME_US()
+#endif /* OSL_GET_SYSTZTIME */
 
 #ifndef OSL_SYS_HALT
 #define OSL_SYS_HALT()	do {} while (0)

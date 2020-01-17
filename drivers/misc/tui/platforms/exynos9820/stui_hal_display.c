@@ -86,9 +86,7 @@ static int fb_protection_for_tui(bool tui_en)
 	if (!fb_info)
 		return -1;
 
-	lock_fb_info(fb_info);
 	ret = decon_tui_protection(tui_en);
-	unlock_fb_info(fb_info);
 
 	pr_debug("[STUI] %s : state %d end\n", __func__, tui_en);
 

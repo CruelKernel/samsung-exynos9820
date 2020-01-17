@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_statlog.c 793017 2018-12-06 12:54:31Z $
+ * $Id: dhd_statlog.c 813281 2019-04-04 08:56:10Z $
  */
 
 #include <typedefs.h>
@@ -35,6 +35,7 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <dhd_dbg.h>
+#include <linux/rtc.h>
 
 #ifdef DHD_STATUS_LOGGING
 
@@ -47,7 +48,7 @@
 #define DHD_STATLOG_VALID(stat)			(((stat) > (ST(INVALID))) && ((stat) < (ST(MAX))))
 
 dhd_statlog_handle_t *
-dhd_attach_statlog(dhd_pub_t *dhdp, uint32 num_items, uint32 logbuf_len)
+dhd_attach_statlog(dhd_pub_t *dhdp, uint32 num_items, uint32 bdlog_num_items, uint32 logbuf_len)
 {
 	dhd_statlog_t *statlog = NULL;
 	void *buf = NULL;
@@ -90,7 +91,24 @@ dhd_attach_statlog(dhd_pub_t *dhdp, uint32 num_items, uint32 logbuf_len)
 		goto error;
 	}
 
-	statlog->items = num_items;
+	/* alloc ring buffer for bigdata logging */
+	statlog->bdlog_bufsize = (uint32)(dhd_ring_get_hdr_size() +
+		DHD_STATLOG_RING_SIZE(bdlog_num_items));
+	buf = VMALLOCZ(dhdp->osh, statlog->bdlog_bufsize);
+	if (!buf) {
+		DHD_STATLOG_ERR(("%s: failed to allocate memory for bigdata logging buffer\n",
+			__FUNCTION__));
+		goto error;
+	}
+
+	statlog->bdlog_ringbuf = dhd_ring_init(dhdp, buf, statlog->bdlog_bufsize,
+		DHD_STATLOG_ITEM_SIZE, bdlog_num_items, DHD_RING_TYPE_SINGLE_IDX);
+	if (!statlog->bdlog_ringbuf) {
+		DHD_STATLOG_ERR(("%s: failed to init ring buffer for bigdata logging\n",
+			__FUNCTION__));
+		VMFREE(dhdp->osh, buf, statlog->bdlog_bufsize);
+		goto error;
+	}
 
 	return (dhd_statlog_handle_t *)statlog;
 
@@ -102,6 +120,11 @@ error:
 	if (statlog->ringbuf) {
 		dhd_ring_deinit(dhdp, statlog->ringbuf);
 		VMFREE(dhdp->osh, statlog->ringbuf, statlog->bufsize);
+	}
+
+	if (statlog->bdlog_ringbuf) {
+		dhd_ring_deinit(dhdp, statlog->bdlog_ringbuf);
+		VMFREE(dhdp->osh, statlog->bdlog_ringbuf, statlog->bdlog_bufsize);
 	}
 
 	if (statlog) {
@@ -127,6 +150,11 @@ dhd_detach_statlog(dhd_pub_t *dhdp)
 	}
 
 	statlog = (dhd_statlog_t *)(dhdp->statlog);
+
+	if (statlog->bdlog_ringbuf) {
+		dhd_ring_deinit(dhdp, statlog->bdlog_ringbuf);
+		VMFREE(dhdp->osh, statlog->bdlog_ringbuf, statlog->bdlog_bufsize);
+	}
 
 	if (statlog->ringbuf) {
 		dhd_ring_deinit(dhdp, statlog->ringbuf);
@@ -173,6 +201,7 @@ dhd_statlog_ring_log(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx, uint8 dir,
 		return BCME_ERROR;
 	}
 
+	elem->ts_tz = OSL_SYSTZTIME_US();
 	elem->ts = OSL_LOCALTIME_NS();
 	elem->stat = stat;
 	elem->ifidx = ifidx;
@@ -180,14 +209,28 @@ dhd_statlog_ring_log(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx, uint8 dir,
 	elem->reason = reason;
 	elem->status = status;
 
+	/* Logging for the bigdata */
+	if (isset(statlog->bdmask, stat)) {
+		stat_elem_t *elem_bd;
+		elem_bd = (stat_elem_t *)dhd_ring_get_empty(statlog->bdlog_ringbuf);
+		if (!elem_bd) {
+			/* no available slot */
+			DHD_STATLOG_ERR(("%s: cannot allocate a new element for bigdata\n",
+				__FUNCTION__));
+			return BCME_ERROR;
+		}
+		bcopy(elem, elem_bd, sizeof(stat_elem_t));
+	}
+
 	return BCME_OK;
 }
 
 int
-dhd_statlog_ring_log_data(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx, uint8 dir)
+dhd_statlog_ring_log_data(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx,
+	uint8 dir, bool cond)
 {
-	return dhd_statlog_ring_log(dhdp, stat, ifidx,
-		dir ? STDIR(TX) : STDIR(RX), 0, 0);
+	return cond ? dhd_statlog_ring_log(dhdp, stat, ifidx,
+		dir ? STDIR(TX) : STDIR(RX), 0, 0) : BCME_OK;
 }
 
 int
@@ -219,10 +262,36 @@ dhd_statlog_process_event(dhd_pub_t *dhdp, int type, uint8 ifidx,
 
 	switch (type) {
 	case WLC_E_SET_SSID:
-		stat = ST(ASSOC_DONE);
+		if (status == WLC_E_STATUS_SUCCESS) {
+			stat = ST(ASSOC_DONE);
+		} else if (status == WLC_E_STATUS_TIMEOUT) {
+			stat = ST(ASSOC_TIMEOUT);
+		} else if (status == WLC_E_STATUS_FAIL) {
+			stat = ST(ASSOC_FAIL);
+		} else if (status == WLC_E_STATUS_NO_ACK) {
+			stat = ST(ASSOC_NO_ACK);
+		} else if (status == WLC_E_STATUS_ABORT) {
+			stat = ST(ASSOC_ABORT);
+		} else if (status == WLC_E_STATUS_UNSOLICITED) {
+			stat = ST(ASSOC_UNSOLICITED);
+		} else if (status == WLC_E_STATUS_NO_NETWORKS) {
+			stat = ST(ASSOC_NO_NETWORKS);
+		} else {
+			stat = ST(ASSOC_OTHERS);
+		}
 		break;
 	case WLC_E_AUTH:
-		stat = ST(AUTH_DONE);
+		if (status == WLC_E_STATUS_SUCCESS) {
+			stat = ST(AUTH_DONE);
+		} else if (status == WLC_E_STATUS_TIMEOUT) {
+			stat = ST(AUTH_TIMEOUT);
+		} else if (status == WLC_E_STATUS_FAIL) {
+			stat = ST(AUTH_FAIL);
+		} else if (status == WLC_E_STATUS_NO_ACK) {
+			stat = ST(AUTH_NO_ACK);
+		} else {
+			stat = ST(AUTH_OTHERS);
+		}
 		dir = STDIR(TX);
 		break;
 	case WLC_E_AUTH_IND:
@@ -255,7 +324,11 @@ dhd_statlog_process_event(dhd_pub_t *dhdp, int type, uint8 ifidx,
 		stat = ST(ASSOC_RESP);
 		break;
 	case WLC_E_BSSID:
-		stat = ST(REASSOC_DONE);
+		if (status == WLC_E_STATUS_SUCCESS) {
+			stat = ST(REASSOC_DONE);
+		} else {
+			stat = ST(REASSOC_DONE_OTHERS);
+		}
 		break;
 	case WLC_E_REASSOC:
 		if (status == WLC_E_STATUS_SUCCESS) {
@@ -309,14 +382,16 @@ dhd_statlog_get_logbuf(dhd_pub_t *dhdp)
 }
 
 /*
- * called function uses buflen as 32 max.
- * So when adding a case, make sure the string is less than 32 bytes
+ * called function uses buflen as the DHD_STATLOG_STATSTR_BUF_LEN max.
+ * So when adding a case, make sure the string is less than
+ * the DHD_STATLOG_STATSTR_BUF_LEN bytes
  */
 static void
 dhd_statlog_stat_name(char *buf, uint32 buflen, uint32 state, uint8 dir)
 {
 	char *stat_str = NULL;
 	bool tx = (dir == STDIR(TX));
+	uint32 max_buf_len = MIN(buflen, DHD_STATLOG_STATSTR_BUF_LEN);
 
 	switch (state) {
 	case ST(INVALID):
@@ -368,7 +443,7 @@ dhd_statlog_stat_name(char *buf, uint32 buflen, uint32 state, uint8 dir)
 		stat_str = "REASSOC_INFORM";
 		break;
 	case ST(REASSOC_DONE):
-		stat_str = "REASSOC_DONE";
+		stat_str = "REASSOC_DONE_SUCCESS";
 		break;
 	case ST(EAPOL_M1):
 		stat_str = tx ? "TX_EAPOL_M1" : "RX_EAPOL_M1";
@@ -550,13 +625,49 @@ dhd_statlog_stat_name(char *buf, uint32 buflen, uint32 state, uint8 dir)
 	case ST(REASSOC_FAILURE):
 		stat_str = "REASSOC_FAILURE";
 		break;
+	case ST(AUTH_TIMEOUT):
+		stat_str = "AUTH_TIMEOUT";
+		break;
+	case ST(AUTH_FAIL):
+		stat_str = "AUTH_FAIL";
+		break;
+	case ST(AUTH_NO_ACK):
+		stat_str = "AUTH_NO_ACK";
+		break;
+	case ST(AUTH_OTHERS):
+		stat_str = "AUTH_FAIL_OTHER_STATUS";
+		break;
+	case ST(ASSOC_TIMEOUT):
+		stat_str = "ASSOC_TIMEOUT";
+		break;
+	case ST(ASSOC_FAIL):
+		stat_str = "ASSOC_FAIL";
+		break;
+	case ST(ASSOC_NO_ACK):
+		stat_str = "ASSOC_NO_ACK";
+		break;
+	case ST(ASSOC_ABORT):
+		stat_str = "ASSOC_ABORT";
+		break;
+	case ST(ASSOC_UNSOLICITED):
+		stat_str = "ASSOC_UNSOLICITED";
+		break;
+	case ST(ASSOC_NO_NETWORKS):
+		stat_str = "ASSOC_NO_NETWORKS";
+		break;
+	case ST(ASSOC_OTHERS):
+		stat_str = "ASSOC_FAIL_OTHER_STATUS";
+		break;
+	case ST(REASSOC_DONE_OTHERS):
+		stat_str = "REASSOC_DONE_OTHER_STATUS";
+		break;
 	default:
 		stat_str = "UNKNOWN_STATUS";
 		break;
 	}
 
-	strncpy(buf, stat_str, buflen);
-	buf[buflen - 1] = '\0';
+	strncpy(buf, stat_str, max_buf_len);
+	buf[max_buf_len - 1] = '\0';
 }
 
 static void
@@ -570,6 +681,28 @@ dhd_statlog_get_timestamp(stat_elem_t *elem, uint64 *sec, uint64 *usec)
 	*usec = (uint64)(rem_nsec / NSEC_PER_USEC);
 }
 
+static void
+dhd_statlog_convert_time(stat_elem_t *elem, uint8 *buf, uint32 buflen)
+{
+	struct rtc_time tm;
+	uint64 ts_sec, rem_usec;
+
+	if (!buf) {
+		DHD_STATLOG_ERR(("%s: buf is NULL\n", __FUNCTION__));
+		return;
+	}
+
+	bzero(buf, buflen);
+	ts_sec = elem->ts_tz;
+	rem_usec = DIV_AND_MOD_U64_BY_U32(ts_sec, USEC_PER_SEC);
+
+	rtc_time_to_tm((unsigned long)ts_sec, &tm);
+	snprintf(buf, buflen, DHD_STATLOG_TZFMT_YYMMDDHHMMSSMS,
+		tm.tm_year - 100, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec,
+		(uint32)(rem_usec / USEC_PER_MSEC));
+}
+
 #ifdef DHD_LOG_DUMP
 static int
 dhd_statlog_dump(dhd_statlog_t *statlog, char *buf, uint32 buflen)
@@ -577,7 +710,8 @@ dhd_statlog_dump(dhd_statlog_t *statlog, char *buf, uint32 buflen)
 	stat_elem_t *elem;
 	struct bcmstrbuf b;
 	struct bcmstrbuf *strbuf = &b;
-	char stat_str[32];
+	char stat_str[DHD_STATLOG_STATSTR_BUF_LEN];
+	char ts_str[DHD_STATLOG_TZFMT_BUF_LEN];
 	uint64 sec = 0, usec = 0;
 
 	if (!statlog) {
@@ -586,7 +720,8 @@ dhd_statlog_dump(dhd_statlog_t *statlog, char *buf, uint32 buflen)
 	}
 
 	bcm_binit(strbuf, buf, buflen);
-	bzero(stat_str, sizeof(*stat_str));
+	bzero(stat_str, sizeof(stat_str));
+	bzero(ts_str, sizeof(ts_str));
 	dhd_ring_whole_lock(statlog->ringbuf);
 	elem = (stat_elem_t *)dhd_ring_get_first(statlog->ringbuf);
 	while (elem) {
@@ -594,8 +729,9 @@ dhd_statlog_dump(dhd_statlog_t *statlog, char *buf, uint32 buflen)
 			dhd_statlog_stat_name(stat_str, sizeof(stat_str),
 				elem->stat, elem->dir);
 			dhd_statlog_get_timestamp(elem, &sec, &usec);
-			bcm_bprintf(strbuf, "[%5lu.%06lu] status=%s, ifidx=%d, "
-				"reason=%d, status=%d\n", (unsigned long)sec,
+			dhd_statlog_convert_time(elem, ts_str, sizeof(ts_str));
+			bcm_bprintf(strbuf, "[%s][%5lu.%06lu] status=%s, ifidx=%d, "
+				"reason=%d, status=%d\n", ts_str, (unsigned long)sec,
 				(unsigned long)usec, stat_str, elem->ifidx,
 				elem->reason, elem->status);
 		}
@@ -674,6 +810,44 @@ exit:
 #endif /* DHD_LOG_DUMP */
 
 int
+dhd_statlog_generate_bdmask(dhd_pub_t *dhdp, void *reqbuf)
+{
+	dhd_statlog_t *statlog;
+	stat_bdmask_req_t *query;
+	uint8 *req_buf;
+	uint32 req_buf_len;
+	int cnt;
+
+	if (!dhdp || !dhdp->statlog) {
+		DHD_STATLOG_ERR(("%s: dhdp or statlog is NULL\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+
+	if (!reqbuf) {
+		DHD_STATLOG_ERR(("%s: invalid query\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+
+	statlog = dhdp->statlog;
+	query = (stat_bdmask_req_t *)reqbuf;
+	req_buf = query->req_buf;
+	req_buf_len = query->req_buf_len;
+	if (!req_buf) {
+		DHD_STATLOG_ERR(("%s: invalid query\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+
+	bzero(statlog->bdmask, DHD_STAT_BDMASK_SIZE);
+	for (cnt = 0; cnt < req_buf_len; cnt++) {
+		if (DHD_STATLOG_VALID(req_buf[cnt])) {
+			setbit(statlog->bdmask, req_buf[cnt]);
+		}
+	}
+
+	return BCME_OK;
+}
+
+int
 dhd_statlog_get_latest_info(dhd_pub_t *dhdp, void *reqbuf)
 {
 	dhd_statlog_t *statlog;
@@ -682,6 +856,9 @@ dhd_statlog_get_latest_info(dhd_pub_t *dhdp, void *reqbuf)
 	uint8 *req_buf, *resp_buf, *sp;
 	uint32 req_buf_len, resp_buf_len, req_num;
 	int i, remain_len, cpcnt = 0;
+	uint8 filter[DHD_STAT_BDMASK_SIZE];
+	bool query_bigdata = FALSE;
+	void *ringbuf;
 
 	if (!dhdp || !dhdp->statlog) {
 		DHD_STATLOG_ERR(("%s: dhdp or statlog is NULL\n",
@@ -695,35 +872,46 @@ dhd_statlog_get_latest_info(dhd_pub_t *dhdp, void *reqbuf)
 		return BCME_ERROR;
 	}
 
+	statlog = (dhd_statlog_t *)(dhdp->statlog);
 	req_buf = query->req_buf;
 	req_buf_len = query->req_buf_len;
 	resp_buf = query->resp_buf;
 	resp_buf_len = query->resp_buf_len;
-	req_num = query->req_num;
-	if (!req_buf || !resp_buf) {
+	req_num = MIN(query->req_num, MAX_STATLOG_REQ_ITEM);
+	if (!resp_buf) {
 		DHD_STATLOG_ERR(("%s: invalid query\n", __FUNCTION__));
 		return BCME_ERROR;
 	}
 
+	bzero(filter, sizeof(filter));
+	if (!req_buf || !req_buf_len) {
+		query_bigdata = TRUE;
+		ringbuf = statlog->bdlog_ringbuf;
+	} else {
+		ringbuf = statlog->ringbuf;
+		/* build a filter from req_buf */
+		for (i = 0; i < req_buf_len; i++) {
+			if (DHD_STATLOG_VALID(req_buf[i])) {
+				setbit(filter, req_buf[i]);
+			}
+		}
+	}
+
 	sp = resp_buf;
 	remain_len = resp_buf_len;
-	statlog = (dhd_statlog_t *)(dhdp->statlog);
-	dhd_ring_whole_lock(statlog->ringbuf);
-	elem = (stat_elem_t *)dhd_ring_get_last(statlog->ringbuf);
+	dhd_ring_whole_lock(ringbuf);
+	elem = (stat_elem_t *)dhd_ring_get_last(ringbuf);
 	while (elem) {
-		for (i = 0; i < req_buf_len; i++) {
+		if (query_bigdata || isset(filter, elem->stat)) {
 			/* found the status from the list of interests */
-			if (elem->stat == req_buf[i]) {
-				if (remain_len < sizeof(stat_elem_t)) {
-					dhd_ring_whole_unlock(statlog->ringbuf);
-					return BCME_BUFTOOSHORT;
-				}
-				memcpy(sp, (char *)elem, sizeof(stat_elem_t));
-				sp += sizeof(stat_elem_t);
-				remain_len -= sizeof(stat_elem_t);
-				cpcnt++;
-				break;
+			if (remain_len < sizeof(stat_elem_t)) {
+				dhd_ring_whole_unlock(ringbuf);
+				return BCME_BUFTOOSHORT;
 			}
+			bcopy((char *)elem, sp, sizeof(stat_elem_t));
+			sp += sizeof(stat_elem_t);
+			remain_len -= sizeof(stat_elem_t);
+			cpcnt++;
 		}
 
 		if (cpcnt >= req_num) {
@@ -731,9 +919,9 @@ dhd_statlog_get_latest_info(dhd_pub_t *dhdp, void *reqbuf)
 		}
 
 		/* Proceed to next item */
-		elem = (stat_elem_t *)dhd_ring_get_prev(statlog->ringbuf, (void *)elem);
+		elem = (stat_elem_t *)dhd_ring_get_prev(ringbuf, (void *)elem);
 	}
-	dhd_ring_whole_unlock(statlog->ringbuf);
+	dhd_ring_whole_unlock(ringbuf);
 
 	return cpcnt;
 }
@@ -747,12 +935,14 @@ dhd_statlog_query(dhd_pub_t *dhdp, char *cmd, int total_len)
 	uint8 *req_buf = NULL, *resp_buf = NULL;
 	uint32 req_buf_len = 0, resp_buf_len = 0;
 	ulong req_num, stat_num, stat;
-	char stat_str[32];
+	char stat_str[DHD_STATLOG_STATSTR_BUF_LEN];
 	uint64 sec = 0, usec = 0;
 	int i, resp_num, err = BCME_OK;
+	char ts_str[DHD_STATLOG_TZFMT_BUF_LEN];
 
 	/*
 	 * DRIVER QUERY_STAT_LOG <total req num> <stat list num> <stat list>
+	 * Note: use the defult status list if the 'stat list num' is zero
 	 */
 	pos = cmd;
 	/* drop command */
@@ -774,26 +964,27 @@ dhd_statlog_query(dhd_pub_t *dhdp, char *cmd, int total_len)
 	}
 
 	stat_num = bcm_strtoul(token, NULL, 0);
-
-	/* create a status list */
-	req_buf_len = (uint32)(stat_num * sizeof(uint8));
-	req_buf = (uint8 *)MALLOCZ(dhdp->osh, req_buf_len);
-	if (!req_buf) {
-		DHD_STATLOG_ERR(("%s: failed to allocate request buf\n",
-			__FUNCTION__));
-		err = BCME_NOMEM;
-		goto exit;
-	}
-
-	/* parse the status list and update to the request buffer */
-	for (i = 0; i < (uint32)stat_num; i++) {
-		token = bcmstrtok(&pos, " ", NULL);
-		if (!token) {
-			err = BCME_BADARG;
+	if (stat_num) {
+		/* create a status list */
+		req_buf_len = (uint32)(stat_num * sizeof(uint8));
+		req_buf = (uint8 *)MALLOCZ(dhdp->osh, req_buf_len);
+		if (!req_buf) {
+			DHD_STATLOG_ERR(("%s: failed to allocate request buf\n",
+				__FUNCTION__));
+			err = BCME_NOMEM;
 			goto exit;
 		}
-		stat = bcm_strtoul(token, NULL, 0);
-		req_buf[i] = (uint8)stat;
+
+		/* parse the status list and update to the request buffer */
+		for (i = 0; i < (uint32)stat_num; i++) {
+			token = bcmstrtok(&pos, " ", NULL);
+			if (!token) {
+				err = BCME_BADARG;
+				goto exit;
+			}
+			stat = bcm_strtoul(token, NULL, 0);
+			req_buf[i] = (uint8)stat;
+		}
 	}
 
 	/* creat a response list */
@@ -828,10 +1019,11 @@ dhd_statlog_query(dhd_pub_t *dhdp, char *cmd, int total_len)
 				dhd_statlog_stat_name(stat_str, sizeof(stat_str),
 					elem->stat, elem->dir);
 				dhd_statlog_get_timestamp(elem, &sec, &usec);
-				DHD_STATLOG_PRINT(("[%5lu.%06lu] status=%s, ifidx=%d, "
-					"reason=%d, status=%d\n", (unsigned long)sec,
-					(unsigned long)usec, stat_str, elem->ifidx,
-					elem->reason, elem->status));
+				dhd_statlog_convert_time(elem, ts_str, sizeof(ts_str));
+				DHD_STATLOG_PRINT(("[RAWTS:%llu][%s][%5lu.%06lu] status=%s,"
+					" ifidx=%d, reason=%d, status=%d\n", elem->ts_tz,
+					ts_str, (unsigned long)sec, (unsigned long)usec,
+					stat_str, elem->ifidx, elem->reason, elem->status));
 			}
 			elem++;
 		}
@@ -856,7 +1048,8 @@ dhd_statlog_dump_scr(dhd_pub_t *dhdp)
 {
 	dhd_statlog_t *statlog;
 	stat_elem_t *elem;
-	char stat_str[32];
+	char stat_str[DHD_STATLOG_STATSTR_BUF_LEN];
+	char ts_str[DHD_STATLOG_TZFMT_BUF_LEN];
 	uint64 sec = 0, usec = 0;
 
 	if (!dhdp || !dhdp->statlog) {
@@ -865,7 +1058,8 @@ dhd_statlog_dump_scr(dhd_pub_t *dhdp)
 	}
 
 	statlog = (dhd_statlog_t *)(dhdp->statlog);
-	bzero(stat_str, sizeof(*stat_str));
+	bzero(stat_str, sizeof(stat_str));
+	bzero(ts_str, sizeof(ts_str));
 
 	DHD_STATLOG_PRINT(("=============== START OF CURRENT STATUS INFO ===============\n"));
 	dhd_ring_whole_lock(statlog->ringbuf);
@@ -875,10 +1069,11 @@ dhd_statlog_dump_scr(dhd_pub_t *dhdp)
 			dhd_statlog_stat_name(stat_str, sizeof(stat_str),
 				elem->stat, elem->dir);
 			dhd_statlog_get_timestamp(elem, &sec, &usec);
-			DHD_STATLOG_PRINT(("[%5lu.%06lu] status=%s, ifidx=%d, "
-				"reason=%d, status=%d\n", (unsigned long)sec,
-				(unsigned long)usec, stat_str, elem->ifidx,
-				elem->reason, elem->status));
+			dhd_statlog_convert_time(elem, ts_str, sizeof(ts_str));
+			DHD_STATLOG_PRINT(("[RAWTS:%llu][%s][%5lu.%06lu] status=%s,"
+				" ifidx=%d, reason=%d, status=%d\n", elem->ts_tz, ts_str,
+				(unsigned long)sec, (unsigned long)usec, stat_str,
+				elem->ifidx, elem->reason, elem->status));
 		}
 		elem = (stat_elem_t *)dhd_ring_get_next(statlog->ringbuf, (void *)elem);
 	}

@@ -9,7 +9,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-#ifdef BIGDATA_LOGGING_ENABLE
+#ifdef CONFIG_SEC_DEBUG_EXTRA_INFO
 #include <linux/sec_debug.h>
 #endif
 
@@ -83,17 +83,26 @@ static void __mfc_dump_regs(struct mfc_dev *dev)
 	}
 }
 
-const u32 mfc_logging_sfr_set1[MFC_SFR_LOGGING_COUNT_SET1] = {
-	0x1000, 0x1004, 0x100C, 0x1010
+/* common register */
+const u32 mfc_logging_sfr_set0[MFC_SFR_LOGGING_COUNT_SET0] = {
+	0x0070, 0x1000, 0x1004, 0x100C, 0x1010, 0x01B4, 0xF144, 0xF148,
+	0xF088, 0xFFD0
 };
 
+/* AxID: the other */
+const u32 mfc_logging_sfr_set1[MFC_SFR_LOGGING_COUNT_SET1] = {
+	0x3000, 0x3004, 0x3010, 0x301C, 0x3110, 0x3140, 0x3144, 0x5068,
+	0x506C, 0x5254, 0x5280, 0x529C, 0x52A0, 0x5A54, 0x5A80, 0x5A88,
+	0x5A94, 0x5A9C, 0x6038, 0x603C, 0x6050, 0x6064, 0x6168, 0x616C,
+	0x2020, 0x2028, 0x202C, 0x20B4
+};
+
+/* AxID: 0 ~ 3 (READ): PX */
 const u32 mfc_logging_sfr_set2[MFC_SFR_LOGGING_COUNT_SET2] = {
-	0x0070, 0x10B4, 0x2020, 0x2028,
-	0x204C, 0x20B4, 0x3000, 0x3004,
-	0x3010, 0x301C, 0x3110, 0x5A54,
-	0x5A80, 0x5A88, 0x5A94, 0x6038,
-	0x6050, 0x6168, 0x7018, 0x7110,
-	0x7114, 0xF088, 0xFFD0
+	0xA100, 0xA104, 0xA108, 0xA10C, 0xA110, 0xA114, 0xA118, 0xA11C,
+	0xA120, 0xA124, 0xA128, 0xA12C, 0xA120, 0xA124, 0xA128, 0xA12C,
+	0xA180, 0xA184, 0xA188, 0xA18C, 0xA190, 0xA194, 0xA198, 0xA19C,
+	0xA1A0, 0xA1A4, 0xA1A8, 0xA1AC, 0xA1B0, 0xA1B4, 0xA1B8, 0xA1BC
 };
 
 int __mfc_change_hex_to_ascii(u32 hex, u32 byte, char *ascii, int idx)
@@ -122,32 +131,163 @@ int __mfc_change_hex_to_ascii(u32 hex, u32 byte, char *ascii, int idx)
 	return ++idx;
 }
 
-static void __mfc_save_logging_sfr(struct mfc_dev *dev)
+static void mfc_merge_errorinfo_data(struct mfc_dev *dev, bool px_fault)
 {
 	char *errorinfo;
 	int i, idx = 0;
+	int trace_cnt, ret, cnt;
 
-	pr_err("-----------logging MFC error info-----------\n");
 	errorinfo = dev->logging_data->errorinfo;
-	for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET1; i++)
-		dev->logging_data->SFRs_set1[i] = MFC_READL(mfc_logging_sfr_set1[i]);
-	for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET2; i++)
-		dev->logging_data->SFRs_set2[i] = MFC_READL(mfc_logging_sfr_set2[i]);
 
+	/* FW info */
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->fw_version, 8, errorinfo, idx);
 	idx = __mfc_change_hex_to_ascii(dev->logging_data->cause, 8, errorinfo, idx);
 	idx = __mfc_change_hex_to_ascii(dev->logging_data->fault_status, 2, errorinfo, idx);
 	idx = __mfc_change_hex_to_ascii(dev->logging_data->fault_trans_info, 8, errorinfo, idx);
 	idx = __mfc_change_hex_to_ascii(dev->logging_data->fault_addr, 8, errorinfo, idx);
-	for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET1; i++)
-		idx = __mfc_change_hex_to_ascii(dev->logging_data->SFRs_set1[i], 2, errorinfo, idx);
-	for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET2; i++)
-		idx = __mfc_change_hex_to_ascii(dev->logging_data->SFRs_set2[i], 8, errorinfo, idx);
+	for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET0; i++)
+		idx = __mfc_change_hex_to_ascii(dev->logging_data->SFRs_set0[i], 8, errorinfo, idx);
+	if (px_fault) {
+		for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET2; i++)
+			idx = __mfc_change_hex_to_ascii(dev->logging_data->SFRs_set2[i], 8, errorinfo, idx);
+	} else {
+		for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET1; i++)
+			idx = __mfc_change_hex_to_ascii(dev->logging_data->SFRs_set1[i], 8, errorinfo, idx);
+	}
+
+	/* driver info */
+	ret = snprintf(errorinfo + idx, 3, "/");
+	idx += ret;
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->curr_ctx, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->state, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_cmd, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_cmd_sec, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_cmd_usec, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_int, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_int_sec, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_int_usec, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->frame_cnt, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->hwlock_dev, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->hwlock_ctx, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->num_inst, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->num_drm_inst, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->power_cnt, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->clock_cnt, 2, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->dynamic_used, 8, errorinfo, idx);
+	idx = __mfc_change_hex_to_ascii(dev->logging_data->last_src_addr, 8, errorinfo, idx);
+	for (i = 0; i < MFC_MAX_PLANES; i++)
+		idx = __mfc_change_hex_to_ascii(dev->logging_data->last_dst_addr[i], 8, errorinfo, idx);
+
+	/* last trace info */
+	ret = snprintf(errorinfo + idx, 3, "/");
+	idx += ret;
+
+	/* last processing is first printed */
+	trace_cnt = atomic_read(&dev->trace_ref_log);
+	for (i = 0; i < MFC_TRACE_LOG_COUNT_PRINT; i++) {
+		if (idx >= (MFC_LOGGING_DATA_SIZE - MFC_TRACE_LOG_STR_LEN)) {
+			pr_err("logging data size exceed: %d\n", idx);
+			break;
+		}
+		cnt = ((trace_cnt + MFC_TRACE_LOG_COUNT_MAX) - i) % MFC_TRACE_LOG_COUNT_MAX;
+		ret = snprintf(errorinfo + idx, MFC_TRACE_LOG_STR_LEN, "%llu:%s ",
+				dev->mfc_trace_logging[cnt].time,
+				dev->mfc_trace_logging[cnt].str);
+		idx += ret;
+	}
 
 	pr_err("%s\n", errorinfo);
 
-#ifdef BIGDATA_LOGGING_ENABLE
+#ifdef CONFIG_SEC_DEBUG_EXTRA_INFO
 	sec_debug_set_extra_info_mfc_error(errorinfo);
 #endif
+}
+
+static void __mfc_save_logging_sfr(struct mfc_dev *dev)
+{
+	struct mfc_ctx *ctx = NULL;
+	int i;
+	bool px_fault = false;
+
+	pr_err("-----------logging MFC error info-----------\n");
+	if (mfc_pm_get_pwr_ref_cnt(dev)) {
+		dev->logging_data->cause |= (1 << MFC_LAST_INFO_POWER);
+		dev->logging_data->fw_version = mfc_get_fw_ver_all();
+
+		for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET0; i++)
+			dev->logging_data->SFRs_set0[i] = MFC_READL(mfc_logging_sfr_set0[i]);
+		for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET1; i++)
+			dev->logging_data->SFRs_set1[i] = MFC_READL(mfc_logging_sfr_set1[i]);
+
+		/* READ PAGE FAULT at AxID 0 ~ 3: PX */
+		if ((dev->logging_data->cause & (1 << MFC_CAUSE_0READ_PAGE_FAULT)) ||
+				(dev->logging_data->cause & (1 << MFC_CAUSE_1READ_PAGE_FAULT))) {
+			if (((dev->logging_data->fault_trans_info & 0xff) >= 0) &&
+					((dev->logging_data->fault_trans_info & 0xff) <= 3)) {
+				px_fault = true;
+				for (i = 0; i < MFC_SFR_LOGGING_COUNT_SET2; i++)
+					dev->logging_data->SFRs_set2[i] = MFC_READL(mfc_logging_sfr_set2[i]);
+			}
+		}
+	}
+
+	if (mfc_pm_get_clk_ref_cnt(dev))
+		dev->logging_data->cause |= (1 << MFC_LAST_INFO_CLOCK);
+
+	if (dev->nal_q_handle && (dev->nal_q_handle->nal_q_state == NAL_Q_STATE_STARTED))
+		dev->logging_data->cause |= (1 << MFC_LAST_INFO_NAL_QUEUE);
+
+	dev->logging_data->cause |= (dev->shutdown << MFC_LAST_INFO_SHUTDOWN);
+	dev->logging_data->cause |= (dev->curr_ctx_is_drm << MFC_LAST_INFO_DRM);
+
+	ctx = dev->ctx[dev->curr_ctx];
+	if (!ctx) {
+		for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
+			if (dev->ctx[i]) {
+				ctx = dev->ctx[i];
+				/* It means that it is not ctx number of causes the problem */
+				dev->curr_ctx = 0xaa;
+				break;
+			}
+		}
+		if (!ctx) {
+			/* It means that we couldn't believe information */
+			dev->curr_ctx = 0xff;
+		}
+	}
+
+	/* last information */
+	dev->logging_data->curr_ctx = dev->curr_ctx;
+	dev->logging_data->last_cmd = dev->last_cmd;
+	dev->logging_data->last_cmd_sec = dev->last_cmd_time.tv_sec;
+	dev->logging_data->last_cmd_usec = dev->last_cmd_time.tv_usec;
+	dev->logging_data->last_int = dev->last_int;
+	dev->logging_data->last_int_sec = dev->last_int_time.tv_sec;
+	dev->logging_data->last_int_usec = dev->last_int_time.tv_usec;
+	dev->logging_data->hwlock_dev = dev->hwlock.dev;
+	dev->logging_data->hwlock_ctx = dev->hwlock.bits;
+	dev->logging_data->num_inst = dev->num_inst;
+	dev->logging_data->num_drm_inst = dev->num_drm_inst;
+	dev->logging_data->power_cnt = mfc_pm_get_pwr_ref_cnt(dev);
+	dev->logging_data->clock_cnt = mfc_pm_get_clk_ref_cnt(dev);
+
+	if (ctx) {
+		dev->logging_data->state = ctx->state;
+		dev->logging_data->frame_cnt = ctx->frame_cnt;
+		if (ctx->type == MFCINST_DECODER) {
+			struct mfc_dec *dec = ctx->dec_priv;
+
+			if (dec) {
+				dev->logging_data->dynamic_used = dec->dynamic_used;
+				dev->logging_data->cause |= (dec->detect_black_bar << MFC_LAST_INFO_BLACK_BAR);
+			}
+			dev->logging_data->last_src_addr = ctx->last_src_addr;
+			for (i = 0; i < MFC_MAX_PLANES; i++)
+				dev->logging_data->last_dst_addr[i] = ctx->last_dst_addr[i];
+		}
+	}
+
+	mfc_merge_errorinfo_data(dev, px_fault);
 }
 
 static int __mfc_get_curr_ctx(struct mfc_dev *dev)

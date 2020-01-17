@@ -306,8 +306,12 @@ void abox_qos_print(struct device *dev, enum abox_qos_class qos_class)
 
 	spin_lock_irqsave(&abox_qos_lock, flags);
 	for (req = first = qos->req_array; req - first < len; req++) {
-		if (req->val)
+		if (req->val) {
 			dev_warn(dev, "qos: %d, %#x\n", qos_class, req->id);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+			sec_audio_pmlog(3, dev, "qos: %d, %#x\n", qos_class, req->id);
+#endif
+		}
 	}
 	spin_unlock_irqrestore(&abox_qos_lock, flags);
 }
@@ -338,8 +342,13 @@ static ssize_t abox_qos_read_qos(char *buf, size_t size, struct abox_qos *qos)
 	return offset;
 }
 
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+ssize_t abox_qos_read_file(struct file *file, char __user *user_buf,
+				    size_t count, loff_t *ppos)
+#else
 static ssize_t abox_qos_read_file(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
+#endif
 {
 	struct abox_qos **p_qos;
 	const size_t size = PAGE_SIZE, len = ARRAY_SIZE(abox_qos_array);

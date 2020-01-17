@@ -327,6 +327,93 @@ bad_key:
 	return ret;
 }
 
+#ifdef CONFIG_NETPM
+#define TCP_NETPM_IFNAME_MAX	23
+#define TCP_NETPM_IFDEVS_MAX	64
+
+static int proc_netpm_ifdevs(struct ctl_table *ctl, int write,
+			     void __user *buffer, size_t *lenp,
+			     loff_t *ppos)
+{
+	size_t offs = 0;
+	char ifname[TCP_NETPM_IFNAME_MAX + 1];
+	char *strbuf = NULL;
+	struct net_device *dev;
+	struct ctl_table tbl = { .maxlen = ((TCP_NETPM_IFNAME_MAX + 1) * TCP_NETPM_IFDEVS_MAX) };
+	int ret = 0;
+
+	if (!write) {
+		char *dev_list;
+		int len = tbl.maxlen, used;
+
+		tbl.data = kzalloc(tbl.maxlen, GFP_KERNEL);
+		if (!tbl.data)
+			return -ENOMEM;
+		dev_list = (char *)tbl.data;
+
+		rcu_read_lock();
+		for_each_netdev_rcu(&init_net, dev) {
+			if (dev && dev->netpm_use) {
+				used = snprintf(dev_list, len, "%s ", dev->name);
+				dev_list += used;
+				len -= used;
+			}
+		}
+		rcu_read_unlock();
+
+		ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
+
+		kfree(tbl.data);
+		return ret;
+	}
+
+	if (*lenp > tbl.maxlen || *lenp < 1) {
+		pr_info("%s: netpm: lenp=%lu\n", __func__, *lenp);
+		return -EINVAL;
+	}
+
+	strbuf = kzalloc(*lenp + 1, GFP_USER);
+	if (!strbuf)
+		return -ENOMEM;
+
+	if (copy_from_user(strbuf, buffer, *lenp)) {
+		kfree(strbuf);
+		return -EFAULT;
+	}
+
+	/* clear netpm use */
+	rcu_read_lock();
+	for_each_netdev_rcu(&init_net, dev) {
+		if (dev)
+			dev->netpm_use = 0;
+	}
+	rcu_read_unlock();
+
+	while (offs < *lenp && sscanf(strbuf + offs, "%23s", ifname) > 0) {
+		struct net_device *dev;
+		int len = strlen(ifname);
+
+		if (!len)
+			break;
+
+		rcu_read_lock();
+		dev = dev_get_by_name_rcu(&init_net, ifname);
+		if (dev) {
+			dev->netpm_use = 1;
+			pr_info("%s: netpm: ifdev %s added\n", __func__, ifname);
+		}
+		rcu_read_unlock();
+
+		offs += len;
+		while (offs < *lenp && ((char *)strbuf)[offs] == ' ')
+			offs++;
+	}
+
+	kfree(strbuf);
+	return 0;
+}
+#endif
+
 static void proc_configure_early_demux(int enabled, int protocol)
 {
 	struct net_protocol *ipprot;
@@ -635,6 +722,21 @@ static struct ctl_table ipv4_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec
 	},
+#ifdef CONFIG_NETPM
+	{
+		.procname	= "tcp_netpm",
+		.data		= &sysctl_tcp_netpm,
+		.maxlen		= sizeof(sysctl_tcp_netpm),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec
+	},
+	{
+		.procname	= "tcp_netpm_ifdevs",
+		.maxlen		= ((TCP_NETPM_IFNAME_MAX + 1) * TCP_NETPM_IFDEVS_MAX),
+		.mode		= 0644,
+		.proc_handler	= proc_netpm_ifdevs
+	},
+#endif
 #ifdef CONFIG_NETLABEL
 	{
 		.procname	= "cipso_cache_enable",

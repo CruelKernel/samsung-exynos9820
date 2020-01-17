@@ -215,6 +215,9 @@ static inline void suspend_test_finish(const char *label) {}
 extern int __pm_notifier_call_chain(unsigned long val, int nr_to_call,
 				    int *nr_calls);
 extern int pm_notifier_call_chain(unsigned long val);
+#ifdef CONFIG_SEC_PM_DEBUG
+extern void *pm_notifier_call_chain_get_callback(int nr_calls);
+#endif /* CONFIG_SEC_PM_DEBUG */
 #endif
 
 #ifdef CONFIG_HIGHMEM

@@ -888,6 +888,23 @@ int sec_bat_parse_dt(struct device *dev,
 	if (ret)
 		pr_info("%s : wpc_low_recovery_normal is Empty\n", __func__);
 
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+	ret = of_property_read_u32(np, "battery,usb_protection_temp",
+				   &temp);
+	battery->usb_protection_temp = (int)temp;
+	if (ret) {
+		pr_info("%s : usb protection temp value is Empty\n", __func__);
+		battery->usb_protection_temp = 610;
+	}
+
+	ret = of_property_read_u32(np, "battery,temp_gap_bat_usb",
+				   &temp);
+	battery->temp_gap_bat_usb = (int)temp;
+	if (ret) {
+		pr_info("%s : temp gap value is Empty\n", __func__);
+		battery->temp_gap_bat_usb = 200;
+	}
+#endif
 	ret = of_property_read_u32(np, "battery,tx_high_threshold",
 				   &temp);
 	pdata->tx_high_threshold = (int)temp;

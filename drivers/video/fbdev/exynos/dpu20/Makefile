@@ -25,3 +25,4 @@ decon-y += decon_core.o decon_dsi.o decon_wb.o helper.o win_update.o cursor.o fe
 obj-y += panels/
 obj-y += dp_logger/
 obj-y += mcd_hdr/
+ccflags-$(CONFIG_SAMSUNG_TUI)	+= -Idrivers/misc/tui

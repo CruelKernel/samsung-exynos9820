@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 799965 2019-01-18 06:55:56Z $
+ * $Id: dhd.h 816567 2019-04-25 06:56:03Z $
  */
 
 /****************
@@ -498,6 +498,7 @@ enum dhd_hang_reason {
 	HANG_REASON_IOCTL_RESP_TIMEOUT_SCHED_ERROR	= 0x800C,
 	HANG_REASON_D3_ACK_TIMEOUT_SCHED_ERROR		= 0x800D,
 	HANG_REASON_SEQUENTIAL_PRIVCMD_ERROR		= 0x800E,
+	HANG_REASON_SCAN_BUSY				= 0x800F,
 	HANG_REASON_PCIE_LINK_DOWN_RC_DETECT		= 0x8805,
 	HANG_REASON_INVALID_EVENT_OR_DATA		= 0x8806,
 	HANG_REASON_UNKNOWN				= 0x8807,
@@ -1386,6 +1387,10 @@ typedef struct dhd_pub {
 	uint32 target_uid;
 	uint8 target_tid;
 #endif /* SUPPORT_SET_TID */
+#ifdef DHD_PKTDUMP_ROAM
+	void *pktcnts;
+#endif /* DHD_PKTDUMP_ROAM */
+	bool disable_dtim_in_suspend;	/* Disable set bcn_li_dtim in suspend */
 } dhd_pub_t;
 
 typedef struct {
@@ -3343,11 +3348,11 @@ extern struct dhd_if * dhd_get_ifp(dhd_pub_t *dhdp, uint32 ifidx);
 #define ST(x)		0
 #define STDIR(x)	0
 #define DHD_STATLOG_CTRL(dhdp, stat, ifidx, reason) \
-	do { /* noop */ } while(0)
-#define DHD_STATLOG_DATA(dhdp, stat, ifidx, dir) \
-	do { /* noop */ } while(0)
+	do { /* noop */ } while (0)
+#define DHD_STATLOG_DATA(dhdp, stat, ifidx, dir, cond) \
+	do { BCM_REFERENCE(cond); } while (0)
 #define DHD_STATLOG_DATA_RSN(dhdp, stat, ifidx, dir, reason) \
-	do { /* noop */ } while(0)
+	do { /* noop */ } while (0)
 #endif /* DHD_STATUS_LOGGING */
 
 #ifdef CONFIG_SILENT_ROAM

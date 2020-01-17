@@ -38,7 +38,7 @@ void mfc_qos_off(struct mfc_ctx *ctx);
 #define mfc_qos_off(ctx)		do {} while (0)
 #endif
 
-void mfc_qos_update_framerate(struct mfc_ctx *ctx);
+void mfc_qos_update_framerate(struct mfc_ctx *ctx, u32 bytesused);
 void mfc_qos_update_last_framerate(struct mfc_ctx *ctx, u64 timestamp);
 
 static inline void mfc_qos_reset_framerate(struct mfc_ctx *ctx)

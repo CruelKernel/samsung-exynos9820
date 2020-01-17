@@ -68,6 +68,7 @@ enum qbt2000_commands {
 	QBT2000_CPU_SPEEDUP = 28,
 	QBT2000_SET_SENSOR_TYPE = 29,
 	QBT2000_SET_LOCKSCREEN = 30,
+	QBT2000_SENSOR_RESET = 31,
 	QBT2000_IS_WHUB_CONNECTED = 105,
 };
 
@@ -130,6 +131,8 @@ struct qbt2000_drvdata {
 	int spi_speed;
 	int sensortype;
 	int cbge_count;
+	int wuhb_count;
+	int reset_count;
 	bool enabled_ipc;
 	bool enabled_wuhb;
 	bool enabled_ldo;

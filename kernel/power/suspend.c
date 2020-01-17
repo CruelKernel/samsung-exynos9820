@@ -356,7 +356,23 @@ static int suspend_prepare(suspend_state_t state)
 
 	error = __pm_notifier_call_chain(PM_SUSPEND_PREPARE, -1, &nr_calls);
 	if (error) {
-		log_suspend_abort_reason("Suspend_prepare failed(%d)", nr_calls);
+#ifdef CONFIG_SEC_PM_DEBUG
+		void *callback;
+
+		callback = pm_notifier_call_chain_get_callback(nr_calls - 1);
+
+		if (IS_ERR(callback)) {
+			pr_info("PM_SUSPEND_PREPARE failed: %d\n",
+					nr_calls);
+			log_suspend_abort_reason("PM_SUSPEND_PREPARE failed: "
+					"%d", nr_calls);
+		} else {
+			pr_info("PM_SUSPEND_PREPARE failed: %d (%ps)\n",
+					nr_calls, callback);
+			log_suspend_abort_reason("PM_SUSPEND_PREPARE failed: "
+					"%ps (%d)", callback, nr_calls);
+		}
+#endif /* CONFIG_SEC_PM_DEBUG */
 		nr_calls--;
 		goto Finish;
 	}
@@ -369,6 +385,9 @@ static int suspend_prepare(suspend_state_t state)
 		printk("canceled.\n");
 		trace_suspend_resume(TPS("sync_filesystems"), 0, false);
 		error = -EBUSY;
+#ifdef CONFIG_SEC_PM_DEBUG
+		log_suspend_abort_reason("intr_sync failed");
+#endif /* CONFIG_SEC_PM_DEBUG */
 		goto Finish;
 	}
 	pr_cont("done.\n");
@@ -388,6 +407,9 @@ static int suspend_prepare(suspend_state_t state)
 
 	suspend_stats.failed_freeze++;
 	dpm_save_failed_step(SUSPEND_FREEZE);
+#ifdef CONFIG_SEC_PM_DEBUG
+	log_suspend_abort_reason("Freezing processes failed: %d", error);
+#endif /* CONFIG_SEC_PM_DEBUG */
  Finish:
 	__pm_notifier_call_chain(PM_POST_SUSPEND, nr_calls, NULL);
 	pm_restore_console();

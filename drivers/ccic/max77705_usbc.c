@@ -1745,6 +1745,9 @@ static void max77705_irq_execute(struct max77705_usbc_platform_data *usbc_data,
 			break;
 		};
 		break;
+	case OPCODE_SET_ALTERNATEMODE:
+		usbc_data->max77705->set_altmode = 1;
+		break;
 	case OPCODE_READ_SELFTEST:
 		max77705_response_selftest_read(usbc_data, data);
 		break;
@@ -2412,6 +2415,12 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 		store_usblog_notify(NOTIFY_EXTRA, (void *)&event, NULL);
 #endif
 		break;
+	case SYSERROR_DROP5V_SRCRDY:
+		msg_maxim("vbus drop during source ready");
+		break;
+	case SYSERROR_DROP5V_SNKRDY:
+		msg_maxim("vbus drop during sink ready");
+		break;
 	case SYSERROR_POWER_NEGO:
 		if (!usbc_data->last_opcode.is_uvdm) { /* structured vdm */
 			if (usbc_data->last_opcode.opcode == OPCODE_VDM_DISCOVER_SET_VDM_REQ) {
@@ -2486,7 +2495,7 @@ static irqreturn_t max77705_sysmsg_irq(int irq, void *data)
 			dump_reg[2], dump_reg[3], dump_reg[4], dump_reg[5], dump_reg[6], dump_reg[7]);
 		sysmsg = 0x6D;
 	}
-	msg_maxim("%s: IRQ(%d)_IN\n", __func__, irq);
+	msg_maxim("IRQ(%d)_IN sysmsg: %x", irq, sysmsg);
 	max77705_usbc_check_sysmsg(usbc_data, sysmsg);
 	usbc_data->sysmsg = sysmsg;
 	msg_maxim("IRQ(%d)_OUT sysmsg: %x", irq, sysmsg);
@@ -2584,6 +2593,24 @@ static irqreturn_t max77705_vdm_attention_irq(int irq, void *data)
 	VDM_MSG_IRQ_State.BITS.Vdm_Flag_Attention = 1;
 	max77705_receive_alternate_message(usbc_data, &VDM_MSG_IRQ_State);
 	msg_maxim("IRQ(%d)_OUT", irq);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t max77705_vir_altmode_irq(int irq, void *data)
+{
+	struct max77705_usbc_platform_data *usbc_data = data;
+
+	msg_maxim("max77705_vir_altmode_irq");
+
+	if (usbc_data->shut_down) {
+		msg_maxim("%s doing shutdown. skip set alternate mode", __func__);
+		goto skip;
+	}
+	
+	max77705_set_enable_alternate_mode
+		(usbc_data->set_altmode);
+
+skip:	
 	return IRQ_HANDLED;
 }
 
@@ -2698,6 +2725,18 @@ int max77705_init_irq_handler(struct max77705_usbc_platform_data *usbc_data)
 			   NULL, max77705_vdm_attention_irq,
 			   0,
 			   "usbc-vdm6-irq", usbc_data);
+		if (ret) {
+			pr_err("%s: Failed to Request IRQ (%d)\n", __func__, ret);
+			return ret;
+		}
+	}
+
+	usbc_data->irq_vir0 = usbc_data->irq_base + MAX77705_VIR_IRQ_ALTERROR_INT;
+	if (usbc_data->irq_vir0) {
+		ret = request_threaded_irq(usbc_data->irq_vir0,
+			   NULL, max77705_vir_altmode_irq,
+			   0,
+			   "usbc-vir0-irq", usbc_data);
 		if (ret) {
 			pr_err("%s: Failed to Request IRQ (%d)\n", __func__, ret);
 			return ret;

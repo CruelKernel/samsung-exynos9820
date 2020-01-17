@@ -96,6 +96,8 @@ struct max77705_usbc_platform_data {
 	int irq_vdm6;
 	int irq_vdm7;
 
+	int irq_vir0;
+
 	/* register information */
 	u8 usbc_status1;
 	u8 usbc_status2;

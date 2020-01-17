@@ -40,6 +40,7 @@
 #define ENABLE 1
 #define DISABLE 0
 #define CMD_CNT 3
+#define ISR_CNT 10
 #define MAX_I2C_ERROR_COUNT		30
 
 #define MAX_BUF 255
@@ -4060,7 +4061,7 @@ static irqreturn_t mfc_wpc_det_irq_thread(int irq, void *irq_data)
 }
 
 /* mfc_mst_routine : MST dedicated codes */
-void mfc_mst_routine(struct mfc_charger_data *charger, u8 *irq_src)
+void mfc_mst_routine(struct mfc_charger_data *charger, u8 irq_src_l, u8 irq_src_h)
 {
 	u8 data = 0;
 
@@ -4069,16 +4070,16 @@ void mfc_mst_routine(struct mfc_charger_data *charger, u8 *irq_src)
 	if (charger->is_mst_on == MST_MODE_2) {
 		charger->wc_tx_enable = false;
 		/* clear intterupt */
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src_l); // clear int
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src_h); // clear int
 		mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
 
 		mfc_reg_write(charger->client, MFC_MST_MODE_SEL_REG, 0x02); /* set MST mode2 */
 		pr_info("%s 2AC Missing ! : MST on REV : %d\n", __func__, charger->pdata->wc_ic_rev);
 
 		/* clear intterupt */
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src_l); // clear int
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src_h); // clear int
 		mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
 
 		mdelay(10);
@@ -4117,14 +4118,69 @@ void mfc_check_sys_op_mode(struct mfc_charger_data *charger, u8 mode)
 	}
 }
 
+int mfc_clear_irq(struct mfc_charger_data *charger, u8 *src_l, u8 *src_h, u8 *status_l, u8 *status_h)
+{
+	int wc_w_state_irq = 0;
+	u8 new_src_l = 0, new_src_h = 0;
+	u8 new_status_l = 0, new_status_h = 0;
+	int ret = 0, rerun_ret = 1;
+
+	pr_info("%s start\n", __func__);
+
+	ret = mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, *src_l); // clear int
+	ret = mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, *src_h); // clear int
+	mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
+
+	//msleep(2);
+	wc_w_state_irq = gpio_get_value(charger->pdata->wpc_int);
+	pr_info("%s wc_w_state_irq = %d\n", __func__, wc_w_state_irq);
+
+	if (!wc_w_state_irq && (ret >= 0)) {
+		pr_info("%s wc_w_state_irq is not cleared\n", __func__);		
+		ret = mfc_reg_read(charger->client, MFC_INT_A_L_REG, &new_src_l);
+		ret = mfc_reg_read(charger->client, MFC_INT_A_H_REG, &new_src_h);
+			
+		ret = mfc_reg_read(charger->client, MFC_STATUS_L_REG, &new_status_l);
+		ret = mfc_reg_read(charger->client, MFC_STATUS_H_REG, &new_status_h);
+
+		pr_info("%s src_l[0x%x -> 0x%x], src_h[0x%x -> 0x%x], status_l[0x%x -> 0x%x],  status_h[0x%x -> 0x%x]\n",
+			__func__, *src_l, new_src_l, *src_h, new_src_h, *status_l, new_status_l, *status_h, new_status_h);
+
+		rerun_ret = 0; // re-run isr
+
+		/* do not try irq again with i2c fail status, need to end up the irq */
+		if ((*src_l != new_src_l ||
+			*src_h != new_src_h ||
+			*status_l != new_status_l ||
+			*status_h != new_status_h) &&
+			(ret >= 0)) {
+			*src_l = new_src_l;
+			*src_h = new_src_h;
+			*status_l = new_status_l;
+			*status_h = new_status_h;
+			pr_info("%s re-run isr\n", __func__);
+		} else if (ret < 0) {
+			rerun_ret = 1; // do not re-run isr
+			pr_info("%s i2c fail, do not re-run isr\n", __func__);
+		} else {
+			pr_info("%s re-run isr with same src, status\n", __func__);
+		}
+	}
+
+	pr_info("%s end (%d)\n", __func__, rerun_ret);
+	return rerun_ret;
+}
+
 static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 {
 	struct mfc_charger_data *charger = irq_data;
 	int wc_w_state_irq = 0;
 	int ret = 0;
-	u8 irq_src[2] = {0, };
+	u8 irq_src_l = 0, irq_src_h = 0;
 	u8 status_l = 0, status_h = 0;
 	u8 reg_data = 0;
+	int isr_rerun_cnt = 0;	
+	bool end_irq = false;
 	union power_supply_propval value;
 
 	if ((charger->chip_id == MFC_CHIP_LSI) && (charger->mst_off_lock == 1)) {
@@ -4139,21 +4195,26 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 
 	if (wc_w_state_irq == 1 &&
 		charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE) {
-		pr_info("%s: Check vrect after 0.7 second to prevent reconnection by UVLO or Watch ping\n", __func__);
+		pr_info("%s: Check vrect after 0.9 second to prevent reconnection by UVLO or Watch ping\n", __func__);
 		wake_lock(&charger->wpc_vrect_check_lock);
-		queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(700));
+		queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(900));
+		return IRQ_HANDLED;
+	} else if (wc_w_state_irq == 1) {
+		pr_info("%s Rising edge, End up ISR\n", __func__);
 		return IRQ_HANDLED;
 	}
 
 	wake_lock(&charger->wpc_wake_lock);
 
-	ret = mfc_reg_read(charger->client, MFC_INT_A_L_REG, &irq_src[0]);
-	ret = mfc_reg_read(charger->client, MFC_INT_A_H_REG, &irq_src[1]);
+	ret = mfc_reg_read(charger->client, MFC_INT_A_L_REG, &irq_src_l);
+	ret = mfc_reg_read(charger->client, MFC_INT_A_H_REG, &irq_src_h);
 
 	ret = mfc_reg_read(charger->client, MFC_STATUS_L_REG, &status_l);
 	ret = mfc_reg_read(charger->client, MFC_STATUS_H_REG, &status_h);
 
-	pr_info("%s: interrupt source(0x%x), status(0x%x) \n", __func__, irq_src[1] << 8 | irq_src[0], status_h << 8 | status_l);
+INT_RE:
+	isr_rerun_cnt++;
+	pr_info("%s: interrupt source(0x%x), status(0x%x) \n", __func__, irq_src_h << 8 | irq_src_l, status_h << 8 | status_l);
 
 	if (ret < 0) {
 		pr_err("%s: Failed to read interrupt source: %d\n",
@@ -4165,12 +4226,12 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 	/* get firmware information */
 	mfc_get_chip_id(charger);
 
-	if (irq_src[1] & MFC_INTA_H_AC_MISSING_DET_MASK) {
+	if (irq_src_h & MFC_INTA_H_AC_MISSING_DET_MASK) {
 		pr_info("%s 1AC Missing ! : MFC is on\n", __func__);
-		mfc_mst_routine(charger, irq_src);
+		mfc_mst_routine(charger, irq_src_l, irq_src_h);
 	}
 
-	if (irq_src[0] & MFC_INTA_L_OP_MODE_MASK) {
+	if (irq_src_l & MFC_INTA_L_OP_MODE_MASK) {
 		pr_info("%s MODE CHANGE IRQ !\n", __func__);
 		if(charger->wc_tx_enable) {
 			ret = mfc_reg_read(charger->client, MFC_SYS_OP_MODE_REG, &reg_data);
@@ -4178,22 +4239,30 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 		}
 	}
 
-	if ((irq_src[0] & MFC_INTA_L_OVER_VOL_MASK) ||
-		(irq_src[0] & MFC_INTA_L_OVER_CURR_MASK)) {
+	if ((irq_src_l & MFC_INTA_L_OVER_VOL_MASK) ||
+		(irq_src_l & MFC_INTA_L_OVER_CURR_MASK)) {
 		pr_info("%s ABNORMAL STAT IRQ !\n", __func__);
 	}
 
-	if (irq_src[0] & MFC_INTA_L_OVER_TEMP_MASK) {
+	if (irq_src_l & MFC_INTA_L_OVER_TEMP_MASK) {
 		pr_info("%s OVER TEMP IRQ !\n", __func__);
 		if (charger->wc_tx_enable) {
 			value.intval = BATT_TX_EVENT_WIRELESS_RX_UNSAFE_TEMP;
+			end_irq = true;
 			goto INT_END;
 		}
 	}
 
-	if (irq_src[0] & MFC_INTA_L_STAT_VRECT_MASK) {
+	if (irq_src_l & MFC_INTA_L_STAT_VRECT_MASK) {
 		pr_info("%s: Vrect IRQ !\n", __func__);
-		if(charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE ||
+		if (charger->is_mst_on == MST_MODE_2 || charger->wc_tx_enable) {
+			pr_info("%s: Noise made false Vrect IRQ !\n", __func__);
+			if (charger->wc_tx_enable) {
+				value.intval = BATT_TX_EVENT_WIRELESS_TX_ETC;
+				end_irq = true;
+				goto INT_END;
+			}
+		} else if(charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE ||
 			charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE) {
 			charger->pdata->cable_type = value.intval = SEC_WIRELESS_PAD_FAKE;
 			if (delayed_work_pending(&charger->wpc_vrect_check_work)) {
@@ -4205,15 +4274,16 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 			pr_info("%s: undefined Vrect IRQ scenario! \n", __func__);
 	}
 
-	if (irq_src[0] & MFC_INTA_L_TXCONFLICT_MASK) {
+	if (irq_src_l & MFC_INTA_L_TXCONFLICT_MASK) {
 		pr_info("@Tx_Mode %s TXCONFLICT IRQ !\n", __func__);
 		if (charger->wc_tx_enable && (status_l & MFC_STAT_L_TXCONFLICT_MASK)) {
 			value.intval = BATT_TX_EVENT_WIRELESS_TX_ETC;
+			end_irq = true;
 			goto INT_END;
 		}
 	}
 
-	if (irq_src[1] & MFC_INTA_H_TRX_DATA_RECEIVED_MASK) {
+	if (irq_src_h & MFC_INTA_H_TRX_DATA_RECEIVED_MASK) {
 		pr_info("%s TX RECEIVED IRQ !\n", __func__);
 		if (charger->wc_tx_enable && !delayed_work_pending(&charger->wpc_tx_isr_work)) {
 			wake_lock(&charger->wpc_tx_wake_lock);
@@ -4228,7 +4298,7 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 		}
 	}
 
-	if (irq_src[1] & MFC_INTA_H_TX_CON_DISCON_MASK) {
+	if (irq_src_h & MFC_INTA_H_TX_CON_DISCON_MASK) {
 		pr_info("@Tx_Mode %s TX CONNECT IRQ !\n", __func__);
 		charger->tx_status = SEC_TX_POWER_TRANSFER;
 		if (status_h & MFC_STAT_H_TX_CON_DISCON_MASK) {
@@ -4246,71 +4316,56 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 	}
 
 	/* when rx is not detacted in 3 mins */
-	if (irq_src[1] & MFC_INTA_H_TX_MODE_RX_NOT_DET_MASK) {
+	if (irq_src_h & MFC_INTA_H_TX_MODE_RX_NOT_DET_MASK) {
 		pr_info("@Tx_Mode %s Receiver NOT DETECTED IRQ !\n", __func__);
 		if (charger->wc_tx_enable) {
 			value.intval = BATT_TX_EVENT_WIRELESS_TX_ETC;
+			end_irq = true;
 			goto INT_END;
 		}
 	}
 
-	if (irq_src[1] & MFC_STAT_H_ADT_RECEIVED_MASK) {
+	if (irq_src_h & MFC_STAT_H_ADT_RECEIVED_MASK) {
 		pr_info("%s %s ADT Received IRQ !\n", WC_AUTH_MSG, __func__);
 		mfc_auth_adt_read(charger, ADT_buffer_rdata);
 	}
 
-	if (irq_src[1] & MFC_STAT_H_ADT_SENT_MASK) {
+	if (irq_src_h & MFC_STAT_H_ADT_SENT_MASK) {
 		pr_info("%s %s ADT Sent successful IRQ !\n", WC_AUTH_MSG, __func__);
 		mfc_reg_update(charger->client, MFC_INT_A_ENABLE_H_REG,
 						0, MFC_STAT_H_ADT_SENT_MASK);
 	}
 
-	if (irq_src[1] & MFC_INTA_H_TX_FOD_MASK) {
+	if (irq_src_h & MFC_INTA_H_TX_FOD_MASK) {
 		pr_info("%s TX FOD IRQ !\n", __func__);
 		// this code will move to wpc_tx_isr_work
 		if (charger->wc_tx_enable) {
 			if (status_h & MFC_STAT_H_TX_FOD_MASK) {
 				charger->wc_rx_fod = true;
 				value.intval = BATT_TX_EVENT_WIRELESS_TX_FOD;
+				end_irq = true;
 				goto INT_END;
 			}
 		}
 	}
 
-	if (irq_src[1] & MFC_INTA_H_TX_OCP_MASK) {
+	if (irq_src_h & MFC_INTA_H_TX_OCP_MASK) {
 		pr_info("%s TX Over Current IRQ !\n", __func__);
 	}
 
-	/* clear intterupt */
-	if (charger->pdata->cable_type != SEC_WIRELESS_PAD_FAKE) {
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
-		mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
-	} else {
-		pr_info("%s: Vrect IRQ - skip clear INT_A\n", __func__);
-	}
-
-	wc_w_state_irq = gpio_get_value(charger->pdata->wpc_int);
-	pr_info("%s wc_w_state_irq = %d\n", __func__, wc_w_state_irq);
-	pr_info("%s end!\n", __func__);
-
-	wake_unlock(&charger->wpc_wake_lock);
-
-	return IRQ_HANDLED;
-
 INT_END:
-	/* clear intterupt */
 	if (charger->pdata->cable_type != SEC_WIRELESS_PAD_FAKE) {
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
-		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
-		mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
+		/* clear intterupt */
+		if(!mfc_clear_irq(charger, &irq_src_l, &irq_src_h, &status_l, &status_h) && isr_rerun_cnt < ISR_CNT)
+			goto INT_RE;
 	} else {
 		pr_info("%s: Vrect IRQ - skip clear INT_A\n", __func__);
 	}
 
-	wc_w_state_irq = gpio_get_value(charger->pdata->wpc_int);
-	pr_info("%s wc_w_state_irq = %d\n", __func__, wc_w_state_irq);	
-	psy_do_property("wireless", set, POWER_SUPPLY_EXT_PROP_WIRELESS_TX_ERR, value);
+	/* tx off should work having done i2c */
+	if (end_irq)
+		psy_do_property("wireless", set, POWER_SUPPLY_EXT_PROP_WIRELESS_TX_ERR, value);
+
 	pr_info("%s end!\n", __func__);
 
 	wake_unlock(&charger->wpc_wake_lock);

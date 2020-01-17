@@ -48,7 +48,7 @@
 
 #define STATUS1_ACOKB	BIT(2)
 
-static struct device *ap_pmic_dev;
+struct device *ap_pmic_dev;
 #endif /* CONFIG_SEC_PM */
 
 static struct s2mps19_info *s2mps19_static_info;

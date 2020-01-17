@@ -1004,19 +1004,11 @@ static ssize_t hiccup_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct max77705_muic_data *muic_data = dev_get_drvdata(dev);
-	union power_supply_propval psy_val;
 
 	if (!strncasecmp(buf, "DISABLE", 7)) {
 		pr_info("%s\n", __func__);
-#if defined(CONFIG_MUIC_MAX77705_CCIC)
-		if (muic_data->afc_water_disable)
-			com_to_open(muic_data);
-#endif /* CONFIG_MUIC_MAX77705_CCIC */
-		if (muic_data->is_hiccup_mode) {
-			com_to_open(muic_data);
-			psy_val.intval = 1;
-			psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_OVERHEAT_HICCUP, psy_val);
-		}
+		com_to_open(muic_data);
+		muic_data->is_hiccup_mode = 0;
 	} else
 		pr_warn("%s invalid com : %s\n", __func__, buf);
 
@@ -1172,7 +1164,9 @@ static int max77705_muic_handle_detach(struct max77705_muic_data *muic_data, int
 		muic_data->is_check_hv = false;
 		max77705_muic_disable_afc_protocol(muic_data);
 	}
-
+#if defined(CONFIG_HICCUP_CHARGER)
+	muic_data->is_hiccup_mode = false;
+#endif
 	muic_data->hv_voltage = 0;
 	muic_data->afc_retry = 0;
 	muic_data->is_afc_reset = false;
@@ -1766,7 +1760,7 @@ static void max77705_muic_detect_dev(struct max77705_muic_data *muic_data,
 
 #if !defined(CONFIG_SEC_FACTORY)
 	/* W/A of defect cable(Vbus is valid and CC is invalid), set or cancel vbus_wa_work */
-	if (irq == muic_data->irq_vbusdet) {
+	if (irq == muic_data->irq_vbusdet || irq == MUIC_IRQ_INIT_DETECT) {
 		wake_unlock(&muic_data->muic_wake_lock);
 		cancel_delayed_work(&(muic_data->vbus_wa_work));
 		if (vbvolt > 0) {

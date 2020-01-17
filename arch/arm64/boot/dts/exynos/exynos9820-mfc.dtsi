@@ -98,6 +98,10 @@
 		mfc_freq_control = <1>;
 		mo_control = <1>;
 		bw_control = <1>;
+		num_mfc_freq = <5>;
+		mfc_freqs = <134000 267000 400000 534000 666000>;
+		/* spec: H264(240M) VP8(80M) */
+		max_Kbps = <245760 81920>;
 
 		/* QoS weight (%) */
 		qos_weight_h264_hevc = <100>;
@@ -125,6 +129,13 @@
 		};
 		mmcache {
 			reg = <0x0 0x1A300000 0x100>;
+		};
+		cmu {
+			reg = <0x0 0x1A200000 0x8000>,
+				<0x0 0x1BC00000 0x8000>,
+				<0x0 0x1BD00000 0x8000>,
+				<0x0 0x1BE00000 0x8000>,
+				<0x0 0x1BF00000 0x8000>;
 		};
 
 		/* QoS table */

@@ -2867,9 +2867,6 @@ static void sec_ts_input_close(struct input_dev *dev)
 #ifdef CONFIG_INPUT_SEC_SECURE_TOUCH
 	secure_touch_stop(ts, 1);
 #endif
-#ifdef CONFIG_SAMSUNG_TUI
-	stui_cancel_session();
-#endif
 
 #ifdef USE_POWER_RESET_WORK
 	cancel_delayed_work(&ts->reset_work);

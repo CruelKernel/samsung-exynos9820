@@ -275,5 +275,8 @@ extern int s2mps20_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
 extern void get_s2mps20_i2c(struct i2c_client **i2c);
 #endif
 
+#ifdef CONFIG_SEC_PM
+extern struct device *ap_sub_pmic_dev;
+#endif /* CONFIG_SEC_PM */
 #endif /* __LINUX_MFD_S2MPS20_REGULATOR_H */
 

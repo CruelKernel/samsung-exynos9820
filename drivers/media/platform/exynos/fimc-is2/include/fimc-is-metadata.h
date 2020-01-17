@@ -44,7 +44,7 @@ struct rational {
 #define CAMERA2_MAX_AVAILABLE_MODE		21
 #define CAMERA2_MAX_FACES			16
 #define CAMERA2_MAX_VENDER_LENGTH		400
-#define CAMERA2_MAX_IPC_VENDER_LENGTH		1056
+#define CAMERA2_MAX_IPC_VENDER_LENGTH		1086
 #define CAMERA2_MAX_PDAF_MULTIROI_COLUMN	13
 #define CAMERA2_MAX_PDAF_MULTIROI_ROW		9
 #define CAMERA2_MAX_UCTL_VENDER_LENGTH		32
@@ -977,6 +977,8 @@ enum awb_state {
 enum aa_videostabilization_mode {
 	VIDEO_STABILIZATION_MODE_OFF = 0,
 	VIDEO_STABILIZATION_MODE_ON,
+	VIDEO_STABILIZATION_MODE_SWVDIS = 100,
+	VIDEO_STABILIZATION_MODE_SUPERSTEADY,
 };
 
 enum aa_isomode {
@@ -1055,6 +1057,11 @@ enum aa_af_scene_change {
 	AA_AF_DETECTED,
 };
 
+struct camera2_video_output_size {
+	uint16_t			width;
+	uint16_t			height;
+};
+
 struct camera2_aa_ctl {
 	enum aa_ae_antibanding_mode	aeAntibandingMode;
 	int32_t				aeExpCompensation;
@@ -1098,7 +1105,8 @@ struct camera2_aa_ctl {
 	float				vendor_expBracketing[15];
 	float				vendor_expBracketingCapture;
 	enum aa_supernightmode		vendor_superNightShotMode;
-	uint32_t			vendor_reserved[7];
+	struct camera2_video_output_size	vendor_videoOutputSize;
+	uint32_t			vendor_reserved[6];
 };
 
 struct aa_apexInfo {
@@ -1178,13 +1186,14 @@ struct camera2_aa_dm {
 	int32_t				vendor_dynamicShotValue[3];
 	int32_t				vendor_lightConditionValue;
 	int32_t				vendor_dynamicShotExtraInfo;
-	struct aa_apexInfo		vendor_apexInfo;   
+	struct aa_apexInfo		vendor_apexInfo;
 	struct osdInfo			vendor_osdInfo;      
 	int32_t				vendor_drcRatio;    
 	uint32_t			vendor_colorTempIndex; // cu
 	uint32_t			vendor_luxIndex;       
-	uint32_t			vendor_luxStandard;     
-	uint32_t			vendor_reserved[5];
+	uint32_t			vendor_luxStandard;
+	int32_t				vendor_aeStats4VO[8];
+	uint32_t			vendor_reserved[10];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;

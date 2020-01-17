@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_statlog.h 790094 2018-11-21 11:37:46Z $
+ * $Id: dhd_statlog.h 813281 2019-04-04 08:56:10Z $
  */
 
 #ifndef __DHD_STATLOG_H_
@@ -35,7 +35,8 @@
 /* status element */
 typedef struct stat_elem {
 	uint16 stat;		/* store status */
-	uint64 ts;		/* timestamp(ns) */
+	uint64 ts;		/* local timestamp(ns) */
+	uint64 ts_tz;		/* timestamp applied timezone(us) */
 	uint8 ifidx;		/* ifidx */
 	uint8 dir;		/* direction (TX/RX) */
 	uint8 reason;		/* reason code from dongle */
@@ -44,12 +45,15 @@ typedef struct stat_elem {
 } stat_elem_t;
 
 /* status logging info */
+#define DHD_STAT_BDMASK_SIZE	16
 typedef struct dhd_statlog {
 	uint8 *logbuf;		/* log buffer */
 	uint32 logbuf_len;	/* length of the log buffer */
 	void *ringbuf;		/* fixed ring buffer */
 	uint32 bufsize;		/* size of ring buffer */
-	uint32 items;		/* number of items */
+	void *bdlog_ringbuf;	/* fixed ring buffer for bigdata logging */
+	uint32 bdlog_bufsize;	/* size of ring buffer for bigdata logging */
+	uint8 bdmask[DHD_STAT_BDMASK_SIZE];	/* bitmask for bigdata */
 } dhd_statlog_t;
 
 /* status query format */
@@ -60,6 +64,12 @@ typedef struct stat_query {
 	uint32 resp_buf_len;	/* length of the response buffer */
 	uint32 req_num;		/* total number of items to query */
 } stat_query_t;
+
+/* bitmask generation request format */
+typedef struct stat_bdmask_req {
+	uint8 *req_buf;		/* request buffer to gernerate bitmask */
+	uint32 req_buf_len;	/* length of the request buffer */
+} stat_bdmask_req_t;
 
 typedef void * dhd_statlog_handle_t; /* opaque handle to status log */
 
@@ -153,15 +163,27 @@ typedef enum stat_log_stat {
 	ST(DNS_RESP)		= 74,	/* send or recv DNS Resp */
 	ST(REASSOC_SUCCESS)	= 75,	/* reassociation success */
 	ST(REASSOC_FAILURE)	= 76,	/* reassociation failure */
-	ST(MAX)			= 77,	/* Max Status */
+	ST(AUTH_TIMEOUT)	= 77,	/* authentication timeout */
+	ST(AUTH_FAIL)		= 78,	/* authentication failure */
+	ST(AUTH_NO_ACK)		= 79,	/* authentication failure due to no ACK */
+	ST(AUTH_OTHERS)		= 80,	/* authentication failure with other status */
+	ST(ASSOC_TIMEOUT)	= 81,	/* association timeout */
+	ST(ASSOC_FAIL)		= 82,	/* association failure */
+	ST(ASSOC_NO_ACK)	= 83,	/* association failure due to no ACK */
+	ST(ASSOC_ABORT)		= 84,	/* association abort */
+	ST(ASSOC_UNSOLICITED)	= 85,	/* association unsolicited */
+	ST(ASSOC_NO_NETWORKS)	= 86,	/* association failure due to no networks */
+	ST(ASSOC_OTHERS)	= 87,	/* association failure due to no networks */
+	ST(REASSOC_DONE_OTHERS)	= 88,	/* complete to reassoc with other reason */
+	ST(MAX)			= 89	/* Max Status */
 } stat_log_stat_t;
 
 /* functions */
 extern dhd_statlog_handle_t *dhd_attach_statlog(dhd_pub_t *dhdp, uint32 num_items,
-	uint32 logbuf_len);
+	uint32 bdlog_num_items, uint32 logbuf_len);
 extern void dhd_detach_statlog(dhd_pub_t *dhdp);
 extern int dhd_statlog_ring_log_data(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx,
-	uint8 dir);
+	uint8 dir, bool cond);
 extern int dhd_statlog_ring_log_data_reason(dhd_pub_t *dhdp, uint16 stat,
 	uint8 ifidx, uint8 dir, uint16 reason);
 extern int dhd_statlog_ring_log_ctrl(dhd_pub_t *dhdp, uint16 stat, uint8 ifidx,
@@ -173,6 +195,7 @@ extern void dhd_statlog_dump_scr(dhd_pub_t *dhdp);
 extern int dhd_statlog_query(dhd_pub_t *dhdp, char *cmd, int total_len);
 extern uint32 dhd_statlog_get_logbuf_len(dhd_pub_t *dhdp);
 extern void *dhd_statlog_get_logbuf(dhd_pub_t *dhdp);
+extern int dhd_statlog_generate_bdmask(dhd_pub_t *dhdp, void *reqbuf);
 #ifdef DHD_LOG_DUMP
 extern int dhd_statlog_write_logdump(dhd_pub_t *dhdp, const void *user_buf,
 	void *fp, uint32 len, unsigned long *pos);
@@ -180,16 +203,20 @@ extern int dhd_statlog_write_logdump(dhd_pub_t *dhdp, const void *user_buf,
 
 /* macros */
 #define MAX_STATLOG_ITEM		512
+#define MAX_STATLOG_REQ_ITEM		32
 #define STATLOG_LOGBUF_LEN		(64 * 1024)
 #define DHD_STATLOG_VERSION_V1		0x1
 #define DHD_STATLOG_VERSION		DHD_STATLOG_VERSION_V1
 #define	DHD_STATLOG_ITEM_SIZE		(sizeof(stat_elem_t))
 #define DHD_STATLOG_RING_SIZE(items)	((items) * (DHD_STATLOG_ITEM_SIZE))
+#define DHD_STATLOG_STATSTR_BUF_LEN	32
+#define DHD_STATLOG_TZFMT_BUF_LEN	20
+#define DHD_STATLOG_TZFMT_YYMMDDHHMMSSMS	"%02d%02d%02d%02d%02d%02d%04d"
 
 #define DHD_STATLOG_CTRL(dhdp, stat, ifidx, reason)	\
 	dhd_statlog_ring_log_ctrl((dhdp), (stat), (ifidx), (reason))
-#define DHD_STATLOG_DATA(dhdp, stat, ifidx, dir) \
-	dhd_statlog_ring_log_data((dhdp), (stat), (ifidx), (dir))
+#define DHD_STATLOG_DATA(dhdp, stat, ifidx, dir, cond) \
+	dhd_statlog_ring_log_data((dhdp), (stat), (ifidx), (dir), (cond))
 #define DHD_STATLOG_DATA_RSN(dhdp, stat, ifidx, dir, reason) \
 	dhd_statlog_ring_log_data_reason((dhdp), (stat), (ifidx), \
 		(dir), (reason))

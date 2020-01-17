@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: linux_osl.h 799965 2019-01-18 06:55:56Z $
+ * $Id: linux_osl.h 813270 2019-04-04 08:03:55Z $
  */
 
 #ifndef _linux_osl_h_
@@ -339,10 +339,12 @@ extern uint64 osl_sysuptime_us(void);
 #define OSL_SYSUPTIME()		((uint32)jiffies * (1000 / HZ))
 #error "OSL_SYSUPTIME_US() may need to be defined"
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 29) */
-extern void osl_get_localtime(uint64 *sec, uint64 *usec);
 extern uint64 osl_localtime_ns(void);
+extern void osl_get_localtime(uint64 *sec, uint64 *usec);
+extern uint64 osl_systztime_us(void);
 #define OSL_LOCALTIME_NS()	osl_localtime_ns()
 #define OSL_GET_LOCALTIME(sec, usec)	osl_get_localtime((sec), (usec))
+#define OSL_SYSTZTIME_US()	osl_systztime_us()
 #define	printf(fmt, args...)	printk(fmt , ## args)
 #include <linux/kernel.h>	/* for vsn/printf's */
 #include <linux/string.h>	/* for mem*, str* */

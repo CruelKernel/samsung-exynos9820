@@ -34,6 +34,7 @@
 void mfc_mmcache_enable(struct mfc_dev *dev);
 void mfc_mmcache_disable(struct mfc_dev *dev);
 
+void mfc_mmcache_dump_info(struct mfc_dev *dev);
 
 /* Need HW lock to call this function */
 void mfc_invalidate_mmcache(struct mfc_dev *dev);

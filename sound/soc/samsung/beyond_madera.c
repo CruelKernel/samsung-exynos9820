@@ -817,6 +817,8 @@ static int beyond_late_probe(struct snd_soc_card *card)
 	atomic_notifier_chain_register(&panic_notifier_list,
 				&drvdata->panic_nb);
 
+	register_debug_mixer(card);
+
 	return 0;
 }
 

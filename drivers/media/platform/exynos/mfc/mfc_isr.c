@@ -676,6 +676,7 @@ static void __mfc_handle_frame(struct mfc_ctx *ctx,
 	if (dst_frame_status == MFC_REG_DEC_STATUS_DECODING_EMPTY) {
 		if (ctx->state == MFCINST_RES_CHANGE_FLUSH) {
 			struct mfc_timestamp *temp_ts = NULL;
+			struct mfc_bitrate *temp_bitrate = NULL;
 
 			mfc_debug(2, "[DRC] Last frame received after resolution change\n");
 			__mfc_handle_frame_all_extracted(ctx);
@@ -696,6 +697,15 @@ static void __mfc_handle_frame(struct mfc_ctx *ctx,
 			ctx->ts_is_full = 0;
 			mfc_qos_reset_last_framerate(ctx);
 			mfc_qos_set_framerate(ctx, DEC_DEFAULT_FPS);
+
+			/* empty the bitrate queue */
+			while (!list_empty(&ctx->bitrate_list)) {
+				temp_bitrate = list_entry((&ctx->bitrate_list)->next,
+						struct mfc_bitrate, list);
+				list_del(&temp_bitrate->list);
+			}
+			ctx->bitrate_index = 0;
+			ctx->bitrate_is_full = 0;
 
 			goto leave_handle_frame;
 		} else {
@@ -1242,9 +1252,20 @@ irqreturn_t mfc_top_half_irq(int irq, void *priv)
 
 	reason = mfc_get_int_reason();
 	err = mfc_get_int_err();
+
+	dev->last_int = reason;
+	dev->last_int_time = ktime_to_timeval(ktime_get());
+
+	if ((reason == MFC_REG_R2H_CMD_SEQ_DONE_RET) ||
+			(reason == MFC_REG_R2H_CMD_INIT_BUFFERS_RET) ||
+			(reason == MFC_REG_R2H_CMD_FRAME_DONE_RET) ||
+			(reason == MFC_REG_R2H_CMD_QUEUE_DONE_RET))
+		ctx->frame_cnt++;
+
 	mfc_debug(2, "[c:%d] Int reason: %d (err: %d)\n",
 			dev->curr_ctx, reason, err);
 	MFC_TRACE_CTX("<< INT(top): %d\n", reason);
+	MFC_TRACE_LOG_CTX("I%d", reason);
 
 	mfc_perf_measure_off(dev);
 

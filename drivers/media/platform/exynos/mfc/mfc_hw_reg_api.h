@@ -27,6 +27,39 @@
 			MFC_WRITEL(0, MFC_REG_RISC2HOST_INT);	\
 		} while (0)
 
+static inline int mfc_wait_pending(struct mfc_dev *dev)
+{
+	unsigned int status;
+	unsigned long timeout;
+
+	/* Check F/W wait status */
+	timeout = jiffies + msecs_to_jiffies(MFC_BW_TIMEOUT);
+	do {
+		if (time_after(jiffies, timeout)) {
+			mfc_err_dev("Timeout while waiting MFC F/W done\n");
+			return -EIO;
+		}
+		status = MFC_READL(MFC_REG_FIRMWARE_STATUS_INFO);
+	} while ((status & 0x1) == 0);
+
+	/* Check H/W pending status */
+	timeout = jiffies + msecs_to_jiffies(MFC_BW_TIMEOUT);
+	do {
+		if (time_after(jiffies, timeout)) {
+			mfc_err_dev("Timeout while pendng clear\n");
+			mfc_err_dev("MFC access pending R: %#x, BUS: %#x\n",
+					MFC_READL(MFC_REG_MFC_RPEND),
+					MFC_READL(MFC_REG_MFC_BUS_STATUS));
+			return -EIO;
+		}
+		status = MFC_READL(MFC_REG_MFC_RPEND);
+	} while (status != 0);
+
+	MFC_TRACE_DEV("** pending wait done\n");
+
+	return 0;
+}
+
 static inline int mfc_stop_bus(struct mfc_dev *dev)
 {
 	unsigned int status;

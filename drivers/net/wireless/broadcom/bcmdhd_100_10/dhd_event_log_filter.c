@@ -23,7 +23,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_event_log_filter.c 808027 2019-03-05 10:43:30Z $
+ * $Id: dhd_event_log_filter.c 813270 2019-04-04 08:03:55Z $
  */
 
 /*
@@ -90,6 +90,7 @@
 #define EWPF_MSEC_TO_SEC		1000
 #define EWPF_USEC_TO_MSEC		1000
 #define EWPF_NSEC_TO_MSEC		1000000
+#define EWPF_USEC_TO_SEC		1000000
 #define EWPF_EPOCH				1000
 #define EWPF_NONSEC_TO_SEC		1000000000
 #define EWPF_REPORT_YEAR_MUL	10000
@@ -135,12 +136,13 @@ typedef struct {
 	wl_if_mgt_stats_t mgmt_stat;
 	wl_if_state_compact_t if_comp_stat;
 	wl_adps_dump_summary_v2_t adps_dump_summary;
+	wl_roam_stats_v1_t roam_stat;
 } EWPF_ifc_elem_t;
 
 typedef struct {
 	uint32 first_armcycle; /* first dongle arm cycle for this record */
 	uint32 updated_armcycle; /* last updated dongle arm cycle for this record */
-	wl_event_based_statistics_v3_t event_stat;
+	wl_event_based_statistics_v4_t event_stat;
 } EWPF_event_elem_t;
 
 typedef struct {
@@ -148,6 +150,12 @@ typedef struct {
 	uint32 updated_armcycle; /* last updaated dongle arm cycle for this record */
 	key_update_info_v1_t key_update_info;
 } EWPF_key_info_elem_t;
+
+typedef struct {
+	uint32 first_armcycle; /* first dongle arm cycle for this record */
+	uint32 updated_armcycle; /* last updated dongle arm cycle for this record */
+	wl_roam_stats_v1_t roam_stat;
+} EWPF_roam_stats_event_elem_t;
 
 typedef struct {
 	int enabled;			/* enabled/disabled */
@@ -340,9 +348,111 @@ static EWPF_tbl_t EWPF_main[] =
 		KEY_INFO(key_update_info),
 		NULL
 	},
+	{
+		WL_IFSTATS_XTLV_ROAM_STATS_EVENT,
+		evt_xtlv_print_cb,
+		NONE_INFO(0),
+		NULL
+	},
+	{
+		WL_IFSTATS_XTLV_ROAM_STATS_PERIODIC,
+		evt_xtlv_copy_cb,
+		IFACE_INFO(roam_stat),
+		NULL
+	},
 
 	{EWPF_XTLV_INVALID, NULL, NONE_INFO(0), NULL}
 };
+
+#if defined(DHD_EWPR_VER2) && defined(DHD_STATUS_LOGGING)
+
+#define EWP_DHD_STAT_SIZE 2
+
+uint8
+dhd_statlog_filter[] =
+{
+	ST(WLAN_POWER_ON),	/* Wi-Fi Power on */
+	ST(WLAN_POWER_OFF),	/* Wi-Fi Power off */
+	ST(ASSOC_START),	/* connect to the AP triggered by upper layer */
+	ST(AUTH_DONE),		/* complete to authenticate with the AP */
+	ST(ASSOC_REQ),		/* send or receive Assoc Req */
+	ST(ASSOC_RESP),		/* send or receive Assoc Resp */
+	ST(ASSOC_DONE),		/* complete to disconnect to the associated AP */
+	ST(DISASSOC_START),	/* disconnect to the associated AP by upper layer */
+	ST(DISASSOC_INT_START),	/* initiate the disassoc by DHD */
+	ST(DISASSOC_DONE),	/* complete to disconnect to the associated AP */
+	ST(DISASSOC),		/* send or receive Disassoc */
+	ST(DEAUTH),		/* send or receive Deauth */
+	ST(LINKDOWN),		/* receive the link down event */
+	ST(REASSOC_START),	/* reassoc the candidate AP */
+	ST(REASSOC_INFORM),	/* inform reassoc completion to upper layer */
+	ST(REASSOC_DONE),	/* complete to reassoc */
+	ST(EAPOL_M1),		/* send or receive the EAPOL M1 */
+	ST(EAPOL_M2),		/* send or receive the EAPOL M2 */
+	ST(EAPOL_M3),		/* send or receive the EAPOL M3 */
+	ST(EAPOL_M4),		/* send or receive the EAPOL M4 */
+	ST(EAPOL_GROUPKEY_M1),	/* send or receive the EAPOL Group key handshake M1 */
+	ST(EAPOL_GROUPKEY_M2),	/* send or receive the EAPOL Group key handshake M2 */
+	ST(EAP_REQ_IDENTITY),	/* send or receive the EAP REQ IDENTITY */
+	ST(EAP_RESP_IDENTITY),	/* send or receive the EAP RESP IDENTITY */
+	ST(EAP_REQ_TLS),	/* send or receive the EAP REQ TLS */
+	ST(EAP_RESP_TLS),	/* send or receive the EAP RESP TLS */
+	ST(EAP_REQ_LEAP),	/* send or receive the EAP REQ LEAP */
+	ST(EAP_RESP_LEAP),	/* send or receive the EAP RESP LEAP */
+	ST(EAP_REQ_TTLS),	/* send or receive the EAP REQ TTLS */
+	ST(EAP_RESP_TTLS),	/* send or receive the EAP RESP TTLS */
+	ST(EAP_REQ_AKA),	/* send or receive the EAP REQ AKA */
+	ST(EAP_RESP_AKA),	/* send or receive the EAP RESP AKA */
+	ST(EAP_REQ_PEAP),	/* send or receive the EAP REQ PEAP */
+	ST(EAP_RESP_PEAP),	/* send or receive the EAP RESP PEAP */
+	ST(EAP_REQ_FAST),	/* send or receive the EAP REQ FAST */
+	ST(EAP_RESP_FAST),	/* send or receive the EAP RESP FAST */
+	ST(EAP_REQ_PSK),	/* send or receive the EAP REQ PSK */
+	ST(EAP_RESP_PSK),	/* send or receive the EAP RESP PSK */
+	ST(EAP_REQ_AKAP),	/* send or receive the EAP REQ AKAP */
+	ST(EAP_RESP_AKAP),	/* send or receive the EAP RESP AKAP */
+	ST(EAP_SUCCESS),	/* send or receive the EAP SUCCESS */
+	ST(EAP_FAILURE),	/* send or receive the EAP FAILURE */
+	ST(EAPOL_START),	/* send or receive the EAPOL-START */
+	ST(WSC_START),		/* send or receive the WSC START */
+	ST(WSC_DONE),		/* send or receive the WSC DONE */
+	ST(WPS_M1),		/* send or receive the WPS M1 */
+	ST(WPS_M2),		/* send or receive the WPS M2 */
+	ST(WPS_M3),		/* send or receive the WPS M3 */
+	ST(WPS_M4),		/* send or receive the WPS M4 */
+	ST(WPS_M5),		/* send or receive the WPS M5 */
+	ST(WPS_M6),		/* send or receive the WPS M6 */
+	ST(WPS_M7),		/* send or receive the WPS M7 */
+	ST(WPS_M8),		/* send or receive the WPS M8 */
+	ST(8021X_OTHER),	/* send or receive the other 8021X frames */
+	ST(INSTALL_KEY),	/* install the key */
+	ST(DELETE_KEY),		/* remove the key */
+	ST(INSTALL_PMKSA),	/* install PMKID information */
+	ST(INSTALL_OKC_PMK),	/* install PMKID information for OKC */
+	ST(DHCP_DISCOVER),	/* send or recv DHCP Discover */
+	ST(DHCP_OFFER),		/* send or recv DHCP Offer */
+	ST(DHCP_REQUEST),	/* send or recv DHCP Request */
+	ST(DHCP_DECLINE),	/* send or recv DHCP Decline */
+	ST(DHCP_ACK),		/* send or recv DHCP ACK */
+	ST(DHCP_NAK),		/* send or recv DHCP NACK */
+	ST(DHCP_RELEASE),	/* send or recv DHCP Release */
+	ST(DHCP_INFORM),	/* send or recv DHCP Inform */
+	ST(REASSOC_SUCCESS),	/* reassociation success */
+	ST(REASSOC_FAILURE),	/* reassociation failure */
+	ST(AUTH_TIMEOUT),	/* authentication timeout */
+	ST(AUTH_FAIL),		/* authentication failure */
+	ST(AUTH_NO_ACK),	/* authentication failure due to no ACK */
+	ST(AUTH_OTHERS),	/* authentication failure with other status */
+	ST(ASSOC_TIMEOUT),	/* association timeout */
+	ST(ASSOC_FAIL),		/* association failure */
+	ST(ASSOC_NO_ACK),	/* association failure due to no ACK */
+	ST(ASSOC_ABORT),	/* association abort */
+	ST(ASSOC_UNSOLICITED),	/* association unsolicited */
+	ST(ASSOC_NO_NETWORKS),	/* association failure due to no networks */
+	ST(ASSOC_OTHERS),	/* association failure due to no networks */
+	ST(REASSOC_DONE_OTHERS)	/* complete to reassoc with other reason */
+};
+#endif /* DHD_EWPR_VER2 && DHD_STATUS_LOGGING  */
 
 /* ========= Module functions : exposed to others ============= */
 int
@@ -358,8 +468,11 @@ dhd_event_log_filter_init(dhd_pub_t *dhdp, uint8 *buf, uint32 buf_size)
 	uint32 k_ring_size; /* key info ring */
 	uint8 *buf_ptr = buf;
 	EWPF_ctx_t ctx;
-	wl_event_based_statistics_v3_t dummy_event_stat;
+	wl_event_based_statistics_v4_t dummy_event_stat;
 	key_update_info_v1_t dummy_key_update_info;
+#if defined(DHD_EWPR_VER2) && defined(DHD_STATUS_LOGGING)
+	stat_bdmask_req_t req;
+#endif /* DHD_EWPR_VER2 && DHD_STATUS_LOGGING */
 
 	DHD_FILTER_ERR(("STARTED\n"));
 
@@ -451,11 +564,19 @@ dhd_event_log_filter_init(dhd_pub_t *dhdp, uint8 *buf, uint32 buf_size)
 	ctx.tbl = EWPF_main;
 	memset(&dummy_event_stat, 0x00, sizeof(dummy_event_stat));
 	evt_xtlv_copy_cb(&ctx, (uint8 *)&dummy_event_stat, WL_IFSTATS_XTLV_IF_EVENT_STATS,
-		sizeof(wl_event_based_statistics_v3_t));
+		sizeof(wl_event_based_statistics_v4_t));
 
 	memset(&dummy_key_update_info, 0x00, sizeof(dummy_key_update_info));
 	evt_xtlv_copy_cb(&ctx, (uint8 *)&dummy_key_update_info, WL_IFSTATS_XTLV_KEY_PLUMB_INFO,
 		sizeof(key_update_info_v1_t));
+
+#if defined(DHD_EWPR_VER2) && defined(DHD_STATUS_LOGGING)
+	/* create status filter for bigdata logging */
+	req.req_buf = dhd_statlog_filter;
+	req.req_buf_len = sizeof(dhd_statlog_filter);
+	dhd_statlog_generate_bdmask(dhdp, &req);
+#endif /* DHD_EWPR_VER2 && DHD_STATUS_LOGGING */
+
 	return BCME_OK;
 }
 
@@ -575,9 +696,7 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 	EWP_filter_t *filter = (EWP_filter_t *)cur_ctx->dhdp->event_log_filter;
 	uint32 armcycle = 0;
 	uint8 bssid[ETHER_ADDR_LEN];
-	wl_event_based_statistics_v1_t *elem;
-	wl_event_based_statistics_v2_t *elem_v2;
-	wl_event_based_statistics_v3_t *elem_v3;
+
 	uint16	misdeauth = 0;
 	uint32	timestamp = 0;
 	int16 cur_bsscfg_rssi = 0, deauth_rssi = 0;
@@ -594,6 +713,8 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 		armcycle = filter->tmp_armcycle;
 	}
 	if (type == WL_IFSTATS_XTLV_IF_EVENT_STATS) {
+		wl_event_based_statistics_v1_t *elem;
+
 		elem = (wl_event_based_statistics_v1_t *)(uintptr_t)data;
 		if (elem->txdeauthivalclass > 0) {
 			memcpy(bssid, &elem->BSSID, ETHER_ADDR_LEN);
@@ -601,6 +722,8 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 				", BSSID("MACDBG")\n", elem->txdeauthivalclass, MAC2STRDBG(bssid)));
 		}
 		if (elem->version == WL_EVENT_STATISTICS_VER_2) {
+			wl_event_based_statistics_v2_t *elem_v2;
+
 			elem_v2 = (wl_event_based_statistics_v2_t *)(uintptr_t)data;
 			memcpy(bssid, &elem_v2->last_deauth, ETHER_ADDR_LEN);
 			misdeauth = elem_v2->misdeauth;
@@ -608,6 +731,8 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 			deauth_rssi = elem_v2->deauth_rssi;
 			timestamp = elem_v2->timestamp;
 		} else if (elem->version == WL_EVENT_STATISTICS_VER_3) {
+			wl_event_based_statistics_v3_t *elem_v3;
+
 			elem_v3 = (wl_event_based_statistics_v3_t *)(uintptr_t)data;
 			memcpy(bssid, &elem_v3->last_deauth, ETHER_ADDR_LEN);
 			misdeauth = elem_v3->misdeauth;
@@ -620,6 +745,15 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 			last_roam_event_type = elem_v3->last_roam_event_type;
 			last_roam_event_status = elem_v3->last_roam_event_status;
 			last_roam_event_reason = elem_v3->last_roam_event_reason;
+		} else if (elem->version == WL_EVENT_STATISTICS_VER_4) {
+			wl_event_based_statistics_v4_t *elem_v4;
+
+			elem_v4 = (wl_event_based_statistics_v4_t *)(uintptr_t)data;
+			memcpy(bssid, &elem_v4->last_deauth, ETHER_ADDR_LEN);
+			misdeauth = elem_v4->misdeauth;
+			cur_bsscfg_rssi = elem_v4->cur_rssi;
+			deauth_rssi = elem_v4->deauth_rssi;
+			timestamp = elem_v4->timestamp;
 		}
 		if (misdeauth > 1) {
 			DHD_ERROR(("WIPS attack!! cnt=%d, curRSSI=%d, deauthRSSI=%d "
@@ -627,18 +761,32 @@ evt_xtlv_print_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 				misdeauth, cur_bsscfg_rssi, deauth_rssi,
 				timestamp, MAC2STRDBG(bssid)));
 		}
-		if (initial_assoc_time > 0 && prev_roam_time > 0) {
-			DHD_ERROR(("Last roam event before disconnection : "
-				"current armcycle %d, initial assoc time %d, "
-				"last event time %d, type %d, status %d, reason %d\n",
-				armcycle, initial_assoc_time, prev_roam_time,
-				last_roam_event_type, last_roam_event_status,
-				last_roam_event_reason));
+	} else if (type == WL_IFSTATS_XTLV_ROAM_STATS_EVENT) {
+		wl_roam_stats_v1_t *roam_elem;
+		roam_elem = (wl_roam_stats_v1_t *)(uintptr_t)data;
+		if (roam_elem->version == WL_ROAM_STATS_VER_1) {
+			wl_roam_stats_v1_t *roam_elem_v1;
+
+			roam_elem_v1 = (wl_roam_stats_v1_t *)(uintptr_t)data;
+			/* roam statistics */
+			initial_assoc_time = roam_elem_v1->initial_assoc_time;
+			prev_roam_time = roam_elem_v1->prev_roam_time;
+			last_roam_event_type = roam_elem_v1->last_roam_event_type;
+			last_roam_event_status = roam_elem_v1->last_roam_event_status;
+			last_roam_event_reason = roam_elem_v1->last_roam_event_reason;
 		}
 	} else {
 		DHD_FILTER_ERR(("%s TYPE(%d) IS NOT SUPPORTED TO PRINT\n",
 			__FUNCTION__, type));
 		return BCME_ERROR;
+	}
+	if (initial_assoc_time > 0 && prev_roam_time > 0) {
+		DHD_ERROR(("Last roam event before disconnection : "
+			"current armcycle %d, initial assoc time %d, "
+			"last event time %d, type %d, status %d, reason %d\n",
+			armcycle, initial_assoc_time, prev_roam_time,
+			last_roam_event_type, last_roam_event_status,
+			last_roam_event_reason));
 	}
 
 	return BCME_OK;
@@ -1053,7 +1201,7 @@ dhd_event_log_filter_event_handler(dhd_pub_t *dhdp, prcd_event_log_hdr_t *plog_h
 #define EWP_REPORT_NAME_MAX		64
 
 #ifdef DHD_EWPR_VER2
-#define EWP_REPORT_VERSION	0x20181111
+#define EWP_REPORT_VERSION	0x20190404
 #define EWP_REPORT_SET_DEFAULT	0x01
 #define EWPR_CSDCLIENT_DIFF	10
 #define EWPR_INTERVAL	3
@@ -1184,7 +1332,7 @@ typedef struct {
 #define EWPR_IF_COMP_OFFSET(a) \
 	(OFFSETOF(EWPF_ifc_elem_t, if_comp_stat) + OFFSETOF(wl_if_state_compact_t, a))
 #define EWPR_EVENT_COUNTER_OFFSET(a) \
-	(OFFSETOF(EWPF_event_elem_t, event_stat) + OFFSETOF(wl_event_based_statistics_v3_t, a))
+	(OFFSETOF(EWPF_event_elem_t, event_stat) + OFFSETOF(wl_event_based_statistics_v4_t, a))
 #define EWPR_KEY_INFO_OFFSET(a) \
 	(OFFSETOF(EWPF_key_info_elem_t, key_update_info) + OFFSETOF(key_update_info_v1_t, a))
 #define EWPR_TX_TOSS_HIST_OFFSET(a) \
@@ -1199,6 +1347,8 @@ typedef struct {
 #define EWPR_COMPACT_HE_CNT_OFFSET(a) \
 	(OFFSETOF(EWPF_slc_elem_t, compact_he_cnt) + \
 		OFFSETOF(wl_compact_he_cnt_wlc_v2_t, a))
+#define EWPR_ROAM_STATS_PERIODIC_OFFSET(a) \
+	(OFFSETOF(EWPF_ifc_elem_t, roam_stat) + OFFSETOF(wl_roam_stats_v1_t, a))
 
 /* serail info type define */
 #define EWPR_SERIAL_CNT(a) {\
@@ -1297,6 +1447,7 @@ typedef struct {
 
 #define EWPR_SINGLE_NSEC_TO_MSEC EWPR_DISPLAY_METHOD_SINGLE, EWPF_NSEC_TO_MSEC
 #define EWPR_SINGLE_USEC_TO_MSEC EWPR_DISPLAY_METHOD_SINGLE, EWPF_USEC_TO_MSEC
+#define EWPR_SINGLE_USEC_TO_SEC EWPR_DISPLAY_METHOD_SINGLE, EWPF_USEC_TO_SEC
 
 /* serail info type define */
 #define EWPR_SERIAL_CNT_V3_BIT(a, b, c, d) {\
@@ -1330,6 +1481,12 @@ typedef struct {
 	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_KEY_INFO_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_KEY_INFO, FALSE, .offset = EWPR_KEY_INFO_OFFSET(a), \
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+#define EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(a, b, c, d) {\
+	#a, EWPF_IDX_TYPE_IFACE, FALSE, .offset = EWPR_ROAM_STATS_PERIODIC_OFFSET(a), \
+	EWP_UINT16, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+#define EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(a, b, c, d) {\
+	#a, EWPF_IDX_TYPE_IFACE, FALSE, .offset = EWPR_ROAM_STATS_PERIODIC_OFFSET(a), \
 	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_ARM_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_##a, FALSE, {0, }, \
@@ -1456,8 +1613,10 @@ ewpr_serial_info_t
 ewpr_serial_bit_unwanted_network_default_tbl[] = {
 	EWPR_SERIAL_VERSION_BIT(version, 32),
 	EWPR_SERIAL_TYPE_BIT(type, 5),
-	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_NSEC_TO_MSEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
 	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last, 8, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev, 8, 1, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IOVAR_BIT(auth, 8),
 	EWPR_SERIAL_IOVAR_BIT(wsec, 8),
 	EWPR_SERIAL_IOVAR_BIT(mfp, 1),
@@ -1508,18 +1667,18 @@ ewpr_serial_bit_unwanted_network_default_tbl[] = {
 	EWPR_SERIAL_IFCOMP_BIT(rssi_sum, 7, 6, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IFCOMP_BIT(snr, 7, 6, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IFCOMP_BIT(noise_level, 7, 6, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(initial_assoc_time, 32, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(prev_roam_time, 32, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_type, 8, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_status, 6, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_reason, 6, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_success_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_fail_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_attempt_cnt, 11, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(max_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(min_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(max_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(min_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(initial_assoc_time, 32, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(prev_roam_time, 32, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_type, 8, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_status, 6, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_reason, 6, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_success_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_fail_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_attempt_cnt, 11, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(max_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(min_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(max_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(min_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_rxtrig_myaid, 10, 6, EWPR_DIFF_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_colormiss_cnt, 10, 6, EWPR_DIFF_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_rxmsta_back, 10, 6, EWPR_DIFF_DEFAULT),
@@ -1552,8 +1711,10 @@ ewpr_serial_info_t
 ewpr_serial_bit_assoc_fail_default_tbl[] = {
 	EWPR_SERIAL_VERSION_BIT(version, 32),
 	EWPR_SERIAL_TYPE_BIT(type, 5),
-	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_NSEC_TO_MSEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
 	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last, 8, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev, 8, 1, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IOVAR_BIT(auth, 8),
 	EWPR_SERIAL_IOVAR_BIT(wsec, 8),
 	EWPR_SERIAL_IOVAR_BIT(mfp, 1),
@@ -1636,8 +1797,10 @@ ewpr_serial_info_t
 ewpr_serial_bit_abnormal_disconnect_default_tbl[] = {
 	EWPR_SERIAL_VERSION_BIT(version, 32),
 	EWPR_SERIAL_TYPE_BIT(type, 5),
-	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_NSEC_TO_MSEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
 	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_last, 8, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev_ts, 32, 1, EWPR_SINGLE_USEC_TO_SEC),
+	EWPR_SERIAL_DHDSTAT_BIT(dhdstat_prev, 8, 1, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IOVAR_BIT(auth, 8),
 	EWPR_SERIAL_IOVAR_BIT(wsec, 8),
 	EWPR_SERIAL_IOVAR_BIT(mfp, 1),
@@ -1688,18 +1851,18 @@ ewpr_serial_bit_abnormal_disconnect_default_tbl[] = {
 	EWPR_SERIAL_IFCOMP_BIT(rssi_sum, 7, 6, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IFCOMP_BIT(snr, 7, 6, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_IFCOMP_BIT(noise_level, 7, 6, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(initial_assoc_time, 32, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(prev_roam_time, 32, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_type, 8, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_status, 6, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_32_BIT(last_roam_event_reason, 6, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_success_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_fail_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(roam_attempt_cnt, 11, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(max_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(min_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(max_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
-	EWPR_SERIAL_EVENT_COUNTER_16_BIT(min_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(initial_assoc_time, 32, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(prev_roam_time, 32, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_type, 8, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_status, 6, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_32_BIT(last_roam_event_reason, 6, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_success_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_fail_cnt, 10, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(roam_attempt_cnt, 11, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(max_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(min_roam_target_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(max_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
+	EWPR_SERIAL_ROAM_STAT_PERIODIC_16_BIT(min_cached_ch_cnt, 5, 1, EWPR_SINGLE_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_rxtrig_myaid, 10, 6, EWPR_DIFF_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_colormiss_cnt, 10, 6, EWPR_DIFF_DEFAULT),
 	EWPR_SERIAL_COMPACT_HE_CNT_BIT(he_rxmsta_back, 10, 6, EWPR_DIFF_DEFAULT),
@@ -1751,84 +1914,6 @@ ewpr_serial_context_info_t ewpr_serial_context_info[] = {
 	INDEX_UNSPECIFIED, &ewpr_serial_bit_abnormal_disconnect_default_tbl[0]},
 	{EWP_CONTEXT_TYPE_MAX, INDEX_UNSPECIFIED, INDEX_UNSPECIFIED, NULL}
 };
-
-#ifdef DHD_STATUS_LOGGING
-
-#define EWP_DHD_STAT_SIZE 2
-
-uint8
-dhd_statlog_filter[] =
-{
-	ST(WLAN_POWER_ON),	/* Wi-Fi Power on */
-	ST(WLAN_POWER_OFF),	/* Wi-Fi Power off */
-	ST(ASSOC_START),	/* connect to the AP triggered by upper layer */
-	ST(AUTH_DONE),		/* complete to authenticate with the AP */
-	ST(ASSOC_REQ),		/* send or receive Assoc Req */
-	ST(ASSOC_RESP),		/* send or receive Assoc Resp */
-	ST(ASSOC_DONE),		/* complete to disconnect to the associated AP */
-	ST(DISASSOC_START),	/* disconnect to the associated AP by upper layer */
-	ST(DISASSOC_INT_START),	/* initiate the disassoc by DHD */
-	ST(DISASSOC_DONE),	/* complete to disconnect to the associated AP */
-	ST(DISASSOC),		/* send or receive Disassoc */
-	ST(DEAUTH),		/* send or receive Deauth */
-	ST(LINKDOWN),		/* receive the link down event */
-	ST(REASSOC_START),	/* reassoc the candidate AP */
-	ST(REASSOC_INFORM),	/* inform reassoc completion to upper layer */
-	ST(REASSOC_DONE),	/* complete to reassoc */
-	ST(EAPOL_M1),		/* send or receive the EAPOL M1 */
-	ST(EAPOL_M2),		/* send or receive the EAPOL M2 */
-	ST(EAPOL_M3),		/* send or receive the EAPOL M3 */
-	ST(EAPOL_M4),		/* send or receive the EAPOL M4 */
-	ST(EAPOL_GROUPKEY_M1),	/* send or receive the EAPOL Group key handshake M1 */
-	ST(EAPOL_GROUPKEY_M2),	/* send or receive the EAPOL Group key handshake M2 */
-	ST(EAP_REQ_IDENTITY),	/* send or receive the EAP REQ IDENTITY */
-	ST(EAP_RESP_IDENTITY),	/* send or receive the EAP RESP IDENTITY */
-	ST(EAP_REQ_TLS),		/* send or receive the EAP REQ TLS */
-	ST(EAP_RESP_TLS),	/* send or receive the EAP RESP TLS */
-	ST(EAP_REQ_LEAP),	/* send or receive the EAP REQ LEAP */
-	ST(EAP_RESP_LEAP),	/* send or receive the EAP RESP LEAP */
-	ST(EAP_REQ_TTLS),	/* send or receive the EAP REQ TTLS */
-	ST(EAP_RESP_TTLS),	/* send or receive the EAP RESP TTLS */
-	ST(EAP_REQ_AKA),		/* send or receive the EAP REQ AKA */
-	ST(EAP_RESP_AKA),	/* send or receive the EAP RESP AKA */
-	ST(EAP_REQ_PEAP),	/* send or receive the EAP REQ PEAP */
-	ST(EAP_RESP_PEAP),	/* send or receive the EAP RESP PEAP */
-	ST(EAP_REQ_FAST),	/* send or receive the EAP REQ FAST */
-	ST(EAP_RESP_FAST),	/* send or receive the EAP RESP FAST */
-	ST(EAP_REQ_PSK),	/* send or receive the EAP REQ PSK */
-	ST(EAP_RESP_PSK),	/* send or receive the EAP RESP PSK */
-	ST(EAP_REQ_AKAP),	/* send or receive the EAP REQ AKAP */
-	ST(EAP_RESP_AKAP),	/* send or receive the EAP RESP AKAP */
-	ST(EAP_SUCCESS),	/* send or receive the EAP SUCCESS */
-	ST(EAP_FAILURE),		/* send or receive the EAP FAILURE */
-	ST(EAPOL_START),	/* send or receive the EAPOL-START */
-	ST(WSC_START),		/* send or receive the WSC START */
-	ST(WSC_DONE),		/* send or receive the WSC DONE */
-	ST(WPS_M1),		/* send or receive the WPS M1 */
-	ST(WPS_M2),		/* send or receive the WPS M2 */
-	ST(WPS_M3),		/* send or receive the WPS M3 */
-	ST(WPS_M4),		/* send or receive the WPS M4 */
-	ST(WPS_M5),		/* send or receive the WPS M5 */
-	ST(WPS_M6),		/* send or receive the WPS M6 */
-	ST(WPS_M7),		/* send or receive the WPS M7 */
-	ST(WPS_M8),		/* send or receive the WPS M8 */
-	ST(8021X_OTHER)	,	/* send or receive the other 8021X frames */
-	ST(INSTALL_KEY),		/* install the key */
-	ST(DELETE_KEY),		/* remove the key */
-	ST(INSTALL_PMKSA),	/* install PMKID information */
-	ST(INSTALL_OKC_PMK),	/* install PMKID information for OKC */
-	ST(DHCP_DISCOVER),	/* send or recv DHCP Discover */
-	ST(DHCP_OFFER),		/* send or recv DHCP Offer */
-	ST(DHCP_REQUEST),	/* send or recv DHCP Request */
-	ST(DHCP_DECLINE),	/* send or recv DHCP Decline */
-	ST(DHCP_ACK),		/* send or recv DHCP ACK */
-	ST(DHCP_NAK),		/* send or recv DHCP NACK */
-	ST(DHCP_RELEASE),	/* send or recv DHCP Release */
-	ST(DHCP_INFORM),	/* send or recv DHCP Inform */
-	ST(REASSOC_SUCCESS),	/* reassociation success */
-	ST(REASSOC_FAILURE)	/* reassociation failure */
-};
-#endif /* DHD_STATUS_LOGGING  */
 #endif /* DHD_EWPR_VER2 */
 
 int ewpr_set_period_lock(ewpr_lock_param_t *param);
@@ -2753,8 +2838,8 @@ dhd_event_log_filter_serialize_bit(dhd_pub_t *dhdp, char *in_buf, uint32 tot_len
 	DHD_FILTER_TRACE(("print dhd_stat size:%d * %d, size of filter list: %d\n",
 		(uint32)sizeof(dhd_stat[0]), EWP_DHD_STAT_SIZE,
 		(uint32)sizeof(dhd_statlog_filter)));
-	query.req_buf = (char *)dhd_statlog_filter;
-	query.req_buf_len = sizeof(dhd_statlog_filter);
+	query.req_buf = NULL;
+	query.req_buf_len = 0;
 	query.resp_buf = (char *)dhd_stat;
 	query.resp_buf_len = DHD_STATLOG_RING_SIZE(EWP_DHD_STAT_SIZE);
 	query.req_num = EWP_DHD_STAT_SIZE;
@@ -2816,11 +2901,12 @@ dhd_event_log_filter_serialize_bit(dhd_pub_t *dhdp, char *in_buf, uint32 tot_len
 				if (strcmp("dhdstat_last_ts", info->name) == 0) {
 #ifdef DHD_STATUS_LOGGING
 					if (info->unit_convert > 1) {
-						conv_cnt = dhd_stat[0].ts / info->unit_convert;
+						conv_cnt = dhd_stat[0].ts_tz / info->unit_convert;
 					} else {
-						conv_cnt = dhd_stat[0].ts;
+						conv_cnt = dhd_stat[0].ts_tz;
 					}
-					DHD_FILTER_TRACE(("DHD status last timestamp: %d(ms)",
+					DHD_FILTER_TRACE(("DHD status last timestamp:"
+						" %llu, %u", dhd_stat[0].ts_tz,
 						conv_cnt));
 					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
 						bits_written, conv_cnt,
@@ -2836,6 +2922,36 @@ dhd_event_log_filter_serialize_bit(dhd_pub_t *dhdp, char *in_buf, uint32 tot_len
 						dhd_stat[0].stat, dhd_stat[0].stat));
 					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
 						bits_written, (uint32)dhd_stat[0].stat,
+						info->display_bit_length);
+#else
+					DHD_FILTER_TRACE(("No DHD status log value\n"));
+					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
+						bits_written, 0x00, info->display_bit_length);
+#endif /* DHD_STATUS_LOGGING */
+				} else if (strcmp("dhdstat_prev_ts", info->name) == 0) {
+#ifdef DHD_STATUS_LOGGING
+					if (info->unit_convert > 1) {
+						conv_cnt = dhd_stat[1].ts_tz / info->unit_convert;
+					} else {
+						conv_cnt = dhd_stat[1].ts_tz;
+					}
+					DHD_FILTER_TRACE(("DHD status prev timestamp:"
+						" %llu, %u", dhd_stat[1].ts_tz,
+						conv_cnt));
+					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
+						bits_written, conv_cnt,
+						info->display_bit_length);
+#else
+					DHD_FILTER_TRACE(("No DHD status log timestamp\n"));
+					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
+						bits_written, 0x00, info->display_bit_length);
+#endif /* DHD_STATUS_LOGGING */
+				} else if (strcmp("dhdstat_prev", info->name) == 0) {
+#ifdef DHD_STATUS_LOGGING
+					DHD_FILTER_TRACE(("DHD status prev stat: %d(0x%02x)",
+						dhd_stat[1].stat, dhd_stat[1].stat));
+					bits_written = dhd_bit_pack(raw_buf, RAW_BUFFER_SIZE,
+						bits_written, (uint32)dhd_stat[1].stat,
 						info->display_bit_length);
 #else
 					DHD_FILTER_TRACE(("No DHD status log value\n"));

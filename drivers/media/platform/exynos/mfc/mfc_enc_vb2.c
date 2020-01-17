@@ -442,7 +442,7 @@ static void mfc_enc_buf_queue(struct vb2_buffer *vb)
 					ctx->framerate, buf->vb.vb2_buf.timestamp);
 
 		mfc_qos_update_last_framerate(ctx, buf->vb.vb2_buf.timestamp);
-		mfc_qos_update_framerate(ctx);
+		mfc_qos_update_framerate(ctx, 0);
 	} else {
 		mfc_err_ctx("unsupported buffer type (%d)\n", vq->type);
 	}

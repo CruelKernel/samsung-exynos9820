@@ -23,6 +23,7 @@
 #include <linux/spinlock.h>
 #include <linux/rcupdate.h>
 #include <linux/workqueue.h>
+#include "../kernel/rcu/rcu.h"
 
 unsigned int sysctl_nr_open __read_mostly = 1024*1024;
 unsigned int sysctl_nr_open_min = BITS_PER_LONG;
@@ -162,8 +163,11 @@ static int expand_fdtable(struct files_struct *files, unsigned int nr)
 	/* make sure all __fd_install() have seen resize_in_progress
 	 * or have finished their rcu_read_lock_sched() section.
 	 */
-	if (atomic_read(&files->count) > 1)
+	if (atomic_read(&files->count) > 1) {
+		rcu_expedite_gp();
 		synchronize_sched();
+		rcu_unexpedite_gp();
+	}
 
 	spin_lock(&files->file_lock);
 	if (!new_fdt)

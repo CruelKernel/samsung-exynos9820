@@ -121,7 +121,7 @@ struct sensor_info {
 #define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 18, 18}
 #endif
 #define SENSOR_INFO_LIGHT_FLICKER			{"light_flicker_sensor", LIGHT_FLICKER_SENSOR, true, REPORT_MODE_ON_CHANGE, 2, 2}
-#define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
+#define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 3+4, 3+4} // 4 for light data
 #define SENSOR_INFO_PROXIMITY_ALERT			{"proximity_alert_sensor", PROXIMITY_ALERT_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
 #define SENSOR_INFO_PROXIMITY_RAW			{"proximity_raw", PROXIMITY_RAW, false, REPORT_MODE_ON_CHANGE, 1, 0}
 #define SENSOR_INFO_PROXIMITY_ADC_CALIB		{"proximity_adc_calib", PROXIMITY_ADC_CALIB, false, REPORT_MODE_ON_CHANGE, 6, 0}
@@ -140,7 +140,7 @@ struct sensor_info {
 #define SENSOR_INFO_WAKE_UP_MOTION			{"wake_up_motion", WAKE_UP_MOTION, true, REPORT_MODE_CONTINUOUS, 1, 1}
 #define SENSOR_INFO_MOVE_DETECTOR			{"move_detector", MOVE_DETECTOR, true, REPORT_MODE_ON_CHANGE, 1, 1}
 #define SENSOR_INFO_CALL_GESTURE			{"call_gesture", CALL_GESTURE, true, REPORT_MODE_ON_CHANGE, 1, 1}
-#define SENSOR_INFO_POCKET_MODE			{"pocket_mode", POCKET_MODE_SENSOR, true, REPORT_MODE_ON_CHANGE, 14, 14}
+#define SENSOR_INFO_POCKET_MODE			{"pocket_mode", POCKET_MODE_SENSOR, true, REPORT_MODE_ON_CHANGE, 26, 26}
 #define SENSOR_INFO_LED_COVER_EVENT			{"led_cover_event", LED_COVER_EVENT_SENSOR, true, REPORT_MODE_ON_CHANGE, 1, 1}
 
 #endif

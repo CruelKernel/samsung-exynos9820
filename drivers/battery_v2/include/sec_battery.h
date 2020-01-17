@@ -97,6 +97,8 @@
 #define BATT_MISC_EVENT_WIRELESS_AUTH_RECVED    0x00000400
 #define BATT_MISC_EVENT_WIRELESS_AUTH_FAIL      0x00000800
 #define BATT_MISC_EVENT_WIRELESS_AUTH_PASS      0x00001000
+#define BATT_MISC_EVENT_TEMP_HICCUP_TYPE	0x00002000
+
 
 #if defined(CONFIG_SEC_FACTORY)             // SEC_FACTORY
 #define STORE_MODE_CHARGING_MAX 80
@@ -371,6 +373,11 @@ struct sec_battery_info {
 	int wpc_temp;
 	int coil_temp;
 	int slave_chg_temp;
+	int usb_temp_flag;
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+	int usb_protection_temp;
+	int temp_gap_bat_usb;
+#endif
 #if defined(CONFIG_DIRECT_CHARGING)
 	int dchg_temp;
 #endif

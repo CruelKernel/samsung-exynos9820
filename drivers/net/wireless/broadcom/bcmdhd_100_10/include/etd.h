@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: etd.h 799240 2019-01-14 11:44:46Z $
+ * $Id: etd.h 813064 2019-04-03 11:29:38Z $
  */
 
 #ifndef _ETD_H_
@@ -570,6 +570,22 @@ typedef struct hnd_ext_trap_macphytxerr_v2 {
 	uint16 pad;
 	uint32 recv_fifo_status[3][2]; /* Rcv Status0 & Rcv Status1 for 3 Rx fifos */
 } hnd_ext_trap_macphytxerr_v2_t;
+
+#define HND_EXT_TRAP_PCIE_ERR_ATTN_VER_1	(1u)
+#define MAX_AER_HDR_LOG_REGS			(4u)
+typedef struct hnd_ext_trap_pcie_err_attn_v1 {
+	uint8 version;
+	uint8 pad[3];
+	uint32 err_hdr_logreg1;
+	uint32 err_hdr_logreg2;
+	uint32 err_hdr_logreg3;
+	uint32 err_hdr_logreg4;
+	uint32 err_code_logreg;
+	uint32 err_type;
+	uint32 err_code_state;
+	uint32 last_err_attn_ts;
+	uint32 cfg_tlp_hdr[MAX_AER_HDR_LOG_REGS];
+} hnd_ext_trap_pcie_err_attn_v1_t;
 
 #define MAX_EVENTLOG_BUFFERS	48
 typedef struct eventlog_trapdata_info {

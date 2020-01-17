@@ -775,7 +775,7 @@ static int vts_start_recognization(struct device *dev, int start)
 			if (active_trigger == TRIGGER_SVOICE &&
 				 data->svoice_info.loaded) {
 				/*
-				 * load svoice model.bin @ offset 0x2A800
+				 * load svoice model.bin @ offset 0xAA800
 				 * file before starting recognition
 				 */
 				if (data->svoice_info.actual_sz > SOUND_MODEL_SVOICE_SIZE_MAX) {
@@ -784,15 +784,20 @@ static int vts_start_recognization(struct device *dev, int start)
 					SOUND_MODEL_SVOICE_SIZE_MAX);
 					return -EINVAL;
 				}
-				memcpy(data->sram_base + 0x2A800, data->svoice_info.data,
-					data->svoice_info.actual_sz);
+				if (IS_ENABLED(CONFIG_SOC_EXYNOS9820)) {
+					memcpy(data->sram_base + 0xAA800, data->svoice_info.data,
+						data->svoice_info.actual_sz);
+				} else {
+					memcpy(data->sram_base + 0x2A800, data->svoice_info.data,
+						data->svoice_info.actual_sz);
+				}
 				dev_info(dev, "svoice.bin Binary uploaded size=%zu\n",
 						data->svoice_info.actual_sz);
 
 			} else if (active_trigger == TRIGGER_GOOGLE &&
 				data->google_info.loaded) {
 				/*
-				 * load google model.bin @ offset 0x32B00
+				 * load google model.bin @ offset 0xB2B00
 				 * file before starting recognition
 				 */
 				if (data->google_info.actual_sz > SOUND_MODEL_GOOGLE_SIZE_MAX) {
@@ -801,8 +806,13 @@ static int vts_start_recognization(struct device *dev, int start)
 					SOUND_MODEL_GOOGLE_SIZE_MAX);
 					return -EINVAL;
 				}
-				memcpy(data->sram_base + 0x32B00, data->google_info.data,
-					data->google_info.actual_sz);
+				if (IS_ENABLED(CONFIG_SOC_EXYNOS9820)) {
+					memcpy(data->sram_base + 0xB2B00, data->google_info.data,
+						data->google_info.actual_sz);
+				} else {
+					memcpy(data->sram_base + 0x32B00, data->google_info.data,
+						data->google_info.actual_sz);
+				}
 				dev_info(dev, "google.bin Binary uploaded size=%zu\n",
 						data->google_info.actual_sz);
 			} else {

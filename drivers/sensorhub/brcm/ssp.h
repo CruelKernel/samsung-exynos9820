@@ -550,6 +550,7 @@ struct sensor_value {
 #else
 /* CONFIG_SENSORS_SSP_TMD4903, CONFIG_SENSORS_SSP_TMD3782, CONFIG_SENSORS_SSP_TMD4904 */
 			u16 prox_adc;
+			u32 light;
 #endif
 		} __attribute__((__packed__));
 #ifdef CONFIG_SENSORS_SSP_PROX_ADC_CAL
@@ -591,6 +592,9 @@ struct sensor_value {
 			u8 pocket_reason;
 			u32 pocket_base_proxy;
 			u32 pocket_current_proxy;
+			u32 pocket_release_diff;
+			u32 pocket_min_release;
+			u32 pocket_light_data;
 			u32 pocket_temp;
 		} __attribute__((__packed__));
 		u8 led_cover_event;

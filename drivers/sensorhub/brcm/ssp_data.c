@@ -307,8 +307,8 @@ static void get_proximity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 2);
 	*iDataIdx += 2;
 #else	//CONFIG_SENSORS_SSP_TMD4903, CONFIG_SENSORS_SSP_TMD3782, CONFIG_SENSORS_SSP_TMD4904
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 3);
-	*iDataIdx += 3;
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 3 + 4);
+	*iDataIdx += (3 + 4); // 4 for light data
 #endif
 }
 
@@ -437,8 +437,8 @@ static void get_ucal_accel_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_pocket_mode_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 14);
-	*iDataIdx += 14;
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 26);
+	*iDataIdx += 26;
 }
 static void get_led_cover_event_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)

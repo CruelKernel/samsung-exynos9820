@@ -668,9 +668,9 @@ void s2mps19_powermeter_init(struct s2mps19_dev *s2mps19)
 	adc_meter->adc_sync_mode = s2mps19->adc_sync_mode;
 	mutex_init(&adc_meter->adc_lock);
 
-	/*  SMP_NUM = 1011(16384) ~16s in case of aync mode */
+	/* SMP_NUM=1011(16384), RATIO=10(125khz), (8us x 16384 x 16 x 8ch)=~16s in case of async mode */
 	if (adc_meter->adc_sync_mode == ASYNC_MODE) {
-		adc_meter->adc_ctrl1 = 0xB;
+		adc_meter->adc_ctrl1 = 0x2B;
 		s2mps19_write_reg(s2mps19->pmic, S2MPS19_REG_ADC_CTRL1, adc_meter->adc_ctrl1);
 	}
 
@@ -772,6 +772,16 @@ void s2mps19_powermeter_init(struct s2mps19_dev *s2mps19)
 	ret = device_create_file(s2mps19_adc_dev, &dev_attr_adc_ctrl1);
 	if (ret)
 		goto remove_adc_reg_7;
+
+#ifdef CONFIG_SEC_PM
+	if (!IS_ERR_OR_NULL(ap_pmic_dev)) {
+		ret = sysfs_create_link(&ap_pmic_dev->kobj,
+				&s2mps19_adc_dev->kobj, "power_meter");
+		if (ret)
+			pr_err("%s: fail to create link for power_meter(%d)\n",
+					__func__, ret);
+	}
+#endif /* CONFIG_SEC_PM */
 
 	pr_info("%s: s2mps19 power meter init end\n", __func__);
 	return ;

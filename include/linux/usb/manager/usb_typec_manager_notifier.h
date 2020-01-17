@@ -150,6 +150,8 @@ typedef struct _manager_data_t
 	int cable_type;
 	int usb_enum_state;
 	bool usb_enable_state;
+	unsigned long otg_stamp;
+	int vbus_by_otg_detection;
 	int pd_con_state;
 	int water_det;
 	int wVbus_det;

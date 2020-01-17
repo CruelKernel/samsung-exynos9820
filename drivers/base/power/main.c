@@ -1623,6 +1623,10 @@ static void async_suspend(void *data, async_cookie_t cookie)
 	if (error) {
 		dpm_save_failed_dev(dev_name(dev));
 		pm_dev_err(dev, pm_transition, " async", error);
+#ifdef CONFIG_SEC_PM_DEBUG
+		log_suspend_abort_reason("Device %s failed to suspend async: %d",
+				dev_name(dev), error);
+#endif /* CONFIG_SEC_PM_DEBUG */
 	}
 
 	put_device(dev);
@@ -1671,6 +1675,10 @@ int dpm_suspend(pm_message_t state)
 		if (error) {
 			pm_dev_err(dev, state, "", error);
 			dpm_save_failed_dev(dev_name(dev));
+#ifdef CONFIG_SEC_PM_DEBUG
+			log_suspend_abort_reason("Device %s failed to suspend: %d",
+					dev_name(dev), error);
+#endif /* CONFIG_SEC_PM_DEBUG */
 			put_device(dev);
 			break;
 		}
@@ -1817,6 +1825,10 @@ int dpm_prepare(pm_message_t state)
 			printk(KERN_INFO "PM: Device %s not prepared "
 				"for power transition: code %d\n",
 				dev_name(dev), error);
+#ifdef CONFIG_SEC_PM_DEBUG
+			log_suspend_abort_reason("Device %s not prepared: %d",
+					dev_name(dev), error);
+#endif /* CONFIG_SEC_PM_DEBUG */
 			put_device(dev);
 			break;
 		}

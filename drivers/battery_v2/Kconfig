@@ -581,3 +581,9 @@ config CALC_WPC_TX_POWER
 	help
 	default n
 	 Say Y to include support to calculate power consumption by wireless power sharing
+
+config PREVENT_USB_CONN_OVERHEAT
+	bool "enable prevent usb conn overheat"
+	default n
+	help
+	  Say Y to enable CONFIG_PREVENT_USB_CONN_OVERHEAT

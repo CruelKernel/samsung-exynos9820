@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: linux_osl.c 794160 2018-12-12 07:48:03Z $
+ * $Id: linux_osl.c 813270 2019-04-04 08:03:55Z $
  */
 
 #define LINUX_PORT
@@ -1217,6 +1217,21 @@ osl_get_localtime(uint64 *sec, uint64 *usec)
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36) */
 	*sec = (uint64)ts_nsec;
 	*usec = (uint64)(rem_nsec / MSEC_PER_SEC);
+}
+
+uint64
+osl_systztime_us(void)
+{
+	struct timeval tv;
+	uint64 tzusec;
+
+	do_gettimeofday(&tv);
+	/* apply timezone */
+	tzusec = (uint64)((tv.tv_sec - (sys_tz.tz_minuteswest * 60)) *
+		USEC_PER_SEC);
+	tzusec += tv.tv_usec;
+
+	return tzusec;
 }
 
 /*

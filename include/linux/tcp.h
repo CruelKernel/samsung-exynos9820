@@ -388,6 +388,19 @@ struct tcp_sock {
 
 	int			linger2;
 
+/* Network Pacemaker */
+#ifdef CONFIG_NETPM
+	u8 netpm_netif;
+	u8 netpm_rbuf_flag;
+	u32 netpm_rtt_min_us;
+	u32 netpm_srtt_us;
+	u32 netpm_rttvar_us;
+	int netpm_cwnd_est;
+	int netpm_tcp_rmem_max;
+	int netpm_max_tput;
+	int netpm_rmem_max_curbdp;
+#endif
+
 /* Receiver side RTT estimation */
 	struct {
 		u32	rtt_us;

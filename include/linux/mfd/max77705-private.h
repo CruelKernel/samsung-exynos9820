@@ -267,6 +267,7 @@ enum max77705_irq_source {
 	CC_INT,
 	PD_INT,
 	VDM_INT,
+	VIR_INT,
 	MAX77705_IRQ_GROUP_NR,
 };
 
@@ -333,6 +334,9 @@ enum max77705_irq {
 	MAX77705_IRQ_VDM_DP_CONFIGURE_INT,
 	MAX77705_IRQ_VDM_ATTENTION_INT,
 
+	/* VIRTUAL */
+	MAX77705_VIR_IRQ_ALTERROR_INT,
+
 	MAX77705_IRQ_NR,
 };
 
@@ -380,6 +384,8 @@ struct max77705_dev {
 	u8 pmic_ver;	/* pmic version */
 
 	u8 cc_booting_complete;
+
+	int set_altmode;
 
 	struct max77705_platform_data *pdata;
 };

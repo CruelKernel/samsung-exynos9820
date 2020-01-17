@@ -334,7 +334,7 @@ static int disable_jsqz(struct jsqz_dev *jsqz)
 static int jsqz_set_source_n_config(struct jsqz_dev *jsqz_device,
 			   struct jsqz_task *task)
 {
-	u32 cs, width, height, stride, format, mode, func;
+	u32 cs, width, height, stride, format, mode, func, time_out;
 	dma_addr_t y_addr = 0;
 	dma_addr_t u_addr = 0;
 	dma_addr_t v_addr = 0;
@@ -355,8 +355,10 @@ static int jsqz_set_source_n_config(struct jsqz_dev *jsqz_device,
 	height = task->user_task.info_out.height;
 	mode = task->user_task.config.mode;
 	func = task->user_task.config.function;
+	time_out = 0;
 
 	jsqz_set_stride_on_n_value(jsqz_device->regs, stride);
+	jsqz_on_off_time_out(jsqz_device->regs, time_out);
 
 	if (stride == 0) {
 		stride = width;

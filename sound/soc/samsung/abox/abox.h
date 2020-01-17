@@ -75,7 +75,7 @@
 		| SNDRV_PCM_FMTBIT_S32)
 
 #define ABOX_SUPPLEMENT_SIZE (SZ_128)
-#define ABOX_IPC_QUEUE_SIZE (SZ_64)
+#define ABOX_IPC_QUEUE_SIZE (SZ_128)
 
 #define CALLIOPE_VERSION(class, year, month, minor) \
 		((class << 24) | \

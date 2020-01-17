@@ -165,6 +165,9 @@ char *sec_bat_rx_type_str[] = {
 
 extern int bootmode;
 
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+extern int muic_set_hiccup_mode(int on_off);
+#endif
 extern int muic_afc_set_voltage(int vol);
 extern int muic_hv_charger_disable(bool en);
 
@@ -1069,8 +1072,14 @@ int sec_bat_set_charge(struct sec_battery_info *battery,
 	ktime_t current_time = {0, };
 	struct timespec ts = {0, };
 
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+	if ((battery->cable_type == SEC_BATTERY_CABLE_HMT_CONNECTED) ||
+		((battery->usb_temp_flag || (battery->misc_event & BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) && (chg_mode != SEC_BAT_CHG_MODE_BUCK_OFF)))
+		return 0;
+#else
 	if (battery->cable_type == SEC_BATTERY_CABLE_HMT_CONNECTED)
 		return 0;
+#endif
 
 	if ((battery->current_event & SEC_BAT_CURRENT_EVENT_CHARGE_DISABLE) &&
 		(chg_mode == SEC_BAT_CHG_MODE_CHARGING)) {
@@ -2047,27 +2056,80 @@ static bool sec_bat_temperature_check(
 		battery->temp_recover_cnt = 0;
 	}
 
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+	if (battery->pdata->usb_thermal_source && !battery->usb_temp_flag) {
+		int gap = 0;
+
+		if (battery->usb_temp > battery->temperature)
+			gap = battery->usb_temp - battery->temperature;
+
+		if (battery->usb_temp >= battery->temp_highlimit_threshold) {
+			pr_info("%s: Usb Temp over %d(%d)\n", __func__, battery->temp_highlimit_threshold, battery->usb_temp);
+			battery->cisd.data[CISD_DATA_USB_OVERHEAT_CHARGING]++;
+			battery->cisd.data[CISD_DATA_USB_OVERHEAT_CHARGING_PER_DAY]++;
+			battery->usb_temp_flag = true;
+		} else if ((battery->usb_temp >= battery->usb_protection_temp) && (gap >= battery->temp_gap_bat_usb)) {
+			pr_info("%s: Temp gap between Usb temp and Bat temp : %d\n", __func__, gap);
+			battery->usb_temp_flag = true;
+			battery->cisd.data[CISD_DATA_USB_OVERHEAT_RAPID_CHANGE]++;
+			battery->cisd.data[CISD_DATA_USB_OVERHEAT_RAPID_CHANGE_PER_DAY]++;
+
+			if (gap > battery->cisd.data[CISD_DATA_USB_OVERHEAT_ALONE_PER_DAY])
+				battery->cisd.data[CISD_DATA_USB_OVERHEAT_ALONE_PER_DAY] = gap;
+		}
+
+		if (battery->usb_temp_flag) {
+			pr_info("%s: Usb temp flag %d\n", __func__, battery->usb_temp_flag);
+			if (lpcharge && (battery->health != POWER_SUPPLY_HEALTH_OVERHEATLIMIT)) {
+				battery->temp_highlimit_cnt = battery->pdata->temp_check_count;
+			} else if (is_pd_wire_type(battery->cable_type)) {
+				sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_BUCK_OFF);
+				select_pdo(1);
+				muic_set_hiccup_mode(1);
+				return false;
+			} else {
+				sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_BUCK_OFF);
+				muic_set_hiccup_mode(1);
+				return false;
+			}
+		}
+	}
+#endif
+
 	if (battery->temp_highlimit_cnt >=
 	    battery->pdata->temp_check_count) {
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+		if (lpcharge) {
+			battery->health = POWER_SUPPLY_HEALTH_OVERHEATLIMIT;
+			battery->temp_highlimit_cnt = 0;
+		}
+#else
 		battery->health = POWER_SUPPLY_HEALTH_OVERHEATLIMIT;
 		battery->temp_highlimit_cnt = 0;
-	} else if (battery->temp_high_cnt >=
-		battery->pdata->temp_check_count) {
-		battery->health = POWER_SUPPLY_HEALTH_OVERHEAT;
-		battery->temp_high_cnt = 0;
-	} else if (battery->temp_low_cnt >=
-		battery->pdata->temp_check_count) {
-		battery->health = POWER_SUPPLY_HEALTH_COLD;
-		battery->temp_low_cnt = 0;
-	} else if (battery->temp_recover_cnt >=
-		 battery->pdata->temp_check_count) {
-		if (battery->health == POWER_SUPPLY_HEALTH_OVERHEATLIMIT &&
-				battery->temperature > battery->temp_high_recovery) {
+#endif
+	} else {
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+			if (lpcharge && battery->usb_temp_flag)
+				return true;				
+#endif
+		if (battery->temp_high_cnt >=
+			battery->pdata->temp_check_count) {
 			battery->health = POWER_SUPPLY_HEALTH_OVERHEAT;
-		} else {
-			battery->health = POWER_SUPPLY_HEALTH_GOOD;
+			battery->temp_high_cnt = 0;
+		} else if (battery->temp_low_cnt >=
+			battery->pdata->temp_check_count) {
+			battery->health = POWER_SUPPLY_HEALTH_COLD;
+			battery->temp_low_cnt = 0;
+		} else if (battery->temp_recover_cnt >=
+			 battery->pdata->temp_check_count) {
+			if (battery->health == POWER_SUPPLY_HEALTH_OVERHEATLIMIT &&
+				battery->temperature > battery->temp_high_recovery) {
+				battery->health = POWER_SUPPLY_HEALTH_OVERHEAT;
+			} else {
+				battery->health = POWER_SUPPLY_HEALTH_GOOD;
+			}
+			battery->temp_recover_cnt = 0;
 		}
-		battery->temp_recover_cnt = 0;
 	}
 	if (pre_health != battery->health) {
 		battery->health_change = true;
@@ -2106,6 +2168,9 @@ static bool sec_bat_temperature_check(
 #endif
 					battery->vbus_limit = true;
 					pr_info("%s: Set AFC TA to 0V\n", __func__);
+				} else if (is_pd_wire_type(battery->cable_type)) {
+					select_pdo(1);
+					pr_info("%s: Set PD TA to PDO 0\n", __func__);
 				}
 			} else if (battery->health == POWER_SUPPLY_HEALTH_OVERHEAT) {
 				/* to discharge battery */
@@ -3867,13 +3932,13 @@ static void sec_bat_misc_event_work(struct work_struct *work)
 	int xor_misc_event = battery->prev_misc_event ^ battery->misc_event;
 
 	if ((xor_misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
-		BATT_MISC_EVENT_HICCUP_TYPE)) &&
+		BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) &&
 		is_nocharge_type(battery->cable_type)) {
 		if (battery->misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
-			BATT_MISC_EVENT_HICCUP_TYPE)) {
+			BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
 			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_BUCK_OFF);
 		} else if (battery->prev_misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
-			BATT_MISC_EVENT_HICCUP_TYPE)) {
+			BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
 			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
 		}
 	}
@@ -4193,7 +4258,7 @@ skip_current_monitor:
 
 		if (battery->capacity >= STORE_MODE_CHARGING_MAX) {
 			int chg_mode = battery->misc_event &
-				(BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE | BATT_MISC_EVENT_HICCUP_TYPE) ?
+				(BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE | BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE) ?
 					SEC_BAT_CHG_MODE_BUCK_OFF : SEC_BAT_CHG_MODE_CHARGING_OFF;
 			/* to discharge the battery, off buck */
 			if (battery->capacity > STORE_MODE_CHARGING_MAX)
@@ -4711,6 +4776,10 @@ static void sec_bat_cable_work(struct work_struct *work)
 		battery->is_sysovlo = false;
 		battery->is_vbatovlo = false;
 		battery->is_abnormal_temp = false;
+#if defined(CONFIG_PREVENT_USB_CONN_OVERHEAT)
+		if (lpcharge)
+			battery->usb_temp_flag = false;
+#endif
 
 		sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
 	} else if (is_slate_mode(battery)) {
@@ -6321,8 +6390,13 @@ static int usb_typec_handle_notification(struct notifier_block *nb,
 		case MUIC_NOTIFY_CMD_LOGICALLY_ATTACH:
 			/* Skip notify from MUIC if PDIC is attached already */
 			if (is_pd_wire_type(battery->wire_status)) {
-				mutex_unlock(&battery->typec_notylock);
-				return 0;
+				if (lpcharge) {
+					mutex_unlock(&battery->typec_notylock);
+					return 0;
+				} else if (!battery->usb_temp_flag && !(battery->misc_event & BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
+					mutex_unlock(&battery->typec_notylock);
+					return 0;
+				}
 			}
 			cmd = "ATTACH";
 			battery->muic_cable_type = usb_typec_info.cable_type;
@@ -6391,6 +6465,8 @@ static int usb_typec_handle_notification(struct notifier_block *nb,
 			battery->pdic_attach = false;
 			battery->pdic_ps_rdy = false;
 			battery->pd_list.now_pd_index = 0;
+			goto skip_cable_check;
+		} else if (!lpcharge && (battery->usb_temp_flag || (battery->misc_event & BATT_MISC_EVENT_TEMP_HICCUP_TYPE))) { 
 			goto skip_cable_check;
 		}
 
@@ -6563,11 +6639,18 @@ skip_cable_check:
 		BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE);
 
 	if (battery->muic_cable_type == ATTACHED_DEV_HICCUP_MUIC) {
-		sec_bat_set_misc_event(battery, BATT_MISC_EVENT_HICCUP_TYPE, BATT_MISC_EVENT_HICCUP_TYPE);
+		if (battery->usb_temp_flag || (battery->misc_event & BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
+			pr_info("%s: Hiccup Set because of USB Temp\n", __func__);
+			sec_bat_set_misc_event(battery, BATT_MISC_EVENT_TEMP_HICCUP_TYPE, BATT_MISC_EVENT_TEMP_HICCUP_TYPE);
+			battery->usb_temp_flag = false;
+		} else {
+			pr_info("%s: Hiccup Set because of Water detect\n", __func__);
+			sec_bat_set_misc_event(battery, BATT_MISC_EVENT_HICCUP_TYPE, BATT_MISC_EVENT_HICCUP_TYPE);
+		}
 		battery->hiccup_status = 1;
 	} else {
 		battery->hiccup_status = 0;
-		if (battery->misc_event & BATT_MISC_EVENT_HICCUP_TYPE) {
+		if (battery->misc_event & (BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
 			wake_lock(&battery->monitor_wake_lock);
 			queue_delayed_work(battery->monitor_wqueue, &battery->monitor_work, 0);
 		}
@@ -6761,11 +6844,18 @@ static int batt_handle_notification(struct notifier_block *nb,
 		 BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE);
 
 	if (battery->muic_cable_type == ATTACHED_DEV_HICCUP_MUIC) {
-		sec_bat_set_misc_event(battery, BATT_MISC_EVENT_HICCUP_TYPE, BATT_MISC_EVENT_HICCUP_TYPE);
+		if (battery->usb_temp_flag || (battery->misc_event & BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
+			pr_info("%s: Hiccup Set because of USB Temp\n", __func__);
+			sec_bat_set_misc_event(battery, BATT_MISC_EVENT_TEMP_HICCUP_TYPE, BATT_MISC_EVENT_TEMP_HICCUP_TYPE);
+			battery->usb_temp_flag = false;
+		} else {
+			pr_info("%s: Hiccup Set because of Water detect\n", __func__);
+			sec_bat_set_misc_event(battery, BATT_MISC_EVENT_HICCUP_TYPE, BATT_MISC_EVENT_HICCUP_TYPE);
+		}
 		battery->hiccup_status = 1;
 	} else {
 		battery->hiccup_status = 0;
-		if (battery->misc_event & BATT_MISC_EVENT_HICCUP_TYPE) {
+		if (battery->misc_event & (BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE)) {
 			wake_lock(&battery->monitor_wake_lock);
 			queue_delayed_work(battery->monitor_wqueue, &battery->monitor_work, 0);
 		}
@@ -6989,7 +7079,7 @@ static void sec_bat_init_chg_work(struct work_struct *work)
 
 	if (battery->cable_type == SEC_BATTERY_CABLE_NONE &&
 		!(battery->misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
-			BATT_MISC_EVENT_HICCUP_TYPE))) {
+			BATT_MISC_EVENT_HICCUP_TYPE | BATT_MISC_EVENT_TEMP_HICCUP_TYPE))) {
 		pr_info("%s: disable charging\n", __func__);
 		sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
 	}
@@ -7280,6 +7370,7 @@ static int sec_battery_probe(struct platform_device *pdev)
 #endif
 
 	battery->health_change = false;
+	battery->usb_temp_flag = false;
 
 	/* Check High Voltage charging option for wireless charging */
 	/* '1' means disabling High Voltage charging */

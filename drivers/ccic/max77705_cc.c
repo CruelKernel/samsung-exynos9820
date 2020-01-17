@@ -587,6 +587,7 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			msg_maxim("ccstat : cc_No_Connection");
 			usbc_data->pd_data->cc_status = CC_NO_CONN;
 			usbc_data->is_samsung_accessory_enter_mode = 0;
+			usbc_data->pn_flag = false;
 			usbc_data->pd_support = false;
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
 			if (!usbc_data->try_state_change)
@@ -650,6 +651,7 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 	case cc_SOURCE:
 			msg_maxim("ccstat : cc_SOURCE");
 			usbc_data->pd_data->cc_status = CC_SRC;
+			usbc_data->pn_flag = false;
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
 			usbc_data->power_role = DUAL_ROLE_PROP_PR_SRC;
 			if (usbc_data->dual_role != NULL &&

@@ -226,6 +226,7 @@ static void __mfc_set_enc_params(struct mfc_ctx *ctx)
 	MFC_RAW_WRITEL(reg, MFC_REG_E_RC_CONFIG);
 
 	/* bit rate */
+	ctx->Kbps = p->rc_bitrate / 1024;
 	MFC_RAW_WRITEL(p->rc_bitrate, MFC_REG_E_RC_BIT_RATE);
 
 	reg = MFC_RAW_READL(MFC_REG_E_RC_MODE);

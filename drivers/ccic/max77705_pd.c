@@ -880,9 +880,12 @@ static void max77705_pd_check_pdmsg(struct max77705_usbc_platform_data *usbc_dat
 		max77705_vbus_turn_on_ctrl(usbc_data, OFF, false);
 		break;
 	case PRSWAP_SRCTOSWAP:
+		max77705_vbus_turn_on_ctrl(usbc_data, OFF, false);
+		msg_maxim("PRSWAP_SRCTOSWAP : [%x]", pd_msg);
+		break;
 	case PRSWAP_SWAPTOSNK:
 		max77705_vbus_turn_on_ctrl(usbc_data, OFF, false);
-		msg_maxim("PRSWAP_SRCTOSNK : [%x]", pd_msg);
+		msg_maxim("PRSWAP_SWAPTOSNK : [%x]", pd_msg);
 		break;
 	case PRSWAP_SNKTOSWAP:
 		msg_maxim("PRSWAP_SNKTOSWAP : [%x]", pd_msg);
@@ -1011,10 +1014,10 @@ static irqreturn_t max77705_pdmsg_irq(int irq, void *data)
 
 	max77705_read_reg(usbc_data->muic, REG_PD_STATUS0, &pd_data->pd_status0);
 	pdmsg = pd_data->pd_status0;
-	pr_info("%s: IRQ(%d)_IN\n", __func__, irq);
+	msg_maxim("IRQ(%d)_IN pdmsg: %02x", irq, pdmsg);
 	max77705_pd_check_pdmsg(usbc_data, pdmsg);
 	pd_data->pdsmg = pdmsg;
-	pr_info("%s: IRQ(%d)_OUT\n", __func__, irq);
+	msg_maxim("IRQ(%d)_OUT", irq);
 
 	return IRQ_HANDLED;
 }

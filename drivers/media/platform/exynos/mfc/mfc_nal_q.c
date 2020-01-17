@@ -944,6 +944,7 @@ static int __mfc_nal_q_run_in_buf_dec(struct mfc_ctx *ctx, DecoderInputStr *pInS
 	pInStr->CpbBufferAddr = buf_addr;
 	pInStr->CpbBufferSize = cpb_buf_size;
 	pInStr->CpbBufferOffset = 0;
+	ctx->last_src_addr = buf_addr;
 
 	MFC_TRACE_CTX("Set src[%d] fd: %d, %#llx\n",
 			src_index, src_mb->vb.vb2_buf.planes[0].m.fd, buf_addr);
@@ -956,6 +957,7 @@ static int __mfc_nal_q_run_in_buf_dec(struct mfc_ctx *ctx, DecoderInputStr *pInS
 	for (i = 0; i < raw->num_planes; i++) {
 		pInStr->FrameSize[i] = raw->plane_size[i];
 		pInStr->FrameAddr[i] = dst_mb->addr[0][i];
+		ctx->last_dst_addr[i] = dst_mb->addr[0][i];
 		if (ctx->is_10bit)
 			pInStr->Frame2BitSize[i] = raw->plane_size_2bits[i];
 		mfc_debug(2, "[NALQ][BUFINFO][DPB] ctx[%d] set dst index: %d, addr[%d]: 0x%08llx\n",
@@ -1928,6 +1930,7 @@ int mfc_nal_q_enqueue_in_buf(struct mfc_dev *dev, struct mfc_ctx *ctx,
 
 	if (input_diff == 0)
 		mfc_watchdog_start_tick(dev);
+	MFC_TRACE_LOG_DEV("N%d", input_diff);
 
 	spin_unlock_irqrestore(&nal_q_in_handle->nal_q_handle->lock, flags);
 

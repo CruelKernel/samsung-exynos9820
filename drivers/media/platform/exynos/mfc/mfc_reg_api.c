@@ -285,6 +285,7 @@ int mfc_set_dec_stream_buffer(struct mfc_ctx *ctx, struct mfc_buf *mfc_buf,
 	MFC_WRITEL(addr, MFC_REG_D_CPB_BUFFER_ADDR);
 	MFC_WRITEL(cpb_buf_size, MFC_REG_D_CPB_BUFFER_SIZE);
 	MFC_WRITEL(start_num_byte, MFC_REG_D_CPB_BUFFER_OFFSET);
+	ctx->last_src_addr = addr;
 
 	if (mfc_buf)
 		MFC_TRACE_CTX("Set src[%d] fd: %d, %#llx\n",
@@ -442,6 +443,7 @@ int mfc_set_dynamic_dpb(struct mfc_ctx *ctx, struct mfc_buf *dst_mb)
 				MFC_REG_D_FIRST_PLANE_DPB_SIZE + i * 4);
 		MFC_WRITEL(dst_mb->addr[0][i],
 				MFC_REG_D_FIRST_PLANE_DPB0 + (i * 0x100 + dst_index * 4));
+		ctx->last_dst_addr[i] = dst_mb->addr[0][i];
 		if (ctx->is_10bit)
 			MFC_WRITEL(raw->plane_size_2bits[i],
 					MFC_REG_D_FIRST_PLANE_2BIT_DPB_SIZE + (i * 4));

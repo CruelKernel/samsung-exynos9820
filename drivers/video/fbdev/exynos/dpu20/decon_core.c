@@ -52,6 +52,9 @@
 #ifdef CONFIG_SEC_DEBUG
 #include <linux/sec_debug.h>
 #endif
+#ifdef CONFIG_SAMSUNG_TUI
+#include "stui_inf.h"
+#endif
 
 #include "decon.h"
 #include "dsim.h"
@@ -945,8 +948,12 @@ static int decon_disable(struct decon_device *decon)
 		goto out;
 	}
 
-	if (decon->state == DECON_STATE_TUI)
+	if (decon->state == DECON_STATE_TUI) {
+#ifdef CONFIG_SAMSUNG_TUI
+		stui_cancel_session();
+#endif
 		_decon_tui_protection(false);
+	}
 
 	DPU_EVENT_LOG(DPU_EVT_BLANK, &decon->sd, ktime_set(0, 0));
 	decon_info("decon-%d %s +\n", decon->id, __func__);

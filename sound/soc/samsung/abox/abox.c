@@ -1866,6 +1866,9 @@ static void abox_system_ipc_handler(struct device *dev,
 			break;
 		}
 		abox_failsafe_report(dev);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+		abox_debug_string_update();
+#endif
 		break;
 	}
 	default:
@@ -2480,6 +2483,10 @@ static int abox_print_power_usage(struct device *dev, void *data)
 	if (pm_runtime_enabled(dev) && pm_runtime_active(dev)) {
 		dev_info(dev, "usage_count:%d\n",
 				atomic_read(&dev->power.usage_count));
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+		sec_audio_pmlog(6, dev, "usage_count:%d\n",
+				atomic_read(&dev->power.usage_count));
+#endif
 		device_for_each_child(dev, data, abox_print_power_usage);
 	}
 
@@ -2507,6 +2514,9 @@ static int abox_pm_notifier(struct notifier_block *nb,
 			ret = pm_runtime_suspend(dev);
 			if (ret < 0) {
 				dev_info(dev, "runtime suspend: %d\n", ret);
+#ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
+				sec_audio_pmlog(6, dev, "runtime suspend: %d\n", ret);
+#endif
 				abox_print_power_usage(dev, NULL);
 				return NOTIFY_BAD;
 			}

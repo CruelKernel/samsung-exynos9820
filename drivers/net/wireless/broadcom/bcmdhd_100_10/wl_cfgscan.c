@@ -1110,6 +1110,12 @@ scan_out:
 				dhd_bus_mem_dump(dhdp);
 			}
 #endif /* DHD_DEBUG && DHD_FW_COREDUMP */
+			dhdp->hang_reason = HANG_REASON_SCAN_BUSY;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+			dhd_os_send_hang_message(dhdp);
+#else
+			DHD_ERROR(("%s: HANG event is unsupported\n", __FUNCTION__));
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27) */
 
 			bzero(&bssid, sizeof(bssid));
 			if ((ret = wldev_ioctl_get(ndev, WLC_GET_BSSID,

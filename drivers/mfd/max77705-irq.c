@@ -36,6 +36,7 @@ static const u8 max77705_mask_reg[] = {
 	[CC_INT] = MAX77705_USBC_REG_CC_INT_M,
 	[PD_INT] = MAX77705_USBC_REG_PD_INT_M,
 	[VDM_INT] = MAX77705_USBC_REG_VDM_INT_M,
+	[VIR_INT] = MAX77705_REG_INVALID,
 };
 
 static struct i2c_client *get_i2c(struct max77705_dev *max77705,
@@ -111,6 +112,8 @@ static const struct max77705_irq_data max77705_irqs[] = {
 	[MAX77705_IRQ_VDM_DISCOVER_SVIDS_INT] = { .group = VDM_INT, .mask = 1 << 1 },
 	[MAX77705_IRQ_VDM_DISCOVER_MODES_INT] = { .group = VDM_INT, .mask = 1 << 2 },
 	[MAX77705_IRQ_VDM_ENTER_MODE_INT] = { .group = VDM_INT, .mask = 1 << 3 },
+
+	[MAX77705_VIR_IRQ_ALTERROR_INT] = { .group = VIR_INT, .mask = 1 << 0 },
 };
 
 static void max77705_irq_lock(struct irq_data *data)
@@ -199,10 +202,12 @@ static irqreturn_t max77705_irq_thread(int irq, void *data)
 	u8 pmic_rev = max77705->pmic_rev;
 	u8 reg_data;
 	u8 cc_status0 = 0;
+	u8 cc_status1 = 0;
 	u8 bc_status0 = 0;
 	u8 ccstat = 0;
 	u8 vbvolt = 0;
 	u8 pre_ccstati = 0;
+	u8 ic_alt_mode = 0;
 
 	pr_debug("%s: irq gpio pre-state(0x%02x)\n", __func__,
 				gpio_get_value(max77705->irq_gpio));
@@ -341,6 +346,14 @@ static irqreturn_t max77705_irq_thread(int irq, void *data)
 			irq_reg[USBC_INT], irq_reg[CC_INT], irq_reg[PD_INT], irq_reg[VDM_INT], irq_vdm_mask);
 		pr_info("[MAX77705] dump_reg, %x, %x, %x, %x, %x, %x, %x, %x\n", dump_reg[0], dump_reg[1],
 			dump_reg[2], dump_reg[3], dump_reg[4], dump_reg[5], dump_reg[6], dump_reg[7]);
+	}
+
+	if (max77705->cc_booting_complete) {
+		max77705_read_reg(max77705->muic, REG_CC_STATUS1, &cc_status1);
+		ic_alt_mode = (cc_status1 & BIT_Altmode) >> FFS(BIT_Altmode);
+		if (!ic_alt_mode && max77705->set_altmode)
+			irq_reg[VIR_INT] |= (1 << 0);
+		pr_info("%s ic_alt_mode=%d\n", __func__, ic_alt_mode);
 	}
 
 	/* Apply masking */

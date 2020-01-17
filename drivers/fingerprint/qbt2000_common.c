@@ -123,6 +123,46 @@ static ssize_t fps_qbt2000_cbgecnt_store(struct device *dev,
 	return size;
 }
 
+static ssize_t fps_qbt2000_intcnt_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct qbt2000_drvdata *drvdata = dev_get_drvdata(dev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", drvdata->wuhb_count);
+}
+
+static ssize_t fps_qbt2000_intcnt_store(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t size)
+{
+	struct qbt2000_drvdata *drvdata = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "c")) {
+		drvdata->wuhb_count = 0;
+		pr_info("initialization is done\n");
+	}
+	return size;
+}
+
+static ssize_t fps_qbt2000_resetcnt_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct qbt2000_drvdata *drvdata = dev_get_drvdata(dev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", drvdata->reset_count);
+}
+
+static ssize_t fps_qbt2000_resetcnt_store(struct device *dev,
+				struct device_attribute *attr, const char *buf,
+				size_t size)
+{
+	struct qbt2000_drvdata *drvdata = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "c")) {
+		drvdata->reset_count = 0;
+		pr_info("initialization is done\n");
+	}
+	return size;
+}
+
 static ssize_t fps_qbt2000_wuhbtest_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
@@ -148,6 +188,8 @@ static DEVICE_ATTR(name, 0444, fps_qbt2000_name_show, NULL);
 static DEVICE_ATTR(adm, 0444, fps_qbt2000_adm_show, NULL);
 static DEVICE_ATTR(position, 0444, fps_qbt2000_position_show, NULL);
 static DEVICE_ATTR(cbgecnt, 0664, fps_qbt2000_cbgecnt_show, fps_qbt2000_cbgecnt_store);
+static DEVICE_ATTR(intcnt, 0664, fps_qbt2000_intcnt_show, fps_qbt2000_intcnt_store);
+static DEVICE_ATTR(resetcnt, 0664, fps_qbt2000_resetcnt_show, fps_qbt2000_resetcnt_store);
 static DEVICE_ATTR(wuhbtest, 0444, fps_qbt2000_wuhbtest_show, NULL);
 
 static struct device_attribute *fp_attrs[] = {
@@ -158,6 +200,8 @@ static struct device_attribute *fp_attrs[] = {
 	&dev_attr_adm,
 	&dev_attr_position,
 	&dev_attr_cbgecnt,
+	&dev_attr_intcnt,
+	&dev_attr_resetcnt,
 	&dev_attr_wuhbtest,
 	NULL,
 };
@@ -490,6 +534,10 @@ static long fps_qbt2000_ioctl(
 		break;
 	case QBT2000_SET_LOCKSCREEN:
 		break;
+	case QBT2000_SENSOR_RESET:
+		drvdata->reset_count++;
+		pr_err("SENSOR_RESET\n");
+		break;
 	default:
 		pr_err("invalid cmd %d\n", cmd);
 		rc = -ENOIOCTLCMD;
@@ -787,6 +835,7 @@ static irqreturn_t fps_qbt2000_wuhb_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	drvdata->wuhb_count++;
 	pm_stay_awake(drvdata->dev);
 	schedule_work(&drvdata->fd_gpio.work);
 
@@ -1006,10 +1055,11 @@ dt_failed:
 
 static void fps_qbt2000_work_func_debug(struct work_struct *work)
 {
-	pr_info("ldo:%d,ipc:%d,wuhb:%d,tz:%d,type:%s\n",
+	pr_info("ldo:%d,ipc:%d,wuhb:%d,tz:%d,type:%s,int:%d,%d\n",
 		g_data->enabled_ldo, g_data->enabled_ipc,
 		g_data->enabled_wuhb, g_data->tz_mode,
-		sensor_status[g_data->sensortype + 2]);
+		sensor_status[g_data->sensortype + 2],
+		g_data->cbge_count, g_data->wuhb_count);
 }
 
 static void fps_qbt2000_enable_debug_timer(void)
@@ -1144,6 +1194,8 @@ static int fps_qbt2000_probe(struct platform_device *pdev)
 #endif
 	drvdata->sensortype = SENSOR_QBT2000;
 	drvdata->cbge_count = 0;
+	drvdata->wuhb_count = 0;
+	drvdata->reset_count = 0;
 	drvdata->wuhb_test_flag = 0;
 	drvdata->wuhb_test_result = 0;
 	fps_qbt2000_set_timer(drvdata);

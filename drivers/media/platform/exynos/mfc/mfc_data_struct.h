@@ -39,15 +39,17 @@
 #define MFC_MAX_DPBS			32
 #define MFC_MAX_BUFFERS			32
 #define MFC_MAX_EXTRA_BUF		10
-#define MFC_TIME_INDEX			15
-#define MFC_SFR_LOGGING_COUNT_SET1	4
-#define MFC_SFR_LOGGING_COUNT_SET2	23
-#define MFC_LOGGING_DATA_SIZE		256
+#define MFC_SFR_LOGGING_COUNT_SET0	10
+#define MFC_SFR_LOGGING_COUNT_SET1	28
+#define MFC_SFR_LOGGING_COUNT_SET2	32
+#define MFC_LOGGING_DATA_SIZE		950
 #define MFC_MAX_DEFAULT_PARAM		100
 
+/* OTF */
 #define HWFC_MAX_BUF			10
 #define OTF_MAX_BUF			30
 
+/* HDR */
 #define HDR_MAX_WINDOWS			3
 #define HDR_MAX_SCL			3
 #define HDR_MAX_DISTRIBUTION		15
@@ -56,9 +58,15 @@
 /* Maximum number of temporal layers */
 #define VIDEO_MAX_TEMPORAL_LAYERS	7
 
+/* Batch mode */
 #define MAX_NUM_IMAGES_IN_VB		8
 #define MAX_NUM_BUFCON_BUFS		32
+
+/* QoS */
+#define MAX_TIME_INDEX			15
 #define MAX_NUM_CLUSTER			3
+#define MAX_NUM_MFC_BPS			2
+#define MAX_NUM_MFC_FREQ		10
 
 /*
  *  MFC region id for smc
@@ -191,6 +199,7 @@ enum mfc_vb_flag {
 struct mfc_ctx;
 
 enum mfc_debug_cause {
+	/* panic cause */
 	MFC_CAUSE_0WRITE_PAGE_FAULT		= 0,
 	MFC_CAUSE_0READ_PAGE_FAULT		= 1,
 	MFC_CAUSE_1WRITE_PAGE_FAULT		= 2,
@@ -205,15 +214,44 @@ enum mfc_debug_cause {
 	MFC_CAUSE_FAIL_RISC_ON			= 11,
 	MFC_CAUSE_FAIL_DPB_FLUSH		= 12,
 	MFC_CAUSE_FAIL_CHACHE_FLUSH		= 13,
+	/* last information */
+	MFC_LAST_INFO_BLACK_BAR                 = 26,
+	MFC_LAST_INFO_NAL_QUEUE                 = 27,
+	MFC_LAST_INFO_CLOCK                     = 28,
+	MFC_LAST_INFO_POWER                     = 29,
+	MFC_LAST_INFO_SHUTDOWN                  = 30,
+	MFC_LAST_INFO_DRM                       = 31,
 };
 
 struct mfc_debug {
+	u32	fw_version;
 	u32	cause;
 	u8	fault_status;
 	u32	fault_trans_info;
 	u32	fault_addr;
-	u8	SFRs_set1[MFC_SFR_LOGGING_COUNT_SET1];
+	u32     SFRs_set0[MFC_SFR_LOGGING_COUNT_SET0];
+	u32     SFRs_set1[MFC_SFR_LOGGING_COUNT_SET1];
 	u32	SFRs_set2[MFC_SFR_LOGGING_COUNT_SET2];
+	u8	curr_ctx;
+	u8	state;
+	u8	last_cmd;
+	u32	last_cmd_sec;
+	u32	last_cmd_usec;
+	u8	last_int;
+	u32	last_int_sec;
+	u32	last_int_usec;
+	u32	frame_cnt;
+	u8	hwlock_dev;
+	u32	hwlock_ctx;
+	u8	num_inst;
+	u8	num_drm_inst;
+	u8	power_cnt;
+	u8	clock_cnt;
+	/* for decoder only */
+	u32	dynamic_used;
+	u32	last_src_addr;
+	u32	last_dst_addr[MFC_MAX_PLANES];
+	/* total logging data */
 	char	errorinfo[MFC_LOGGING_DATA_SIZE];
 };
 
@@ -452,6 +490,9 @@ struct mfc_platdata {
 	struct mfc_qos *qos_table;
 	struct mfc_qos_boost *qos_boost_table;
 #endif
+	int num_mfc_freq;
+	unsigned int mfc_freqs[MAX_NUM_MFC_FREQ];
+	unsigned int max_Kbps[MAX_NUM_MFC_BPS];
 	/* NAL-Q size */
 	unsigned int nal_q_entry_size;
 	unsigned int nal_q_dump_size;
@@ -732,6 +773,11 @@ struct mfc_mmcache {
 	int is_on_status;
 };
 
+struct mfc_bitrate_table {
+	int mfc_freq;
+	int bps_interval;
+};
+
 /**
  * struct mfc_dev - The struct containing driver internal parameters.
  */
@@ -749,6 +795,11 @@ struct mfc_dev {
 	void __iomem		*sysmmu0_base;
 	void __iomem		*sysmmu1_base;
 	void __iomem		*hwfc_base;
+	void __iomem		*cmu_busc_base;
+	void __iomem		*cmu_mif0_base;
+	void __iomem		*cmu_mif1_base;
+	void __iomem		*cmu_mif2_base;
+	void __iomem		*cmu_mif3_base;
 
 	int			irq;
 	struct resource		*mfc_mem;
@@ -774,6 +825,7 @@ struct mfc_dev {
 	bool has_2sysmmu;
 	bool has_hwfc;
 	bool has_mmcache;
+	bool has_cmu;	
 
 	struct mfc_special_buf common_ctx_buf;
 	struct mfc_special_buf drm_common_ctx_buf;
@@ -812,7 +864,11 @@ struct mfc_dev {
 	struct pm_qos_request qos_req_cluster[MAX_NUM_CLUSTER];
 	int qos_has_enc_ctx;
 	struct mutex qos_mutex;
+	int mfc_freq_by_bps;
 #endif
+	struct mfc_bitrate_table bitrate_table[MAX_NUM_MFC_FREQ];
+	int bps_ratio;
+
 	int id;
 	atomic_t clk_ref;
 
@@ -821,6 +877,8 @@ struct mfc_dev {
 	atomic_t trace_ref_longterm;
 
 	struct _mfc_trace *mfc_trace_longterm;
+	atomic_t trace_ref_log;
+	struct _mfc_trace_logging *mfc_trace_logging;
 	bool continue_clock_on;
 
 	bool shutdown;
@@ -836,6 +894,11 @@ struct mfc_dev {
 
 	struct mfc_debugfs debugfs;
 	struct mfc_dump_ops *dump_ops;
+
+	int last_cmd;
+	int last_int;
+	struct timeval last_cmd_time;
+	struct timeval last_int_time;
 
 	struct mfc_perf perf;
 
@@ -1302,6 +1365,11 @@ struct mfc_timestamp {
 	int interval;
 };
 
+struct mfc_bitrate {
+	struct list_head list;
+	int bytesused;
+};
+
 struct mfc_dec {
 	int total_dpb_count;
 
@@ -1504,15 +1572,27 @@ struct mfc_ctx {
 	struct list_head qos_list;
 #endif
 
-	struct mfc_timestamp ts_array[MFC_TIME_INDEX];
+	struct mfc_timestamp ts_array[MAX_TIME_INDEX];
 	struct list_head ts_list;
 	int ts_count;
 	int ts_is_full;
+
+	/* bitrate control for QoS*/
+	struct mfc_bitrate bitrate_array[MAX_TIME_INDEX];
+	struct list_head bitrate_list;
+	int bitrate_index;
+	int bitrate_is_full;
+	int Kbps;
+	int last_bps_section;
 
 	int buf_process_type;
 
 	unsigned long raw_protect_flag;
 	unsigned long stream_protect_flag;
+
+	int frame_cnt;
+	u32 last_src_addr;
+	u32 last_dst_addr[MFC_MAX_PLANES];
 
 	int batch_mode;
 	bool check_dump;

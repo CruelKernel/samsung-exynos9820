@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pktlog.c 797754 2019-01-03 12:21:08Z $
+ * $Id: dhd_pktlog.c 813281 2019-04-04 08:56:10Z $
  */
 
 #include <typedefs.h>
@@ -58,7 +58,6 @@
 #endif /* DHD_PKT_LOGGING */
 extern int wl_pattern_atoh(char *src, char *dst);
 extern int pattern_atoh_len(char *src, char *dst, int len);
-extern uint32 __dhd_dbg_pkt_hash(uintptr_t pkt, uint32 pktid);
 extern wifi_tx_packet_fate __dhd_dbg_map_tx_status_to_pkt_fate(uint16 status);
 
 #ifdef DHD_COMPACT_PKT_LOG

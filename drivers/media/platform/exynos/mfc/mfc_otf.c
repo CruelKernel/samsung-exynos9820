@@ -292,7 +292,7 @@ int mfc_otf_create(struct mfc_ctx *ctx)
 
 void mfc_otf_destroy(struct mfc_ctx *ctx)
 {
-	struct mfc_dev *dev = ctx->dev;
+	struct mfc_dev *dev;
 
 	mfc_debug_enter();
 
@@ -300,6 +300,7 @@ void mfc_otf_destroy(struct mfc_ctx *ctx)
 		mfc_err_dev("[OTF] no mfc context to run\n");
 		return;
 	}
+	dev = ctx->dev;
 
 	mfc_otf_release_stream_buf(ctx);
 	__mfc_otf_destroy_handle(ctx);
@@ -475,7 +476,7 @@ int mfc_otf_run_enc_frame(struct mfc_ctx *ctx)
 
 	/* Change timestamp usec -> nsec */
 	mfc_qos_update_last_framerate(ctx, handle->otf_time_stamp * 1000);
-	mfc_qos_update_framerate(ctx);
+	mfc_qos_update_framerate(ctx, 0);
 
 	/* Set stream buffer size to handle buffer full */
 	mfc_clean_ctx_int_flags(ctx);

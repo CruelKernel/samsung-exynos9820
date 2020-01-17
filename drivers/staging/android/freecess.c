@@ -286,12 +286,19 @@ static void recv_handler(struct sk_buff *skb)
 	struct kfreecess_msg_data *payload = NULL;
 	struct nlmsghdr *nlh = NULL;
 	unsigned int msglen  = 0;
+	uid_t uid = 0;
 
 	if (!skb) {
 		pr_err("recv_handler %s: skb is	NULL!\n", __func__);
 		return;
 	}
-
+	
+	uid = (*NETLINK_CREDS(skb)).uid.val;
+	//only allow system user to communicate with Freecess kernel part.
+	if (uid != 1000) {
+		pr_err("freecess--uid: %d, permission denied\n", uid);
+		return;
+	}
 	printk(KERN_ERR "kernel freecess receive msg now\n");
 	if (skb->len >= NLMSG_SPACE(0)) {
 		nlh = nlmsg_hdr(skb);
@@ -309,10 +316,16 @@ static void recv_handler(struct sk_buff *skb)
 				pr_err("USER_HOOK_CALLBACK %s: dst_portid is %d not kernel!\n", __func__, payload->dst_portid);
 				return;
 			}
+			
+			if (!check_mod_type(payload->mod)) {
+				pr_err("USER_HOOK_CALLBACK %s: mod %d is not valid!\n", __func__, payload->mod);
+				return;
+			}
 
-			atomic_set(&bind_port[payload->mod], payload->src_portid);
 			switch (payload->type) {
 			case LOOPBACK_MSG:
+				atomic_set(&bind_port[payload->mod], payload->src_portid);
+				dump_kfreecess_msg(payload);
 				mod_sendmsg(LOOPBACK_MSG, payload->mod, NULL);
 				break;
 			case MSG_TO_KERN:
@@ -348,7 +361,7 @@ static int freecess_window_stat_show(struct seq_file *m, void *v)
 		spin_lock_irqsave(&stat->lock, flags);
 		tmp_freecess_info.mod_reportstat[i].data = stat->data;
 		spin_unlock_irqrestore(&stat->lock, flags);
-		strncpy(tmp_freecess_info.mod_reportstat[i].name, stat->name, 32);
+		strlcpy(tmp_freecess_info.mod_reportstat[i].name, stat->name, 32);
 	}
 
 	seq_printf(m, "freecess window stat show\n");
@@ -448,7 +461,7 @@ static int freecess_modstat_show(struct seq_file *m, void *v)
 		spin_lock_irqsave(&stat->lock, flags);
 		tmp_freecess_info.mod_reportstat[i].data = stat->data;
 		spin_unlock_irqrestore(&stat->lock, flags);
-		strncpy(tmp_freecess_info.mod_reportstat[i].name, stat->name, 32);
+		strlcpy(tmp_freecess_info.mod_reportstat[i].name, stat->name, 32);
 	}
 
 	seq_printf(m, "freecess mod stat show\n");
@@ -499,7 +512,7 @@ static void freecess_runinfo_init(struct freecess_info_s *f)
 		stat->data.report_suc_from_windowstart = 0;
 		stat->data.report_fail_from_windowstart = 0;
 		stat->data.runtime_from_windowstart = 0;
-		strncpy(f->mod_reportstat[i].name, mod_name[i], 32);
+		strlcpy(f->mod_reportstat[i].name, mod_name[i], 32);
 	}
 
 }

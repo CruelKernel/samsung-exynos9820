@@ -475,3 +475,9 @@ config HAVE_CBPF_JIT
 # Extended BPF JIT (eBPF)
 config HAVE_EBPF_JIT
 	bool
+	
+# Network Pacemaker
+config NETPM
+	bool "Network Pacemaker"
+	---help---
+	This feature implements Network Pacemaker (NETPM)

@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 811456 2019-03-26 02:58:10Z $
+ * $Id: dhd_msgbuf.c 813281 2019-04-04 08:56:10Z $
  */
 
 #include <typedefs.h>
@@ -69,6 +69,7 @@
 
 #ifdef DHD_PKT_LOGGING
 #include <dhd_pktlog.h>
+#include <dhd_linux_pktdump.h>
 #endif /* DHD_PKT_LOGGING */
 #ifdef DHD_EWPR_VER2
 #include <dhd_bitpack.h>
@@ -6385,10 +6386,16 @@ workq_ring_full:
 			ltoh16(txstatus->compl_hdr.status) & WLFC_CTL_PKTFLAG_MASK);
 #ifdef DHD_PKT_LOGGING
 	if (dhd->d11_tx_status) {
-		DHD_PKTLOG_TXS(dhd, pkt, pktid,
-			ltoh16(txstatus->compl_hdr.status) & WLFC_CTL_PKTFLAG_MASK);
+		uint16 status = ltoh16(txstatus->compl_hdr.status) &
+			WLFC_CTL_PKTFLAG_MASK;
+		uint32 pkthash = __dhd_dbg_pkt_hash((uintptr_t)pkt, pktid);
+		DHD_PKTLOG_TXS(dhd, pkt, pktid, status);
+		dhd_dump_pkt(dhd, ltoh32(txstatus->cmn_hdr.if_id),
+			(uint8 *)PKTDATA(dhd->osh, pkt), len, TRUE,
+			&pkthash, &status);
 	}
 #endif /* DHD_PKT_LOGGING */
+
 #if defined(BCMPCIE)
 	dhd_txcomplete(dhd, pkt, pkt_fate);
 #ifdef DHD_4WAYM4_FAIL_DISCONNECT
@@ -6583,6 +6590,9 @@ dhd_prot_txdata(dhd_pub_t *dhd, void *PKTBUF, uint8 ifidx)
 	msgbuf_ring_t *ring;
 	flow_ring_table_t *flow_ring_table;
 	flow_ring_node_t *flow_ring_node;
+#ifdef DHD_PKT_LOGGING
+	uint32 pkthash;
+#endif /* DHD_PKT_LOGGING */
 
 	if (dhd->flow_ring_table == NULL) {
 		DHD_ERROR(("dhd flow_ring_table is NULL\n"));
@@ -6622,14 +6632,17 @@ dhd_prot_txdata(dhd_pub_t *dhd, void *PKTBUF, uint8 ifidx)
 		goto err_free_pktid;
 	}
 
-	DHD_DBG_PKT_MON_TX(dhd, PKTBUF, pktid);
-#ifdef DHD_PKT_LOGGING
-	DHD_PKTLOG_TX(dhd, PKTBUF, pktid);
-#endif /* DHD_PKT_LOGGING */
-
 	/* Extract the data pointer and length information */
 	pktdata = PKTDATA(dhd->osh, PKTBUF);
 	pktlen  = PKTLEN(dhd->osh, PKTBUF);
+
+	DHD_DBG_PKT_MON_TX(dhd, PKTBUF, pktid);
+#ifdef DHD_PKT_LOGGING
+	DHD_PKTLOG_TX(dhd, PKTBUF, pktid);
+	/* Dump TX packet */
+	pkthash = __dhd_dbg_pkt_hash((uintptr_t)PKTBUF, pktid);
+	dhd_dump_pkt(dhd, ifidx, pktdata, pktlen, TRUE, &pkthash, NULL);
+#endif /* DHD_PKT_LOGGING */
 
 	/* Ethernet header: Copy before we cache flush packet using DMA_MAP */
 	bcopy(pktdata, txdesc->txhdr, ETHER_HDR_LEN);
