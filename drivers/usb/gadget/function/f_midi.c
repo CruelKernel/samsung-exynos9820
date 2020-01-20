@@ -1387,7 +1387,7 @@ static struct usb_function *f_midi_alloc(struct usb_function_instance *fi)
 	++opts->refcnt;
 	mutex_unlock(&opts->lock);
 
-	midi->func.name		= "gmidi function";
+	midi->func.name		= "midi";
 	midi->func.bind		= f_midi_bind;
 	midi->func.unbind	= f_midi_unbind;
 	midi->func.set_alt	= f_midi_set_alt;

@@ -61,6 +61,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/vmscan.h>
 
+#include <linux/ologk.h>
+
 struct scan_control {
 	/* How many pages shrink_list() should reclaim */
 	unsigned long nr_to_reclaim;
@@ -308,6 +310,7 @@ void unregister_shrinker(struct shrinker *shrinker)
 EXPORT_SYMBOL(unregister_shrinker);
 
 #define SHRINK_BATCH 128
+#define SHRINKER_MAX_TIME (HZ / 20) /* 50 msec */
 
 static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 				    struct shrinker *shrinker,
@@ -324,6 +327,7 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 	long batch_size = shrinker->batch ? shrinker->batch
 					  : SHRINK_BATCH;
 	long scanned = 0, next_deferred;
+	unsigned long shrinker_time;
 
 	freeable = shrinker->count_objects(shrinker, shrinkctl);
 	if (freeable == 0)
@@ -371,6 +375,8 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 	 */
 	if (total_scan > freeable * 2)
 		total_scan = freeable * 2;
+
+	shrinker_time = jiffies;
 
 	trace_mm_shrink_slab_start(shrinker, shrinkctl, nr,
 				   nr_scanned, nr_eligible,
@@ -426,6 +432,12 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 		new_nr = atomic_long_read(&shrinker->nr_deferred[nid]);
 
 	trace_mm_shrink_slab_end(shrinker, nid, freed, nr, new_nr, total_scan);
+
+	if (time_after(jiffies, shrinker_time + SHRINKER_MAX_TIME))
+		ologk("%s time:%lu %pF nid:%d freed:%ld nr:%ld new_nr:%ld total_scan:%ld",
+			__func__, jiffies_to_msecs(jiffies - shrinker_time), shrinker->scan_objects,
+			nid, freed, nr, new_nr, total_scan);
+
 	return freed;
 }
 
@@ -1397,6 +1409,54 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 	return ret;
 }
 
+/* A caller should guarantee that start and end pfns are in the same zone */
+void reclaim_contig_migrate_range(unsigned long start,
+						unsigned long end, bool drain)
+{
+	/* This function is based on __alloc_contig_migrate_range */
+	unsigned long nr_reclaimed;
+	unsigned long pfn = start;
+	struct compact_control cc = {
+		.zone = page_zone(pfn_to_page(start)),
+		.nr_freepages = 0,
+		.nr_migratepages = 0,
+		.mode = MIGRATE_SYNC_LIGHT,
+		.gfp_mask = GFP_KERNEL,
+	};
+	unsigned long total_reclaimed = 0;
+
+	INIT_LIST_HEAD(&cc.freepages);
+	INIT_LIST_HEAD(&cc.migratepages);
+
+	if (drain)
+		migrate_prep();
+
+	while (pfn < end) {
+		if (fatal_signal_pending(current)) {
+			pr_warn_once("%s %d got fatal signal\n",
+						__func__, __LINE__);
+			break;
+		}
+
+		if (list_empty(&cc.migratepages)) {
+			cc.nr_migratepages = 0;
+			pfn = isolate_migratepages_range(&cc, pfn, end);
+			if (!pfn)
+				break;
+		}
+
+		nr_reclaimed = reclaim_clean_pages_from_list(cc.zone,
+							&cc.migratepages);
+		cc.nr_migratepages -= nr_reclaimed;
+		total_reclaimed += nr_reclaimed;
+
+		/* Skip pages not reclaimed in the above */
+		if (cc.nr_migratepages)
+			putback_movable_pages(&cc.migratepages);
+	}
+	trace_printk("%lu\n", total_reclaimed << PAGE_SHIFT);
+}
+
 /*
  * Attempt to remove the specified page from its LRU.  Only take this page
  * if it is of the appropriate PageActive status.  Pages which are being
@@ -1752,6 +1812,8 @@ static int current_may_throttle(void)
 		bdi_write_congested(current->backing_dev_info);
 }
 
+static inline bool need_memory_boosting(struct pglist_data *pgdat);
+
 /*
  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
  * of reclaimed pages
@@ -1770,6 +1832,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
 	struct zone_reclaim_stat *reclaim_stat = &lruvec->reclaim_stat;
 	bool stalled = false;
+	bool force_reclaim = false;
+	enum ttu_flags ttu = 0;
 
 	while (unlikely(too_many_isolated(pgdat, file, sc))) {
 		if (stalled)
@@ -1813,8 +1877,13 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	if (nr_taken == 0)
 		return 0;
 
-	nr_reclaimed = shrink_page_list(&page_list, pgdat, sc, 0,
-				&stat, false);
+	if (need_memory_boosting(pgdat)) {
+		force_reclaim = true;
+		ttu |= TTU_IGNORE_ACCESS;
+	}
+
+	nr_reclaimed = shrink_page_list(&page_list, pgdat, sc, ttu,
+				&stat, force_reclaim);
 
 	spin_lock_irq(&pgdat->lru_lock);
 
@@ -2182,6 +2251,164 @@ enum scan_balance {
 	SCAN_FILE,
 };
 
+/* mem_boost throttles only kswapd's behavior */
+enum mem_boost {
+	NO_BOOST,
+	BOOST_MID = 1,
+	BOOST_HIGH = 2,
+};
+static int mem_boost_mode = NO_BOOST;
+static unsigned long last_mode_change;
+static bool memory_boosting_disabled = false;
+
+#define MEM_BOOST_MAX_TIME (5 * HZ) /* 5 sec */
+
+#ifdef CONFIG_SYSFS
+enum rbin_alloc_policy {
+	RBIN_ALLOW = 0,
+	RBIN_DENY = 1,
+};
+
+#ifdef CONFIG_RBIN
+static void set_rbin_alloc_policy(enum rbin_alloc_policy val)
+{
+	struct zone *zone;
+
+	if (val == RBIN_ALLOW)
+		wake_ion_rbin_heap_shrink();
+	for_each_populated_zone(zone) {
+		atomic_set(&zone->rbin_alloc, val);
+		if (val)
+			wakeup_kswapd(zone, 0, gfp_zone(GFP_KERNEL));
+	}
+}
+#else
+static inline void set_rbin_alloc_policy(enum rbin_alloc_policy val) {}
+#endif
+
+void test_and_set_mem_boost_timeout(void)
+{
+	if ((mem_boost_mode != NO_BOOST) &&
+	    time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME)) {
+		mem_boost_mode = NO_BOOST;
+		set_rbin_alloc_policy(RBIN_ALLOW);
+	}
+}
+
+static ssize_t mem_boost_mode_show(struct kobject *kobj,
+				    struct kobj_attribute *attr, char *buf)
+{
+	test_and_set_mem_boost_timeout();
+	return sprintf(buf, "%d\n", mem_boost_mode);
+}
+
+static ssize_t mem_boost_mode_store(struct kobject *kobj,
+				     struct kobj_attribute *attr,
+				     const char *buf, size_t count)
+{
+	int mode;
+	int err;
+
+	err = kstrtoint(buf, 10, &mode);
+	if (err || mode > BOOST_HIGH || mode < NO_BOOST)
+		return -EINVAL;
+
+	mem_boost_mode = mode;
+	last_mode_change = jiffies;
+	if (mem_boost_mode == BOOST_HIGH) {
+#ifdef CONFIG_ION_RBIN_HEAP
+		wake_ion_rbin_heap_prereclaim();
+#endif
+		set_rbin_alloc_policy(RBIN_DENY);
+	}
+
+	return count;
+}
+
+static ssize_t disable_mem_boost_show(struct kobject *kobj,
+				    struct kobj_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = memory_boosting_disabled ? 1 : 0;
+	return sprintf(buf, "%d\n", ret);
+}
+
+static ssize_t disable_mem_boost_store(struct kobject *kobj,
+				     struct kobj_attribute *attr,
+				     const char *buf, size_t count)
+{
+	int mode;
+	int err;
+
+	err = kstrtoint(buf, 10, &mode);
+	if (err || (mode != 0 && mode != 1))
+		return -EINVAL;
+
+	memory_boosting_disabled = mode ? true : false;
+
+	return count;
+}
+
+#define MEM_BOOST_ATTR(_name) \
+	static struct kobj_attribute _name##_attr = \
+		__ATTR(_name, 0644, _name##_show, _name##_store)
+MEM_BOOST_ATTR(mem_boost_mode);
+MEM_BOOST_ATTR(disable_mem_boost);
+
+static struct attribute *mem_boost_attrs[] = {
+	&mem_boost_mode_attr.attr,
+	&disable_mem_boost_attr.attr,
+	NULL,
+};
+
+static struct attribute_group mem_boost_attr_group = {
+	.attrs = mem_boost_attrs,
+	.name = "vmscan",
+};
+#endif
+
+static inline bool mem_boost_pgdat_wmark(struct pglist_data *pgdat)
+{
+	int z;
+	struct zone *zone;
+	unsigned long mark;
+
+	for (z = 0; z < MAX_NR_ZONES; z++) {
+		zone = &pgdat->node_zones[z];
+		if (!managed_zone(zone))
+			continue;
+		mark = low_wmark_pages(zone); //TODO: low, high, or (low + high)/2
+		if (zone_watermark_ok_safe(zone, 0, mark, 0))
+			return true;
+	}
+	return false;
+}
+
+static inline bool need_memory_boosting(struct pglist_data *pgdat)
+{
+	bool ret;
+
+	test_and_set_mem_boost_timeout();
+
+	if (memory_boosting_disabled)
+		return false;
+
+	switch (mem_boost_mode) {
+	case BOOST_HIGH:
+		ret = true;
+		break;
+	case BOOST_MID:
+		ret = mem_boost_pgdat_wmark(pgdat) ? false : true;
+		break;
+	case NO_BOOST:
+	default:
+		ret = false;
+		break;
+	}
+	return ret;
+}
+
 /*
  * Determine how aggressively the anon and file LRU lists should be
  * scanned.  The relative value of each set of LRU lists is determined
@@ -2276,6 +2503,11 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 		}
 	}
 
+	if (current_is_kswapd() && need_memory_boosting(pgdat)) {
+		scan_balance = SCAN_FILE;
+		goto out;
+	}
+
 	/*
 	 * If there is enough inactive page cache, i.e. if the size of the
 	 * inactive list is greater than that of the active list *and* the
@@ -2285,7 +2517,8 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 	 * lruvec even if it has plenty of old anonymous pages unless the
 	 * system is under heavy pressure.
 	 */
-	if (!inactive_list_is_low(lruvec, true, memcg, sc, false) &&
+	if (!IS_ENABLED(CONFIG_BALANCE_ANON_FILE_RECLAIM) &&
+	    !inactive_list_is_low(lruvec, true, memcg, sc, false) &&
 	    lruvec_lru_size(lruvec, LRU_INACTIVE_FILE, sc->reclaim_idx) >> sc->priority) {
 		scan_balance = SCAN_FILE;
 		goto out;
@@ -2592,11 +2825,13 @@ static inline bool should_continue_reclaim(struct pglist_data *pgdat,
 	return true;
 }
 
+#define SHRINK_NODE_MAX_TIME (HZ / 10) /* 100 msec */
 static bool shrink_node(pg_data_t *pgdat, struct scan_control *sc)
 {
 	struct reclaim_state *reclaim_state = current->reclaim_state;
 	unsigned long nr_reclaimed, nr_scanned;
 	bool reclaimable = false;
+	unsigned long shrink_node_time = jiffies;
 
 	do {
 		struct mem_cgroup *root = sc->target_mem_cgroup;
@@ -2690,6 +2925,11 @@ static bool shrink_node(pg_data_t *pgdat, struct scan_control *sc)
 	 */
 	if (reclaimable)
 		pgdat->kswapd_failures = 0;
+
+	if (sc->priority <= 2 && time_after(jiffies, shrink_node_time + SHRINK_NODE_MAX_TIME))
+		ologk("%s priority:%d time:%lu nr_scanned:%lu nr_reclaimed:%lu",
+			__func__, sc->priority, jiffies_to_msecs(jiffies - shrink_node_time),
+			sc->nr_scanned, sc->nr_reclaimed);
 
 	return reclaimable;
 }
@@ -3061,7 +3301,11 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 		.priority = DEF_PRIORITY,
 		.may_writepage = !laptop_mode,
 		.may_unmap = 1,
+#ifdef CONFIG_DIRECT_RECLAIM_FILE_PAGES_ONLY
+		.may_swap = 0,
+#else
 		.may_swap = 1,
+#endif
 	};
 
 	/*
@@ -3189,6 +3433,7 @@ static void age_active_anon(struct pglist_data *pgdat,
 	} while (memcg);
 }
 
+#define MEM_BOOST_WMARK_SCALE_FACTOR 1
 /*
  * Returns true if there is an eligible zone balanced for the request order
  * and classzone_idx
@@ -3206,6 +3451,10 @@ static bool pgdat_balanced(pg_data_t *pgdat, int order, int classzone_idx)
 			continue;
 
 		mark = high_wmark_pages(zone);
+
+		if (current_is_kswapd() && need_memory_boosting(zone->zone_pgdat))
+			mark *= MEM_BOOST_WMARK_SCALE_FACTOR;
+
 		if (zone_watermark_ok_safe(zone, order, mark, classzone_idx))
 			return true;
 	}
@@ -3649,13 +3898,16 @@ void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 	if (!waitqueue_active(&pgdat->kswapd_wait))
 		return;
 
+	if (need_memory_boosting(pgdat))
+		goto wakeup;
+
 	/* Hopeless node, leave it to direct reclaim */
 	if (pgdat->kswapd_failures >= MAX_RECLAIM_RETRIES)
 		return;
 
 	if (pgdat_balanced(pgdat, order, classzone_idx))
 		return;
-
+wakeup:
 	trace_mm_vmscan_wakeup_kswapd(pgdat->node_id, classzone_idx, order);
 	wake_up_interruptible(&pgdat->kswapd_wait);
 }
@@ -3771,6 +4023,10 @@ static int __init kswapd_init(void)
 					"mm/vmscan:online", kswapd_cpu_online,
 					NULL);
 	WARN_ON(ret < 0);
+#ifdef CONFIG_SYSFS
+	if (sysfs_create_group(mm_kobj, &mem_boost_attr_group))
+		pr_err("vmscan: register mem boost sysfs failed\n");
+#endif
 	return 0;
 }
 

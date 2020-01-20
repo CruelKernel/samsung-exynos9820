@@ -21,6 +21,256 @@
 #define VALID_FLAGS (SYNC_FILE_RANGE_WAIT_BEFORE|SYNC_FILE_RANGE_WRITE| \
 			SYNC_FILE_RANGE_WAIT_AFTER)
 
+/* Interruptible sync for Samsung Mobile Device */
+#ifdef CONFIG_INTERRUPTIBLE_SYNC
+
+#include <linux/workqueue.h>
+#include <linux/suspend.h>
+#include <linux/delay.h>
+
+//#define CONFIG_INTR_SYNC_DEBUG
+
+#ifdef CONFIG_INTR_SYNC_DEBUG
+#define dbg_print	printk
+#else
+#define dbg_print(...)
+#endif
+
+enum {
+	INTR_SYNC_STATE_IDLE = 0,
+	INTR_SYNC_STATE_QUEUED,
+	INTR_SYNC_STATE_RUNNING,
+	INTR_SYNC_STATE_MAX
+};
+
+struct interruptible_sync_work {
+	int id;
+	int ret;
+	unsigned int waiter;
+	unsigned int state;
+	unsigned long version;
+	spinlock_t lock;
+	struct completion done;
+	struct work_struct work;
+};
+
+/* Initially, intr_sync_work has zero pending */
+static struct interruptible_sync_work intr_sync_work[2];
+
+/* Last work start time */
+static atomic_t running_work_idx;
+
+/* intr_sync_wq will be created when intr_sync() is called at first time.
+ * And it is alive till system shutdown */
+static struct workqueue_struct *intr_sync_wq;
+
+/* It prevents double allocation of intr_sync_wq */
+static DEFINE_MUTEX(intr_sync_wq_lock);
+
+static inline struct interruptible_sync_work *INTR_SYNC_WORK(struct work_struct *work)
+{
+	return container_of(work, struct interruptible_sync_work, work);
+}
+
+static void do_intr_sync(struct work_struct *work)
+{
+	struct interruptible_sync_work *sync_work = INTR_SYNC_WORK(work);
+	int ret = 0;
+	unsigned int waiter;
+
+	spin_lock(&sync_work->lock);
+	atomic_set(&running_work_idx, sync_work->id);
+	sync_work->state = INTR_SYNC_STATE_RUNNING;
+	waiter = sync_work->waiter;
+	spin_unlock(&sync_work->lock);
+
+	dbg_print("\nintr_sync: %s: call sys_sync on work[%d]-%ld\n",
+			__func__, sync_work->id, sync_work->version);
+
+	/* if no one waits, do not call sync() */
+	if (waiter) {
+		ret = sys_sync();
+		dbg_print("\nintr_sync: %s: done sys_sync on work[%d]-%ld\n",
+			__func__, sync_work->id, sync_work->version);
+	} else {
+		dbg_print("\nintr_sync: %s: cancel,no_wait on work[%d]-%ld\n",
+			__func__, sync_work->id, sync_work->version);
+	}
+
+	spin_lock(&sync_work->lock);
+	sync_work->version++;
+	sync_work->ret = ret;
+	sync_work->state = INTR_SYNC_STATE_IDLE;
+	complete_all(&sync_work->done);
+	spin_unlock(&sync_work->lock);
+}
+
+/* wakeup functions that depend on PM facilities
+ *
+ * struct intr_wakeup_data  : wrapper structure for variables for PM
+ *			      each thread has own instance of it
+ * __prepare_wakeup_event() : prepare and check intr_wakeup_data
+ * __check_wakeup_event()   : check wakeup-event with intr_wakeup_data
+ */
+struct intr_wakeup_data {
+	unsigned int cnt;
+};
+
+static inline int __prepare_wakeup_event(struct intr_wakeup_data *wd)
+{
+	if (pm_get_wakeup_count(&wd->cnt, false))
+		return 0;
+
+	pr_info("intr_sync: detected wakeup events before sync\n");
+	pm_print_active_wakeup_sources();
+	return -EBUSY;
+}
+
+static inline  int __check_wakeup_event(struct intr_wakeup_data *wd)
+{
+	unsigned int cnt, no_inpr;
+
+	no_inpr = pm_get_wakeup_count(&cnt, false);
+	if (no_inpr && (cnt == wd->cnt))
+		return 0;
+
+	pr_info("intr_sync: detected wakeup events(no_inpr: %u cnt: %u->%u)\n",
+		no_inpr, wd->cnt, cnt);
+	pm_print_active_wakeup_sources();
+	return -EBUSY;
+}
+
+/* Interruptible Sync
+ *
+ * intr_sync() is same function as sys_sync() except that it can wakeup.
+ * It's possible because of inter_syncd workqueue.
+ *
+ * If system gets wakeup event while sync_work is running,
+ * just return -EBUSY, otherwise 0.
+ *
+ * If intr_sync() is called again while sync_work is running, it will enqueue
+ * idle sync_work to work_queue and wait the completion of it.
+ * If there is not idle sync_work but queued one, it just increases waiter by 1,
+ * and waits the completion of queued sync_work.
+ *
+ * If you want to know returned value of sys_sync(),
+ * you can get it from the argument, sync_ret
+ */
+
+int intr_sync(int *sync_ret)
+{
+	int ret;
+enqueue_sync_wait:
+	/* If the workqueue exists, try to enqueue work and wait */
+	if (likely(intr_sync_wq)) {
+		struct interruptible_sync_work *sync_work;
+		struct intr_wakeup_data wd;
+		int work_idx;
+		int work_ver;
+find_idle:
+		work_idx = !atomic_read(&running_work_idx);
+		sync_work = &intr_sync_work[work_idx];
+
+		/* Prepare intr_wakeup_data and check wakeup event:
+		 * If a wakeup-event is detected, wake up right now
+		 */
+		if (__prepare_wakeup_event(&wd)) {
+			dbg_print("intr_sync: detect wakeup event "
+				"before waiting work[%d]\n", work_idx);
+			return -EBUSY;
+		}
+
+		dbg_print("\nintr_sync: try to wait work[%d]\n", work_idx);
+
+		spin_lock(&sync_work->lock);
+		work_ver = sync_work->version;
+		if (sync_work->state == INTR_SYNC_STATE_RUNNING) {
+			spin_unlock(&sync_work->lock);
+			dbg_print("intr_sync: work[%d] is already running, "
+				"find idle work\n", work_idx);
+			goto find_idle;
+		}
+
+		sync_work->waiter++;
+		if (sync_work->state == INTR_SYNC_STATE_IDLE) {
+			dbg_print("intr_sync: enqueue work[%d]\n", work_idx);
+			sync_work->state = INTR_SYNC_STATE_QUEUED;
+			reinit_completion(&sync_work->done);
+			queue_work(intr_sync_wq, &sync_work->work);
+		}
+		spin_unlock(&sync_work->lock);
+
+		do {
+			/* Check wakeup event first before waiting:
+			 * If a wakeup-event is detected, wake up right now
+			 */
+			if  (__check_wakeup_event(&wd)) {
+				spin_lock(&sync_work->lock);
+				sync_work->waiter--;
+				spin_unlock(&sync_work->lock);
+				dbg_print("intr_sync: detect wakeup event "
+					"while waiting work[%d]\n", work_idx);
+				return -EBUSY;
+			}
+
+//			dbg_print("intr_sync: waiting work[%d]\n", work_idx);
+			/* Return 0 if timed out, or positive if completed. */
+			ret = wait_for_completion_io_timeout(
+					&sync_work->done, HZ/10);
+			/* A work that we are waiting for has done. */
+			if ((ret > 0) || (sync_work->version != work_ver))
+				break;
+//			dbg_print("intr_sync: timeout work[%d]\n", work_idx);
+		} while (1);
+
+		spin_lock(&sync_work->lock);
+		sync_work->waiter--;
+		if (sync_ret)
+			*sync_ret = sync_work->ret;
+		spin_unlock(&sync_work->lock);
+		dbg_print("intr_sync: sync work[%d] is done with ret(%d)\n",
+				work_idx, sync_work->ret);
+		return 0;
+	}
+
+	/* check whether a workqueue exists or not under locked state.
+	 * Create new one if a workqueue is not created yet.
+	 */
+	mutex_lock(&intr_sync_wq_lock);
+	if (likely(!intr_sync_wq)) {
+		intr_sync_work[0].id = 0;
+		intr_sync_work[1].id = 1;
+		INIT_WORK(&intr_sync_work[0].work, do_intr_sync);
+		INIT_WORK(&intr_sync_work[1].work, do_intr_sync);
+		spin_lock_init(&intr_sync_work[0].lock);
+		spin_lock_init(&intr_sync_work[1].lock);
+		init_completion(&intr_sync_work[0].done);
+		init_completion(&intr_sync_work[1].done);
+		intr_sync_wq = alloc_ordered_workqueue("intr_syncd", WQ_MEM_RECLAIM);
+		dbg_print("\nintr_sync: try to allocate intr_sync_queue\n");
+	}
+	mutex_unlock(&intr_sync_wq_lock);
+
+	/* try to enqueue work again if the workqueue is created successfully */
+	if (likely(intr_sync_wq))
+		goto enqueue_sync_wait;
+
+	printk("\nintr_sync: allocation failed, just call sync()\n");
+	ret = sys_sync();
+	if (sync_ret)
+		*sync_ret = ret;
+	return 0;
+}
+#else /* CONFIG_INTERRUPTIBLE_SYNC */
+int intr_sync(int *sync_ret)
+{
+	int ret = sys_sync();
+	if (sync_ret)
+		*sync_ret = ret;
+	return 0;
+}
+#endif /* CONFIG_INTERRUPTIBLE_SYNC */
+
 /*
  * Do the filesystem syncing work. For simple filesystems
  * writeback_inodes_sb(sb) just dirties buffers with inodes so we have to

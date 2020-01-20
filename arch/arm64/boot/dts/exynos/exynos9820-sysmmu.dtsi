@@ -1,0 +1,524 @@
+/*
+ * SAMSUNG EXYNOS9820 SoC device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS9820 SoC device nodes are listed in this file.
+ * EXYNOS9820 based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/sysmmu/sysmmu.h>
+
+/ {
+	sysmmu_dpu0: sysmmu@190A0000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x190A0000 0x9000>;
+		interrupts = <0 212 0>,
+			     <0 211 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_DPUD0>;
+
+		port-name = "VGRFS, GF0";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x190D0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL16) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL8)  SYSMMU_ID_MASK(0x5, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL4)  SYSMMU_ID_MASK(0x6, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL2)  SYSMMU_ID_MASK(0x7, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x0, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x1, 0x7)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_dpu>;
+	};
+
+	sysmmu_dpu1: sysmmu@190B0000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x190B0000 0x9000>;
+		interrupts = <0 214 0>,
+			     <0 213 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_DPUD1>;
+
+		port-name = "VGF, GF1";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x190E0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x6, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x7, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x7)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_dpu>;
+	};
+
+	sysmmu_dpu2: sysmmu@190C0000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x190C0000 0x9000>;
+		interrupts = <0 216 0>,
+			     <0 215 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_DPUD2>;
+
+		port-name = "VGS, VG, WB";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x190F0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0)  | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x6, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x7, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x818)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x8, 0x818)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x10, 0x818)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x18, 0x818)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_dpu>;
+	};
+
+	sysmmu_aud: sysmmu@18E00000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18E00000 0x9000>;
+		interrupts = <0 48 0>,
+			     <0 50 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SMMU_AUD>;
+
+		port-name = "Abox";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x18E10000>;
+		sysmmu,no-suspend;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0)      | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x1)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_aud>;
+	};
+
+	sysmmu_g2d0: sysmmu@18A60000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18A60000 0x9000>;
+		interrupts = <0 273 0>,
+			     <0 274 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_G2DD0>;
+
+		port-name = "G2D port0";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x18A70000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL32) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_g2d>;
+	};
+
+	sysmmu_g2d1: sysmmu@18A80000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18A80000 0x9000>;
+		interrupts = <0 275 0>,
+			     <0 276 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_G2DD1>;
+
+		port-name = "G2D port1";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x18A90000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL32) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_g2d>;
+	};
+
+	sysmmu_g2d2: sysmmu@18B90000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18B90000 0x9000>;
+		interrupts = <0 277 0>,
+			     <0 278 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_G2DD2>;
+
+		port-name = "M2M scaler, SMFC";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x18BA0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0)              | SYSMMU_BL32) SYSMMU_NOID>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1)         | SYSMMU_BL8)  SYSMMU_ID_MASK(0x0, 0x3)>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1)         | SYSMMU_BL8)  SYSMMU_ID_MASK(0x0, 0x3)>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1)         | SYSMMU_BL8)  SYSMMU_ID_MASK(0x0, 0x3)>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1)         | SYSMMU_BL8)  SYSMMU_ID_MASK(0x0, 0x3)>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1)         | SYSMMU_BL2)  SYSMMU_ID_MASK(0x2, 0x3)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READWRITE(0x1) | SYSMMU_BL2)  SYSMMU_ID_MASK(0x3, 0x3)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_g2d>;
+	};
+
+	sysmmu_mfc0: sysmmu@18890000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18890000 0x9000>;
+		interrupts = <0 343 0>,
+			     <0 344 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_MFCD0>;
+
+		port-name = "MFC port 0";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x188A0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0) | SYSMMU_BL8) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_mfc>;
+	};
+
+	sysmmu_mfc1: sysmmu@188B0000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x188B0000 0x9000>;
+		interrupts = <0 345 0>,
+			     <0 346 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_MFCD1>;
+
+		port-name = "MFC port 1, WFD";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x188C0000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0)      | SYSMMU_BL8) SYSMMU_NOID>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1) | SYSMMU_BL2) SYSMMU_ID_MASK(0x1, 0x1)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_mfc>;
+	};
+
+	sysmmu_isppre: sysmmu@17210000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17210000 0x9000>;
+		interrupts = <0 323 0>,
+			     <0 324 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_IS_ISPPRE_SYSMMU_ISPPRE>;
+
+		port-name = "3AA0, 3AA1, CSIS, PDP_STAT";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17200000>;
+		sysmmu,tlb_property =
+			/* 3AA0 */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0)  | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0xA,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x12, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xA,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x12, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1A, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x22, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2A, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x32, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3A, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x42, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x4A, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x52, 0x7F)>,
+			/* 3AA1 */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x3,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0xB,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x13, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xB,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x13, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1B, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x23, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2B, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x33, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3B, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x43, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x4B, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x53, 0x7F)>,
+			/* CSIS */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x0,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x8,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x8,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x10, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x18, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x20, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x28, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x30, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x38, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x40, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x48, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x50, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x58, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x60, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x68, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x70, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x78, 0x7F)>,
+			/* PDP_TOP */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x1,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x9,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x11, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x19, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x21, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x29, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x31, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x39, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x41, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x49, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x51, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x59, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x61, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x69, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x71, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x79, 0x7F)>,
+			/* VPP */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xD,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x15, 0x7F)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_isppre>;
+	};
+
+	sysmmu_isplp0: sysmmu@17450000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17450000 0x9000>;
+		interrupts = <0 301 0>,
+			     <0 302 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_IS_ISPLP_SYSMMU_ISPLP0>;
+
+		port-name = "GDC, ISPLP, VRA";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17460000>;
+		sysmmu,tlb_property =
+			/* GDC */
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0)          | SYSMMU_BL8)  SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL32) SYSMMU_ID_MASK(0x1,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL32) SYSMMU_ID_MASK(0x5,  0x7F)>,
+			/* ISPLP */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x0,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x4,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x8,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0xC,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x0,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x4,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x8,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0xC,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x10, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x14, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x18, 0x7F)>,
+			/* VRA */
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x2,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x6,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0xD,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x16, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x1D, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1)  SYSMMU_ID_MASK(0x26, 0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x2,  0x7F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1)  SYSMMU_ID_MASK(0x6,  0x7F)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_isplp>;
+	};
+
+	sysmmu_isplp1: sysmmu@17470000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17470000 0x9000>;
+		interrupts = <0 303 0>,
+			     <0 304 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_IS_ISPLP_SYSMMU_ISPLP1>;
+
+		port-name = "MC_SCALER";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17480000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0)  | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x6, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x7, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x4, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x6, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x7, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x8, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x9, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xA, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xB, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xC, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xD, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xE, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xF, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x10, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x11, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x15, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x16, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x17, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x18, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x19, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1A, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1B, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1C, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1D, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1E, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1F, 0x3F)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x20, 0x3F)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_isplp>;
+	};
+
+	sysmmu_isphq: sysmmu@17750000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17750000 0x9000>;
+		interrupts = <0 291 0>,
+			     <0 292 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_IS_ISPHQ_SYSMMU_ISPHQ>;
+
+		port-name = "ISPHQ";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17760000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0)  | SYSMMU_BL1) SYSMMU_NOID>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x3)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x3)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x3)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x4, 0x7)>,
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x7)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_isphq>;
+	};
+
+	sysmmu_iva: sysmmu@18020000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x18020000 0x9000>;
+		interrupts = <0 INTREQ__BLK_IVA_SYSMMU_IVA_O_INTERRUPT_NONSECURE 0>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_IVA>;
+
+		port-name = "IVA";
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0)      | SYSMMU_BL8) SYSMMU_NOID>,
+			<(SYSMMU_PORT_NO_PREFETCH_READWRITE(0x1) | SYSMMU_BL8) SYSMMU_ID_MASK(0x1, 0x1)>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_iva>;
+	};
+
+	sysmmu_npu: sysmmu@17930000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17930000 0x9000>;
+		interrupts = <0 447 0>,
+			     <0 448 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SMMU_NPU0>;
+
+		port-name = "NPU";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17940000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0) | SYSMMU_BL8) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_npu1>;
+	};
+
+	sysmmu_score0: sysmmu@17C20000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17C20000 0x9000>;
+		interrupts = <0 227 0>,
+			     <0 228 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_DSPM0>;
+
+		port-name = "SCORE0";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17C50000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL8) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_dsps>;
+	};
+
+	sysmmu_score1: sysmmu@17C30000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17C30000 0x9000>;
+		interrupts = <0 229 0>,
+			     <0 230 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_DSPM1>;
+
+		port-name = "SCORE1";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17C60000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x0) | SYSMMU_BL8) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_dsps>;
+	};
+
+	sysmmu_vra2: sysmmu@17680000 {
+		compatible = "samsung,exynos-sysmmu";
+		reg = <0x0 0x17680000 0x9000>;
+		interrupts = <0 459 0>,
+			     <0 460 0>;
+		qos = <15>;
+
+		clock-names = "aclk";
+		clocks = <&clock GATE_SYSMMU_VRA2>;
+
+		port-name = "VRA2";
+		sysmmu,secure-irq;
+		sysmmu,secure_base = <0x17690000>;
+		sysmmu,tlb_property =
+			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0) | SYSMMU_BL8) SYSMMU_NOID>;
+		#iommu-cells = <0>;
+		samsung,power-domain = <&pd_vra2>;
+	};
+};

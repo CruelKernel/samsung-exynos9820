@@ -50,7 +50,8 @@ struct ion_platform_heap {
 	phys_addr_t base;
 	size_t size;
 	phys_addr_t align;
-	void *priv;
+	bool secure;
+	bool untouchable;
 };
 
 /**
@@ -82,9 +83,14 @@ struct ion_buffer {
 	void *priv_virt;
 	struct mutex lock;
 	int kmap_cnt;
+	int id;
 	void *vaddr;
 	struct sg_table *sg_table;
-	struct list_head attachments;
+	struct list_head iovas;
+	char task_comm[TASK_COMM_LEN];
+	pid_t pid;
+	char thread_comm[TASK_COMM_LEN];
+	pid_t tid;
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
@@ -102,6 +108,7 @@ struct ion_device {
 	struct rw_semaphore lock;
 	struct plist_head heaps;
 	struct dentry *debug_root;
+	struct dentry *heaps_debug_root;
 	int heap_cnt;
 };
 
@@ -112,6 +119,7 @@ struct ion_device {
  * @map_kernel		map memory to the kernel
  * @unmap_kernel	unmap memory to the kernel
  * @map_user		map memory to userspace
+ * @query_heap		specifies heap specific data to ion_heap_data to users
  *
  * allocate, phys, and map_user return 0 on success, -errno on error.
  * map_dma and map_kernel return pointer on success, ERR_PTR on
@@ -119,6 +127,7 @@ struct ion_device {
  * the buffer's private_flags when called from a shrinker. In that
  * case, the pages being free'd must be truly free'd back to the
  * system, not put in a page pool or otherwise cached.
+ * @query_heap is optional.
  */
 struct ion_heap_ops {
 	int (*allocate)(struct ion_heap *heap,
@@ -130,6 +139,7 @@ struct ion_heap_ops {
 	int (*map_user)(struct ion_heap *mapper, struct ion_buffer *buffer,
 			struct vm_area_struct *vma);
 	int (*shrink)(struct ion_heap *heap, gfp_t gfp_mask, int nr_to_scan);
+	void (*query_heap)(struct ion_heap *heap, struct ion_heap_data *data);
 };
 
 /**
@@ -189,6 +199,8 @@ struct ion_heap {
 	struct task_struct *task;
 
 	int (*debug_show)(struct ion_heap *heap, struct seq_file *, void *);
+	atomic_long_t total_allocated;
+	atomic_long_t total_allocated_peak;
 };
 
 /**
@@ -340,8 +352,11 @@ struct ion_page_pool {
 
 struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order,
 					   bool cached);
+int ion_page_pool_total(struct ion_page_pool *pool, bool high);
 void ion_page_pool_destroy(struct ion_page_pool *pool);
-struct page *ion_page_pool_alloc(struct ion_page_pool *pool);
+struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high);
+void *ion_page_pool_only_alloc(struct ion_page_pool *a);
+struct page *ion_page_pool_alloc(struct ion_page_pool *pool, bool nozero);
 void ion_page_pool_free(struct ion_page_pool *pool, struct page *page);
 
 /** ion_page_pool_shrink - shrinks the size of the memory cached in the pool
@@ -357,5 +372,21 @@ int ion_page_pool_shrink(struct ion_page_pool *pool, gfp_t gfp_mask,
 long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 int ion_query_heaps(struct ion_heap_query *query);
+
+void *ion_buffer_kmap_get(struct ion_buffer *buffer);
+void ion_buffer_kmap_put(struct ion_buffer *buffer);
+
+#define IONPREFIX "[Exynos][ION] "
+#define perr(format, arg...) \
+	pr_err(IONPREFIX format "\n", ##arg)
+
+#define perrfn(format, arg...) \
+	pr_err(IONPREFIX "%s: " format "\n", __func__, ##arg)
+
+#define perrdev(dev, format, arg...) \
+	dev_err(dev, IONPREFIX format "\n", ##arg)
+
+#define perrfndev(dev, format, arg...) \
+	dev_err(dev, IONPREFIX "%s: " format "\n", __func__, ##arg)
 
 #endif /* _ION_H */

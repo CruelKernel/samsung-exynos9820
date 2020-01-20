@@ -250,6 +250,8 @@ static int idma_mmap(struct snd_pcm_substream *substream,
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	size = vma->vm_end - vma->vm_start;
 	offset = vma->vm_pgoff << PAGE_SHIFT;
+	if (offset > runtime->dma_bytes || size > runtime->dma_bytes - offset)
+		return -EINVAL;
 	ret = io_remap_pfn_range(vma, vma->vm_start,
 			(runtime->dma_addr + offset) >> PAGE_SHIFT,
 			size, vma->vm_page_prot);

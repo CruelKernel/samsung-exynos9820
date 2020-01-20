@@ -153,6 +153,11 @@ struct backing_dev_info {
 	unsigned int min_ratio;
 	unsigned int max_ratio, max_prop_frac;
 
+	/* approximate write throttle statistics - updated at each throttling */
+	unsigned long last_thresh;  /* global/bdi thresh at the last throttle */
+	unsigned long last_nr_dirty; /* global/bdi dirty at the last throttle */
+	unsigned long paused_total; /* approximated sum of pauses. in jiffies */
+
 	/*
 	 * Sum of avg_write_bw of wbs with dirty inodes.  > 0 if there are
 	 * any dirty wbs, which is depended upon by bdi_has_dirty().

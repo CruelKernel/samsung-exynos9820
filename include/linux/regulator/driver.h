@@ -156,7 +156,10 @@ struct regulator_ops {
 	int (*set_current_limit) (struct regulator_dev *,
 				 int min_uA, int max_uA);
 	int (*get_current_limit) (struct regulator_dev *);
-
+#ifdef CONFIG_SEC_PM
+	int (*set_short_detection)(struct regulator_dev *,
+				   bool enable, int lv_uA);
+#endif
 	int (*set_input_current_limit) (struct regulator_dev *, int lim_uA);
 	int (*set_over_current_protection) (struct regulator_dev *);
 	int (*set_active_discharge) (struct regulator_dev *, bool enable);

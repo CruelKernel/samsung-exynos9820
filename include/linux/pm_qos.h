@@ -14,9 +14,38 @@ enum {
 	PM_QOS_RESERVED = 0,
 	PM_QOS_CPU_DMA_LATENCY,
 	PM_QOS_NETWORK_LATENCY,
+	PM_QOS_CLUSTER0_FREQ_MIN,
+	PM_QOS_CLUSTER0_FREQ_MAX,
+	PM_QOS_CLUSTER1_FREQ_MIN,
+	PM_QOS_CLUSTER1_FREQ_MAX,
+	PM_QOS_CLUSTER2_FREQ_MIN,
+	PM_QOS_CLUSTER2_FREQ_MAX,
+	PM_QOS_CPU_ONLINE_MIN,
+	PM_QOS_CPU_ONLINE_MAX,
+	PM_QOS_DEVICE_THROUGHPUT,
+	PM_QOS_INTCAM_THROUGHPUT,
+	PM_QOS_DEVICE_THROUGHPUT_MAX,
+	PM_QOS_INTCAM_THROUGHPUT_MAX,
+	PM_QOS_BUS_THROUGHPUT,
+	PM_QOS_BUS_THROUGHPUT_MAX,
 	PM_QOS_NETWORK_THROUGHPUT,
 	PM_QOS_MEMORY_BANDWIDTH,
-
+	PM_QOS_DISPLAY_THROUGHPUT,
+	PM_QOS_DISPLAY_THROUGHPUT_MAX,
+	PM_QOS_CAM_THROUGHPUT,
+	PM_QOS_AUD_THROUGHPUT,
+	PM_QOS_IVA_THROUGHPUT,
+	PM_QOS_SCORE_THROUGHPUT,
+	PM_QOS_FSYS0_THROUGHPUT,
+	PM_QOS_CAM_THROUGHPUT_MAX,
+	PM_QOS_AUD_THROUGHPUT_MAX,
+	PM_QOS_IVA_THROUGHPUT_MAX,
+	PM_QOS_SCORE_THROUGHPUT_MAX,
+	PM_QOS_FSYS0_THROUGHPUT_MAX,
+	PM_QOS_MFC_THROUGHPUT,
+	PM_QOS_NPU_THROUGHPUT,
+	PM_QOS_MFC_THROUGHPUT_MAX,
+	PM_QOS_NPU_THROUGHPUT_MAX,
 	/* insert new class ID */
 	PM_QOS_NUM_CLASSES,
 };
@@ -32,20 +61,56 @@ enum pm_qos_flags_status {
 
 #define PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE	(2000 * USEC_PER_SEC)
 #define PM_QOS_NETWORK_LAT_DEFAULT_VALUE	(2000 * USEC_PER_SEC)
+#define PM_QOS_DEVICE_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_INTCAM_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_DEVICE_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_INTCAM_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_BUS_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_DISPLAY_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_DISPLAY_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_CAM_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_AUD_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_IVA_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_SCORE_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_FSYS0_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_CAM_THROUGHPUT_MAX_DEFAULT_VALUE		INT_MAX
+#define PM_QOS_AUD_THROUGHPUT_MAX_DEFAULT_VALUE		INT_MAX
+#define PM_QOS_IVA_THROUGHPUT_MAX_DEFAULT_VALUE		INT_MAX
+#define PM_QOS_SCORE_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_FSYS0_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_MFC_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_NPU_THROUGHPUT_DEFAULT_VALUE	0
+#define PM_QOS_MFC_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_NPU_THROUGHPUT_MAX_DEFAULT_VALUE	INT_MAX
 #define PM_QOS_NETWORK_THROUGHPUT_DEFAULT_VALUE	0
 #define PM_QOS_MEMORY_BANDWIDTH_DEFAULT_VALUE	0
 #define PM_QOS_RESUME_LATENCY_DEFAULT_VALUE	0
 #define PM_QOS_LATENCY_TOLERANCE_DEFAULT_VALUE	0
 #define PM_QOS_LATENCY_TOLERANCE_NO_CONSTRAINT	(-1)
 #define PM_QOS_LATENCY_ANY			((s32)(~(__u32)0 >> 1))
+#define PM_QOS_CLUSTER0_FREQ_MIN_DEFAULT_VALUE	0
+#define PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_CLUSTER1_FREQ_MIN_DEFAULT_VALUE	0
+#define PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_CLUSTER2_FREQ_MIN_DEFAULT_VALUE	0
+#define PM_QOS_CLUSTER2_FREQ_MAX_DEFAULT_VALUE	INT_MAX
+#define PM_QOS_CPU_ONLINE_MIN_DEFAULT_VALUE	1
+#define PM_QOS_CPU_ONLINE_MAX_DEFAULT_VALUE	NR_CPUS
 
 #define PM_QOS_FLAG_NO_POWER_OFF	(1 << 0)
 #define PM_QOS_FLAG_REMOTE_WAKEUP	(1 << 1)
+
+#define pm_qos_add_request(arg...)	do {				\
+	pm_qos_add_request_trace((char *)__func__, __LINE__, ##arg);	\
+} while(0)
 
 struct pm_qos_request {
 	struct plist_node node;
 	int pm_qos_class;
 	struct delayed_work work; /* for pm_qos_update_request_timeout */
+	char *func;
+	unsigned int line;
 };
 
 struct pm_qos_flags_request {
@@ -72,7 +137,8 @@ enum pm_qos_type {
 	PM_QOS_UNITIALIZED,
 	PM_QOS_MAX,		/* return the largest value */
 	PM_QOS_MIN,		/* return the smallest value */
-	PM_QOS_SUM		/* return the sum */
+	PM_QOS_SUM,		/* return sum of values greater than zero */
+	PM_QOS_FORCE_MAX,
 };
 
 /*
@@ -120,7 +186,8 @@ int pm_qos_update_target(struct pm_qos_constraints *c, struct plist_node *node,
 bool pm_qos_update_flags(struct pm_qos_flags *pqf,
 			 struct pm_qos_flags_request *req,
 			 enum pm_qos_req_action action, s32 val);
-void pm_qos_add_request(struct pm_qos_request *req, int pm_qos_class,
+void pm_qos_add_request_trace(char *func, unsigned int line,
+			struct pm_qos_request *req, int pm_qos_class,
 			s32 value);
 void pm_qos_update_request(struct pm_qos_request *req,
 			   s32 new_value);
@@ -128,6 +195,7 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req,
 				   s32 new_value, unsigned long timeout_us);
 void pm_qos_remove_request(struct pm_qos_request *req);
 
+int pm_qos_read_req_value(int pm_qos_class, struct pm_qos_request *req);
 int pm_qos_request(int pm_qos_class);
 int pm_qos_add_notifier(int pm_qos_class, struct notifier_block *notifier);
 int pm_qos_remove_notifier(int pm_qos_class, struct notifier_block *notifier);

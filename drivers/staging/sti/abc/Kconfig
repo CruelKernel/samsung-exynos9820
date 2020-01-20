@@ -1,0 +1,52 @@
+comment "Samsung ABC Options"
+config SEC_ABC
+	bool "Samsung ABC Feature"
+	depends on SEC_STI
+	default n
+	help
+	  Samsung ABC(Abnormal Behavior Catcher) Driver Feature
+	  This driver is to catch abnormal behavior in each device drivers
+	  It depends on SEC_STI Feature
+
+comment "Samsung ABC Hub Options"
+config SEC_ABC_HUB
+	bool "Samsung ABC Hub Feature"
+	depends on SEC_ABC
+	default n
+	help
+	  Samsung ABC(Abnormal Behavior Catcher) Hub Driver Feature
+	  This driver controls sub modules for supporting ABC Driver
+	  It depends on SEC_ABC Feature
+
+comment "Samsung ABC Hub Connect Detect Options"
+config SEC_ABC_HUB_COND
+	bool "Samsung ABC Hub Connect Detect Feature"
+	depends on SEC_ABC_HUB
+	depends on !SEC_FACTORY
+	default n
+	help
+	  Samsung COND(Connect Detect) Feature
+	  This function is to detect connect h/w problem
+	  It is sub module of ABC Hub Driver
+	  It depends on SEC_ABC_HUB Feature
+
+comment "Samsung ABC Hub Booting Time Check Options"
+config SEC_ABC_HUB_BOOTC
+	bool "Samsung ABC Hub Booting Time Check Feature"
+	depends on SEC_ABC_HUB
+	default n
+	help
+	  Samsung BOOTC(Booting Time Check) Feature
+	  This function is to check booting time
+	  It is sub module of ABC Hub Driver
+	  It depends on SEC_ABC_HUB Feature
+
+comment "Samsung ABC Hub Booting Time Check eng mode Options"
+config SEC_ABC_HUB_BOOTC_ENG
+	bool "Samsung ABC Hub Booting Time Check eng mode Feature"
+	depends on SEC_ABC_HUB_BOOTC
+	default n
+	help
+	  Samsung BOOTC(Booting Time Check) eng mode Feature
+	  This function is to apply eng binary booting time spec
+	  It depends on SEC_ABC_HUB_BOOTC Feature

@@ -12,8 +12,10 @@ void topology_normalize_cpu_scale(void);
 int topology_detect_flags(void);
 int topology_smt_flags(void);
 int topology_core_flags(void);
+int topology_cluster_flags(void);
 int topology_cpu_flags(void);
 int topology_update_cpu_topology(void);
+void topology_update(void);
 
 struct device_node;
 bool topology_parse_cpu_capacity(struct device_node *cpu_node, int cpu);

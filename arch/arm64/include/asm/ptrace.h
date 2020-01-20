@@ -150,6 +150,15 @@ static inline void forget_syscall(struct pt_regs *regs)
 	regs->syscallno = NO_SYSCALL;
 }
 
+/*
+ * This macro defines the preserved data size on the stack during an exception.
+ */
+#ifdef CONFIG_DEBUG_EXCEPTION_STACK
+#define PRESERVE_STACK_SIZE	(256)
+#else
+#define PRESERVE_STACK_SIZE	(0)
+#endif
+
 #define MAX_REG_OFFSET offsetof(struct pt_regs, pstate)
 
 #define arch_has_single_step()	(1)

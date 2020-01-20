@@ -13,8 +13,14 @@
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_device.h>
+#include <scsi/scsi_host.h>
 #include <scsi/scsi_eh.h>
 #include <scsi/scsi_dbg.h>
+#include <linux/sec_debug.h>
+
+#if defined(CONFIG_SEC_ABC)  
+#include <linux/sti/abc_common.h>  
+#endif   
 
 #define SCSI_LOG_SPOOLSIZE 4096
 
@@ -222,6 +228,7 @@ void scsi_print_command(struct scsi_cmnd *cmd)
 	int k;
 	char *logbuf;
 	size_t off, logbuf_len;
+	struct scsi_sense_hdr sshdr;
 
 	if (!cmd->cmnd)
 		return;
@@ -280,6 +287,49 @@ void scsi_print_command(struct scsi_cmnd *cmd)
 out_printk:
 	dev_printk(KERN_INFO, &cmd->device->sdev_gendev, "%s", logbuf);
 	scsi_log_release_buffer(logbuf);
+	/*
+	 * When MEDIUM_ERROR occurs,
+	 * 1. issue_LBA_list[] : record LBAs
+	 * 2. issue_region_map : set bit the region
+	 *    ______________________________________________
+	 *    |63|62|61|60| ....    |52|51|50| ....    |1|0|                 
+	 *    ----------------------------------------------
+	 *   1) 0 ~ 51 : per 200MB : total 10400MB region
+	 *   2) 52  : region of 10400MB~ (USERDATA)
+	 *   3) ~63 : other LU
+	 *      -> If MEDIUM_ERROR occurs on LU1 : set bit "63"
+	 */
+	if (scsi_normalize_sense(cmd->sense_buffer, SCSI_SENSE_BUFFERSIZE, &sshdr)) {
+		if (sshdr.sense_key == MEDIUM_ERROR) {
+			unsigned long lba = 0;
+			unsigned long region_bit = 0;
+			unsigned int lba_count = cmd->device->host->issue_LBA_count;
+			int i = 0;
+
+			if (cmd->device->lun == 0) {
+				lba = (cmd->cmnd[2] << 24) | (cmd->cmnd[3] << 16) |
+					(cmd->cmnd[4] << 8) | (cmd->cmnd[5] << 0);
+
+				if (lba_count < SEC_MAX_LBA_LOGGING) {
+					for (i = 0; i < SEC_MAX_LBA_LOGGING; i++)
+					{
+						if (cmd->device->host->issue_LBA_list[i] == lba)
+							return;
+					}
+					cmd->device->host->issue_LBA_list[lba_count] = lba;
+					cmd->device->host->issue_LBA_count++;
+				}
+
+				region_bit = lba / SEC_ISSUE_REGION_STEP;
+				if (region_bit > 51)
+					region_bit = 52;
+			} else if (cmd->device->lun < SCSI_W_LUN_BASE) {
+				region_bit = (unsigned long)(64 - cmd->device->lun);
+			}
+
+			cmd->device->host->issue_region_map |= ((u64)1 << region_bit);
+		}
+	}
 }
 EXPORT_SYMBOL(scsi_print_command);
 
@@ -384,6 +434,28 @@ scsi_log_print_sense_hdr(const struct scsi_device *sdev, const char *name,
 				      sshdr->asc, sshdr->ascq);
 	dev_printk(KERN_INFO, &sdev->sdev_gendev, "%s", logbuf);
 	scsi_log_release_buffer(logbuf);
+
+	if (sdev->host->by_ufs) {
+		if (sshdr->sense_key == 0x03) {
+			sdev->host->medium_err_cnt++;
+#if defined(CONFIG_SEC_ABC) 
+			sec_abc_send_event("MODULE=storage@ERROR=ufs_medium_err"); 
+#endif
+#ifdef CONFIG_SEC_DEBUG
+			/* only work for debug level is mid */
+			if ((sec_debug_get_debug_level() & 0x1) == 0x1)
+				panic("ufs medium error\n");
+#endif
+		} else if (sshdr->sense_key == 0x04) {
+			sdev->host->hw_err_cnt++;
+#ifdef CONFIG_SEC_DEBUG
+			/* only work for debug level is mid */
+			if ((sec_debug_get_debug_level() & 0x1) == 0x1)
+				panic("ufs hardware error\n");
+#endif
+		}
+	}
+
 }
 
 static void

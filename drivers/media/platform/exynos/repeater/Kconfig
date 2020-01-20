@@ -1,0 +1,8 @@
+config VIDEO_EXYNOS_REPEATER
+       bool "EXYNOS REPEATER Driver"
+       depends on VIDEO_EXYNOS
+       default n
+       help
+         This is a platform driver for EXYNOS REPEATER device.
+	---help---
+	  Repeater driver for WFD

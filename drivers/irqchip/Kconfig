@@ -135,6 +135,9 @@ config IMGPDC_IRQ
 	select GENERIC_IRQ_CHIP
 	select IRQ_DOMAIN
 
+config MADERA_IRQ
+	bool
+
 config IRQ_MIPS_CPU
 	bool
 	select GENERIC_IRQ_CHIP
@@ -142,6 +145,9 @@ config IRQ_MIPS_CPU
 	select IRQ_DOMAIN
 	select IRQ_DOMAIN_HIERARCHY if GENERIC_IRQ_IPI
 	select GENERIC_IRQ_EFFECTIVE_AFF_MASK
+
+config MADERA_IRQ
+	bool
 
 config CLPS711X_IRQCHIP
 	bool

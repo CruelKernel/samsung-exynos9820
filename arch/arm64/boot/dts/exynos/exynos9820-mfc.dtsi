@@ -1,0 +1,244 @@
+/*
+ * SAMSUNG EXYNOS SoC mfc device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS SoC mfc device nodes are listed in this file.
+ * EXYNOS based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include <dt-bindings/clock/exynos9820.h>
+#include <dt-bindings/interrupt-controller/exynos9820.h>
+
+/ {
+	mfc_0: mfc@188D0000 {
+		/* Basic setting */
+		compatible = "samsung,exynos-mfc";
+		reg = <0x0 0x188D0000 0x10000>;
+		interrupts = <0 INTREQ__MFC 0>;
+		clock-names = "aclk_mfc";
+		clocks = <&clock GATE_MFC>;
+		iommus = <&sysmmu_mfc0>, <&sysmmu_mfc1>;
+
+		/* MFC version */
+		ip_ver = <0x1300>;
+
+		/* Debug mode */
+		debug_mode = <1>;
+
+		/* Sysmmu check */
+		share_sysmmu = <0>;
+		axid_mask = <0xFFFF>;
+		mfc_fault_num = <0x0>;
+
+		/* NAL-Q size */
+		nal_q_entry_size = <512>;
+		nal_q_dump_size = <376>;
+
+		/* Features <on/off version> */
+		nal_q = <1 0x0>;
+		skype = <1 0x0>;
+		black_bar = <1 0x0>;
+		color_aspect_dec = <1 0x0>;
+		static_info_dec = <1 0x0>;
+		color_aspect_enc = <1 0x0>;
+		static_info_enc = <1 0x180314>;
+		hdr10_plus = <1 0x180709>;
+
+		/* Default 10bit format for decoding (1: P010, 0: 8+2) */
+		P010_decoding = <1>;
+
+		/* Formats */
+		support_10bit = <1>;
+		support_422 = <1>;
+		support_rgb = <0>;
+
+		/* HDR10+ num max window */
+		max_hdr_win = <1>;
+
+		/* Encoder default parameter: max number is 100 */
+		enc_param_num = <25>;
+		enc_param_addr = <0xF7B4 0xF7B8 0xF7B0 0xF798 0xFA2C
+				0xF790 0xFA34 0xFA38 0xFA3C 0xF7C0
+				0xF7C8 0xF7CC 0xFA60 0xFDD4 0xFDDC
+				0xFB54 0xFB58 0xFBA8 0xFD90 0xFD94
+				0xFD40 0xFD48 0xFD4C 0xFD50 0xFD80>;
+		enc_param_val = <0x100 0x100 0x0 0x4000 0x3FD00
+				0x0 0x0 0x2710 0x3E8 0x0
+				0x0 0x0 0x0 0x8050F215 0x0
+				0x3011 0x0 0x0 0x2D 0xA00
+				0x1D 0xF4240 0x33003300 0x2 0x1>;
+
+		/* BW <peak, read, write> : KB/UHD frame */
+		bw_enc_h264 = <62543 75230 13080>;
+		bw_enc_hevc = <54863 65417 11422>;
+		bw_enc_hevc_10bit = <68011 79367 14688>;
+		bw_enc_vp8 = <63970 67281 22508>;
+		bw_enc_vp9 = <84443 71588 19337>;
+		bw_enc_vp9_10bit = <109442 99305 23747>;
+		bw_enc_mpeg4 = <44633 55310 9599>;
+		bw_dec_h264 = <38131 40206 24870>;
+		bw_dec_hevc = <35055 33741 20511>;
+		bw_dec_hevc_10bit = <38643 36428 25491>;
+		bw_dec_vp8 = <28693 30464 22331>;
+		bw_dec_vp9 = <21464 22160 19747>;
+		bw_dec_vp9_10bit = <31591 26771 24160>;
+		bw_dec_mpeg4 = <31567 25191 15961>;
+
+		/* QoS */
+		num_qos_steps = <9>;
+		max_qos_steps = <10>;
+		max_mb = <4817660>;
+		mfc_freq_control = <1>;
+		mo_control = <1>;
+		bw_control = <1>;
+
+		/* QoS weight (%) */
+		qos_weight_h264_hevc = <100>;
+		qos_weight_vp8_vp9 = <100>;
+		qos_weight_other_codec = <25>;
+		qos_weight_3plane = <80>;
+		qos_weight_10bit = <75>;
+		qos_weight_422 = <70>;
+		qos_weight_bframe = <50>;
+		qos_weight_num_of_ref = <60>;
+		qos_weight_gpb = <50>;
+		qos_weight_num_of_tile = <75>;
+		qos_weight_super64_bframe = <60>;
+
+		/* Sub nodes for sysmmu, hwfc and mmcache */
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+		iommu {
+			reg = <0x0 0x18890000 0x9000>,
+			    <0x0 0x188B0000 0x9000>;
+		};
+		hwfc {
+			reg = <0x0 0x18A28000 0x100>;
+		};
+		mmcache {
+			reg = <0x0 0x1A300000 0x100>;
+		};
+
+		/* QoS table */
+		mfc_qos_table {
+			mfc_qos_variant_0 {
+				thrd_mb = <0>;
+				freq_mfc = <134000>;
+				freq_int = <100000>;
+				freq_mif = <421000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <874>;
+			};
+			mfc_qos_variant_1 {
+				thrd_mb = <255325>;
+				freq_mfc = <267000>;
+				freq_int = <200000>;
+				freq_mif = <546000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <519>;
+			};
+			mfc_qos_variant_2 {
+				thrd_mb = <521484>;
+				freq_mfc = <267000>;
+				freq_int = <267000>;
+				freq_mif = <845000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <413>;
+			};
+			mfc_qos_variant_3 {
+				thrd_mb = <1099667>;
+				freq_mfc = <400000>;
+				freq_int = <400000>;
+				freq_mif = <1352000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <274>;
+			};
+			mfc_qos_variant_4 {
+				thrd_mb = <1706525>;
+				freq_mfc = <666000>;
+				freq_int = <534000>;
+				freq_mif = <1794000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <199>;
+			};
+			mfc_qos_variant_5 {
+				thrd_mb = <2029100>;
+				freq_mfc = <400000>;
+				freq_int = <400000>;
+				freq_mif = <1352000>;
+				mo_value = <1>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <267>;
+			};
+			mfc_qos_variant_6 {
+				thrd_mb = <2400235>;
+				freq_mfc = <666000>;
+				freq_int = <534000>;
+				freq_mif = <1014000>;
+				mo_value = <1>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <237>;
+			};
+			mfc_qos_variant_7 {
+				thrd_mb = <3123195>;
+				freq_mfc = <666000>;
+				freq_int = <534000>;
+				freq_mif = <1794000>;
+				mo_value = <1>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <197>;
+			};
+			mfc_qos_variant_8 {
+				thrd_mb = <4234074>;
+				freq_mfc = <666000>;
+				freq_int = <534000>;
+				freq_mif = <1794000>;
+				mo_value = <0>;
+				mo_10bit_value = <1>;
+				mo_uhd_enc60_value = <0>;
+				time_fw = <196>;
+			};
+			/* special level for uhd 60fps enc */
+			mfc_qos_variant_9 {
+				thrd_mb = <1706525>;
+				freq_mfc = <534000>;
+				freq_int = <400000>;
+				freq_mif = <1794000>;
+				mo_value = <0>;
+				mo_10bit_value = <0>;
+				mo_uhd_enc60_value = <1>;
+				time_fw = <199>;
+			};
+		};
+
+		/* QoS table for performance boost mode */
+		mfc_perf_boost_table {
+			num_cluster = <3>;
+			freq_cluster = <1742000 1898000 1456000>;
+			freq_mfc = <666000>;
+			freq_int = <534000>;
+			freq_mif = <2093000>;
+		};
+	};
+};

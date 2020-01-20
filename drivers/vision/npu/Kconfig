@@ -1,0 +1,62 @@
+menuconfig EXYNOS_NPU
+	bool "Exynos NPU driver (TEST)"
+	depends on VISION_CORE
+	help
+		Exynos NPU Test device driver
+
+menuconfig EXYNOS_NPU_DRAM_FW_LOG_BUF
+	bool "DRAM buffer for firmware test and debugging"
+	depends on EXYNOS_NPU
+	default y
+	help
+		When this option is enabled, 1MB buffer will be reserved at the start of
+		device virtual address space to support firmware test and debugging.
+
+menuconfig EXYNOS_NPU_PUBLISH_NPU_BUILD_VER
+	bool "Print out update log on initialization."
+	depends on EXYNOS_NPU
+	default n
+	help
+		When this option is enabled, last git log messages and stash information
+		is printed on NPU initialization, to track source code update.
+
+menuconfig EXYNOS_NPU_DEBUG_SRAM_DUMP
+	bool "SRAM dump interface"
+	depends on EXYNOS_NPU
+	default n
+	help
+		When this option is enabled, SRAM dump file is created on debugfs
+		and the SRAM can be dumpted.
+
+if EXYNOS_NPU
+
+#config NPU_KANGCHEN
+#bool "NPU_KANGCHEN"
+
+#config NPU_MAKALU
+#bool "NPU_MAKALU"
+
+#if NPU_MAKALU
+if (SOC_EMULATOR9820 || SOC_EXYNOS9820)
+
+config NPU_ZEBU_EMULATION 
+bool
+default n
+
+config NPU_GOLDEN_MATCH
+bool
+default y
+
+config NPU_ZEBU_SYSMMU
+bool
+default y
+
+config FIRMWARE_SRAM_DUMP_DEBUGFS
+bool
+default y
+
+endif
+
+source "drivers/vision/npu/interface/Kconfig"
+
+endif

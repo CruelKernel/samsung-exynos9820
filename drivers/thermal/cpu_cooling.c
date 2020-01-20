@@ -31,9 +31,15 @@
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/cpu_cooling.h>
+#include <linux/debug-snapshot.h>
 
 #include <trace/events/thermal.h>
 
+#include <soc/samsung/tmu.h>
+#include <soc/samsung/cal-if.h>
+#include <soc/samsung/ect_parser.h>
+
+#include <dt-bindings/clock/exynos9820.h>
 /*
  * Cooling state <-> CPUFreq frequency
  *
@@ -61,6 +67,10 @@ struct freq_table {
 	u32 power;
 };
 
+static BLOCKING_NOTIFIER_HEAD(cpu_notifier);
+
+static enum tmu_noti_state_t cpu_tstate = TMU_NORMAL;
+
 /**
  * struct time_in_idle - Idle time stats
  * @time: previous reading of the absolute time that this cpu was idle
@@ -69,42 +79,6 @@ struct freq_table {
 struct time_in_idle {
 	u64 time;
 	u64 timestamp;
-};
-
-/**
- * struct cpufreq_cooling_device - data for cooling device with cpufreq
- * @id: unique integer value corresponding to each cpufreq_cooling_device
- *	registered.
- * @last_load: load measured by the latest call to cpufreq_get_requested_power()
- * @cpufreq_state: integer value representing the current state of cpufreq
- *	cooling	devices.
- * @clipped_freq: integer value representing the absolute value of the clipped
- *	frequency.
- * @max_level: maximum cooling level. One less than total number of valid
- *	cpufreq frequencies.
- * @freq_table: Freq table in descending order of frequencies
- * @cdev: thermal_cooling_device pointer to keep track of the
- *	registered cooling device.
- * @policy: cpufreq policy.
- * @node: list_head to link all cpufreq_cooling_device together.
- * @idle_time: idle time stats
- * @plat_get_static_power: callback to calculate the static power
- *
- * This structure is required for keeping information of each registered
- * cpufreq_cooling_device.
- */
-struct cpufreq_cooling_device {
-	int id;
-	u32 last_load;
-	unsigned int cpufreq_state;
-	unsigned int clipped_freq;
-	unsigned int max_level;
-	struct freq_table *freq_table;	/* In descending order */
-	struct thermal_cooling_device *cdev;
-	struct cpufreq_policy *policy;
-	struct list_head node;
-	struct time_in_idle *idle_time;
-	get_static_t plat_get_static_power;
 };
 
 static DEFINE_IDA(cpufreq_ida);
@@ -132,6 +106,37 @@ static unsigned long get_level(struct cpufreq_cooling_device *cpufreq_cdev,
 
 	return level - 1;
 }
+
+/**
+ * cpufreq_cooling_get_level - for a given cpu, return the cooling level.
+ * @cpu: cpu for which the level is required
+ * @freq: the frequency of interest
+ *
+ * This function will match the cooling level corresponding to the
+ * requested @freq and return it.
+ *
+ * Return: The matched cooling level on success or THERMAL_CSTATE_INVALID
+ * otherwise.
+ */
+unsigned long cpufreq_cooling_get_level(unsigned int cpu, unsigned int freq)
+{
+	struct cpufreq_cooling_device *cpufreq_cdev;
+
+	mutex_lock(&cooling_list_lock);
+	list_for_each_entry(cpufreq_cdev, &cpufreq_cdev_list, node) {
+		if (cpumask_test_cpu(cpu, cpufreq_cdev->policy->related_cpus)) {
+			unsigned long level = get_level(cpufreq_cdev, freq);
+
+			mutex_unlock(&cooling_list_lock);
+			return level;
+		}
+	}
+	mutex_unlock(&cooling_list_lock);
+
+	pr_err("%s: cpu:%d not part of any cooling device\n", __func__, cpu);
+	return THERMAL_CSTATE_INVALID;
+}
+EXPORT_SYMBOL_GPL(cpufreq_cooling_get_level);
 
 /**
  * cpufreq_thermal_notifier - notifier callback for cpufreq policy change.
@@ -177,8 +182,10 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 		 */
 		clipped_freq = cpufreq_cdev->clipped_freq;
 
-		if (policy->max > clipped_freq)
+		if (policy->max > clipped_freq) {
 			cpufreq_verify_within_limits(policy, 0, clipped_freq);
+			dbg_snapshot_thermal(NULL, 0, cpufreq_cdev->cdev->type, clipped_freq);
+		}
 		break;
 	}
 	mutex_unlock(&cooling_list_lock);
@@ -257,6 +264,157 @@ static int update_freq_table(struct cpufreq_cooling_device *cpufreq_cdev,
 		/* power is stored in mW */
 		freq_table[i].power = power;
 	}
+
+	return 0;
+}
+
+static int build_static_power_table(struct device_node *np, struct cpufreq_cooling_device *cpufreq_cdev)
+{
+	int i, j;
+	int ratio, asv_group, cal_id, ret = 0;
+
+	void *gen_block;
+	struct ect_gen_param_table *volt_temp_param = NULL, *asv_param = NULL;
+	int ratio_table[16] = { 0, 18, 22, 27, 33, 40, 49, 60, 73, 89, 108, 131, 159, 194, 232, 250};
+
+	ret = of_property_read_u32(np, "cal-id", &cal_id);
+	if (ret) {
+		pr_err("%s: Failed to get cal-id\n", __func__);
+		return -EINVAL;
+	}
+
+	ratio = cal_asv_get_ids_info(cal_id);
+	asv_group = cal_asv_get_grp(cal_id);
+
+	if (asv_group < 0 || asv_group > 15)
+		asv_group = 0;
+
+	if (!ratio)
+		ratio = ratio_table[asv_group];
+
+	gen_block = ect_get_block("GEN");
+	if (gen_block == NULL) {
+		pr_err("%s: Failed to get gen block from ECT\n", __func__);
+		return -EINVAL;
+	}
+
+#if defined(CONFIG_SOC_EXYNOS9820)
+	if (cal_id == ACPM_DVFS_CPUCL1) {
+		volt_temp_param = ect_gen_param_get_table(gen_block, "DTM_MID_VOLT_TEMP");
+		asv_param = ect_gen_param_get_table(gen_block, "DTM_MID_ASV");
+	} else if (cal_id == ACPM_DVFS_CPUCL2) {
+		volt_temp_param = ect_gen_param_get_table(gen_block, "DTM_BIG_VOLT_TEMP");
+		asv_param = ect_gen_param_get_table(gen_block, "DTM_BIG_ASV");
+	}
+#else
+	volt_temp_param = ect_gen_param_get_table(gen_block, "DTM_BIG_VOLT_TEMP");
+	asv_param = ect_gen_param_get_table(gen_block, "DTM_BIG_ASV");
+#endif
+
+	if (volt_temp_param && asv_param) {
+		cpufreq_cdev->var_volt_size = volt_temp_param->num_of_row - 1;
+		cpufreq_cdev->var_temp_size = volt_temp_param->num_of_col - 1;
+
+		cpufreq_cdev->var_coeff = kzalloc(sizeof(int) *
+							volt_temp_param->num_of_row *
+							volt_temp_param->num_of_col,
+							GFP_KERNEL);
+		if (!cpufreq_cdev->var_coeff)
+			goto err_mem;
+
+		cpufreq_cdev->asv_coeff = kzalloc(sizeof(int) *
+							asv_param->num_of_row *
+							asv_param->num_of_col,
+							GFP_KERNEL);
+		if (!cpufreq_cdev->asv_coeff)
+			goto free_var_coeff;
+
+		cpufreq_cdev->var_table = kzalloc(sizeof(int) *
+							volt_temp_param->num_of_row *
+							volt_temp_param->num_of_col,
+							GFP_KERNEL);
+		if (!cpufreq_cdev->var_table)
+			goto free_asv_coeff;
+
+		memcpy(cpufreq_cdev->var_coeff, volt_temp_param->parameter,
+			sizeof(int) * volt_temp_param->num_of_row * volt_temp_param->num_of_col);
+		memcpy(cpufreq_cdev->asv_coeff, asv_param->parameter,
+			sizeof(int) * asv_param->num_of_row * asv_param->num_of_col);
+		memcpy(cpufreq_cdev->var_table, volt_temp_param->parameter,
+			sizeof(int) * volt_temp_param->num_of_row * volt_temp_param->num_of_col);
+	} else {
+		pr_err("%s: Failed to get param table from ECT\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 1; i <= cpufreq_cdev->var_volt_size; i++) {
+		long asv_coeff = (long)cpufreq_cdev->asv_coeff[3 * i + 0] * asv_group * asv_group
+				+ (long)cpufreq_cdev->asv_coeff[3 * i + 1] * asv_group
+				+ (long)cpufreq_cdev->asv_coeff[3 * i + 2];
+		asv_coeff = asv_coeff / 100;
+
+		for (j = 1; j <= cpufreq_cdev->var_temp_size; j++) {
+			long var_coeff = (long)cpufreq_cdev->var_coeff[i * (cpufreq_cdev->var_temp_size + 1) + j];
+			var_coeff =  ratio * var_coeff * asv_coeff;
+			var_coeff = var_coeff / 100000;
+			cpufreq_cdev->var_table[i * (cpufreq_cdev->var_temp_size + 1) + j] = (int)var_coeff;
+		}
+	}
+
+	return 0;
+
+free_asv_coeff:
+	kfree(cpufreq_cdev->asv_coeff);
+free_var_coeff:
+	kfree(cpufreq_cdev->var_coeff);
+err_mem:
+	return -ENOMEM;
+}
+
+static int lookup_static_power(struct cpufreq_cooling_device *cpufreq_cdev,
+		unsigned long voltage, int temperature, u32 *power)
+{
+	int volt_index = 0, temp_index = 0;
+	int index = 0;
+	int num_cpus;
+	int max_cpus;
+	struct cpufreq_policy *policy = cpufreq_cdev->policy;
+	cpumask_t tempmask;
+
+	cpumask_and(&tempmask, policy->related_cpus, cpu_online_mask);
+	max_cpus = cpumask_weight(policy->related_cpus);
+	num_cpus = cpumask_weight(&tempmask);
+	voltage = voltage / 1000;
+	temperature  = temperature / 1000;
+
+	for (volt_index = 0; volt_index <= cpufreq_cdev->var_volt_size; volt_index++) {
+		if (voltage < cpufreq_cdev->var_table[volt_index * ((int)cpufreq_cdev->var_temp_size + 1)]) {
+			volt_index = volt_index - 1;
+			break;
+		}
+	}
+
+	if (volt_index == 0)
+		volt_index = 1;
+
+	if (volt_index > cpufreq_cdev->var_volt_size)
+		volt_index = cpufreq_cdev->var_volt_size;
+
+	for (temp_index = 0; temp_index <= cpufreq_cdev->var_temp_size; temp_index++) {
+		if (temperature < cpufreq_cdev->var_table[temp_index]) {
+			temp_index = temp_index - 1;
+			break;
+		}
+	}
+
+	if (temp_index == 0)
+		temp_index = 1;
+
+	if (temp_index > cpufreq_cdev->var_temp_size)
+		temp_index = cpufreq_cdev->var_temp_size;
+
+	index = (int)(volt_index * (cpufreq_cdev->var_temp_size + 1) + temp_index);
+	*power = (unsigned int)cpufreq_cdev->var_table[index];
 
 	return 0;
 }
@@ -340,17 +498,18 @@ static int get_static_power(struct cpufreq_cooling_device *cpufreq_cdev,
 	struct dev_pm_opp *opp;
 	unsigned long voltage;
 	struct cpufreq_policy *policy = cpufreq_cdev->policy;
-	struct cpumask *cpumask = policy->related_cpus;
 	unsigned long freq_hz = freq * 1000;
 	struct device *dev;
+	cpumask_t tempmask;
+	int num_cpus, max_cpus;
+	u32 raw_cpu_power;
 
-	if (!cpufreq_cdev->plat_get_static_power) {
-		*power = 0;
-		return 0;
-	}
+	*power = 0;
 
 	dev = get_cpu_device(policy->cpu);
-	WARN_ON(!dev);
+
+	if (!dev)
+		return 0;
 
 	opp = dev_pm_opp_find_freq_exact(dev, freq_hz, true);
 	if (IS_ERR(opp)) {
@@ -368,8 +527,15 @@ static int get_static_power(struct cpufreq_cooling_device *cpufreq_cdev,
 		return -EINVAL;
 	}
 
-	return cpufreq_cdev->plat_get_static_power(cpumask, tz->passive_delay,
-						  voltage, power);
+	lookup_static_power(cpufreq_cdev, voltage, tz->temperature, &raw_cpu_power);
+
+	cpumask_and(&tempmask, policy->related_cpus, cpu_online_mask);
+	num_cpus = cpumask_weight(&tempmask);
+	max_cpus = cpumask_weight(policy->related_cpus);
+
+	*power = (raw_cpu_power * (num_cpus + 1)) / (max_cpus + 1);
+
+	return 0;
 }
 
 /**
@@ -463,6 +629,18 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 	return 0;
 }
 
+static int exynos_cpufreq_cooling_get_level(struct thermal_cooling_device *cdev,
+				 unsigned long value)
+{
+	struct cpufreq_cooling_device *cpufreq_cdev = cdev->devdata;
+	int level = get_level(cpufreq_cdev, value);
+
+	if (level == THERMAL_CSTATE_INVALID && value > cpufreq_cdev->freq_table[0].frequency)
+		level = 0;
+
+	return level;
+}
+
 /**
  * cpufreq_get_requested_power() - get the current power
  * @cdev:	&thermal_cooling_device pointer
@@ -499,6 +677,11 @@ static int cpufreq_get_requested_power(struct thermal_cooling_device *cdev,
 
 	freq = cpufreq_quick_get(policy->cpu);
 
+	if (freq == 0) {
+		*power = 0;
+		return 0;
+	}
+
 	if (trace_thermal_power_cpu_get_power_enabled()) {
 		u32 ncpus = cpumask_weight(policy->related_cpus);
 
@@ -530,7 +713,7 @@ static int cpufreq_get_requested_power(struct thermal_cooling_device *cdev,
 	}
 
 	if (load_cpu) {
-		trace_thermal_power_cpu_get_power(policy->related_cpus, freq,
+		trace_thermal_power_cpu_get_power(tz->id, policy->related_cpus, freq,
 						  load_cpu, i, dynamic_power,
 						  static_power);
 
@@ -605,12 +788,23 @@ static int cpufreq_power2state(struct thermal_cooling_device *cdev,
 			       struct thermal_zone_device *tz, u32 power,
 			       unsigned long *state)
 {
-	unsigned int cur_freq, target_freq;
+	unsigned int cpu, cur_freq, target_freq;
 	int ret;
 	s32 dyn_power;
-	u32 last_load, normalised_power, static_power;
+	u32 normalised_power, static_power;
 	struct cpufreq_cooling_device *cpufreq_cdev = cdev->devdata;
 	struct cpufreq_policy *policy = cpufreq_cdev->policy;
+	cpumask_t tempmask;
+	int num_cpus;
+
+	cpumask_and(&tempmask, policy->related_cpus, cpu_online_mask);
+	num_cpus = cpumask_weight(&tempmask);
+
+	cpu = cpumask_first(&tempmask);
+
+	/* None of our cpus are online */
+	if (cpu >= nr_cpu_ids)
+		return -ENODEV;
 
 	cur_freq = cpufreq_quick_get(policy->cpu);
 	ret = get_static_power(cpufreq_cdev, tz, cur_freq, &static_power);
@@ -619,13 +813,44 @@ static int cpufreq_power2state(struct thermal_cooling_device *cdev,
 
 	dyn_power = power - static_power;
 	dyn_power = dyn_power > 0 ? dyn_power : 0;
-	last_load = cpufreq_cdev->last_load ?: 1;
-	normalised_power = (dyn_power * 100) / last_load;
+	normalised_power = dyn_power / num_cpus;
 	target_freq = cpu_power_to_freq(cpufreq_cdev, normalised_power);
 
+	*state = cpufreq_cooling_get_level(cpu, target_freq);
+	if (*state == THERMAL_CSTATE_INVALID) {
+		dev_warn_ratelimited(&cdev->device,
+				     "Failed to convert %dKHz for cpu %d into a cdev state\n",
+				     target_freq, cpu);
+		return -EINVAL;
+	}
+
 	*state = get_level(cpufreq_cdev, target_freq);
-	trace_thermal_power_cpu_limit(policy->related_cpus, target_freq, *state,
+	trace_thermal_power_cpu_limit(tz->id, policy->related_cpus, target_freq, *state,
 				      power);
+	return 0;
+}
+
+static int cpufreq_set_cur_temp(struct thermal_cooling_device *cdev,
+				bool suspended, int temp)
+{
+	enum tmu_noti_state_t tstate;
+	unsigned int on;
+
+	if (suspended || temp < EXYNOS_COLD_TEMP) {
+		tstate = TMU_COLD;
+		on = 1;
+	} else {
+		tstate = TMU_NORMAL;
+		on = 0;
+	}
+
+	if (cpu_tstate == tstate)
+		return 0;
+
+	cpu_tstate = tstate;
+
+	blocking_notifier_call_chain(&cpu_notifier, TMU_COLD, &on);
+
 	return 0;
 }
 
@@ -635,6 +860,8 @@ static struct thermal_cooling_device_ops cpufreq_cooling_ops = {
 	.get_max_state = cpufreq_get_max_state,
 	.get_cur_state = cpufreq_get_cur_state,
 	.set_cur_state = cpufreq_set_cur_state,
+	.get_cooling_level = exynos_cpufreq_cooling_get_level,
+	.set_cur_temp = cpufreq_set_cur_temp,
 };
 
 static struct thermal_cooling_device_ops cpufreq_power_cooling_ops = {
@@ -644,12 +871,18 @@ static struct thermal_cooling_device_ops cpufreq_power_cooling_ops = {
 	.get_requested_power	= cpufreq_get_requested_power,
 	.state2power		= cpufreq_state2power,
 	.power2state		= cpufreq_power2state,
+	.set_cur_temp = cpufreq_set_cur_temp,
 };
 
 /* Notifier for cpufreq policy change */
 static struct notifier_block thermal_cpufreq_notifier_block = {
 	.notifier_call = cpufreq_thermal_notifier,
 };
+
+int exynos_tmu_add_notifier(struct notifier_block *n)
+{
+	return blocking_notifier_chain_register(&cpu_notifier, n);
+}
 
 static unsigned int find_next_max(struct cpufreq_frequency_table *table,
 				  unsigned int prev_max)
@@ -755,9 +988,13 @@ __cpufreq_cooling_register(struct device_node *np,
 	}
 
 	if (capacitance) {
-		cpufreq_cdev->plat_get_static_power = plat_static_func;
-
 		ret = update_freq_table(cpufreq_cdev, capacitance);
+		if (ret) {
+			cdev = ERR_PTR(ret);
+			goto remove_ida;
+		}
+
+		ret = build_static_power_table(np, cpufreq_cdev);
 		if (ret) {
 			cdev = ERR_PTR(ret);
 			goto remove_ida;
@@ -941,3 +1178,38 @@ void cpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
 	kfree(cpufreq_cdev);
 }
 EXPORT_SYMBOL_GPL(cpufreq_cooling_unregister);
+
+struct thermal_cooling_device *
+exynos_cpufreq_cooling_register(struct device_node *np, struct cpufreq_policy *policy)
+{
+	struct thermal_zone_device *tz;
+	void *gen_block;
+	struct ect_gen_param_table *pwr_coeff;
+	u32 capacitance = 0;
+
+	if (!np)
+		return ERR_PTR(-EINVAL);
+
+	tz = thermal_zone_get_zone_by_cool_np(np);
+
+	if (tz) {
+		gen_block = ect_get_block("GEN");
+		if (gen_block == NULL) {
+			pr_err("%s: Failed to get gen block from ECT\n", __func__);
+			goto regist;
+		}
+		pwr_coeff = ect_gen_param_get_table(gen_block, "DTM_PWR_Coeff");
+		if (pwr_coeff == NULL) {
+			pr_err("%s: Failed to get power coeff from ECT\n", __func__);
+			goto regist;
+		}
+		capacitance = pwr_coeff->parameter[tz->id];
+	} else {
+		pr_err("%s: could not find thermal zone\n", __func__);
+	}
+
+regist:
+	return __cpufreq_cooling_register(np, policy, capacitance,
+				NULL);
+}
+EXPORT_SYMBOL_GPL(exynos_cpufreq_cooling_register);

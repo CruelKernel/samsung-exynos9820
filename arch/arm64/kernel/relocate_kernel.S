@@ -103,7 +103,7 @@ ENTRY(arm64_relocate_new_kernel)
 	/* wait for writes from copy_page to finish */
 	dsb	nsh
 	ic	iallu
-	dsb	nsh
+	dsb	ish
 	isb
 
 	/* Start new image. */

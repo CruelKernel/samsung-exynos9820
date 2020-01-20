@@ -43,6 +43,9 @@
 #include <net/transp_v6.h>
 #endif
 #include <net/ip_fib.h>
+#ifdef CONFIG_MPTCP
+#include <net/mptcp.h>
+#endif
 
 #include <linux/errqueue.h>
 #include <linux/uaccess.h>
@@ -754,6 +757,21 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 			inet->tos = val;
 			sk->sk_priority = rt_tos2priority(val);
 			sk_dst_reset(sk);
+#ifdef CONFIG_MPTCP
+
+			/* Update TOS on mptcp subflow */
+			if (is_meta_sk(sk)) {
+				struct sock *sk_it;
+
+				mptcp_for_each_sk(tcp_sk(sk)->mpcb, sk_it) {
+					if (inet_sk(sk_it)->tos != inet_sk(sk)->tos) {
+						inet_sk(sk_it)->tos = inet_sk(sk)->tos;
+						sk_it->sk_priority = sk->sk_priority;
+						sk_dst_reset(sk_it);
+					}
+				}
+			}
+#endif
 		}
 		break;
 	case IP_TTL:

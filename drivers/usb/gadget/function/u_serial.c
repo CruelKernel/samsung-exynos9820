@@ -32,7 +32,6 @@
 
 #include "u_serial.h"
 
-
 /*
  * This component encapsulates the TTY layer glue needed to provide basic
  * "serial port" functionality through the USB gadget stack.  Each such
@@ -79,9 +78,20 @@
  * next layer of buffering.  For TX that's a circular buffer; for RX
  * consider it a NOP.  A third layer is provided by the TTY code.
  */
+
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+#define TX_QUEUE_SIZE		8
+#define TX_BUF_SIZE		4096
+#define WRITE_BUF_SIZE		8192		/* TX only */
+#define RX_QUEUE_SIZE		8
+#define RX_BUF_SIZE		4096
+#else
 #define QUEUE_SIZE		16
 #define WRITE_BUF_SIZE		8192		/* TX only */
+#endif
+
 #define GS_CONSOLE_BUF_SIZE	8192
+#define USB_DM_CHANNEL 1
 
 /* circular buffer */
 struct gs_buf {
@@ -132,6 +142,8 @@ struct gs_port {
 
 	/* REVISIT this state ... */
 	struct usb_cdc_line_coding port_line_coding;	/* 8-N-1 etc */
+	unsigned int	tx_byte;
+	unsigned int	rx_byte;
 };
 
 static struct portmaster {
@@ -377,6 +389,9 @@ __acquires(&port->port_lock)
 	struct list_head	*pool = &port->write_pool;
 	struct usb_ep		*in;
 	int			status = 0;
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+	static long 		prev_len;
+#endif
 	bool			do_tty_wake = false;
 
 	if (!port->port_usb)
@@ -388,12 +403,42 @@ __acquires(&port->port_lock)
 		struct usb_request	*req;
 		int			len;
 
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		if (port->write_started >= TX_QUEUE_SIZE)
+#else
 		if (port->write_started >= QUEUE_SIZE)
+#endif
 			break;
 
 		req = list_entry(pool->next, struct usb_request, list);
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		len = gs_send_packet(port, req->buf, TX_BUF_SIZE);
+#else
 		len = gs_send_packet(port, req->buf, in->maxpacket);
+#endif
 		if (len == 0) {
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+			/* Queue zero length packet explicitly to make it
+			 * work with UDCs which don't support req->zero flag
+			 */
+			if (prev_len && (prev_len % in->maxpacket == 0)) {
+				req->length = 0;
+				list_del(&req->list);
+				spin_unlock(&port->port_lock);
+				status = usb_ep_queue(in, req, GFP_ATOMIC);
+				spin_lock(&port->port_lock);
+				if (!port->port_usb) {
+					gs_free_req(in, req);
+					break;
+				}
+				if (status) {
+					printk(KERN_ERR "%s: %s err %d\n",
+					__func__, "queue", status);
+					list_add(&req->list, pool);
+				}
+				prev_len = 0;
+			}
+#endif
 			wake_up_interruptible(&port->drain_wait);
 			break;
 		}
@@ -401,8 +446,9 @@ __acquires(&port->port_lock)
 
 		req->length = len;
 		list_del(&req->list);
+#ifndef CONFIG_USB_DM_PERFORMANCE_TUNE
 		req->zero = (gs_buf_data_avail(&port->port_write_buf) == 0);
-
+#endif
 		pr_vdebug("ttyGS%d: tx len=%d, 0x%02x 0x%02x 0x%02x ...\n",
 			  port->port_num, len, *((u8 *)req->buf),
 			  *((u8 *)req->buf+1), *((u8 *)req->buf+2));
@@ -416,6 +462,9 @@ __acquires(&port->port_lock)
 		 */
 		port->write_busy = true;
 		spin_unlock(&port->port_lock);
+		if (port->port_num == USB_DM_CHANNEL ) {
+			port->tx_byte += req->length;
+		}
 		status = usb_ep_queue(in, req, GFP_ATOMIC);
 		spin_lock(&port->port_lock);
 		port->write_busy = false;
@@ -426,6 +475,9 @@ __acquires(&port->port_lock)
 			list_add(&req->list, pool);
 			break;
 		}
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		prev_len = req->length;
+#endif
 
 		port->write_started++;
 
@@ -460,13 +512,20 @@ __acquires(&port->port_lock)
 		tty = port->port.tty;
 		if (!tty)
 			break;
-
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		if (port->read_started >= RX_QUEUE_SIZE)
+#else
 		if (port->read_started >= QUEUE_SIZE)
+#endif
 			break;
 
 		req = list_entry(pool->next, struct usb_request, list);
 		list_del(&req->list);
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		req->length = RX_BUF_SIZE;
+#else
 		req->length = out->maxpacket;
+#endif
 
 		/* drop lock while we call out; the controller driver
 		 * may need to call us back (e.g. for disconnect)
@@ -600,6 +659,49 @@ static void gs_rx_push(unsigned long _port)
 	spin_unlock_irq(&port->port_lock);
 }
 
+static ssize_t usb_transferred_cnt_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret;
+	struct gs_port	*port;
+	unsigned int total_cnt = 0;
+	/* Argos working when dm logging start */
+	port = ports[USB_DM_CHANNEL].port;
+	if (port != NULL) {
+		total_cnt = (port->tx_byte + port->rx_byte);	
+		port->tx_byte = 0;
+		port->rx_byte = 0;
+	}
+	ret = sprintf(buf, "%u\n", total_cnt);
+	return ret;
+}
+
+static DEVICE_ATTR(usb_transferred_cnt,  0444,
+		usb_transferred_cnt_show, NULL);
+
+extern struct device *create_function_device(char *name);
+
+static int create_dm_transfer_cnt_attribute(void)
+{
+	struct device *android_dev;
+	int err = 0;
+
+	android_dev = create_function_device("terminal_version");
+	if (IS_ERR(android_dev)) {
+		printk("usb: %s : dm node error \n",__func__);
+		return PTR_ERR(android_dev);
+	}
+
+	err = device_create_file(android_dev, &dev_attr_usb_transferred_cnt);
+	if (err) {
+		printk(KERN_DEBUG "usb: %s failed to create attr\n",
+				__func__);
+		device_destroy(android_dev->class, android_dev->devt);
+		return err;
+	}
+	return 0;
+}
+
 static void gs_read_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct gs_port	*port = ep->driver_data;
@@ -607,6 +709,9 @@ static void gs_read_complete(struct usb_ep *ep, struct usb_request *req)
 	/* Queue all received data until the tty layer is ready for it. */
 	spin_lock(&port->port_lock);
 	list_add_tail(&req->list, &port->read_queue);
+	if (port->port_num == USB_DM_CHANNEL) {
+		port->rx_byte += req->actual;
+	}
 	tasklet_schedule(&port->push);
 	spin_unlock(&port->port_lock);
 }
@@ -653,20 +758,35 @@ static void gs_free_requests(struct usb_ep *ep, struct list_head *head,
 	}
 }
 
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+static int gs_alloc_requests(struct usb_ep *ep, struct list_head *head,
+		int queue_size, int req_size,
+		void (*fn)(struct usb_ep *, struct usb_request *),
+		int *allocated)
+#else
 static int gs_alloc_requests(struct usb_ep *ep, struct list_head *head,
 		void (*fn)(struct usb_ep *, struct usb_request *),
 		int *allocated)
+#endif
 {
 	int			i;
 	struct usb_request	*req;
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+	int n = allocated ? queue_size - *allocated : queue_size;
+#else
 	int n = allocated ? QUEUE_SIZE - *allocated : QUEUE_SIZE;
+#endif
 
 	/* Pre-allocate up to QUEUE_SIZE transfers, but if we can't
 	 * do quite that many this time, don't fail ... we just won't
 	 * be as speedy as we might otherwise be.
 	 */
 	for (i = 0; i < n; i++) {
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+		req = gs_alloc_req(ep, req_size, GFP_ATOMIC);
+#else
 		req = gs_alloc_req(ep, ep->maxpacket, GFP_ATOMIC);
+#endif
 		if (!req)
 			return list_empty(head) ? -ENOMEM : 0;
 		req->complete = fn;
@@ -699,13 +819,23 @@ static int gs_start_io(struct gs_port *port)
 	 * configurations may use different endpoints with a given port;
 	 * and high speed vs full speed changes packet sizes too.
 	 */
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+	status = gs_alloc_requests(ep, head, RX_QUEUE_SIZE, RX_BUF_SIZE,
+			 gs_read_complete, &port->read_allocated);
+#else
 	status = gs_alloc_requests(ep, head, gs_read_complete,
 		&port->read_allocated);
+#endif
 	if (status)
 		return status;
 
+#ifdef CONFIG_USB_DM_PERFORMANCE_TUNE
+	status = gs_alloc_requests(port->port_usb->in, &port->write_pool,
+			TX_QUEUE_SIZE, TX_BUF_SIZE, gs_write_complete, &port->write_allocated);
+#else
 	status = gs_alloc_requests(port->port_usb->in, &port->write_pool,
 			gs_write_complete, &port->write_allocated);
+#endif
 	if (status) {
 		gs_free_requests(ep, head, &port->read_allocated);
 		return status;
@@ -716,7 +846,7 @@ static int gs_start_io(struct gs_port *port)
 	started = gs_start_rx(port);
 
 	/* unblock any pending writes into our circular buffer */
-	if (started) {
+	if (started && port->port.tty) {
 		tty_wakeup(port->port.tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);
@@ -1313,8 +1443,10 @@ gs_port_alloc(unsigned port_num, struct usb_cdc_line_coding *coding)
 
 	port->port_num = port_num;
 	port->port_line_coding = *coding;
-
 	ports[port_num].port = port;
+	/* create sysfs node for dm logging */
+	if ( port_num == 1 )
+		create_dm_transfer_cnt_attribute();
 out:
 	mutex_unlock(&ports[port_num].lock);
 	return ret;
@@ -1363,7 +1495,8 @@ int gserial_alloc_line(unsigned char *line_num)
 {
 	struct usb_cdc_line_coding	coding;
 	struct device			*tty_dev;
-	int				ret;
+	/* prevent issue fix */
+	int				ret = -EBUSY;
 	int				port_num;
 
 	coding.dwDTERate = cpu_to_le32(9600);
@@ -1371,7 +1504,12 @@ int gserial_alloc_line(unsigned char *line_num)
 	coding.bParityType = USB_CDC_NO_PARITY;
 	coding.bDataBits = USB_CDC_1_STOP_BITS;
 
-	for (port_num = 0; port_num < MAX_U_SERIAL_PORTS; port_num++) {
+	if (*line_num)
+		port_num =  *line_num;
+	else
+		port_num = 0;
+
+	for (; port_num < MAX_U_SERIAL_PORTS; port_num++) {
 		ret = gs_port_alloc(port_num, &coding);
 		if (ret == -EBUSY)
 			continue;

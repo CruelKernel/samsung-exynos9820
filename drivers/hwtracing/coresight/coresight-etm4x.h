@@ -144,6 +144,7 @@
 #define ETM_MAX_SS_CMP			8
 
 #define ETM_ARCH_V4			0x40
+#define ETM_ARCH_V4_2			0x42
 #define ETMv4_SYNC_MASK			0x1F
 #define ETM_CYC_THRESHOLD_MASK		0xFFF
 #define ETM_CYC_THRESHOLD_DEFAULT       0x100

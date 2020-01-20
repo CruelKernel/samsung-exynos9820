@@ -26,6 +26,7 @@
 
 #include <crypto/aead.h>
 #include <crypto/hash.h>
+#include <crypto/rng.h>
 #include <crypto/skcipher.h>
 #include <linux/err.h>
 #include <linux/fips.h>
@@ -39,6 +40,8 @@
 #include <linux/timex.h>
 #include <linux/interrupt.h>
 #include "tcrypt.h"
+#include "internal.h"
+#include "testmgr.h"
 
 /*
  * Need slab memory for testing (size in number of pages).
@@ -2045,6 +2048,69 @@ static int do_test(const char *alg, u32 type, u32 mask, int m)
 	case 1000:
 		test_available();
 		break;
+
+#ifdef CONFIG_CRYPTO_FIPS
+	case 1402:
+#ifdef CONFIG_CRYPTO_AES
+		/* AES */
+		ret += alg_test("ecb(aes-generic)", "ecb(aes)", 0, 0);
+		ret += alg_test("cbc(aes-generic)", "cbc(aes)", 0, 0);
+	#ifdef CONFIG_CRYPTO_GCM
+		ret += alg_test("gcm(aes-generic)", "gcm(aes)", 0, 0);
+	#endif
+#endif
+
+#ifdef CONFIG_CRYPTO_AES_ARM64_CE
+		ret += alg_test("ecb(aes-ce)", "ecb(aes)", 0, 0);
+		ret += alg_test("cbc(aes-ce)", "cbc(aes)", 0, 0);
+	#ifdef CONFIG_CRYPTO_GCM
+		ret += alg_test("gcm(aes-ce)", "gcm(aes)", 0, 0);
+	#endif
+#endif
+
+		/* SHA */
+#ifdef CONFIG_CRYPTO_SHA1
+		ret += alg_test("sha1-generic", "sha1", 0, 0);
+		ret += alg_test("hmac(sha1-generic)", "hmac(sha1)", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_SHA1_ARM64_CE
+		ret += alg_test("sha1-ce", "sha1", 0, 0);
+		ret += alg_test("hmac(sha1-ce)", "hmac(sha1)", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_SHA256
+		ret += alg_test("sha224-generic", "sha224", 0, 0);
+		ret += alg_test("sha256-generic", "sha256", 0, 0);
+		ret += alg_test("hmac(sha224-generic)", "hmac(sha224)", 0, 0);
+		ret += alg_test("hmac(sha256-generic)", "hmac(sha256)", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_SHA2_ARM64_CE
+		ret += alg_test("sha224-ce", "sha224", 0, 0);
+		ret += alg_test("sha256-ce", "sha256", 0, 0);
+		ret += alg_test("hmac(sha224-ce)", "hmac(sha224)", 0, 0);
+		ret += alg_test("hmac(sha256-ce)", "hmac(sha256)", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_SHA512
+		ret += alg_test("sha384-generic", "sha384", 0, 0);
+		ret += alg_test("sha512-generic", "sha512", 0, 0);
+		ret += alg_test("hmac(sha384-generic)", "hmac(sha384)", 0, 0);
+		ret += alg_test("hmac(sha512-generic)", "hmac(sha512)", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_DRBG
+		ret += alg_test("drbg_nopr_hmac_sha256", "stdrng", 0, 0);
+		ret += alg_test("drbg_pr_hmac_sha256", "stdrng", 0, 0);
+#endif
+
+#ifdef CONFIG_CRYPTO_KBKDF_CTR_HMAC_SHA512
+		ret += alg_test_kbkdf();
+#endif
+
+		break;
+#endif //CONFIG_CRYPTO_FIPS
 	}
 
 	return ret;
@@ -2061,6 +2127,44 @@ static int __init tcrypt_mod_init(void)
 			goto err_free_tv;
 	}
 
+#ifdef CONFIG_CRYPTO_FIPS
+	mode = 1402;
+	pr_info("FIPS : POST (%s)\n", SKC_VERSION_TEXT);
+
+	err = do_test(alg, type, mask, mode);
+
+	if (err) {
+		pr_err("FIPS : POST - one or more algorithm tests failed\n");
+		set_in_fips_err();
+		goto err_free_tv;
+	} else {
+		pr_info("FIPS : POST - Algorithm Tests Passed\n");
+		if (do_integrity_check() != 0) {
+#ifndef CONFIG_FUNCTION_TRACER
+			pr_err("FIPS : POST - Integrity Check Failed\n");
+			set_in_fips_err();
+#else
+			pr_err("FIPS : POST - Integrity Check bypassed due to ftrace debug mode\n");
+#endif
+		} else {
+			pr_info("FIPS : POST - Integrity Check Passed\n");
+		}
+		if (in_fips_err())
+			pr_err("FIPS : POST - CRYPTO API in FIPS Error\n");
+		else
+			pr_info("FIPS : POST - CRYPTO API started in FIPS approved mode\n");
+	}
+
+	if (!fips_enabled)
+		err = -EAGAIN;
+
+err_free_tv:
+	for (i = 0; i < TVMEMSIZE && tvmem[i]; i++)
+		free_page((unsigned long)tvmem[i]);
+
+	return err;
+
+#else
 	err = do_test(alg, type, mask, mode);
 
 	if (err) {
@@ -2085,6 +2189,7 @@ err_free_tv:
 		free_page((unsigned long)tvmem[i]);
 
 	return err;
+#endif /* CONFIG_CRYPTO_FIPS */
 }
 
 /*
@@ -2093,7 +2198,70 @@ err_free_tv:
  */
 static void __exit tcrypt_mod_fini(void) { }
 
-module_init(tcrypt_mod_init);
+// When SKC_FUNC_TEST is defined, this function will be called instead of tcrypt_mode_init
+// tcyprt_mode_init will be called as test case number
+// after all tests are done, the normal POST test will start
+#ifdef CONFIG_CRYPTO_FIPS_FUNC_TEST
+static int __init fips_func_test(void)
+{
+	int i;
+	struct crypto_ahash *tfm;
+	struct crypto_rng *rng;
+
+	pr_info("FIPS FUNC : Functional test start\n");
+
+	for (i = 0; i < SKC_FUNCTEST_KAT_CASE_NUM; i++) {
+		set_fips_functest_KAT_mode(i);
+		pr_info("FIPS FUNC : --------------------------------------------------\n");
+		pr_info("FIPS FUNC : Failure inducement case %d - [%s]\n", i + 1, get_fips_functest_mode());
+		pr_info("FIPS FUNC : --------------------------------------------------\n");
+
+		tcrypt_mod_init();
+
+		pr_info("FIPS FUNC : (%d-1) POST done. SKC module FIPS status : %s\n",
+			i+1, in_fips_err()?"failed":"passed");
+		pr_info("FIPS FUNC : (%d-2) Try to use crypto\n", i + 1);
+		// Check the module is not working in FIPS failure
+		tfm = crypto_alloc_ahash("sha256", 0, 0);
+		if (IS_ERR(tfm))
+			pr_info("FIPS FUNC : (%d-3) alloc hash is failed as expected\n", i + 1);
+		else {
+			pr_info("FIPS FUNC : (%d-3) crypto allocation is success\n", i + 1);
+			crypto_free_ahash(tfm);
+		}
+
+// reset the fips err flag to prepare the next test
+		pr_err("FIPS FUNC : (%d-4) revert FIPS status to no error\n", i + 1);
+		reset_in_fips_err();
+	}
+
+	for (i = 0; i < SKC_FUNCTEST_CONDITIONAL_CASE_NUM; i++) {
+		set_fips_functest_conditional_mode(i);
+		pr_info("FIPS FUNC : --------------------------------------------------\n");
+		pr_info("FIPS FUNC : conditional test case %d - [%s]\n", i + 1, get_fips_functest_mode());
+		pr_info("FIPS FUNC : --------------------------------------------------\n");
+		rng = crypto_alloc_rng("drbg_pr_hmac_sha256", 0, 0);
+		if (IS_ERR(rng)) {
+			pr_err("FIPS FUNC : rng alloc was failed\n");
+			continue;
+		}
+		if (crypto_rng_reset(rng, NULL, 0))
+			pr_err("FIPS FUNC : DRBG instantiate failed as expected\n");
+		crypto_free_rng(rng);
+	}
+	set_fips_functest_conditional_mode(-1);
+
+	pr_info("FIPS FUNC : Functional test end\n");
+	pr_info("FIPS FUNC : Normal POST start\n");
+	return tcrypt_mod_init();
+}
+#endif
+
+#ifdef CONFIG_CRYPTO_FIPS_FUNC_TEST
+	late_initcall(fips_func_test);
+#else
+	late_initcall(tcrypt_mod_init);
+#endif
 module_exit(tcrypt_mod_fini);
 
 module_param(alg, charp, 0);

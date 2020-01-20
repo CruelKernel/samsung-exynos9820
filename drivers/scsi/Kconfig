@@ -38,6 +38,12 @@ config SCSI
 	  However, do not compile this as a module if your root file system
 	  (the one containing the directory /) is located on a SCSI device.
 
+config UFS_SRPMB
+	bool "UFS Secure RPMB support"
+	depends on SCSI
+	help
+	  This option activates ufs secure rpmb.
+
 config SCSI_DMA
 	bool
 	default n

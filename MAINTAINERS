@@ -3391,6 +3391,34 @@ L:	alsa-devel@alsa-project.org (moderated for non-subscribers)
 S:	Maintained
 F:	sound/soc/codecs/cs*
 
+CIRRUS LOGIC MADERA CODEC DRIVERS
+M:	Charles Keepax <ckeepax@opensource.wolfsonmicro.com>
+M:	Richard Fitzgerald <rf@opensource.wolfsonmicro.com>
+L:	alsa-devel@alsa-project.org (moderated for non-subscribers)
+L:	patches@opensource.wolfsonmicro.com
+T:	git https://github.com/CirrusLogic/linux-drivers.git
+W:	https://github.com/CirrusLogic/linux-drivers/wiki
+S:	Supported
+F:	Documentation/devicetree/bindings/extcon/extcon-madera*
+F:	Documentation/devicetree/bindings/gpio/gpio-madera.txt
+F:	Documentation/devicetree/bindings/mfd/madera.txt
+F:	Documentation/devicetree/bindings/pinctrl/cirrus,madera-pinctrl.txt
+F:	Documentation/devicetree/bindings/sound/madera.txt
+F:	include/dt-bindings/sound/madera*
+F:	include/linux/extcon/extcon-madera*
+F:	include/linux/irqchip/irq-madera*
+F:	include/linux/mfd/madera/*
+F:	include/sound/madera*
+F:	drivers/extcon/extcon-madera*
+F:	drivers/gpio/gpio-madera*
+F:	drivers/irqchip/irq-madera*
+F:	drivers/mfd/madera*
+F:	drivers/mfd/cs47l*
+F:	drivers/pinctrl/pinctrl-madera*
+F:	sound/soc/codecs/cs47l*
+F:	sound/soc/codecs/madera*
+F:	drivers/pinctrl/cirrus/*
+
 CIRRUS LOGIC EP93XX ETHERNET DRIVER
 M:	Hartley Sweeten <hsweeten@visionengravers.com>
 L:	netdev@vger.kernel.org

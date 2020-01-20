@@ -292,8 +292,8 @@ struct snd_soc_dai {
 	struct snd_soc_dai_driver *driver;
 
 	/* DAI runtime info */
-	unsigned int capture_active:1;		/* stream is in use */
-	unsigned int playback_active:1;		/* stream is in use */
+	unsigned int capture_active:4;		/* stream is in use */
+	unsigned int playback_active:4;		/* stream is in use */
 	unsigned int symmetric_rates:1;
 	unsigned int symmetric_channels:1;
 	unsigned int symmetric_samplebits:1;
@@ -312,6 +312,7 @@ struct snd_soc_dai {
 	unsigned int rate;
 	unsigned int channels;
 	unsigned int sample_bits;
+	unsigned int sample_width;
 
 	/* parent platform/codec */
 	struct snd_soc_codec *codec;

@@ -1,0 +1,2407 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *              http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+
+#include "npu-config.h"
+#include "npu-util-llq.h"
+#include "npu-util-autosleepthr.h"
+#include "npu-errno.h"
+#include "npu-if-protodrv-mbox2.h"
+#include "npu-if-session-protodrv.h"
+#include <linux/types.h>
+#include <linux/delay.h>
+#include <linux/random.h>
+
+#define PROTODRV_04_UID_CNT 5
+#define PROTODRV_04_REPEAT_CNT	1024
+int uids[PROTODRV_04_UID_CNT] = {0};
+int idxes[PROTODRV_04_REPEAT_CNT] = {0};
+
+enum PROTODRV_IDIOT_MSG_STATE {
+	MSG_STATE_FREE = 0,
+	MSG_STATE_REQUESTED,
+	MSG_STATE_DONE,
+	MSG_STATE_MODIFYING = 100,
+};
+
+enum protodrv_mock_result {
+	EXPECT_UNINITIALIZED,
+	EXPECT_FAILED,
+	EXPECT_SUCCESS,
+};
+
+/* Compare constants */
+static const u32 OK = 0;
+static const u32 LAST = 1;
+static const u32 NOT_LAST = 0;
+
+/* A dummy device used as a parameter to probe/close function of protodrv */
+struct npu_device dummy_device_4_test = {.dev=NULL};
+
+/* Forward declaration */
+void mbox_mock_signal(void);
+
+LLQ_DECLARE(nw_result_q, int, NPU_MAX_MSG_ID_CNT);
+LLQ_DECLARE(frame_result_q, int, NPU_MAX_MSG_ID_CNT);
+
+struct expected_flag {
+	u32				setup;
+	int				hw_response;
+	enum protodrv_mock_result	result;
+};
+
+/* Autosleep thread for Dummy Mailbox manager */
+static struct mbox_mock_protodrv {
+	struct auto_sleep_thread ast;
+	struct auto_sleep_thread_param ast_param;
+
+	atomic_t		nw_used[NPU_MAX_MSG_ID_CNT];
+	atomic_t		frame_used[NPU_MAX_MSG_ID_CNT];
+	struct npu_nw		nw_msg[NPU_MAX_MSG_ID_CNT];
+	struct npu_frame	frame_msg[NPU_MAX_MSG_ID_CNT];
+
+	struct expected_flag	nw_expected_flag;
+	struct expected_flag	frame_expected_flag;
+	struct expected_flag	frame_timeout_flag;
+	struct npu_nw		nw_expected;
+	struct npu_frame	frame_expected;
+	struct npu_frame	frame_timeout;
+	protodrv_notifier	send_notify_func;
+	int (*msgid_get_type)(int);
+} mbox_mock_protodrv;
+
+struct session_mock_protodrv {
+	atomic_t			wait_signal;
+	volatile struct nw_result	nw_result;
+	volatile unsigned long		frame_result;
+	volatile int			frame_done_cnt;
+};
+
+/* Global session reference */
+static struct protodrv_test_session {
+	struct npu_session sess;
+	struct session_mock_protodrv session_mock;
+	struct npu_queue	npu_queue;	/* Dummy queue to keep track of session */
+} *protodrv_test_session;
+
+/* Convinient reference to first session */
+static struct npu_session* test_sess;
+
+/*************************************************************************
+ * session_mock_protodrv operation
+ */
+struct session_mock_protodrv *session_mock_ref(const int sess_idx)
+{
+	return &protodrv_test_session[sess_idx].session_mock;
+}
+
+static void session_mock_prepare_wait(const int sess_idx)
+{
+	atomic_set(&protodrv_test_session[sess_idx].session_mock.wait_signal, 0);
+	protodrv_test_session[sess_idx].session_mock.frame_result = 0xDEADFFFF;
+	protodrv_test_session[sess_idx].session_mock.nw_result.result_code = 0xDEAD4444;
+}
+
+static int session_mock_is_done(const int sess_idx)
+{
+	return atomic_read(&protodrv_test_session[sess_idx].session_mock.wait_signal) == 1;
+}
+
+static unsigned long session_mock_get_frame_result(const int sess_idx)
+{
+	return protodrv_test_session[sess_idx].session_mock.frame_result;
+}
+
+static void session_mock_set_frame_result(const int sess_idx, const unsigned long result_code)
+{
+	protodrv_test_session[sess_idx].session_mock.frame_result = result_code;
+}
+
+static struct nw_result session_mock_get_nw_result(const int sess_idx)
+{
+	return protodrv_test_session[sess_idx].session_mock.nw_result;
+}
+
+static int session_mock_save_result(struct npu_session *sess, struct nw_result result)
+{
+	struct protodrv_test_session *ts;
+	if (!sess)
+		ts = &protodrv_test_session[0];
+	else
+		ts = container_of(sess, struct protodrv_test_session, sess);
+
+	ts->session_mock.nw_result = result;
+	atomic_set(&ts->session_mock.wait_signal, 1);
+	return 0;
+}
+
+static void session_mock_queue_done(struct npu_queue *queue,
+	struct vb_container_list *in_cl, struct vb_container_list *ot_cl, unsigned long result)
+{
+	struct protodrv_test_session *ts;
+	if (!queue)
+		ts = &protodrv_test_session[0];
+	else
+		ts = container_of(queue, struct protodrv_test_session, npu_queue);
+
+	ts->session_mock.frame_result = result;
+	ts->session_mock.frame_done_cnt++;
+}
+
+struct npu_if_session_protodrv_ops npu_protodrv_session_if_ops = {
+	.queue_done = session_mock_queue_done,
+};
+static struct npu_if_session_protodrv_ops npu_protodrv_session_if_ops_backup;
+
+/*************************************************************************
+ * mbox_mock_protodrv operation
+ */
+static void reset_mbox_mock(void)
+{
+	memset(&mbox_mock_protodrv, 0, sizeof(struct mbox_mock_protodrv));
+}
+
+static void __set_frame_expectation(struct npu_frame* frame)
+{
+	mbox_mock_protodrv.frame_expected = *frame;
+	mbox_mock_protodrv.frame_expected_flag.setup = 1;
+	mbox_mock_protodrv.frame_expected_flag.result = EXPECT_FAILED;
+}
+
+static void set_frame_expectation(struct npu_frame* frame)
+{
+	__set_frame_expectation(frame);
+	mbox_mock_protodrv.frame_expected_flag.hw_response = 0;	/* DONE */
+}
+
+__attribute__((unused)) static void set_frame_ndone_expectation(struct npu_frame* frame)
+{
+	__set_frame_expectation(frame);
+	mbox_mock_protodrv.frame_expected_flag.hw_response = 1;	/* NDONE */
+}
+
+static void set_frame_timeout(struct npu_frame* frame)
+{
+	mbox_mock_protodrv.frame_timeout = *frame;
+	mbox_mock_protodrv.frame_timeout_flag.setup = 1;
+	mbox_mock_protodrv.frame_timeout_flag.result = EXPECT_FAILED;
+}
+
+static enum protodrv_mock_result check_frame_expectation(void)
+{
+	if (mbox_mock_protodrv.frame_expected_flag.setup) {
+		mbox_mock_protodrv.frame_expected_flag.setup = 0;
+		return mbox_mock_protodrv.frame_expected_flag.result;
+	} else
+		return EXPECT_UNINITIALIZED;
+}
+
+static enum protodrv_mock_result peek_frame_expectation(void)
+{
+	if (mbox_mock_protodrv.frame_expected_flag.setup)
+		return mbox_mock_protodrv.frame_expected_flag.result;
+	else
+		return EXPECT_UNINITIALIZED;
+}
+
+static void __set_nw_expectation(struct npu_nw* nw)
+{
+	mbox_mock_protodrv.nw_expected = *nw;
+	mbox_mock_protodrv.nw_expected_flag.setup = 1;
+	mbox_mock_protodrv.nw_expected_flag.result = EXPECT_FAILED;
+}
+
+static void set_nw_expectation(struct npu_nw* nw)
+{
+	__set_nw_expectation(nw);
+	mbox_mock_protodrv.nw_expected_flag.hw_response = 0;	/* DONE */
+}
+
+__attribute__((unused)) static void set_nw_ndone_expectation(struct npu_nw* nw)
+{
+	__set_nw_expectation(nw);
+	mbox_mock_protodrv.nw_expected_flag.hw_response = 1;	/* NDONE */
+}
+
+static enum protodrv_mock_result check_nw_expectation(void)
+{
+	if (mbox_mock_protodrv.nw_expected_flag.setup) {
+		mbox_mock_protodrv.nw_expected_flag.setup = 0;
+		return mbox_mock_protodrv.nw_expected_flag.result;
+	} else
+		return EXPECT_UNINITIALIZED;
+}
+
+/*************************************************************************
+ * Interfacing functions
+ */
+static int protodrv_idiot_frame_result_available(void)
+{
+	return !LLQ_IS_EMPTY(frame_result_q);
+}
+static int protodrv_idiot_frame_post_request(int msgid, struct npu_frame *frame)
+{
+	if (atomic_cmpxchg(&mbox_mock_protodrv.frame_used[msgid], MSG_STATE_FREE, MSG_STATE_MODIFYING) == MSG_STATE_FREE) {
+		/* 100 - Writing message */
+		memcpy(&mbox_mock_protodrv.frame_msg[msgid], frame, sizeof(*frame));
+		atomic_set(&mbox_mock_protodrv.frame_used[msgid], MSG_STATE_REQUESTED);
+		mbox_mock_signal();
+		return 1;
+	}
+	return 0;
+}
+static int protodrv_idiot_frame_get_result(int *ret_msgid, struct npu_frame *frame)
+{
+	int ret = LLQ_GET(frame_result_q, ret_msgid);
+	if (ret) {
+		/* Valid result */
+		*frame = mbox_mock_protodrv.frame_msg[*ret_msgid];
+		atomic_set(&mbox_mock_protodrv.frame_used[*ret_msgid], MSG_STATE_FREE);
+	}
+	return ret;
+}
+static int protodrv_idiot_nw_result_available(void)
+{
+	return !LLQ_IS_EMPTY(nw_result_q);
+}
+static int protodrv_idiot_nw_post_request(int msgid, struct npu_nw *nw)
+{
+	if (atomic_cmpxchg(&mbox_mock_protodrv.nw_used[msgid], MSG_STATE_FREE, MSG_STATE_MODIFYING) == MSG_STATE_FREE) {
+		/* 100 - Writing message */
+		memcpy(&mbox_mock_protodrv.nw_msg[msgid], nw, sizeof(*nw));
+		atomic_set(&mbox_mock_protodrv.nw_used[msgid], MSG_STATE_REQUESTED);
+		mbox_mock_signal();
+		return 1;
+	}
+	return 0;
+}
+static int protodrv_idiot_nw_get_result(int *ret_msgid, struct npu_nw *nw)
+{
+	int ret = LLQ_GET(nw_result_q, ret_msgid);
+	if (ret) {
+		/* Valid result */
+		*nw = mbox_mock_protodrv.nw_msg[*ret_msgid];
+		atomic_set(&mbox_mock_protodrv.nw_used[*ret_msgid], MSG_STATE_FREE);
+	}
+	return ret;
+}
+static int protodrv_idiot_register_notifier(protodrv_notifier sig_func)
+{
+	if (sig_func) {
+		mbox_mock_protodrv.send_notify_func = sig_func;
+		return 0;
+	}
+	return -EINVAL;
+}
+static int protodrv_idiot_register_msgid_type_getter(int (*msgid_get_type_func)(int))
+{
+	if (msgid_get_type_func) {
+		mbox_mock_protodrv.msgid_get_type = msgid_get_type_func;
+		return 0;
+	}
+	return -EINVAL;
+}
+
+static struct npu_if_protodrv_mbox_ops npu_protodrv_idiot_mbox_ops = {
+	.frame_result_available = protodrv_idiot_frame_result_available,
+	.frame_post_request = protodrv_idiot_frame_post_request,
+	.frame_get_result = protodrv_idiot_frame_get_result,
+	.nw_result_available = protodrv_idiot_nw_result_available,
+	.nw_post_request = protodrv_idiot_nw_post_request,
+	.nw_get_result = protodrv_idiot_nw_get_result,
+	.register_notifier = protodrv_idiot_register_notifier,
+	.register_msgid_type_getter = protodrv_idiot_register_msgid_type_getter,
+};
+static struct npu_if_protodrv_mbox_ops npu_protodrv_idiot_mbox_ops_backup;
+
+/* Operations for mbox_mock_lsm */
+#define BASIC_DO_TASK_RESULT_CODE_NW	0
+#define BASIC_DO_TASK_RESULT_CODE_FRAME	0
+#define BASIC_DO_TASK_NDONE_CODE_NW	1
+#define BASIC_DO_TASK_NDONE_CODE_FRAME	1
+
+#define TIMEOUT_DELAY_NS	((s64)(20L * S2N))
+
+int mbox_mock_do_task(struct auto_sleep_thread_param* data) {
+	struct npu_nw *nw_req;
+	struct npu_frame *frame_req;
+	int ret = 0;
+	int i;
+
+	static int is_keeping = 0;
+	static int keep_idx = -1;
+	static s64 keep_time;
+
+	/* Frame request */
+	for (i = 0; i < NPU_MAX_MSG_ID_CNT; i++) {
+		if (atomic_read(&mbox_mock_protodrv.frame_used[i]) == MSG_STATE_REQUESTED) {
+			frame_req = &mbox_mock_protodrv.frame_msg[i];
+			BUG_ON(mbox_mock_protodrv.msgid_get_type(i) != PROTO_DRV_REQ_TYPE_FRAME);
+
+			if (is_keeping == 1 && keep_idx == i) {
+				/* Check timed out frame */
+				if (get_time_ns() > keep_time + TIMEOUT_DELAY_NS) {
+					npu_dbg("Current(%lld) / keep (%lld) / Delay (%lld)\n",
+						get_time_ns(), keep_time, TIMEOUT_DELAY_NS);
+					while(LLQ_PUT(frame_result_q, keep_idx) == 0) {
+						/* Wait until the output queue is available */
+						msleep(1);
+					}
+					atomic_set(&mbox_mock_protodrv.frame_used[keep_idx], MSG_STATE_DONE);
+					npu_dbg("Timeout frame released - ID[%d]\n", keep_idx);
+					ret++;
+					is_keeping = 0;
+					keep_idx = -1;
+				}
+			} else if (mbox_mock_protodrv.frame_timeout_flag.setup
+				&& (mbox_mock_protodrv.frame_timeout.uid == frame_req->uid)
+				&& (mbox_mock_protodrv.frame_timeout.frame_id == frame_req->frame_id)
+				&& (mbox_mock_protodrv.frame_timeout.input == frame_req->input)
+				&& (mbox_mock_protodrv.frame_timeout.output == frame_req->output)
+				&& (mbox_mock_protodrv.frame_timeout.cmd == frame_req->cmd)) {
+					/* Keep the frame, until got the RESUME ID */
+					is_keeping = 1;
+					keep_idx = i;
+					keep_time = get_time_ns();
+					npu_dbg("Timeout frame kept ID[%d][uid=%u][in=%p][out=%p]\n",
+						i, frame_req->uid, frame_req->input, frame_req->output);
+					ret++;
+			} else {
+				/* Compare to expectation */
+				if (mbox_mock_protodrv.frame_expected_flag.setup) {
+					if ((mbox_mock_protodrv.frame_expected.uid == frame_req->uid)
+					&& (mbox_mock_protodrv.frame_expected.input == frame_req->input)
+					&& (mbox_mock_protodrv.frame_expected.output == frame_req->output)
+					&& (mbox_mock_protodrv.frame_expected.cmd == frame_req->cmd)) {
+						npu_dbg("Expected frame matched [uid=%u][in=%p][out=[%p]\n",
+							frame_req->uid, frame_req->input, frame_req->output);
+						mbox_mock_protodrv.frame_expected_flag.result = EXPECT_SUCCESS;
+					} else {
+						mbox_mock_protodrv.frame_expected_flag.result = EXPECT_FAILED;
+					}
+				}
+
+				/* Set result and put it back to result */
+				switch (mbox_mock_protodrv.frame_expected_flag.hw_response) {
+				case 0:
+					/* DONE */
+					frame_req->result_code = BASIC_DO_TASK_RESULT_CODE_FRAME;
+					break;
+				case 1:
+					frame_req->result_code = BASIC_DO_TASK_NDONE_CODE_FRAME;
+					break;
+				default:
+					BUG_ON(1);
+				}
+				npu_dbg("PROCESSED %s at mbox_mock : uid=%u, frame_id=%u, req_id=%u, cmd=%u, IO=(%p,%p)\n",
+					TYPE_NAME_FRAME, frame_req->uid, frame_req->frame_id,
+					frame_req->npu_req_id, frame_req->cmd, frame_req->input, frame_req->output);
+
+				while(LLQ_PUT(frame_result_q, i) == 0) {
+					/* Wait until the output queue is available */
+					msleep(1);
+				}
+				atomic_set(&mbox_mock_protodrv.frame_used[i], MSG_STATE_DONE);
+				ret++;
+			}
+		}
+	}
+
+	/* Network request */
+	for (i = 0; i < NPU_MAX_MSG_ID_CNT; i++) {
+		if (atomic_read(&mbox_mock_protodrv.nw_used[i]) == MSG_STATE_REQUESTED) {
+			nw_req = &mbox_mock_protodrv.nw_msg[i];
+			BUG_ON(mbox_mock_protodrv.msgid_get_type(i) != PROTO_DRV_REQ_TYPE_NW);
+
+			/* Compare to expectation */
+			if (mbox_mock_protodrv.nw_expected_flag.setup) {
+				if ((mbox_mock_protodrv.nw_expected.uid == nw_req->uid)
+				&& (mbox_mock_protodrv.nw_expected.cmd == nw_req->cmd))
+					mbox_mock_protodrv.nw_expected_flag.result = EXPECT_SUCCESS;
+				else
+					mbox_mock_protodrv.nw_expected_flag.result = EXPECT_FAILED;
+			}
+			npu_dbg("Compare UID[%u / %u], cmd [%u / %u] == Result:%d\n",
+				mbox_mock_protodrv.nw_expected.uid, nw_req->uid,
+				mbox_mock_protodrv.nw_expected.cmd, nw_req->cmd,
+				mbox_mock_protodrv.nw_expected_flag.result);
+
+
+			/* Set result and put it back to result */
+			switch (mbox_mock_protodrv.nw_expected_flag.hw_response) {
+			case 0:
+				/* DONE */
+				nw_req->result_code = BASIC_DO_TASK_RESULT_CODE_FRAME;
+				break;
+			case 1:
+				nw_req->result_code = BASIC_DO_TASK_NDONE_CODE_FRAME;
+				break;
+			default:
+				BUG_ON(1);
+			}
+
+			npu_dbg("PROCESSED %s at mbox_mock : uid=%u, req_id=%u, cmd=%u, ncp_hdr@=%p\n",
+				TYPE_NAME_NW, nw_req->uid,
+				nw_req->npu_req_id, nw_req->cmd, nw_req->ncp_addr.vaddr);
+
+			while(LLQ_PUT(nw_result_q, i) == 0) {
+				/* Wait until the output queue is available */
+				msleep(1);
+			}
+			atomic_set(&mbox_mock_protodrv.nw_used[i], MSG_STATE_DONE);
+			ret++;
+		}
+	}
+
+	if (ret)
+		mbox_mock_protodrv.send_notify_func(NULL);
+
+	return ret;
+}
+
+int mbox_mock_check_work(struct auto_sleep_thread_param* data) {
+	int i;
+	for (i = 0; i < NPU_MAX_MSG_ID_CNT; i++) {
+		if ((atomic_read(&mbox_mock_protodrv.frame_used[i]) == 1)
+		   || (atomic_read(&mbox_mock_protodrv.nw_used[i]) == 1)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void mbox_mock_signal(void) {
+	auto_sleep_thread_signal(&mbox_mock_protodrv.ast);
+}
+
+
+
+/* Setup and teardown for session ref test */
+static void sess_ref_setup(void)
+{
+	reset_session_ref();
+	protodrv_test_session = kmalloc(sizeof(*protodrv_test_session), GFP_KERNEL);
+
+	/* Set convinient reference */
+	test_sess = &protodrv_test_session[0].sess;
+
+	memset(protodrv_test_session, 0, sizeof(*protodrv_test_session));
+}
+
+static void sess_ref_teardown(void)
+{
+	kfree(protodrv_test_session);
+	protodrv_test_session = NULL;
+	test_sess = NULL;
+}
+
+static void sess_ref_setup_reg(void)
+{
+	reset_session_ref();
+	protodrv_test_session = kmalloc(sizeof(*protodrv_test_session), GFP_KERNEL);
+
+	/* Set convinient reference */
+	test_sess = &protodrv_test_session[0].sess;
+
+	memset(protodrv_test_session, 0, sizeof(*protodrv_test_session));
+	register_session_ref(&protodrv_test_session->sess);
+}
+
+static void sess_ref_teardown_reg(void)
+{
+	drop_session_ref(protodrv_test_session->sess.uid);
+	kfree(protodrv_test_session);
+	protodrv_test_session = NULL;
+	test_sess = NULL;
+}
+
+#ifdef MBOX_MOCK_ENABLE
+int setup_for_mbox_mock(void)
+{
+	int ret;
+
+	LLQ_INIT(nw_result_q);
+	LLQ_INIT(frame_result_q);
+
+	/* Replace ops structure with testing ops */
+	npu_protodrv_idiot_mbox_ops_backup = npu_if_protodrv_mbox_ops;	/* Defined in npu-if-protodrv-mbox2.c */
+	npu_if_protodrv_mbox_ops = npu_protodrv_idiot_mbox_ops;
+
+#if 0
+	npu_protodrv_session_if_ops_backup = npu_if_session_protodrv_ops;	/* Defined in npu-if-session-protodrv.c */
+	npu_if_session_protodrv_ops = npu_protodrv_session_if_ops;
+#endif
+
+	/* Initialize and run the mbox mock */
+	ret = auto_sleep_thread_create(&mbox_mock_protodrv.ast, "Mbox mock for protodrv-basic"
+		                       ,mbox_mock_do_task ,mbox_mock_check_work);
+	if(ret) {
+		return -1;
+	}
+
+	ret = auto_sleep_thread_start(&mbox_mock_protodrv.ast, mbox_mock_protodrv.ast_param);
+	if(ret) {
+		return -2;
+	}
+
+	return 0;	
+}
+
+int deinit_for_mbox_mock(void)
+{
+	auto_sleep_thread_terminate(&mbox_mock_protodrv.ast);
+
+	LLQ_DESTROY(nw_result_q);
+	LLQ_DESTROY(frame_result_q);
+
+	/* Restore original ops */
+	npu_if_protodrv_mbox_ops = npu_protodrv_idiot_mbox_ops_backup;
+#if 0
+	npu_if_session_protodrv_ops = npu_protodrv_session_if_ops_backup;
+#endif
+	return 0;
+}
+#endif
+
+/* Setup and teardown for protodrv. Includes session object initialization */
+int setup_with_session(int session_num) {
+	int ret;
+
+	LLQ_INIT(nw_result_q);
+	LLQ_INIT(frame_result_q);
+
+	/* Test session creation */
+	protodrv_test_session = kzalloc(sizeof(*protodrv_test_session) * session_num, GFP_KERNEL);
+
+	/* Set convinient reference */
+	test_sess = &protodrv_test_session[0].sess;
+
+	/* Mbox mock reset */
+	reset_mbox_mock();
+
+	/* Replace ops structure with testing ops */
+	npu_protodrv_idiot_mbox_ops_backup = npu_if_protodrv_mbox_ops;	/* Defined in npu-if-protodrv-mbox2.c */
+	npu_if_protodrv_mbox_ops = npu_protodrv_idiot_mbox_ops;
+
+	npu_protodrv_session_if_ops_backup = npu_if_session_protodrv_ops;	/* Defined in npu-if-session-protodrv.c */
+	npu_if_session_protodrv_ops = npu_protodrv_session_if_ops;
+
+	proto_drv_open(&dummy_device_4_test);
+
+	/* Initialize and run the mbox mock */
+	ret = auto_sleep_thread_create(&mbox_mock_protodrv.ast, "Mbox mock for protodrv-basic"
+		                       ,mbox_mock_do_task ,mbox_mock_check_work);
+	if(ret) {
+		return -1;
+	}
+
+	ret = auto_sleep_thread_start(&mbox_mock_protodrv.ast, mbox_mock_protodrv.ast_param);
+	if(ret) {
+		return -2;
+	}
+
+	return 0;
+}
+
+
+int teardown_with_session(void) {
+	int ret = 0;
+	auto_sleep_thread_terminate(&mbox_mock_protodrv.ast);
+
+	proto_drv_close(&dummy_device_4_test);
+
+	LLQ_DESTROY(nw_result_q);
+	LLQ_DESTROY(frame_result_q);
+
+	/* Destroy test session */
+	kfree(protodrv_test_session);
+	protodrv_test_session = NULL;
+	test_sess = NULL;
+
+	/* Restore original ops */
+	npu_if_protodrv_mbox_ops = npu_protodrv_idiot_mbox_ops_backup;
+	npu_if_session_protodrv_ops = npu_protodrv_session_if_ops_backup;
+
+	return ret;
+}
+
+int setup_basic(void) {
+	return setup_with_session(1);
+}
+
+int teardown_basic(void) {
+	return teardown_with_session();
+}
+
+#endif /* IDIOT_DECL_SECTION */
+
+/*
+ * Check whether the setup and teardown is working
+ */
+TESTDEF(protodrv_01_basic_base,
+
+	IDIOT_ASSERT_EQ(setup_basic(), 0, %d);
+
+	IDIOT_ASSERT_EQ(teardown_basic(), 0, %d);
+)
+
+/*
+ * Put one network request and verify it is processed.
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_02_one_nw_req,
+	struct npu_nw test_nw_input = {
+		.uid		= 4023,
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	test_sess->uid = test_nw_input.uid;
+
+	session_mock_prepare_wait(0);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ(1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ(session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+
+	session_mock_prepare_wait(0);
+	test_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ((1+0), session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ(session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+)
+
+/*
+ * Put one network request and verify it is processed.
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_03_one_nw_req_chk,
+	struct npu_nw golden_nw_input;
+	struct npu_nw test_nw_input = {
+		.uid		= 4023,
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	test_sess->uid = test_nw_input.uid;
+
+	golden_nw_input = test_nw_input;
+
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ(1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ(session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ(check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	session_mock_prepare_wait(0);
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ((1+0), session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ(session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ(check_nw_expectation(), EXPECT_SUCCESS, %d);
+)
+
+/*
+ * Request Q_BUF without stream on
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_04_no_stream_on,
+
+	static const u32 TEST_UID = 4083;
+	struct npu_frame golden_frame;
+	struct npu_frame test_frame = {
+		.uid		= TEST_UID,
+		.frame_id	= 1,
+		.cmd		= NPU_FRAME_CMD_Q,
+		.src_queue	= &protodrv_test_session[0].npu_queue,
+		.input		= (void *)0xAEAEAEAE,
+		.output		= (void *)0x0E0E0E0E,
+		.session	= test_sess,
+	};
+
+	struct npu_nw golden_nw_input;
+	struct npu_nw test_nw_input = {
+		.uid		= TEST_UID,
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	test_sess->uid = TEST_UID;
+
+	/* Prepare golden */
+	golden_nw_input = test_nw_input;
+	golden_frame = test_frame;
+
+	/* Load */
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ_T(LOAD_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(LOAD_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(LOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	/* Q frame, without stream on */
+	session_mock_set_frame_result(0, 0xFFFFFFFF);
+	set_frame_expectation(&golden_frame);
+	npu_buffer_q_put(&test_frame);
+	msleep(1000);
+	/* Shall not be processed */
+	IDIOT_ASSERT_EQ_T(QBUF_RES_NOTYET, session_mock_get_frame_result(0), 0xFFFFFFFF, %lx);
+	IDIOT_ASSERT_EQ_T(QBUF_EXP_NOTYET, check_frame_expectation(), EXPECT_FAILED, %d);
+
+	/* Stream on */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMON;
+	session_mock_prepare_wait(0);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Now the frame shall be processed */
+	IDIOT_ASSERT_EQ_T(QBUF_RES, session_mock_ref(0)->frame_result, BASIC_DO_TASK_RESULT_CODE_NW, %lx);
+
+	/* Stream off */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMOFF;
+	session_mock_prepare_wait(0);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Unload */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ_T(UNLOAD_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(UNLOAD_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(UNLOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+)
+
+/*
+ * Request Q_BUF 1000 times
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(NPU_DD_PD_PERF_01,
+	int i;
+	static const u32 TEST_UID = 4083;
+	static const int REPEAT_CNT = 1000;
+
+	struct npu_frame golden_frame;
+	struct npu_frame test_frame = {
+		.uid		= TEST_UID,
+		.frame_id	= 1,
+		.cmd		= NPU_FRAME_CMD_Q,
+		.src_queue	= &protodrv_test_session[0].npu_queue,
+		.input		= (void *)0xAEAEAEAE,
+		.output		= (void *)0x0E0E0E0E,
+		.session	= test_sess,
+	};
+
+	struct npu_nw golden_nw_input;
+	struct npu_nw test_nw_input = {
+		.uid		= TEST_UID,
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	test_sess->uid = TEST_UID;
+
+	/* Prepare golden */
+	golden_nw_input = test_nw_input;
+	golden_frame = test_frame;
+
+	/* Load */
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ_T(LOAD_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(LOAD_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(LOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	/* Stream on */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMON;
+	session_mock_prepare_wait(0);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result - Stream ON/OFF does not go to mbox, so mbox expectation can not be used */
+	IDIOT_ASSERT_EQ_T(S_ON_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(S_ON_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+
+	/* Q frame */
+	session_mock_ref(0)->frame_done_cnt = 0;
+	for (i = 1; i <= REPEAT_CNT; i++) {
+		test_frame.frame_id = i;
+		npu_buffer_q_put(&test_frame);
+	}
+
+	/* Stream off */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMOFF;
+	session_mock_prepare_wait(0);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(20000);
+
+	/* Should have a result - Stream ON/OFF does not go to mbox, so mbox expectation can not be used */
+	IDIOT_ASSERT_EQ_T(S_OFF_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(S_OFF_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+
+	/* All the frame should be done after STREAMOFF */
+	IDIOT_ASSERT_EQ_T("DONE_CNT", session_mock_ref(0)->frame_done_cnt, REPEAT_CNT, %d);
+
+	/* Unload */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ_T(UNLOAD_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(UNLOAD_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(UNLOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+)
+
+/*
+ * Create 5 sessions and issue load/unload on each session
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(5);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(protodrv_07_5_session_basec,
+	int i;
+	const int BASE_UID = 3927;
+	struct npu_nw golden_nw_input;
+	struct npu_nw test_nw_input = {
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	golden_nw_input = test_nw_input;
+
+	/* Set UID */
+	for(i = 0; i < 5; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < 5; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+
+		session_mock_prepare_wait(i);
+		set_nw_expectation(&golden_nw_input);
+		npu_ncp_mgmt_put(&test_nw_input);
+		msleep(1000);
+
+		/* Should have a result */
+		IDIOT_ASSERT_EQ_T(LOAD_DONE, 1, session_mock_is_done(i), %d);
+		IDIOT_ASSERT_EQ_T(LOAD_RES, session_mock_get_nw_result(i).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+		IDIOT_ASSERT_EQ_T(LOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+	}
+
+	/* We have session reference */
+	IDIOT_ASSERT_EQ_T(CHECK_HAVE_SESSION, is_session_ref_exist(), 1, %d);
+
+	/* Unload, on reverse order */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	for(i = 4; i >= 0; i--) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+
+		session_mock_prepare_wait(i);
+		set_nw_expectation(&golden_nw_input);
+		npu_ncp_mgmt_put(&test_nw_input);
+		msleep(1000);
+
+		/* Should have a result */
+		IDIOT_ASSERT_EQ_T(UNLOAD_DONE, 1, session_mock_is_done(i), %d);
+		IDIOT_ASSERT_EQ_T(UNLOAD_RES, session_mock_get_nw_result(i).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+		IDIOT_ASSERT_EQ_T(UNLOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+	}
+
+	/* No session should be left */
+	IDIOT_ASSERT_EQ_T(CHECK_NO_SESSION, is_session_ref_exist(), 0, %d);
+)
+
+/*
+ * Create 5 sessions and issue load/unload on each session
+ * And call powerdown command
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(5);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(protodrv_08_5_session_power_down,
+	int i;
+	const int BASE_UID = 3927;
+	struct npu_nw golden_nw_input;
+	struct npu_nw test_nw_input = {
+		.cmd		= NPU_NW_CMD_LOAD,
+		.ncp_addr	= {
+			.vaddr = (char *)0x70F329,
+		},
+		.session	= test_sess,
+		.notify_func	= session_mock_save_result,
+	};
+	golden_nw_input = test_nw_input;
+
+	/* Set UID */
+	for(i = 0; i < 5; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < 5; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+
+		session_mock_prepare_wait(i);
+		set_nw_expectation(&golden_nw_input);
+		npu_ncp_mgmt_put(&test_nw_input);
+		msleep(1000);
+
+		/* Should have a result */
+		IDIOT_ASSERT_EQ_T(LOAD_DONE, 1, session_mock_is_done(i), %d);
+		IDIOT_ASSERT_EQ_T(LOAD_RES, session_mock_get_nw_result(i).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+		IDIOT_ASSERT_EQ_T(LOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+	}
+
+	/* We have session reference */
+	IDIOT_ASSERT_EQ_T(CHECK_HAVE_SESSION, is_session_ref_exist(), 1, %d);
+
+	/* Unload, on reverse order */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	for(i = 4; i >= 0; i--) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+
+		session_mock_prepare_wait(i);
+		set_nw_expectation(&golden_nw_input);
+		npu_ncp_mgmt_put(&test_nw_input);
+		msleep(1000);
+
+		/* Should have a result */
+		IDIOT_ASSERT_EQ_T(UNLOAD_DONE, 1, session_mock_is_done(i), %d);
+		IDIOT_ASSERT_EQ_T(UNLOAD_RES, session_mock_get_nw_result(i).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+		IDIOT_ASSERT_EQ_T(UNLOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+	}
+
+	/* No session should be left */
+	IDIOT_ASSERT_EQ_T(CHECK_NO_SESSION, is_session_ref_exist(), 0, %d);
+
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_POWER_DOWN;
+	test_nw_input.session = NULL;
+	test_nw_input.uid = 0;
+	golden_nw_input = test_nw_input;
+
+	session_mock_prepare_wait(0);
+	set_nw_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result */
+	IDIOT_ASSERT_EQ_T(PDOWN_DONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(PDOWN_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(PDOWN_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+)
+
+
+#define DECLARE_PART						\
+	static const u32 TEST_UID = 4083;			\
+	__attribute__((unused)) u32 incr_frame_id = 1;		\
+	struct npu_frame golden_frame;				\
+	struct npu_frame test_frame = {				\
+		.uid		= TEST_UID,			\
+		.frame_id	= 0,				\
+		.cmd		= NPU_FRAME_CMD_Q,		\
+		.src_queue	= &protodrv_test_session[0].npu_queue,	\
+		.input		= (void *)0xAEAEAEAE,		\
+		.output		= (void *)0x0E0E0E0E,		\
+		.session	= test_sess,			\
+	};							\
+								\
+	struct npu_nw golden_nw_input;				\
+	struct npu_nw test_nw_input = {				\
+		.uid		= TEST_UID,			\
+		.cmd		= NPU_NW_CMD_LOAD,		\
+		.ncp_addr	= {				\
+			.vaddr = (char *)0x70F329,		\
+		},						\
+		.session	= test_sess,			\
+		.notify_func	= session_mock_save_result,	\
+	};							\
+	test_sess->uid = TEST_UID;				\
+								\
+	/* Prepare golden */					\
+	golden_nw_input = test_nw_input;			\
+	golden_frame = test_frame;				\
+
+#define LOAD_PART_FOR(IDX)						\
+	/* Load */							\
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_LOAD;	\
+	session_mock_prepare_wait((IDX));				\
+	set_nw_expectation(&golden_nw_input);				\
+	npu_ncp_mgmt_put(&test_nw_input);				\
+	msleep(100);							\
+	/* Should have a result */					\
+	IDIOT_ASSERT_EQ_T(LOAD_DONE, 1, session_mock_is_done((IDX)), %d);		\
+	IDIOT_ASSERT_EQ_T(LOAD_RES, session_mock_get_nw_result((IDX)).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %x);\
+	IDIOT_ASSERT_EQ_T(LOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);	\
+
+#define LOAD_PART	LOAD_PART_FOR(0)
+
+#define ISSUE_STREAM_ON_FOR(IDX)					\
+	/* Stream on */							\
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMON;	\
+	session_mock_prepare_wait((IDX));				\
+	npu_ncp_mgmt_put(&test_nw_input);				\
+	msleep(100);							\
+
+#define CHECK_STREAM_ON_COMPLETED_FOR(IDX)				\
+	/* Should have a result - Stream ON/OFF does not go to mbox, so mbox expectation can not be used */		\
+	IDIOT_ASSERT_EQ_T(S_ON_DONE, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(S_ON_RES, session_mock_get_nw_result((IDX)).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %x);	\
+
+#define CHECK_STREAM_ON_ERR_FOR(IDX, errcode)				\
+	IDIOT_ASSERT_EQ_T(S_ON_DONE_ERR, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(S_ON_RES_ERR, session_mock_get_nw_result((IDX)).result_code, (errcode), %x);			\
+
+#define ISSUE_STREAM_ON			ISSUE_STREAM_ON_FOR(0)
+#define CHECK_STREAM_ON_COMPLETED	CHECK_STREAM_ON_COMPLETED_FOR(0)
+#define CHECK_STREAM_ON_ERR(errcode)	CHECK_STREAM_ON_ERR_FOR(0, errcode)
+
+#define STREAM_ON_PART							\
+	ISSUE_STREAM_ON							\
+	CHECK_STREAM_ON_COMPLETED					\
+
+#define ISSUE_QBUF_FOR_NO_FRAMEID(IDX)					\
+	/* Q frame */							\
+	session_mock_set_frame_result((IDX), 0xFFFFFFFF);		\
+	set_frame_expectation(&golden_frame);				\
+	npu_buffer_q_put(&test_frame);					\
+	msleep(100);							\
+
+#define ISSUE_QBUF_FOR(IDX)						\
+	golden_frame.frame_id = test_frame.frame_id = incr_frame_id++;	\
+	ISSUE_QBUF_FOR_NO_FRAMEID(IDX)					\
+
+#define ISSUE_QBUF_FOR_TIMEDOUT_NO_FRAMEID(IDX)				\
+	set_frame_timeout(&golden_frame);				\
+	ISSUE_QBUF_FOR_NO_FRAMEID(IDX)					\
+
+#define ISSUE_QBUF_FOR_TIMEDOUT(IDX)					\
+	golden_frame.frame_id = test_frame.frame_id = incr_frame_id++;	\
+	ISSUE_QBUF_FOR_TIMEDOUT_NO_FRAMEID(IDX)				\
+
+#define CHECK_QBUF_COMPLETED_FOR(IDX)					\
+	/* Shall be processed */					\
+	IDIOT_ASSERT_EQ_T(QBUF_RES, session_mock_get_frame_result((IDX)), BASIC_DO_TASK_RESULT_CODE_FRAME, %lx);	\
+	IDIOT_ASSERT_EQ_T(QBUF_EXP, check_frame_expectation(), EXPECT_SUCCESS, %d);					\
+
+/* Wait result for timeout_ms */
+#define CHECK_QBUF_WAIT_COMPLETED_FOR(IDX, timeout_ms)				\
+{										\
+	int __repeat = 0;							\
+	while (session_mock_get_frame_result((IDX)) == 0xFFFFFFFF) {		\
+		IDIOT_ASSERT_LE_T(QBUF_W_TIMEOUT, __repeat, (timeout_ms), %d);	\
+		__repeat++;							\
+		msleep(1);							\
+	}									\
+	IDIOT_ASSERT_EQ_T(QBUF_W_RES, session_mock_get_frame_result((IDX)), BASIC_DO_TASK_RESULT_CODE_FRAME, %lx);	\
+	IDIOT_ASSERT_EQ_T(QBUF_W_EXP, check_frame_expectation(), EXPECT_SUCCESS, %d);					\
+}									\
+
+#define CHECK_QBUF_PEND_FOR(IDX)					\
+	/* Shall not be processed yet */				\
+	IDIOT_ASSERT_EQ_T(QBUF_RES_NOTYET, session_mock_get_frame_result((IDX)), 0xFFFFFFFF, %lx);			\
+	IDIOT_ASSERT_EQ_T(QBUF_EXP_NOTYET, peek_frame_expectation(), EXPECT_FAILED, %d);				\
+
+#define EXPECT_QBUF_ERR_WO_HW_FOR(IDX, errcode)				\
+	/* Error with result == errcode, request should not be passed to NPU H/W */					\
+	IDIOT_ASSERT_EQ_T(QBUF_RES_ERR, session_mock_get_frame_result((IDX)), errcode, %lx);				\
+	IDIOT_ASSERT_EQ_T(QBUF_EXP_ERR, check_frame_expectation(), EXPECT_FAILED, %d);					\
+
+#define ISSUE_QBUF			ISSUE_QBUF_FOR(0)
+#define CHECK_QBUF_COMPLETED		CHECK_QBUF_COMPLETED_FOR(0)
+#define CHECK_QBUF_PEND			CHECK_QBUF_PEND_FOR(0)
+#define EXPECT_QBUF_ERR_WO_HW(errcode)	EXPECT_QBUF_ERR_WO_HW_FOR(0, errcode)
+
+#define QBUF_PART							\
+	ISSUE_QBUF							\
+	CHECK_QBUF_COMPLETED						\
+
+#define ISSUE_STREAM_OFF_FOR(IDX)					\
+	/* Stream off */						\
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMOFF;	\
+	session_mock_prepare_wait((IDX));				\
+	set_nw_expectation(&golden_nw_input);				\
+	npu_ncp_mgmt_put(&test_nw_input);				\
+	msleep(100);							\
+
+#define CHECK_STREAM_OFF_COMPLETED_FOR(IDX)				\
+	/* Should have a result - Stream ON/OFF does not go to mbox, so mbox expectation can not be used */		\
+	IDIOT_ASSERT_EQ_T(S_OFF_DONE, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(S_OFF_RES, session_mock_get_nw_result((IDX)).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %x);	\
+	IDIOT_ASSERT_EQ_T(S_OFF_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);					\
+
+#define CHECK_STREAM_OFF_ERR_FOR(IDX, errcode)				\
+	IDIOT_ASSERT_EQ_T(S_OFF_DONE_ERR, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(S_OFF_RES_ERR, session_mock_get_nw_result((IDX)).result_code, (errcode), %x);			\
+	IDIOT_ASSERT_EQ_T(S_OFF_EXP, check_nw_expectation(), EXPECT_FAILED, %d);					\
+
+#define ISSUE_STREAM_OFF		ISSUE_STREAM_OFF_FOR(0)
+#define CHECK_STREAM_OFF_COMPLETED	CHECK_STREAM_OFF_COMPLETED_FOR(0)
+#define CHECK_STREAM_OFF_ERR(errcode)	CHECK_STREAM_OFF_ERR_FOR(0, errcode)
+
+#define STREAM_OFF_PART							\
+	ISSUE_STREAM_OFF						\
+	CHECK_STREAM_OFF_COMPLETED					\
+
+#define ISSUE_UNLOAD_FOR(IDX)						\
+	/* Unload */							\
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;	\
+	session_mock_prepare_wait((IDX));				\
+	set_nw_expectation(&golden_nw_input);				\
+	npu_ncp_mgmt_put(&test_nw_input);				\
+	msleep(100);							\
+
+#define CHECK_UNLOAD_COMPLETED_FOR(IDX)					\
+	/* Should have a result */					\
+	IDIOT_ASSERT_EQ_T(UNLOAD_DONE, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(UNLOAD_RES, session_mock_get_nw_result((IDX)).result_code, BASIC_DO_TASK_RESULT_CODE_NW, %x);	\
+	IDIOT_ASSERT_EQ_T(UNLOAD_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);					\
+
+#define CHECK_UNLOAD_ERR_FOR(IDX, errcode)				\
+	IDIOT_ASSERT_EQ_T(UNLOAD_DONE_ERR, 1, session_mock_is_done((IDX)), %d);						\
+	IDIOT_ASSERT_EQ_T(UNLOAD_RES_ERR, session_mock_get_nw_result((IDX)).result_code, errcode, %x);			\
+	IDIOT_ASSERT_EQ_T(UNLOAD_EXP_ERR, check_nw_expectation(), EXPECT_FAILED, %d);					\
+
+#define ISSUE_UNLOAD			ISSUE_UNLOAD_FOR(0)
+#define CHECK_UNLOAD_COMPLETED		CHECK_UNLOAD_COMPLETED_FOR(0)
+#define CHECK_UNLOAD_ERR(errcode)	CHECK_UNLOAD_ERR_FOR(0, errcode)
+
+#define UNLOAD_PART							\
+	ISSUE_UNLOAD							\
+	CHECK_UNLOAD_COMPLETED						\
+
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(NPU_DD_PD_FUNC_01,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_02,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	QBUF_PART
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_03,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_04,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	STREAM_OFF_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_05,
+	DECLARE_PART
+	LOAD_PART
+
+	/* Qbuf before stream on - should not be processed now */
+	ISSUE_QBUF
+	CHECK_QBUF_PEND
+
+	STREAM_ON_PART
+
+	/* Now the frame shall be processed */
+	CHECK_QBUF_COMPLETED
+
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_06,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+
+	/* Qbuf after stream off - should not be processed now */
+	ISSUE_QBUF
+	CHECK_QBUF_PEND
+
+	STREAM_ON_PART
+
+	/* Now the frame shall be processed */
+	CHECK_QBUF_COMPLETED
+
+	STREAM_OFF_PART
+
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_FUNC_07,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+
+	/* Skip notification for UNLOAD */
+	test_nw_input.notify_func = NULL;
+	ISSUE_UNLOAD
+
+	/* Expection should be matched, but should not notified to Session */
+	IDIOT_ASSERT_EQ_T(UNLOAD_SKIP_DONE, 0, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(UNLOAD_SKIP_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);					\
+)
+
+
+TESTDEF(NPU_DD_PD_NPUE_01,
+	DECLARE_PART
+
+	/* Load */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_LOAD;
+	session_mock_prepare_wait((0));
+	set_nw_ndone_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(100);
+	/* Should have a result - NDONE */
+	IDIOT_ASSERT_EQ_T(LOAD_NDONE, 1, session_mock_is_done((0)), %d);
+	IDIOT_ASSERT_EQ_T(LOAD_NDONE_RES, session_mock_get_nw_result((0)).result_code, BASIC_DO_TASK_NDONE_CODE_NW, %x);
+	IDIOT_ASSERT_EQ_T(LOAD_NDONE_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_NPUE_02,
+	DECLARE_PART
+
+	LOAD_PART
+	STREAM_ON_PART
+
+	/* Qbuf with NDONE */
+	golden_frame.frame_id = test_frame.frame_id = incr_frame_id++;
+	session_mock_set_frame_result((0), 0xFFFFFFFF);
+	set_frame_ndone_expectation(&golden_frame);
+	npu_buffer_q_put(&test_frame);
+	msleep(100);
+
+	/* Should have a result - NDONE */
+	IDIOT_ASSERT_EQ_T(QBUF_NDONE_RES, session_mock_get_frame_result((0)), BASIC_DO_TASK_NDONE_CODE_FRAME, %lx);
+	IDIOT_ASSERT_EQ_T(QBUF_NDONE_EXP, check_frame_expectation(), EXPECT_SUCCESS, %d);
+
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+#ifndef BYPASS_HW_STREAMOFF
+TESTDEF(NPU_DD_PD_NPUE_03,
+	DECLARE_PART
+
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+
+	/* Stream off with NDONE */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_STREAMOFF;
+	session_mock_prepare_wait((0));
+	set_nw_ndone_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(100);
+	/* Should have a result - NDONE */
+	IDIOT_ASSERT_EQ_T(S_OFF_NDONE, 1, session_mock_is_done((0)), %d);
+	IDIOT_ASSERT_EQ_T(S_OFF_NDONE_RES, session_mock_get_nw_result((0)).result_code, BASIC_DO_TASK_NDONE_CODE_NW, %x);
+	IDIOT_ASSERT_EQ_T(S_OFF_NDONE_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+#endif
+
+TESTDEF(NPU_DD_PD_NPUE_04,
+	DECLARE_PART
+
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+
+	/* Unload with NDONE */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_UNLOAD;
+	session_mock_prepare_wait((0));
+	set_nw_ndone_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(100);
+	/* Should have a result - NDONE */
+	IDIOT_ASSERT_EQ_T(UNLOAD_NDONE, 1, session_mock_is_done((0)), %d);
+	IDIOT_ASSERT_EQ_T(UNLOAD_NDONE_RES, session_mock_get_nw_result((0)).result_code, BASIC_DO_TASK_NDONE_CODE_NW, %x);
+	IDIOT_ASSERT_EQ_T(UNLOAD_NDONE_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_NPUE_05,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+	QBUF_PART
+	STREAM_OFF_PART
+	UNLOAD_PART
+
+	/* Power down with NDONE */
+	test_nw_input.cmd = golden_nw_input.cmd = NPU_NW_CMD_POWER_DOWN;
+	test_nw_input.session = NULL;
+	test_nw_input.uid = 0;
+	golden_nw_input = test_nw_input;
+
+	session_mock_prepare_wait(0);
+	set_nw_ndone_expectation(&golden_nw_input);
+	npu_ncp_mgmt_put(&test_nw_input);
+	msleep(1000);
+
+	/* Should have a result - NDONE */
+	IDIOT_ASSERT_EQ_T(PDOWN_NDONE, 1, session_mock_is_done(0), %d);
+	IDIOT_ASSERT_EQ_T(PDOWN_NDONE_RES, session_mock_get_nw_result(0).result_code, BASIC_DO_TASK_NDONE_CODE_NW, %u);
+	IDIOT_ASSERT_EQ_T(PDOWN_NDONE_EXP, check_nw_expectation(), EXPECT_SUCCESS, %d);
+)
+
+
+/*
+ * Create 5 sessions and issue 100 processing for each session
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(5);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(NPU_DD_PD_PERF_02,
+	int i, r;
+	const int BASE_UID = 3927;
+	const int req_cnt = 100;
+	const int sess_cnt = 5;
+
+	DECLARE_PART;
+
+	/* Set UID */
+	for(i = 0; i < sess_cnt; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		LOAD_PART_FOR(i);
+	}
+
+	/* Do stream on */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_ON_FOR(i);
+		CHECK_STREAM_ON_COMPLETED_FOR(i);
+	}
+
+	for(r = 0; r < req_cnt; r++) {
+		/* QBUF to each session and check result */
+		for(i = 0; i < sess_cnt; i++) {
+			test_frame.session = &protodrv_test_session[i].sess;
+			test_frame.uid = protodrv_test_session[i].sess.uid;
+			test_frame.src_queue = &protodrv_test_session[i].npu_queue;
+			test_frame.frame_id = r;
+			golden_frame = test_frame;
+			ISSUE_QBUF_FOR_NO_FRAMEID(i);
+			CHECK_QBUF_WAIT_COMPLETED_FOR(i, 100);
+		}
+	}
+
+	/* Do stream off */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_OFF_FOR(i);
+		CHECK_STREAM_OFF_COMPLETED_FOR(i);
+	}
+
+	/* Check processed count */
+	for(i = 0; i < sess_cnt; i++) {
+		IDIOT_ASSERT_EQ_T("DONE_CNT", session_mock_ref(i)->frame_done_cnt, req_cnt, %d);
+	}
+
+	/* Do unload */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_UNLOAD_FOR(i);
+		CHECK_UNLOAD_COMPLETED_FOR(i);
+	}
+)
+
+/*
+ * Create 100 sessions and issue 10 processing for each session
+ * (Exact same test with NPU_DD_PD_PERF_02, except req_cnt and sess_cnt)
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(100);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(NPU_DD_PD_PERF_03,
+	int i, r;
+	const int BASE_UID = 3927;
+	const int req_cnt = 10;
+	const int sess_cnt = 100;
+
+	DECLARE_PART;
+
+	/* Set UID */
+	for(i = 0; i < sess_cnt; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		LOAD_PART_FOR(i);
+	}
+
+	/* Do stream on */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_ON_FOR(i);
+		CHECK_STREAM_ON_COMPLETED_FOR(i);
+	}
+
+	for(r = 0; r < req_cnt; r++) {
+		/* QBUF to each session and check result */
+		for(i = 0; i < sess_cnt; i++) {
+			test_frame.session = &protodrv_test_session[i].sess;
+			test_frame.uid = protodrv_test_session[i].sess.uid;
+			test_frame.src_queue = &protodrv_test_session[i].npu_queue;
+			test_frame.frame_id = r;
+			golden_frame = test_frame;
+			ISSUE_QBUF_FOR_NO_FRAMEID(i);
+			CHECK_QBUF_WAIT_COMPLETED_FOR(i, 100);
+		}
+	}
+
+	/* Do stream off */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_OFF_FOR(i);
+		CHECK_STREAM_OFF_COMPLETED_FOR(i);
+	}
+
+	/* Check processed count */
+	for(i = 0; i < sess_cnt; i++) {
+		IDIOT_ASSERT_EQ_T("DONE_CNT", session_mock_ref(i)->frame_done_cnt, req_cnt, %d);
+	}
+
+	/* Do unload */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_UNLOAD_FOR(i);
+		CHECK_UNLOAD_COMPLETED_FOR(i);
+	}
+)
+
+TESTDEF(NPU_DD_PD_EXCP_01,
+	DECLARE_PART
+	// Specify invalid session
+	golden_nw_input.session = test_nw_input.session = NULL;
+
+	ISSUE_STREAM_ON
+	CHECK_STREAM_ON_ERR(NPU_ERR_DRIVER(NPU_ERR_INVALID_UID))
+)
+
+TESTDEF(NPU_DD_PD_EXCP_02,
+	DECLARE_PART
+	// Specify invalid session
+	golden_nw_input.session = test_nw_input.session = NULL;
+
+	ISSUE_STREAM_OFF
+	CHECK_STREAM_OFF_ERR(NPU_ERR_DRIVER(NPU_ERR_INVALID_UID))
+)
+
+TESTDEF(NPU_DD_PD_EXCP_03,
+	DECLARE_PART
+	// Specify invalid session
+	golden_frame.session = test_frame.session = NULL;
+
+	ISSUE_QBUF
+	EXPECT_QBUF_ERR_WO_HW(NPU_ERR_DRIVER(NPU_ERR_INVALID_UID))
+)
+
+TESTDEF(NPU_DD_PD_EXCP_04,
+	DECLARE_PART
+	// Specify invalid session
+	golden_nw_input.session = test_nw_input.session = NULL;
+
+	ISSUE_UNLOAD
+	CHECK_UNLOAD_ERR(NPU_ERR_DRIVER(NPU_ERR_INVALID_UID))
+)
+
+TESTDEF(NPU_DD_PD_EXCP_05,
+	DECLARE_PART
+	LOAD_PART
+
+	ISSUE_STREAM_OFF
+	CHECK_STREAM_OFF_ERR(NPU_ERR_DRIVER(NPU_ERR_INVALID_STATE))
+
+	UNLOAD_PART
+)
+
+TESTDEF(NPU_DD_PD_EXCP_06,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+
+	ISSUE_QBUF_FOR_TIMEDOUT(0)
+
+	msleep(30 * 1000);
+	IDIOT_ASSERT_EQ_T(QBUF_RES_ERR,
+		session_mock_get_frame_result((0)),
+		NPU_CRITICAL_DRIVER(NPU_ERR_NPU_TIMEOUT), %lx);
+
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(5);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(NPU_DD_PD_EXCP_07,
+	int i, r;
+	const int BASE_UID = 1022;
+	const int req_cnt = 100;
+	const int sess_cnt = 5;
+
+	const u32 timeout_sess_id = 2;
+	const u32 timeout_frame_id = req_cnt/2;
+
+	DECLARE_PART;
+
+	/* Set UID */
+	for(i = 0; i < sess_cnt; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		LOAD_PART_FOR(i);
+	}
+
+	/* Do stream on */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_ON_FOR(i);
+		CHECK_STREAM_ON_COMPLETED_FOR(i);
+	}
+
+	for(r = 0; r < req_cnt; r++) {
+		/* QBUF to each session and check result */
+		for(i = 0; i < sess_cnt; i++) {
+			test_frame.session = &protodrv_test_session[i].sess;
+			test_frame.uid = protodrv_test_session[i].sess.uid;
+			test_frame.src_queue = &protodrv_test_session[i].npu_queue;
+			test_frame.frame_id = r;
+			golden_frame = test_frame;
+			if (test_frame.frame_id == timeout_frame_id && i == timeout_sess_id) {
+				npu_dbg("Timeout request queued.\n");
+				ISSUE_QBUF_FOR_TIMEDOUT_NO_FRAMEID(i);
+			} else {
+				ISSUE_QBUF_FOR_NO_FRAMEID(i);
+			}
+		}
+	}
+
+	/* Do stream off */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_OFF_FOR(i);
+		CHECK_STREAM_OFF_COMPLETED_FOR(i);
+	}
+
+	/* Check processed count */
+	for(i = 0; i < sess_cnt; i++) {
+		IDIOT_ASSERT_EQ_T("DONE_CNT", session_mock_ref(i)->frame_done_cnt, req_cnt, %d);
+	}
+
+	/* Do unload */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_UNLOAD_FOR(i);
+		CHECK_UNLOAD_COMPLETED_FOR(i);
+	}
+)
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_with_session(100);
+#define TEARDOWN_CODE	teardown_with_session();
+TESTDEF(NPU_DD_PD_EXCP_08,
+	int i, r;
+	const int BASE_UID = 2138;
+	const int req_cnt = 10;
+	const int sess_cnt = 100;
+
+	const u32 timeout_sess_id = 64;
+	const u32 timeout_frame_id = req_cnt/2;
+
+	DECLARE_PART;
+
+	/* Set UID */
+	for(i = 0; i < sess_cnt; i++) {
+		protodrv_test_session[i].sess.uid = BASE_UID + i;
+	}
+
+	/* Put 5 load command */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		LOAD_PART_FOR(i);
+	}
+
+	/* Do stream on */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_ON_FOR(i);
+		CHECK_STREAM_ON_COMPLETED_FOR(i);
+	}
+
+	for(r = 0; r < req_cnt; r++) {
+		/* QBUF to each session and check result */
+		for(i = 0; i < sess_cnt; i++) {
+			test_frame.session = &protodrv_test_session[i].sess;
+			test_frame.uid = protodrv_test_session[i].sess.uid;
+			test_frame.src_queue = &protodrv_test_session[i].npu_queue;
+			test_frame.frame_id = r;
+			golden_frame = test_frame;
+			if (test_frame.frame_id == timeout_frame_id && i == timeout_sess_id) {
+				npu_dbg("Timeout request queued.\n");
+				ISSUE_QBUF_FOR_TIMEDOUT_NO_FRAMEID(i);
+			} else {
+				ISSUE_QBUF_FOR_NO_FRAMEID(i);
+			}
+		}
+	}
+
+	/* Do stream off */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_STREAM_OFF_FOR(i);
+		CHECK_STREAM_OFF_COMPLETED_FOR(i);
+	}
+
+	/* Check processed count */
+	for(i = 0; i < sess_cnt; i++) {
+		IDIOT_ASSERT_EQ_T("DONE_CNT", session_mock_ref(i)->frame_done_cnt, req_cnt, %d);
+	}
+
+	/* Do unload */
+	for(i = 0; i < sess_cnt; i++) {
+		test_nw_input.session = &protodrv_test_session[i].sess;
+		test_nw_input.uid = protodrv_test_session[i].sess.uid;
+		golden_nw_input = test_nw_input;
+		ISSUE_UNLOAD_FOR(i);
+		CHECK_UNLOAD_COMPLETED_FOR(i);
+	}
+)
+
+TESTDEF(NPU_DD_PD_EXCP_09,
+	DECLARE_PART
+	LOAD_PART
+	STREAM_ON_PART
+
+	/* Unload without stream off */
+	ISSUE_UNLOAD
+	CHECK_UNLOAD_ERR(NPU_ERR_DRIVER(NPU_ERR_INVALID_STATE))
+
+	STREAM_OFF_PART
+	UNLOAD_PART
+)
+
+#if 0
+/*
+ * Put five network request and verify it is processed in order.
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_03_multi_nw_req,
+
+	int ret;
+	int i;
+	const int REPEAT_CNT = 5;
+	const u32 FRAME_ID_BASE = 4823;
+
+	struct npu_nw test_nw_input = {
+		.uid	= 4023,
+		.frame_id	= 0,
+		.cmd	= 9,
+		.ncp_addr	= (char *)0x70F329,
+		.notify_func	= session_mock_save_result,
+	};
+
+	struct npu_nw test_nw_output;
+
+	/* Post request, with increasing frame_id */
+	for(i = 0; i < REPEAT_CNT; i++) {
+		test_nw_input.frame_id = FRAME_ID_BASE + i;
+		npu_ncp_mgmt_put(&test_nw_input);
+	}
+	msleep(1000);
+
+	/* Get result */
+	for(i = 0; i < REPEAT_CNT; i++) {
+		memset(&test_nw_output, 0, sizeof(test_nw_output));
+		result = get_result();
+
+		/* Should have a result */
+		IDIOT_ASSERT_NEQ(ret, 0, %d);
+
+		/* Check its frame_id is increasing order */
+		IDIOT_ASSERT_EQ(test_nw_output.frame_id,  FRAME_ID_BASE + i, %u);
+
+		/* Other fields shoud be same */
+		IDIOT_ASSERT_EQ(test_nw_output.uid, test_nw_input.uid, %u);
+		IDIOT_ASSERT_EQ(test_nw_output.cmd, test_nw_input.cmd, %u);
+		IDIOT_ASSERT_EQ(test_nw_output.ncp_addr, test_nw_input.ncp_addr, %p);
+		IDIOT_ASSERT_EQ(test_nw_output.result_code, BASIC_DO_TASK_RESULT_CODE_NW, %d);
+	}
+
+	/* Should not have result anymore */
+	ret = LLQ_GET(nw_result_q, &test_nw_output);
+	IDIOT_ASSERT_EQ(ret, 0, %d);
+)
+
+/*
+ * Put 1024 network request over 3 different uid and verify it is processed in order.
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_04_1_1k_nw_req,
+
+	int ret;
+	int i;
+	const u32 FRAME_ID_BASE = 9987;
+	const int UID_BASE = 1000;
+	u32 uid_sel;
+
+	struct npu_nw test_nw_input = {
+		.cmd		= 128,
+		.ncp_addr	= (char *)0x70F329,
+		.notify_func	= session_mock_save_result,
+	};
+	struct npu_nw test_nw_output;
+	for(i = 0; i < PROTODRV_04_UID_CNT; ++i) {
+		uids[i] = UID_BASE+i;
+	}
+
+	/* Post request, with increasing frame_id. Use random uid and store it */
+	for(i = 0; i < PROTODRV_04_REPEAT_CNT; ++i) {
+		get_random_bytes(&uid_sel, sizeof(uid_sel));	/* Random# gen. */
+		uid_sel %= PROTODRV_04_UID_CNT;
+		idxes[i] = test_nw_input.uid = uids[uid_sel];
+		test_nw_input.frame_id = FRAME_ID_BASE + i;
+		while(LLQ_PUT(nw_req_q, test_nw_input) == 0) {
+			msleep(1);
+		}
+	}
+	msleep(1000);
+
+	/* Get result */
+	for(i = 0; i < PROTODRV_04_REPEAT_CNT; ++i) {
+		memset(&test_nw_output, 0, sizeof(test_nw_output));
+		while(LLQ_GET(nw_result_q, &test_nw_output) == 0) {
+			msleep(1);
+		}
+
+		/* Check its frame_id is increasing order */
+		IDIOT_ASSERT_EQ(test_nw_output.frame_id,  FRAME_ID_BASE + i, %u);
+		IDIOT_ASSERT_EQ(test_nw_output.uid, idxes[i], %u);
+
+		/* Other fields shoud be same */
+		IDIOT_ASSERT_EQ(test_nw_output.cmd, test_nw_input.cmd, %u);
+		IDIOT_ASSERT_EQ(test_nw_output.ncp_addr, test_nw_input.ncp_addr, %p);
+		IDIOT_ASSERT_EQ(test_nw_output.result_code, BASIC_DO_TASK_RESULT_CODE_NW, %d);
+	}
+
+	/* Should not have result anymore */
+	ret = LLQ_GET(nw_result_q, &test_nw_output);
+	IDIOT_ASSERT_EQ(ret, 0, %d);
+)
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_04_2_1k_npu_q_req,
+
+	int ret;
+	int i;
+	const u32 FRAME_ID_BASE = 9980;
+	const int UID_BASE = 3000;
+	u32 uid_sel;
+
+	struct npu_frame test_frame_input = {
+		.cmd		= 9,
+		.priority	= 64,
+		.input		= (struct vb_container_list*)0xFFFF0924,
+		.output		= (struct vb_container_list*)0xFFFF2428,
+	};
+	struct npu_frame test_frame_output;
+	for(i = 0; i < PROTODRV_04_UID_CNT; ++i) {
+		uids[i] = UID_BASE+i;
+	}
+
+	/* Post request, with increasing frame_id. Use random uid and store it */
+	for(i = 0; i < PROTODRV_04_REPEAT_CNT; ++i) {
+		get_random_bytes(&uid_sel, sizeof(uid_sel));	/* Random# gen. */
+		uid_sel %= PROTODRV_04_UID_CNT;
+		idxes[i] = test_frame_input.uid = uids[uid_sel];
+		test_frame_input.frame_id = FRAME_ID_BASE + i;
+		while(LLQ_PUT(frame_req_q, test_frame_input) == 0) {
+			msleep(1);
+		}
+	}
+	msleep(1000);
+
+	/* Get result */
+	for(i = 0; i < PROTODRV_04_REPEAT_CNT; ++i) {
+		memset(&test_frame_output, 0, sizeof(test_frame_output));
+		while(LLQ_GET(frame_result_q, &test_frame_output) == 0) {
+			msleep(1);
+		}
+
+		/* Check its frame_id is increasing order */
+		IDIOT_ASSERT_EQ(test_frame_output.frame_id,  FRAME_ID_BASE + i, %u);
+		IDIOT_ASSERT_EQ(test_frame_output.uid, idxes[i], %u);
+
+		/* Other fields shoud be same */
+		IDIOT_ASSERT_EQ(test_frame_output.cmd, test_frame_input.cmd, %u);
+		IDIOT_ASSERT_EQ(test_frame_output.input, test_frame_input.input, %p);
+		IDIOT_ASSERT_EQ(test_frame_output.output, test_frame_input.output, %p);
+		IDIOT_ASSERT_EQ(test_frame_output.result_code, BASIC_DO_TASK_RESULT_CODE_FRAME, %d);
+	}
+
+	/* Should not have result anymore */
+	ret = LLQ_GET(frame_result_q, &test_frame_output);
+	IDIOT_ASSERT_EQ(ret, 0, %d);
+)
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+TESTDEF(protodrv_05_frame_timeout_basic,
+
+	struct npu_frame test_frame_output;
+
+	struct npu_frame test_frame_input_timeout = {
+		.cmd		= 9,
+		.frame_id	= BASIC_DO_TASK_KEEP_FRAME_ID,
+		.input		= (struct vb_container_list*)0xFFFF0924,
+		.output		= (struct vb_container_list*)0xFFFF2428,
+	};
+
+	struct npu_frame test_frame_input_resume = {
+		.cmd		= 4029,
+		.frame_id	= BASIC_DO_TASK_RESUME_FRAME_ID,
+		.input		= (struct vb_container_list*)0xAAAA0924,
+		.output		= (struct vb_container_list*)0xAAAA2428,
+	};
+
+	/* Put the frame which causes timeout */
+	IDIOT_ASSERT_NEQ(LLQ_PUT(frame_req_q, test_frame_input_timeout), 0, %d);
+	msleep(500);
+
+	/* Should not be returned at this time */
+	IDIOT_ASSERT_EQ(LLQ_GET(frame_result_q, &test_frame_output), 0, %d);
+
+	/* Wait until timeout happened */
+	msleep(10000);
+
+	/* Got timeout frame, with proper error code */
+	IDIOT_ASSERT_NEQ(LLQ_GET(frame_result_q, &test_frame_output), 0, %d);
+	IDIOT_ASSERT_EQ(test_frame_output.input, test_frame_input_timeout.input, %p);
+	IDIOT_ASSERT_EQ(test_frame_output.output, test_frame_input_timeout.output, %p);
+	IDIOT_ASSERT_EQ(test_frame_output.result_code, NPU_ERR_DRIVER(NPU_ERR_NPU_TIMEOUT), %d);
+
+	/* Putting a resume frame -> It makes the mbox mock return result for
+	   timeout frame - but it should be ignored. */
+	IDIOT_ASSERT_NEQ(LLQ_PUT(frame_req_q, test_frame_input_resume), 0, %d);
+	msleep(500);
+
+	/* Got the resume frame first */
+	IDIOT_ASSERT_NEQ(LLQ_GET(frame_result_q, &test_frame_output), 0, %d);
+	IDIOT_ASSERT_EQ(test_frame_output.input, test_frame_input_resume.input, %p);
+	IDIOT_ASSERT_EQ(test_frame_output.output, test_frame_input_resume.output, %p);
+	IDIOT_ASSERT_EQ(test_frame_output.result_code, BASIC_DO_TASK_RESULT_CODE_FRAME, %d);
+	msleep(500);
+
+	/* Should not have result anymore */
+	IDIOT_ASSERT_EQ(LLQ_GET(frame_result_q, &test_frame_output), 0, %d);
+)
+
+/* Keep old state and set the state to known value
+   -> Accessing of npu_proto_drv.state directly is not permitted,
+      but allowed here for testing, as an exception case.
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	int oldval = atomic_read(&npu_proto_drv.state);
+#define TEARDOWN_CODE	atomic_set(&npu_proto_drv.state, oldval);
+TESTDEF(protodrv_06_state_check,
+	int from, to;
+	int ret1, ret2, ret3;
+
+	for(from = 0; from < PROTO_DRV_STATE_INVALID; ++from) {
+		atomic_set(&npu_proto_drv.state, from);
+		/* Check state test macro */
+		ret1 = EXPECT_STATE(from);
+		IDIOT_ASSERT_EQ(ret1, 1, %d);
+
+		for(to = 0; to < PROTO_DRV_STATE_INVALID; ++to) {
+			if(from != to) {
+				ret2 = EXPECT_STATE(to);
+				IDIOT_ASSERT_EQ(ret2, 0, %d);
+			}
+			/* Test transition, based on the table */
+			ret3 = IS_TRANSITABLE(to);
+			if(proto_drv_thread_state_transition[from][to]) {
+				IDIOT_ASSERT_EQ(ret3, 1, %d);
+			} else {
+				IDIOT_ASSERT_EQ(ret3, 0, %d);
+			}
+		}
+	}
+)
+#endif
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	sess_ref_setup();
+#define TEARDOWN_CODE	sess_ref_teardown();
+TESTDEF(protodrv_sess_ref_register_and_drop,
+	struct proto_req_frame frame = {
+		.frame = {
+			.session = test_sess,
+			.uid = test_sess->uid,
+		}
+	};
+	struct session_ref_entry* sess_entry;
+
+	IDIOT_ASSERT_EQ(register_session_ref(test_sess), 0, %d);
+	sess_entry = find_session_ref_frame(&frame);
+	IDIOT_ASSERT_EQ(sess_entry->session, test_sess, %p);
+	IDIOT_ASSERT_EQ(drop_session_ref(test_sess->uid), 0, %d);
+	IDIOT_ASSERT_EQ(find_session_ref_frame(&frame), NULL, %p);
+)
+
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	sess_ref_setup_reg();
+#define TEARDOWN_CODE	sess_ref_teardown_reg();
+TESTDEF(protodrv_sess_ref_is_last,
+	struct proto_req_frame frame = {
+		.frame = {
+			.session = test_sess,
+			.uid = test_sess->uid,
+		}
+	};
+	struct proto_req_nw nw_1 = {
+		.nw = {
+			.session = test_sess,
+			.uid = test_sess->uid,
+		}
+	};
+	struct proto_req_nw nw_2 = {
+		.nw = {
+			.session = test_sess,
+			.uid = test_sess->uid,
+		}
+	};
+
+	/* Link nw_1 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_1), OK, %d);
+	/* nw_1 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), LAST, %d);
+	/* Link frame and unlink nw_1 */
+	IDIOT_ASSERT_EQ(link_session_frame(&frame), OK, %d);
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_1), OK, %d);
+
+	/* nw_1 is not the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), NOT_LAST, %d);
+
+	/* Link nw_2 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_2), OK, %d);
+
+	/* nw_2 is not the last (Frame is linked) */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+
+	/* unlink frame */
+	IDIOT_ASSERT_EQ(unlink_session_frame(&frame), OK, %d);
+
+	/* now the nw_2 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), LAST, %d);
+
+	/* Unlink nw_2 */
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_2), OK, %d);
+
+	/* nw_2 is not the last because its not valid */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+)
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	\
+	struct npu_session* sess_array = NULL;				\
+	static const int SESS_CNT = SESS_REF_HASH_TABLE_SIZE + 4;	\
+	reset_session_ref();						\
+	sess_array = vmalloc(sizeof(*sess_array) * SESS_CNT);		\
+
+#define TEARDOWN_CODE	if(sess_array)	vfree(sess_array);
+
+TESTDEF(protodrv_sess_ref_sess_full_incr,
+	struct session_ref_entry* sess_entry;
+	struct proto_req_frame frame;
+	int i;
+
+	/* Create many sessions, with increasing uid */
+	IDIOT_ASSERT_NEQ(sess_array, NULL, %p);
+	for (i = 0; i < SESS_CNT; i++) {
+		sess_array[i].uid = i;
+		IDIOT_ASSERT_EQ(register_session_ref(&sess_array[i]), OK, %d);
+	}
+
+	/* Check whether the last session can be found */
+	memset(&frame, 0, sizeof(frame));
+	frame.frame.session = &sess_array[SESS_CNT - 1];
+	frame.frame.uid = frame.frame.session->uid;
+
+	sess_entry = find_session_ref_frame(&frame);
+	IDIOT_ASSERT_NEQ(sess_entry, NULL, %p);
+
+	/* Remove all session, in ascending order */
+	for (i = 0; i < SESS_CNT; i++) {
+		IDIOT_ASSERT_EQ(drop_session_ref(sess_array[i].uid), OK, %d);
+	}
+)
+
+TESTDEF(protodrv_sess_ref_sess_full_coll,
+	struct session_ref_entry* sess_entry;
+	struct proto_req_frame frame;
+	int i;
+	u32 uid = 0;
+
+	/* Create many sessions, with intended collision when determining uid */
+	IDIOT_ASSERT_NEQ(sess_array, NULL, %p);
+	for (i = 0; i < SESS_CNT; i++) {
+		uid += SESS_REF_HASH_MAGIC;
+		sess_array[i].uid = uid;
+		IDIOT_ASSERT_EQ(register_session_ref(&sess_array[i]), OK, %d);
+	}
+
+	/* Check whether the last session can be found */
+	memset(&frame, 0, sizeof(frame));
+	frame.frame.session = &sess_array[SESS_CNT - 1];
+	frame.frame.uid = frame.frame.session->uid;
+
+	sess_entry = find_session_ref_frame(&frame);
+	IDIOT_ASSERT_NEQ(sess_entry, NULL, %p);
+
+	/* Remove all session, in decending order */
+	for (i = SESS_CNT - 1; i >= 0; i--) {
+		IDIOT_ASSERT_EQ(drop_session_ref(sess_array[i].uid), OK, %d);
+	}
+)
+
+TESTDEF(protodrv_sess_ref_is_last_many_sess,
+	struct proto_req_frame frame;
+	struct proto_req_nw nw_1, nw_2;
+	int i;
+
+	/* Create many sessions, with increasing uid */
+	IDIOT_ASSERT_NEQ(sess_array, NULL, %p);
+	for (i = 0; i < SESS_CNT; i++) {
+		sess_array[i].uid = i;
+		IDIOT_ASSERT_EQ(register_session_ref(&sess_array[i]), OK, %d);
+	}
+	memset(&frame, 0, sizeof(frame));
+	memset(&nw_1, 0, sizeof(nw_1));
+	memset(&nw_2, 0, sizeof(nw_2));
+
+	frame.frame.session = &sess_array[SESS_CNT - 1];
+	frame.frame.uid = frame.frame.session->uid;
+
+	nw_1.nw.session = &sess_array[SESS_CNT - 1];
+	nw_1.nw.uid = nw_1.nw.session->uid;
+
+	nw_2.nw.session = &sess_array[SESS_CNT - 1];
+	nw_2.nw.uid = nw_2.nw.session->uid;
+
+	/* Link nw_1 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_1), OK, %d);
+	/* nw_1 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), LAST, %d);
+	/* Link frame and unlink nw_1 */
+	IDIOT_ASSERT_EQ(link_session_frame(&frame), OK, %d);
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_1), OK, %d);
+
+	/* nw_1 is not the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), NOT_LAST, %d);
+
+	/* Link nw_2 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_2), OK, %d);
+
+	/* nw_2 is not the last (Frame is linked) */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+
+	/* unlink frame */
+	IDIOT_ASSERT_EQ(unlink_session_frame(&frame), OK, %d);
+
+	/* now the nw_2 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), LAST, %d);
+
+	/* Unlink nw_2 */
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_2), OK, %d);
+
+	/* nw_2 is not the last because its not valid */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+)
+
+TESTDEF(protodrv_sess_ref_dupl_reg,
+	struct proto_req_nw nw_1;
+	int i;
+
+	/* Create many sessions, with increasing uid */
+	IDIOT_ASSERT_NEQ(sess_array, NULL, %p);
+	for (i = 0; i < SESS_CNT; i++) {
+		sess_array[i].uid = i;
+		IDIOT_ASSERT_EQ(register_session_ref(&sess_array[i]), OK, %d);
+	}
+	memset(&nw_1, 0, sizeof(nw_1));
+	nw_1.nw.session = &sess_array[SESS_CNT - 1];
+	nw_1.nw.uid = nw_1.nw.session->uid;
+
+	/* Link nw_1 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_1), OK, %d);
+	/* nw_1 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), LAST, %d);
+
+	/* Link nw_1 Again -> Fault */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_1), -EFAULT, %d);
+
+	/* Unlink nw_1 */
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_1), OK, %d);
+
+	/* No nw_1 left */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), NOT_LAST, %d);
+)
+
+TESTDEF(protodrv_sess_ref_is_last_2_nw,
+	struct proto_req_frame frame;
+	struct proto_req_nw nw_1, nw_2;
+	struct proto_req_nw nw_A, nw_B;
+	int i;
+
+	/* Create many sessions, with increasing uid */
+	IDIOT_ASSERT_NEQ(sess_array, NULL, %p);
+	for (i = 0; i < SESS_CNT; i++) {
+		sess_array[i].uid = i;
+		IDIOT_ASSERT_EQ(register_session_ref(&sess_array[i]), OK, %d);
+	}
+	memset(&frame, 0, sizeof(frame));
+	memset(&nw_1, 0, sizeof(nw_1));
+	memset(&nw_2, 0, sizeof(nw_2));
+	memset(&nw_A, 0, sizeof(nw_A));
+	memset(&nw_B, 0, sizeof(nw_B));
+
+	frame.frame.session = &sess_array[SESS_CNT - 1];
+	frame.frame.uid = frame.frame.session->uid;
+
+	nw_1.nw.session = &sess_array[SESS_CNT - 1];
+	nw_1.nw.uid = nw_1.nw.session->uid;
+
+	nw_2.nw.session = &sess_array[SESS_CNT - 1];
+	nw_2.nw.uid = nw_2.nw.session->uid;
+
+	nw_A.nw.session = &sess_array[1];
+	nw_A.nw.uid = nw_A.nw.session->uid;
+
+	nw_B.nw.session = &sess_array[1];
+	nw_B.nw.uid = nw_B.nw.session->uid;
+
+	/* Link nw_1 */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_1), OK, %d);
+	/* nw_1 is the last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), LAST, %d);
+
+	/* Link nw_A */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_A), OK, %d);
+	/* nw_1 and nw_A are last on their session */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_A), LAST, %d);
+
+	/* Link nw_2 and nw_B */
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_2), OK, %d);
+	IDIOT_ASSERT_EQ(link_session_nw(&nw_B), OK, %d);
+
+	/* No nw is last */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_1), NOT_LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_A), NOT_LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_B), NOT_LAST, %d);
+
+	/* Put frame on nw_1's session */
+	memset(&frame, 0, sizeof(frame));
+	frame.frame.session = nw_1.nw.session;
+	frame.frame.uid = frame.frame.session->uid;
+	IDIOT_ASSERT_EQ(link_session_frame(&frame), OK, %d);
+
+	/* Unlink nw_1 and nw_A */
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_1), OK, %d);
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_A), OK, %d);
+
+	/* nw_B is now last, but nw_2 is not last yet (due to the frame) */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), NOT_LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_B), LAST, %d);
+
+	/* Unlink frame from nw_2's session and link to nw_B's session */
+	IDIOT_ASSERT_EQ(unlink_session_frame(&frame), OK, %d);
+	frame.frame.session = nw_B.nw.session;
+	frame.frame.uid = frame.frame.session->uid;
+	IDIOT_ASSERT_EQ(link_session_frame(&frame), OK, %d);
+
+	/* nw_2 is now last, but nw_B is not last yet (due to the frame) */
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_2), LAST, %d);
+	IDIOT_ASSERT_EQ(is_last_session_ref(&nw_B), NOT_LAST, %d);
+
+	/* unlink everything */
+	IDIOT_ASSERT_EQ(unlink_session_frame(&frame), OK, %d);
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_2), OK, %d);
+	IDIOT_ASSERT_EQ(unlink_session_nw(&nw_B), OK, %d);
+)

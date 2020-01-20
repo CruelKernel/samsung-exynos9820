@@ -68,16 +68,6 @@ static inline void fscrypt_restore_control_page(struct page *page)
 	return;
 }
 
-static inline void fscrypt_set_d_op(struct dentry *dentry)
-{
-	return;
-}
-
-static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
-{
-	return;
-}
-
 /* policy.c */
 static inline int fscrypt_ioctl_set_policy(struct file *filp,
 					   const void __user *arg)
@@ -114,6 +104,18 @@ static inline void fscrypt_put_encryption_info(struct inode *inode)
 	return;
 }
 
+static inline int fscrypt_get_encryption_key(struct inode *inode,
+						struct fscrypt_key *key)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int fscrypt_get_encryption_kek(struct inode *inode,
+						struct fscrypt_info *crypt_info,
+						struct fscrypt_key *kek)
+{
+	return -EOPNOTSUPP;
+}
  /* fname.c */
 static inline int fscrypt_setup_filename(struct inode *dir,
 					 const struct qstr *iname,
@@ -212,6 +214,21 @@ static inline int __fscrypt_prepare_lookup(struct inode *dir,
 					   struct dentry *dentry)
 {
 	return -EOPNOTSUPP;
+}
+
+static inline int fscrypt_disk_encrypted(const struct inode *inode)
+{
+	return;
+}
+
+static inline void fscrypt_set_bio(const struct inode *inode, struct bio *bio)
+{
+	return;
+}
+
+static inline void *fscrypt_get_diskcipher(const struct inode *inode)
+{
+	return NULL;
 }
 
 static inline int __fscrypt_prepare_symlink(struct inode *dir,

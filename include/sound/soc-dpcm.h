@@ -62,6 +62,8 @@ enum snd_soc_dpcm_trigger {
 	SND_SOC_DPCM_TRIGGER_PRE		= 0,
 	SND_SOC_DPCM_TRIGGER_POST,
 	SND_SOC_DPCM_TRIGGER_BESPOKE,
+	SND_SOC_DPCM_TRIGGER_PRE_POST, /* PRE on start, POST on stop */
+	SND_SOC_DPCM_TRIGGER_POST_PRE, /* POST on start, PRE on stop */
 };
 
 /*

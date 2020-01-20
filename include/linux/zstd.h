@@ -1144,7 +1144,7 @@ ZSTD_nextInputType_e ZSTD_nextInputType(ZSTD_DCtx *dctx);
  ******************************************************************************/
 
 /* Define for static allocation */
-#define ZSTD_BLOCKSIZE_ABSOLUTEMAX (128 * 1024)
+#define ZSTD_BLOCKSIZE_ABSOLUTEMAX (4 * 1024)
 /*=====   Raw zstd block functions  =====*/
 size_t ZSTD_getBlockSizeMax(ZSTD_CCtx *cctx);
 size_t ZSTD_compressBlock(ZSTD_CCtx *cctx, void *dst, size_t dstCapacity,

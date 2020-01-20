@@ -88,6 +88,16 @@ config MEDIA_CEC_SUPPORT
 
 source "drivers/media/cec/Kconfig"
 
+config MEDIA_M2M1SHOT
+        bool "Non-streaming m2m media processing (m2m1shot) API"
+        ---help---
+          Enables support for non-steaming m2m media processing API for some
+          device drivers like JPEG codec.
+
+config MEDIA_M2M1SHOT_TESTDEV
+        depends on MEDIA_M2M1SHOT
+        bool "Test driver for non-streaming m2m media processing (m2m1shot) API"
+
 #
 # Media controller
 #	Selectable only for webcam/grabbers, as other drivers don't use it
@@ -224,4 +234,8 @@ source "drivers/media/spi/Kconfig"
 source "drivers/media/tuners/Kconfig"
 source "drivers/media/dvb-frontends/Kconfig"
 
+#
+# TDMB drivers
+#
+source "drivers/media/tdmb/Kconfig"
 endif # MEDIA_SUPPORT

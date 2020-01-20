@@ -20,11 +20,18 @@
 
 #include <linux/types.h>
 #include <linux/vmalloc.h>
+#include <linux/dma-debug.h>
 
 #include <xen/xen.h>
 #include <asm/xen/hypervisor.h>
 
+#define DMA_ERROR_CODE	(~(dma_addr_t)0)
+
 extern const struct dma_map_ops dummy_dma_ops;
+extern struct dma_map_ops *dma_ops;
+extern struct dma_map_ops coherent_swiotlb_dma_ops;
+extern struct dma_map_ops noncoherent_swiotlb_dma_ops;
+extern struct dma_map_ops arm_exynos_dma_mcode_ops;
 
 static inline const struct dma_map_ops *get_arch_dma_ops(struct bus_type *bus)
 {

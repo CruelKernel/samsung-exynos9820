@@ -46,3 +46,7 @@ obj-$(CONFIG_CRYPTO_DEV_VMX) += vmx/
 obj-$(CONFIG_CRYPTO_DEV_BCM_SPU) += bcm/
 obj-$(CONFIG_CRYPTO_DEV_SAFEXCEL) += inside-secure/
 obj-$(CONFIG_CRYPTO_DEV_ARTPEC6) += axis/
+obj-$(CONFIG_CRYPTO_DEV_FMP) += exynos-diskcipher.o
+ifneq (,$(filter $(CONFIG_EXYNOS_SMU) $(CONFIG_EXYNOS_FMP),y))
+obj-y += fmp/
+endif

@@ -706,6 +706,8 @@ int scsi_verify_blk_ioctl(struct block_device *bd, unsigned int cmd)
 	case SG_GET_RESERVED_SIZE:
 	case SG_SET_RESERVED_SIZE:
 	case SG_EMULATED_HOST:
+	case SCSI_IOCTL_SECURITY_PROTOCOL_IN:
+	case SCSI_IOCTL_SECURITY_PROTOCOL_OUT:
 		return 0;
 	case CDROM_GET_CAPABILITY:
 		/* Keep this until we remove the printk below.  udev sends it

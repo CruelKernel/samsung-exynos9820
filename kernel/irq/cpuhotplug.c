@@ -120,6 +120,8 @@ static bool migrate_one_irq(struct irq_desc *desc)
 		}
 		affinity = cpu_online_mask;
 		brokeaff = true;
+	} else if (unlikely(d->common->state_use_accessors & IRQD_GIC_MULTI_TARGET)) {
+		return false;
 	}
 	/*
 	 * Do not set the force argument of irq_do_set_affinity() as this

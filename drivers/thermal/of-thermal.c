@@ -34,60 +34,6 @@
 
 #include "thermal_core.h"
 
-/***   Private data structures to represent thermal device tree data ***/
-
-/**
- * struct __thermal_bind_param - a match between trip and cooling device
- * @cooling_device: a pointer to identify the referred cooling device
- * @trip_id: the trip point index
- * @usage: the percentage (from 0 to 100) of cooling contribution
- * @min: minimum cooling state used at this trip point
- * @max: maximum cooling state used at this trip point
- */
-
-struct __thermal_bind_params {
-	struct device_node *cooling_device;
-	unsigned int trip_id;
-	unsigned int usage;
-	unsigned long min;
-	unsigned long max;
-};
-
-/**
- * struct __thermal_zone - internal representation of a thermal zone
- * @mode: current thermal zone device mode (enabled/disabled)
- * @passive_delay: polling interval while passive cooling is activated
- * @polling_delay: zone polling interval
- * @slope: slope of the temperature adjustment curve
- * @offset: offset of the temperature adjustment curve
- * @ntrips: number of trip points
- * @trips: an array of trip points (0..ntrips - 1)
- * @num_tbps: number of thermal bind params
- * @tbps: an array of thermal bind params (0..num_tbps - 1)
- * @sensor_data: sensor private data used while reading temperature and trend
- * @ops: set of callbacks to handle the thermal zone based on DT
- */
-
-struct __thermal_zone {
-	enum thermal_device_mode mode;
-	int passive_delay;
-	int polling_delay;
-	int slope;
-	int offset;
-
-	/* trip data */
-	int ntrips;
-	struct thermal_trip *trips;
-
-	/* cooling binding data */
-	int num_tbps;
-	struct __thermal_bind_params *tbps;
-
-	/* sensor interface */
-	void *sensor_data;
-	const struct thermal_zone_of_device_ops *ops;
-};
-
 /***   DT thermal zone device callbacks   ***/
 
 static int of_thermal_get_temp(struct thermal_zone_device *tz,
@@ -111,6 +57,29 @@ static int of_thermal_set_trips(struct thermal_zone_device *tz,
 
 	return data->ops->set_trips(data->sensor_data, low, high);
 }
+
+/**
+ * of_thermal_throttle_hotplug - function to throttle hotplug cpu core.
+ *
+ * @tz: pointer to a thermal zone
+ *
+ * This function call throttle_cpu_hotplug function in exynos thermal.
+ *
+ * Return: do not exist function callback, -EINVAL when data not available
+ */
+static int of_thermal_throttle_hotplug(struct thermal_zone_device *tz)
+{
+	struct __thermal_zone *data = tz->devdata;
+	int ret = 0;
+
+	if (!data->ops->throttle_cpu_hotplug)
+		return -EINVAL;
+
+	ret = data->ops->throttle_cpu_hotplug(data->sensor_data, tz->temperature);
+
+	return ret;
+}
+
 
 /**
  * of_thermal_get_ntrips - function to export number of available trip
@@ -222,6 +191,21 @@ static int of_thermal_bind(struct thermal_zone_device *thermal,
 		if (tbp->cooling_device == cdev->np) {
 			int ret;
 
+#if defined(CONFIG_EXYNOS_THERMAL)
+			/* if governor is not power_allocator */
+			if (strncasecmp(thermal->tzp->governor_name, "power_allocator",
+						THERMAL_NAME_LENGTH)) {
+				unsigned long max_level = 0, level = 0;
+
+				cdev->ops->get_max_state(cdev, &max_level);
+				level = cdev->ops->get_cooling_level(cdev, tbp->value);
+
+				if (level == THERMAL_CSTATE_INVALID)
+					level = max_level;
+
+				tbp->max = level;
+			}
+#endif
 			ret = thermal_zone_bind_cooling_device(thermal,
 						tbp->trip_id, cdev,
 						tbp->max,
@@ -435,6 +419,7 @@ thermal_zone_of_add_sensor(struct device_node *zone,
 	if (ops->set_emul_temp)
 		tzd->ops->set_emul_temp = of_thermal_set_emul_temp;
 
+	tzd->ops->throttle_hotplug = of_thermal_throttle_hotplug;
 	mutex_unlock(&tzd->lock);
 
 	return tzd;
@@ -513,9 +498,6 @@ thermal_zone_of_sensor_register(struct device *dev, int sensor_id, void *data,
 		if (sensor_specs.np == sensor_np && id == sensor_id) {
 			tzd = thermal_zone_of_add_sensor(child, sensor_np,
 							 data, ops);
-			if (!IS_ERR(tzd))
-				tzd->ops->set_mode(tzd, THERMAL_DEVICE_ENABLED);
-
 			of_node_put(sensor_specs.np);
 			of_node_put(child);
 			goto exit;
@@ -976,6 +958,7 @@ int __init of_parse_thermal_zones(void)
 	for_each_available_child_of_node(np, child) {
 		struct thermal_zone_device *zone;
 		struct thermal_zone_params *tzp;
+		const char *governor_name;
 		int i, mask = 0;
 		u32 prop;
 
@@ -1003,12 +986,30 @@ int __init of_parse_thermal_zones(void)
 		if (!of_property_read_u32(child, "sustainable-power", &prop))
 			tzp->sustainable_power = prop;
 
+		if (!of_property_read_u32(child, "k_po", &prop))
+			tzp->k_po = prop;
+
+		if (!of_property_read_u32(child, "k_pu", &prop))
+			tzp->k_pu = prop;
+
+		if (!of_property_read_u32(child, "k_i", &prop))
+			tzp->k_i = prop;
+
+		if (!of_property_read_u32(child, "i_max", &prop))
+			tzp->integral_max = prop;
+
+		if (!of_property_read_u32(child, "integral_cutoff", &prop))
+			tzp->integral_cutoff = prop;
+
 		for (i = 0; i < tz->ntrips; i++)
 			mask |= 1 << i;
 
 		/* these two are left for temperature drivers to use */
 		tzp->slope = tz->slope;
 		tzp->offset = tz->offset;
+
+		if (!of_property_read_string(child, "governor", &governor_name))
+			strncpy(tzp->governor_name, governor_name, THERMAL_NAME_LENGTH);
 
 		zone = thermal_zone_device_register(child->name, tz->ntrips,
 						    mask, tz,

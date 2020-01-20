@@ -619,7 +619,7 @@ static void bcm2835_dma_issue_pending(struct dma_chan *chan)
 
 static struct dma_async_tx_descriptor *bcm2835_dma_prep_dma_memcpy(
 	struct dma_chan *chan, dma_addr_t dst, dma_addr_t src,
-	size_t len, unsigned long flags)
+	size_t len, unsigned long flags, void *context)
 {
 	struct bcm2835_chan *c = to_bcm2835_dma_chan(chan);
 	struct bcm2835_desc *d;

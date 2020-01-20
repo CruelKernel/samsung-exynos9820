@@ -2600,6 +2600,7 @@ struct task_struct *cgroup_procs_write_start(char *buf, bool threadgroup)
 		return ERR_PTR(-EINVAL);
 
 	percpu_down_write(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)current, 1);
 
 	rcu_read_lock();
 	if (pid) {
@@ -2631,6 +2632,7 @@ struct task_struct *cgroup_procs_write_start(char *buf, bool threadgroup)
 
 out_unlock_threadgroup:
 	percpu_up_write(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)current, 3);
 out_unlock_rcu:
 	rcu_read_unlock();
 	return tsk;
@@ -2646,6 +2648,7 @@ void cgroup_procs_write_finish(struct task_struct *task)
 	put_task_struct(task);
 
 	percpu_up_write(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)current, 3);
 	for_each_subsys(ss, ssid)
 		if (ss->post_attach)
 			ss->post_attach();
@@ -2705,6 +2708,7 @@ static int cgroup_update_dfl_csses(struct cgroup *cgrp)
 	lockdep_assert_held(&cgroup_mutex);
 
 	percpu_down_write(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)current, 1);
 
 	/* look up all csses currently attached to @cgrp's subtree */
 	spin_lock_irq(&css_set_lock);
@@ -2735,6 +2739,7 @@ static int cgroup_update_dfl_csses(struct cgroup *cgrp)
 out_finish:
 	cgroup_migrate_finish(&mgctx);
 	percpu_up_write(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)current, 3);
 	return ret;
 }
 

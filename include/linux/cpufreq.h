@@ -228,9 +228,14 @@ static inline void cpufreq_stats_record_transition(struct cpufreq_policy *policy
  *                      CPUFREQ DRIVER INTERFACE                     *
  *********************************************************************/
 
-#define CPUFREQ_RELATION_L 0  /* lowest frequency at or above target */
-#define CPUFREQ_RELATION_H 1  /* highest frequency below or at target */
-#define CPUFREQ_RELATION_C 2  /* closest frequency to target */
+#define CPUFREQ_RELATION_MASK	(0x3 << 0)
+#define CPUFREQ_RELATION_L	(0 << 0)	/* lowest frequency at or above target */
+#define CPUFREQ_RELATION_H	(1 << 0)	/* highest frequency below or at target */
+#define CPUFREQ_RELATION_C	(2 << 0)	/* closest frequency to target */
+
+#define CPUFREQ_REQUEST_MASK	(0x3 << 2)
+#define CPUFREQ_NORMAL_REQ	(0 << 2)	/* normal frequency request */
+#define CPUFREQ_HW_DVFS_REQ	(1 << 2)	/* for processing HW DVFS; it needs to be dealt specially */
 
 struct freq_attr {
 	struct attribute attr;
@@ -540,6 +545,9 @@ void cpufreq_unregister_governor(struct cpufreq_governor *governor);
 struct cpufreq_governor *cpufreq_default_governor(void);
 struct cpufreq_governor *cpufreq_fallback_governor(void);
 
+#if defined (CONFIG_ARM_EXYNOS_FF)
+void cpufreq_policy_apply_limits(struct cpufreq_policy *policy);
+#else
 static inline void cpufreq_policy_apply_limits(struct cpufreq_policy *policy)
 {
 	if (policy->max < policy->cur)
@@ -547,6 +555,7 @@ static inline void cpufreq_policy_apply_limits(struct cpufreq_policy *policy)
 	else if (policy->min > policy->cur)
 		__cpufreq_driver_target(policy, policy->min, CPUFREQ_RELATION_L);
 }
+#endif
 
 /* Governor attribute set */
 struct gov_attr_set {

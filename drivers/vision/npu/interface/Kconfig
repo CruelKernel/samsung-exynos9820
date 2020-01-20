@@ -1,0 +1,16 @@
+config NPU_INTERFACE
+	bool "Select Interface"
+	help
+	  This is NPU interface
+
+config NPU_LOOPBACK
+	bool "Use Loopback"
+	depends on NPU_INTERFACE
+	help
+	  This is loopback device
+
+config NPU_HARDWARE
+	bool "Use Hardware"
+	depends on NPU_INTERFACE
+	help
+	  This is hardware device

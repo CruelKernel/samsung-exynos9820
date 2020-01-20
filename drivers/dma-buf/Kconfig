@@ -30,4 +30,26 @@ config SW_SYNC
 	  WARNING: improper use of this can result in deadlocking kernel
 	  drivers from userspace. Intended for test and debug only.
 
+config DMA_BUF_CONTAINER
+	bool "dma-buf container support"
+	default y
+	depends on DMA_SHARED_BUFFER
+	---help---
+	  dma-buf container is a dma-buf that can contain multiple different
+	  dma-buf objects. It is useful when delivering a lot of dma-buf objects
+	  between processes or user and kernel to reduce communication overhead.
+
+config DMA_BUF_CONTAINER_TEST
+	bool "test driver for dma-buf container"
+	default n
+	depends on DMA_BUF_CONTAINER
+	---help---
+	  Test driver for dma-buf container to verify the elements in the
+	  dma-buf container are the same as the given list of dma-buf objects.
+
+config DMABUF_TRACE
+	bool "dma-buf trace support"
+	default y
+	depends on DMA_SHARED_BUFFER
+
 endmenu

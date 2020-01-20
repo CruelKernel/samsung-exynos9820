@@ -590,6 +590,14 @@ config I2C_EXYNOS5
 	help
 	  High-speed I2C controller on Exynos5 based Samsung SoCs.
 
+config I2C_SAMSUNG_HWACG
+	bool "HWACG(HW Auto Clock Gating) support for Exynos I2C port"
+	default y
+	help
+	If HWACG is enabled on I2C, System power mode will goes into
+	suspend state only when I2C master is not in busy state.
+	To support HWACG on I2C, this configuration should be selected.
+
 config I2C_GPIO
 	tristate "GPIO-based bitbanging I2C"
 	depends on GPIOLIB || COMPILE_TEST
@@ -1326,4 +1334,11 @@ config I2C_ZX2967
 	  This driver can also be built as a module. If so, the module will be
 	  called i2c-zx2967.
 
+config EXYNOS_SPEEDY
+        tristate "SAMSUNG EXYNOS SPEEDY driver"
+        depends on ARCH_EXYNOS && OF
+        default y
+        help
+          Serial Protocol in an EffEctive Digital waY controller
+	  on Exynos based Samsung SoCs.
 endmenu

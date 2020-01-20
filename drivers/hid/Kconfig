@@ -1028,6 +1028,20 @@ config HID_ALPS
 	Say Y here if you have a Alps touchpads over i2c-hid or usbhid
 	and want support for its special functionalities.
 
+config HID_OVR
+	tristate "OVR device support"
+	depends on USB_HID
+	---help---
+	Support for OVR devices.
+	Say Y here if you have a OVR device.
+
+config HID_TVR
+	tristate "TVR device support"
+	depends on USB_HID
+	---help---
+	Support for TVR devices.
+	Say Y here if you have a TVR device.	
+
 endmenu
 
 endif # HID

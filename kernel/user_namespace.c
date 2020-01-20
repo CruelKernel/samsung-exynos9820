@@ -138,6 +138,15 @@ int create_user_ns(struct cred *new)
 	if (!setup_userns_sysctls(ns))
 		goto fail_keyring;
 
+#ifdef CONFIG_LOD_SEC
+	if (0 != (current_cred()->uid.val)){
+		ret = -EPERM;
+		printk(KERN_ERR "LOD: blocking USERNS from non-root PROC %s PID %d UID %d\n",
+			current->comm, current->pid, current_cred()->uid.val);
+		goto fail_keyring;
+	}
+#endif
+
 	set_cred_user_ns(new, ns);
 	return 0;
 fail_keyring:

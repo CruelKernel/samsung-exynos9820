@@ -86,6 +86,8 @@
 #define VARIABLE_LENGTH_CMD   0x7f
 #define REPORT_LUNS           0xa0
 #define SECURITY_PROTOCOL_IN  0xa2
+#define SECU_PROT_UFS			0xEC
+#define SECU_PROT_SPEC_CERT_DATA	0x0001
 #define MAINTENANCE_IN        0xa3
 #define MAINTENANCE_OUT       0xa4
 #define MOVE_MEDIUM           0xa5

@@ -126,19 +126,20 @@ config REGULATOR_AB8500
 	  signal AB8500 PMIC
 
 config REGULATOR_ARIZONA_LDO1
-	tristate "Wolfson Arizona class devices LDO1"
-	depends on MFD_ARIZONA
+	tristate "Cirrus Madera and Wolfson Arizona class devices LDO1"
+	depends on MFD_ARIZONA || MFD_MADERA
 	depends on SND_SOC
 	help
-	  Support for the LDO1 regulators found on Wolfson Arizona class
-	  devices.
+	  Support for the LDO1 regulators found on Cirrus Logic Madera codecs
+	  and Wolfson Arizona codecs.
 
 config REGULATOR_ARIZONA_MICSUPP
-	tristate "Wolfson Arizona class devices MICSUPP"
-	depends on MFD_ARIZONA
+	tristate "Cirrus Madera and Wolfson Arizona class devices MICSUPP"
+	depends on MFD_ARIZONA || MFD_MADERA
 	depends on SND_SOC
 	help
-	  Support for the MICSUPP regulators found on Wolfson Arizona class
+	  Support for the MICSUPP regulators found on Cirrus Logic Madera codecs
+	  and Wolfson Arizona codecs
 	  devices.
 
 config REGULATOR_AS3711
@@ -188,6 +189,24 @@ config REGULATOR_CPCAP
 	help
 	  Say y here for CPCAP regulator found on some Motorola phones
 	  and tablets such as Droid 4.
+
+config REGULATOR_MADERA_LDO1
+	tristate "Cirrus Logic Madera codecs LDO1 regulator"
+	depends on MFD_MADERA
+	depends on SND_SOC
+	help
+	  For Cirrus Logic Madera class codecs, if you want to use the
+	  internal LDO1 regulator to supply DCVDD you need to include this
+	  driver. If you are using an external DCVDD regulator or the codec
+	  does not have an LDO1 regulator you do not need this driver.
+
+config REGULATOR_MADERA_MICSUPP
+	tristate "Cirrus Logic Madera codecs mic supply regulator"
+	depends on MFD_MADERA
+	depends on SND_SOC
+	help
+	  Support for the microphone supply regulator on Cirrus Logic
+	  Madera class codecs
 
 config REGULATOR_DA903X
 	tristate "Dialog Semiconductor DA9030/DA9034 regulators"
@@ -958,5 +977,49 @@ config REGULATOR_WM8994
 	  This driver provides support for the voltage regulators on the
 	  WM8994 CODEC.
 
+config REGULATOR_S2MPS18
+	tristate "Samsung S2MPS18 voltage regulator"
+	depends on MFD_S2MPS18
+	help
+	 This driver supports a Samsung S2MPS18 voltage output regulator
+	 via I2C bus. S2MPS18 is comprised of high efficient Buck converters
+	 including Dual-Phase Buck converter, Buck-Boost converter, various LDOs.
+
+config REGULATOR_S2MPS19
+	tristate "Samsung S2MPS19 voltage regulator"
+	depends on MFD_S2MPS19
+	help
+	 This driver supports a Samsung S2MPS19 voltage output regulator
+	 via I2C bus. S2MPS19 is comprised of high efficient Buck converters
+	 including Dual-Phase Buck converter, Buck-Boost converter, various LDOs.
+
+config REGULATOR_S2MPS20
+	tristate "Samsung S2MPS20 voltage regulator"
+	depends on MFD_S2MPS20
+	help
+	 This driver supports a Samsung S2MPS20 voltage output regulator
+	 via I2C bus. S2MPS20 is comprised of high efficient Buck converters
+	 including Dual-Phase Buck converter, Buck-Boost converter, various LDOs.
+
+config REGULATOR_S2MPB02
+	tristate "Samsung S2MPB02 regulator"
+	depends on MFD_S2MPB02
+	help
+	 This driver controls a Samsung S2MPB02 regulator
+	 via I2C bus.
+
+config REGULATOR_S2MPB03
+	tristate "Samsung S2MPB03 regulator"
+	depends on I2C
+	help
+	 This driver controls a Samsung S2MPB03 regulator
+	 via I2C bus.
+
+config REGULATOR_S2DOS05
+	tristate "Samsung S2DOS05 regulator"
+	depends on I2C
+	help
+	 This driver controls a Samsung S2DOS05 regulator
+	 via I2C bus.
 endif
 

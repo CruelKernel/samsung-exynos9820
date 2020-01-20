@@ -1,0 +1,24 @@
+#
+# Exynos multimedia device drivers
+#
+config VIDEO_EXYNOS
+        bool "Exynos Multimedia Devices"
+        depends on ARCH_EXYNOS
+        default y
+        help
+          This is a representative exynos multimedia device.
+
+if VIDEO_EXYNOS
+        source "drivers/media/platform/exynos/mfc/Kconfig"
+        source "drivers/media/platform/exynos/camera-pp/Kconfig"
+        source "drivers/media/platform/exynos/repeater/Kconfig"
+        source "drivers/media/platform/exynos/tsmux/Kconfig"
+        source "drivers/media/platform/exynos/jsqz/Kconfig"
+endif
+
+config MEDIA_EXYNOS
+        bool
+        depends on VIDEO_EXYNOS
+        default y
+        help
+          Compile mdev to use exynos media device driver.

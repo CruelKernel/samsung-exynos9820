@@ -1,0 +1,20 @@
+#ifndef _VS4L_NPU_H_
+#define _VS4L_NPU_H_
+
+#include <linux/types.h>
+
+/* target value used for S_PARAM of NPU */
+enum {
+	NPU_S_PARAM_FW_UTC_LOAD = 0x780000,
+	NPU_S_PARAM_FW_UTC_EXECUTE,
+	NPU_S_PARAM_QOS_NPU = 0x880000,
+	NPU_S_PARAM_QOS_MIF,
+	NPU_S_PARAM_QOS_INT,
+	NPU_S_PARAM_QOS_CL0 = 0x890000,
+	NPU_S_PARAM_QOS_CL1,
+	NPU_S_PARAM_QOS_CL2,
+	NPU_S_PARAM_CPU_AFF,
+	NPU_S_PARAM_QOS_RST,
+};
+
+#endif	/* _VS4L_NPU_H_ */

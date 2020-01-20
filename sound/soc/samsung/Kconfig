@@ -30,6 +30,9 @@ config SND_SAMSUNG_SPDIF
 config SND_SAMSUNG_I2S
 	tristate "Samsung I2S interface support"
 
+config SND_SOC_SAMSUNG_DISPLAYPORT
+	tristate "Samsung display port audio interface support"
+
 config SND_SOC_SAMSUNG_NEO1973_WM8753
 	tristate "Audio support for Openmoko Neo1973 Smartphones (GTA02)"
 	depends on MACH_NEO1973_GTA02
@@ -193,6 +196,105 @@ config SND_SOC_ODROID
 	help
 	  Say Y here to enable audio support for the Odroid XU3/XU4.
 
+config SND_SOC_SAMSUNG_EXYNOS8895
+	tristate "Audio support on exynos8895"
+	select SND_SOC_SAMSUNG_ABOX
+	select SND_SOC_SAMSUNG_VTS
+	select SND_SOC_SAMSUNG_MAILBOX
+	select SND_SOC_SAMSUNG_DISPLAYPORT
+	help
+		Say Y if you want to add support for audio on the Exynos8895.
+
+config SND_SOC_SAMSUNG_EXYNOS8895_MOON
+	tristate "Moon audio codec support on exynos8895"
+	select SND_SOC_CS47L92
+	select MFD_MADERA_SPI
+	select MFD_CS47L92
+	select REGULATOR_MADERA_LDO1
+	select REGULATOR_MADERA_MICSUPP
+	select SWITCH
+	select SWITCH_MADERA
+
+config SND_SOC_SAMSUNG_EXYNOS8895_MAX98506
+	tristate "MAX98506 amp support on exynos8895"
+	select SND_SOC_MAX98506
+
+config SND_SOC_SAMSUNG_EXYNOS9810
+	tristate "Audio support on exynos9810"
+	select SND_SOC_SAMSUNG_ABOX
+	#select SND_SOC_SAMSUNG_VTS
+	#select SND_SOC_SAMSUNG_MAILBOX
+	select SND_SOC_SAMSUNG_DISPLAYPORT
+	help
+		Say Y if you want to add support for audio on the Exynos9810.
+
+config SND_SOC_SAMSUNG_EXYNOS9810_MOON
+	tristate "Moon audio codec support on exynos9810"
+	select SND_SOC_CS47L92
+	select MFD_MADERA_SPI
+	select MFD_CS47L92
+	select REGULATOR_ARIZONA_LDO1
+	select REGULATOR_ARIZONA_MICSUPP
+	select EXTCON_MADERA
+	select EXTCON_MADERA_INPUT_EVENT
+
+config SND_SOC_SAMSUNG_EXYNOS9810_MAX98506
+	tristate "MAX98506 amp support on exynos9810"
+	select SND_SOC_MAX98506
+
+config SND_SOC_SAMSUNG_EXYNOS9810_MAX98512
+	tristate "MAX98512 amp support on exynos9810"
+	select SND_SOC_MAX98512
+
+config SND_SOC_SAMSUNG_EXYNOS9820
+	tristate "Audio support on exynos9820"
+	select SND_SOC_SAMSUNG_ABOX
+	#select SND_SOC_SAMSUNG_VTS
+	#select SND_SOC_SAMSUNG_MAILBOX
+	#select SND_SOC_SAMSUNG_DISPLAYPORT
+	help
+		Say Y if you want to add support for audio on the Exynos9810.
+
+config SND_SOC_SAMSUNG_EXYNOS9820_MADERA
+	tristate "Madera audio codec support on exynos9820"
+	select SND_SOC_CS47L92
+	select MFD_MADERA_SPI
+	select MFD_CS47L92
+	select REGULATOR_ARIZONA_LDO1
+	select REGULATOR_ARIZONA_MICSUPP
+	select EXTCON_MADERA
+	select EXTCON_MADERA_INPUT_EVENT
+	select GPIO_MADERA
+
+config SND_SOC_SAMSUNG_BEYOND_MADERA
+	tristate "Madera audio codec support on beyond project"
+	select SND_SOC_CS47L92
+	select MFD_MADERA_SPI
+	select MFD_CS47L92
+	select REGULATOR_ARIZONA_LDO1
+	select REGULATOR_ARIZONA_MICSUPP
+	select EXTCON_MADERA
+	select EXTCON_MADERA_INPUT_EVENT
+	select GPIO_MADERA
+
+config SND_SOC_SAMSUNG_EXYNOS9820_MAX98512
+	tristate "MAX98512 amp support on exynos9820"
+	select SND_SOC_MAX98512
+
+config SND_SOC_SAMSUNG_EXYNOS9820_CS35L41_I2C
+	tristate "CS35L41 amp support on exynos9820 with i2c bus"
+	select SND_SOC_CS35L41
+	select MFD_CS35L41_I2C
+
+config SND_SOC_SAMSUNG_EXYNOS9820_CS35L41_SPI
+	tristate "CS35L41 amp support on exynos9820 with spi bus"
+	select SND_SOC_CS35L41
+	select MFD_CS35L41_SPI
+
+config SND_SOC_SAMSUNG_EXYNOS8895_COD3033
+	tristate "S.LSI audio codec COD3033 support on exynos8895"
+	select SND_SOC_COD3033X
+
 config SND_SOC_ARNDALE_RT5631_ALC5631
         tristate "Audio support for RT5631(ALC5631) on Arndale Board"
         depends on I2C
@@ -208,5 +310,13 @@ config SND_SOC_SAMSUNG_TM2_WM5110
 	select SND_SAMSUNG_I2S
 	help
 	  Say Y if you want to add support for SoC audio on the TM2 board.
+
+config SND_SOC_SAMSUNG_AUDIO
+	tristate "Audio support for Samsung Projects"
+	help
+	  Say Y here to enable audio support for the Samsung Audio.
+
+source "sound/soc/samsung/abox/Kconfig"
+source "sound/soc/samsung/vts/Kconfig"
 
 endif #SND_SOC_SAMSUNG

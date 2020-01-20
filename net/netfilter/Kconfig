@@ -336,6 +336,14 @@ config NF_CONNTRACK_TFTP
 
 	  To compile it as a module, choose M here.  If unsure, say N.
 
+config LINK_FORWARD
+	bool "Lower layer packet forwarding/translation support"
+	default n
+	help
+	  This option enables link layer forwarding using HW translation. This
+	  support IP packet translation such as NAT and CLAT. This option can
+	  be used with Direct IP Translation feature ENABLE_DIT.
+
 config NF_CT_NETLINK
 	tristate 'Connection tracking netlink interface'
 	select NETFILTER_NETLINK

@@ -599,7 +599,7 @@ menu "FAIR Scheuler tunables"
 
 choice
 	prompt "Utilization's PELT half-Life"
-	default PELT_UTIL_HALFLIFE_32
+	default PELT_UTIL_HALFLIFE_16
 	help
 	  Allows choosing one of the possible values for the PELT half-life to
 	  be used for the update of the utilization of tasks and CPUs.
@@ -607,7 +607,7 @@ choice
 	  build up to 50% utilization. The higher the half-life the longer it
 	  takes for a task to be represented as a big one.
 
-	  If not sure, use the default of 32 ms.
+	  If not sure, use the deafult of 16 ms.
 
 config PELT_UTIL_HALFLIFE_32
 	bool "32 ms, default for server"
@@ -724,6 +724,11 @@ config MEMCG_SWAP_ENABLED
 	  For those who want to have the feature enabled by default should
 	  select this option (if, for some reason, they need to disable it
 	  then swapaccount=0 does the trick).
+
+config MEMCG_FORCE_USE_VM_SWAPPINESS
+	bool "Force to use vm_swappiness instead of memcg->swappiness"
+	depends on MEMCG_SWAP
+	default y
 
 config BLK_CGROUP
 	bool "IO controller"
@@ -1026,6 +1031,18 @@ config SCHED_TUNE
 
 	  If unsure, say N.
 
+config SCHED_EMS
+	bool "Exynos Mobile Scheduler"
+	depends on SMP
+	help
+	  This option supports Exynos mobile scheduler. It is designed to
+	  secure the limits of energy aware scheduler. This option provides
+	  features such as independent boosting functinos such as on-time migration,
+	  and prefer_perf and enhanced prefer_idle that work in conjunction with
+	  SCHEDTUNE.
+
+	  If unsure, say N.
+
 config DEFAULT_USE_ENERGY_AWARE
 	bool "Default to enabling the Energy Aware Scheduler feature"
 	default n
@@ -1035,6 +1052,28 @@ config DEFAULT_USE_ENERGY_AWARE
 	  via sysctl.
 
 	  Say N if unsure.
+
+config SIMPLIFIED_ENERGY_MODEL
+	bool "Enable simplified energy model feature"
+	depends on SCHED_EMS
+	default n
+	help
+	  This option enables support for simplified energy model. This allows
+	  using a simple energy table declared per_cpu instead of using the EAS
+	  energy table.
+
+	  Say N if unsure.
+
+config SCHED_USE_FLUID_RT
+	bool "Enable Fluid RT scheduler feature"
+	depends on SCHED_EMS
+	default n
+	help
+	Basically, the Fluid RT selects the core by a task priority as usual.
+	But beyond the basic behavior, FRT performs the load balancing of
+	RT task by core selection with reference to utilization of rq.
+	And in some circumstances, she allows the task of lower priority
+	to preempt the higher one based on weighted load.
 
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
@@ -1719,6 +1758,14 @@ config SYSTEM_DATA_VERIFICATION
 	  trusted keyring to provide public keys.  This then can be used for
 	  module verification, kexec image verification and firmware blob
 	  verification.
+
+config DEFERRED_INITCALLS
+	bool "Deferred initcalls support"
+	default n
+	help
+	  Say 'y' here to include support for deferred initcalls.
+	  If some module init functions set as deferred initcall, they aren't
+	  called until /proc/deferred_initcalls is read.
 
 config PROFILING
 	bool "Profiling support"

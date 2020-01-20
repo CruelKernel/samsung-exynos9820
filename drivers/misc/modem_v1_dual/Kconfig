@@ -1,0 +1,156 @@
+menuconfig SEC_SIPC_DUAL_MODEM_IF
+	bool "Samsung Mobile SIPC Dual Modem Interface"
+	default n
+	---help---
+	  Samsung Dual Modem Interface Driver
+
+if SEC_SIPC_DUAL_MODEM_IF
+
+config SEC_MODEM_S5000AP
+	bool "Exynos ModAP S5xxxAP"
+	select UMTS_MODEM_S5000AP
+	select LINK_DEVICE_SHMEM
+	select CP_SECURE_BOOT
+	select CP_RAM_LOGGING
+	select LINK_DEVICE_NAPI
+	select CP_ZEROCOPY
+	select MODEM_IF_NET_GRO
+	select CP_LINEAR_WA
+	default n
+
+config SEC_MODEM_S5100
+	bool "Exynos S51xx"
+	select UMTS_MODEM_S5100
+	select BOOT_DEVICE_SPI
+	select LINK_DEVICE_PCIE
+	default n
+
+config SEC_MODEM_SS310AP
+	bool "Exynos ModAP S3xxAP"
+	select UMTS_MODEM_SS310AP
+	select LINK_DEVICE_SHMEM
+	select CP_SECURE_BOOT
+	select CP_RAM_LOGGING
+	select LINK_DEVICE_NAPI
+	select CP_ZEROCOPY
+	default n
+
+menu "Configuration Description"
+config BOOT_DEVICE_SPI
+	bool "boot device: SPI"
+	default n
+
+config LINK_DEVICE_MEMORY
+	bool "Memory-type (i.e. shared memory) interface medium"
+	default n
+
+config LINK_POWER_MANAGEMENT
+	bool "Power management (PM) for a link device"
+	default n
+
+config LINK_POWER_MANAGEMENT_WITH_FSM
+	bool "FSM-based Power management (PM) for a link device"
+	depends on LINK_POWER_MANAGEMENT
+	default n
+
+config LINK_DEVICE_WITH_SBD_ARCH
+	bool "Link device with the SBD architecture from MIPI-LLI"
+	default n
+
+config LINK_DEVICE_NAPI
+	bool "Use Rx polling (NAPI)"
+	default n
+	help
+	NAPI is a new driver API designed to reduce CPU and interrupt load
+	when the driver is receiving lots of packets.
+
+config CP_ZEROCOPY
+	bool "Support zero memory copy"
+	default n
+
+config LINK_DEVICE_C2C
+	bool "Pseudo shared-memory with chip-to-chip (C2C) interface"
+	select LINK_DEVICE_MEMORY
+	select LINK_POWER_MANAGEMENT
+	default n
+
+config LINK_DEVICE_LLI
+	bool "link device: MIPI-LLI"
+	select MIPI_LLI
+	select LINK_DEVICE_MEMORY
+	select LINK_POWER_MANAGEMENT
+	select LINK_DEVICE_WITH_SBD_ARCH
+	default n
+
+config LINK_DEVICE_SHMEM
+	bool "Real system-level shared-memory on a system bus"
+	default n
+
+config LINK_DEVICE_HSIC
+	bool "link device: HSIC"
+	default n
+
+config LINK_DEVICE_PCIE
+	bool "modem driver link device PCIe"
+	default n
+
+config LTE_MODEM_XMM7260
+	bool "modem chip : IMC XMM7260"
+	default n
+
+config UMTS_MODEM_SS310AP
+	bool "modem chip : Exynos ModAP S3xxAP"
+	default n
+
+config UMTS_MODEM_S5000AP
+	bool "modem chip : Exynos ModAP S5xxxAP"
+	default n
+
+config UMTS_MODEM_S5100
+	bool "modem chip : Exynos S5100(2chip)"
+	default n
+
+config DEBUG_PKTLOG
+	bool "IPC pcap logging feature"
+	default n
+
+config LINK_CONTROL_MSG_IOSM
+	bool "Control Message Type: IPC Over Shared Memory (IOSM)"
+	default n
+
+config CP_SECURE_BOOT
+	bool "Support CP Secure Boot"
+	default n
+
+config GPIO_DS_DETECT
+	bool "Support GPIO DS Detect"
+	default n
+
+config CP_RAM_LOGGING
+	bool "Support CP ram logging feature"
+	default n
+
+config HW_REV_DETECT
+	bool "Support HW REV Detect"
+	default n
+
+config MODEM_IF_QOS
+	bool "Implement QoS for sbd"
+	depends on LINK_DEVICE_SHMEM
+	default n
+	---help---
+	  This enables Qos for SBD model
+
+config MODEM_IF_NET_GRO
+	bool "enable GRO feature"
+	depends on LINK_DEVICE_SHMEM
+	default n
+	---help---
+	 This enables GRO(Generic Receive Offload) feature
+
+config CP_LINEAR_WA
+	bool "CP linear mode work-around for Exynos9820"
+	default n
+
+endmenu
+endif

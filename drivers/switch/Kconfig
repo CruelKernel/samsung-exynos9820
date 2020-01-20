@@ -1,0 +1,22 @@
+menuconfig SWITCH
+	tristate "Switch class support"
+	help
+	  Say Y here to enable switch class support. This allows
+	  monitoring switches by userspace via sysfs and uevent.
+
+if SWITCH
+
+config SWITCH_GPIO
+	tristate "GPIO Swith support"
+	depends on GPIOLIB
+	help
+	  Say Y here to enable GPIO based switch support.
+
+config SWITCH_MADERA
+	tristate "Cirrus Logic Madera codec support"
+	depends on MFD_MADERA && INPUT && SND_SOC
+	help
+	  Say Y here to enable support for external accessory detection
+	  on Cirrus Logic Madera class codecs.
+
+endif # SWITCH

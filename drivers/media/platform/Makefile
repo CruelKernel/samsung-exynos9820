@@ -40,6 +40,8 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_CEC)	+= s5p-cec/
 obj-$(CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC)	+= exynos-gsc/
 
+obj-$(CONFIG_VIDEO_EXYNOS)              += exynos/
+
 obj-$(CONFIG_VIDEO_STI_BDISP)		+= sti/bdisp/
 obj-$(CONFIG_VIDEO_STI_HVA)		+= sti/hva/
 obj-$(CONFIG_DVB_C8SECTPFE)		+= sti/c8sectpfe/
@@ -91,3 +93,7 @@ obj-$(CONFIG_VIDEO_QCOM_CAMSS)		+= qcom/camss-8x16/
 obj-$(CONFIG_VIDEO_QCOM_VENUS)		+= qcom/venus/
 
 obj-y					+= meson/
+
+obj-$(CONFIG_VIDEO_EXYNOS_SMFC)		+= exynos/smfc/
+obj-$(CONFIG_VIDEO_EXYNOS_SCALER)	+= exynos/scaler/
+obj-$(CONFIG_VIDEO_EXYNOS_FIMC_IS2)     += exynos/fimc-is2/

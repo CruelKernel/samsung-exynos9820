@@ -450,6 +450,40 @@ static u64 freezer_parent_freezing_read(struct cgroup_subsys_state *css,
 	return (bool)(freezer->state & CGROUP_FREEZING_PARENT);
 }
 
+#ifdef CONFIG_SAMSUNG_FREECESS
+/**
+ * Check if the task is allowed to be added to the freezer group
+ * only the admin can add the task to the freezer group.
+ */
+static int freezer_can_attach(struct cgroup_taskset *tset)
+{
+	const struct cred *cred = current_cred(), *tcred;
+	struct task_struct *task;
+	struct cgroup_subsys_state *css;
+
+	cgroup_taskset_for_each(task, css, tset) {
+		tcred = __task_cred(task);
+
+		//Only system process and root have the permission.
+		if ((current != task) && !(cred->euid.val == 1000 || capable(CAP_SYS_ADMIN))) {
+			pr_err("Permission problem\n");
+			return -EACCES;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Cancel the attach action when it failed. It's usually used to restore the attach action.
+ * But freezer attach just sends the signal, it will always success.
+ * So, it doesn't need to restore any action.
+ */
+static void freezer_cancel_attach(struct cgroup_taskset *tset)
+{
+}
+#endif
+
 static struct cftype files[] = {
 	{
 		.name = "state",
@@ -478,4 +512,8 @@ struct cgroup_subsys freezer_cgrp_subsys = {
 	.attach		= freezer_attach,
 	.fork		= freezer_fork,
 	.legacy_cftypes	= files,
+#ifdef CONFIG_SAMSUNG_FREECESS
+	.can_attach   = freezer_can_attach,
+	.cancel_attach  = freezer_cancel_attach,
+#endif
 };

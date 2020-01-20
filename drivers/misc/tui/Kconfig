@@ -1,0 +1,15 @@
+config SAMSUNG_TUI
+	bool "TUI HW Handler"
+	default n
+	help
+		Provide methods for TUI such as acquisition of buffer
+		to be used as secure frame buffer in Secure World and
+		synchronization of display and touch device between
+		Normal World and Secure World.
+
+config SAMSUNG_TUI_TEST
+	bool "Testing module for TUI HW handler"
+	default n
+	depends on SAMSUNG_TUI
+	help
+		support TUI Driver Test

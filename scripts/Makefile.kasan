@@ -14,6 +14,9 @@ CFLAGS_KASAN := $(call cc-option, -fsanitize=kernel-address \
 		-fasan-shadow-offset=$(KASAN_SHADOW_OFFSET) \
 		--param asan-stack=1 --param asan-globals=1 \
 		--param asan-instrumentation-with-call-threshold=$(call_threshold))
+		
+KBUILD_CFLAGS += $(call cc-option, -D__ANDROID__ -Wno-error)
+KBUILD_CFLAGS := $(filter-out -Werror=strict-prototypes,$(KBUILD_CFLAGS))
 
 ifeq ($(call cc-option, $(CFLAGS_KASAN_MINIMAL) -Werror),)
    ifneq ($(CONFIG_COMPILE_TEST),y)

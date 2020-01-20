@@ -707,7 +707,13 @@ static ssize_t show_rps_map(struct netdev_rx_queue *queue, char *buf)
 	return len < PAGE_SIZE ? len : -EINVAL;
 }
 
-static ssize_t store_rps_map(struct netdev_rx_queue *queue,
+ssize_t netdev_show_rps_map(struct netdev_rx_queue *queue, char *buf)
+{
+	return show_rps_map(queue, buf);
+}
+EXPORT_SYMBOL_GPL(netdev_show_rps_map);
+
+ssize_t store_rps_map(struct netdev_rx_queue *queue,
 			     const char *buf, size_t len)
 {
 	struct rps_map *old_map, *map;
@@ -765,6 +771,13 @@ static ssize_t store_rps_map(struct netdev_rx_queue *queue,
 	return len;
 }
 
+ssize_t netdev_store_rps_map(struct netdev_rx_queue *queue,
+			     const char *buf, size_t len)
+{
+	return store_rps_map(queue, buf, len);
+}
+EXPORT_SYMBOL_GPL(netdev_store_rps_map);
+
 static ssize_t show_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
 					   char *buf)
 {
@@ -779,6 +792,13 @@ static ssize_t show_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
 
 	return sprintf(buf, "%lu\n", val);
 }
+
+ssize_t netdev_show_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
+					   char *buf)
+{
+	return show_rps_dev_flow_table_cnt(queue, buf);
+}
+EXPORT_SYMBOL_GPL(netdev_show_rps_dev_flow_table_cnt);
 
 static void rps_dev_flow_table_release(struct rcu_head *rcu)
 {
@@ -845,6 +865,13 @@ static ssize_t store_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
 
 	return len;
 }
+
+ssize_t netdev_store_rps_dev_flow_table_cnt(struct netdev_rx_queue *queue,
+					    const char *buf, size_t len)
+{
+	return store_rps_dev_flow_table_cnt(queue, buf, len);
+}
+EXPORT_SYMBOL_GPL(netdev_store_rps_dev_flow_table_cnt);
 
 static struct rx_queue_attribute rps_cpus_attribute __ro_after_init
 	= __ATTR(rps_cpus, S_IRUGO | S_IWUSR, show_rps_map, store_rps_map);

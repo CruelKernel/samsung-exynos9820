@@ -27,6 +27,7 @@
 #include <linux/ratelimit.h>
 #include <linux/uidgid.h>
 #include <linux/gfp.h>
+#include <linux/slab.h>
 #include <asm/device.h>
 
 struct device;
@@ -944,6 +945,9 @@ struct device {
 	/* arch specific additions */
 	struct dev_archdata	archdata;
 
+	/* soc specific additions */
+	struct dev_socdata	socdata;
+
 	struct device_node	*of_node; /* associated device tree node */
 	struct fwnode_handle	*fwnode; /* firmware device node */
 
@@ -1031,6 +1035,31 @@ static inline void dev_set_drvdata(struct device *dev, void *data)
 	dev->driver_data = data;
 }
 
+#define DEV_SOCDATA_MAGIC	(0xCAFEDEAD)
+static inline void dev_set_socdata(struct device *dev,
+					const char *soc, const char *ip)
+{
+	if (dev && soc && ip) {
+		dev->socdata.magic = DEV_SOCDATA_MAGIC;
+		dev->socdata.soc = soc;
+		dev->socdata.ip = ip;
+	}
+}
+
+static inline struct device *create_empty_device(void)
+{
+	struct device *dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+
+	return dev;
+}
+
+static inline struct device *create_fake_device(void)
+{
+	struct dev_socdata *dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+
+	return (struct device *)dev;
+}
+
 static inline struct pm_subsys_data *dev_to_psd(struct device *dev)
 {
 	return dev ? dev->power.subsys_data : NULL;
@@ -1073,6 +1102,16 @@ static inline void dev_pm_syscore_device(struct device *dev, bool val)
 #ifdef CONFIG_PM_SLEEP
 	dev->power.syscore = val;
 #endif
+}
+
+static inline void dev_pm_set_driver_flags(struct device *dev, u32 flags)
+{
+	dev->power.driver_flags = flags;
+}
+
+static inline bool dev_pm_test_driver_flags(struct device *dev, u32 flags)
+{
+	return !!(dev->power.driver_flags & flags);
 }
 
 static inline void device_lock(struct device *dev)
@@ -1507,6 +1546,34 @@ static void __exit __driver##_exit(void) \
 	__unregister(&(__driver) , ##__VA_ARGS__); \
 } \
 module_exit(__driver##_exit);
+
+#ifdef CONFIG_DEFERRED_INITCALLS
+/**
+ * deferred module_driver() - Helper macro for drivers that don't do anything
+ * special in module init/exit. This eliminates a lot of boilerplate.
+ * Each module may only use this macro once, and calling it replaces
+ * deferred_module_init() and module_exit().
+ *
+ * @__driver: driver name
+ * @__register: register function for this driver type
+ * @__unregister: unregister function for this driver type
+ * @...: Additional arguments to be passed to __register and __unregister.
+ *
+ * Use this macro to construct bus specific macros for registering
+ * drivers, and do not use it on its own.
+ */
+#define deferred_module_driver(__driver, __register, __unregister, ...) \
+static int __init __driver##_init(void) \
+{ \
+	return __register(&(__driver) , ##__VA_ARGS__); \
+} \
+deferred_module_init(__driver##_init); \
+static void __exit __driver##_exit(void) \
+{ \
+	__unregister(&(__driver) , ##__VA_ARGS__); \
+} \
+module_exit(__driver##_exit);
+#endif
 
 /**
  * builtin_driver() - Helper macro for drivers that don't do anything

@@ -1,0 +1,42 @@
+# @file Kconfig
+# @brief Kconfig for MST drivers
+# Copyright (c) 2015, Samsung Electronics Corporation. All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 and
+# only version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+config MST_LDO
+	bool "MST LDO kernel driver"
+	default n
+	help
+	This enables the MST LDO kernel driver
+
+config MST_NONSECURE
+	bool "MST before TrustZone bringup"
+	default n
+	help
+	This enables the MST operation in Normal kernel
+
+config MFC_CHARGER
+	bool "MFC IC using model"
+	default n
+	help
+	This enables the MFC IC sysfs node
+
+config MST_TEEGRIS
+	bool "MST running on TEEGRIS"
+	default n
+	help
+	This enables the MST TEEGRIS function
+
+config MST_LPM_CONTROL
+	bool "MST control LPM mode for performace"
+	default n
+	help
+	This enables the MST LPM control code

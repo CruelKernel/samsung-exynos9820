@@ -353,10 +353,35 @@ void ext4_io_submit(struct ext4_io_submit *io)
 				  REQ_SYNC : 0;
 		io->io_bio->bi_write_hint = io->io_end->inode->i_write_hint;
 		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
+		if (fscrypt_inline_encrypted(io->io_end->inode)) {
+			fscrypt_set_bio_cryptd(io->io_end->inode, io->io_bio);
+#if defined(CONFIG_CRYPTO_DISKCIPHER_DEBUG)
+			crypto_diskcipher_debug(FS_PAGEIO, io->io_bio->bi_opf);
+#endif
+		}
 		submit_bio(io->io_bio);
 	}
 	io->io_bio = NULL;
 }
+
+#ifdef CONFIG_DDAR
+int ext4_io_submit_to_dd(struct inode *inode, struct ext4_io_submit *io)
+{
+	struct bio *bio = io->io_bio;
+
+	if (!fscrypt_dd_encrypted_inode(inode))
+		return -EOPNOTSUPP;
+
+	if (bio) {
+		int io_op_flags = io->io_wbc->sync_mode == WB_SYNC_ALL ?
+				  REQ_SYNC : 0;
+		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
+		fscrypt_dd_submit_bio(inode, io->io_bio);
+	}
+	io->io_bio = NULL;
+	return 0;
+}
+#endif
 
 void ext4_io_submit_init(struct ext4_io_submit *io,
 			 struct writeback_control *wbc)
@@ -393,7 +418,8 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
 
 	if (io->io_bio && bh->b_blocknr != io->io_next_block) {
 submit_and_retry:
-		ext4_io_submit(io);
+		if (ext4_io_submit_to_dd(inode, io) == -EOPNOTSUPP)
+			ext4_io_submit(io);
 	}
 	if (io->io_bio == NULL) {
 		ret = io_submit_init_bio(io, bh);
@@ -464,7 +490,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			if (!buffer_mapped(bh))
 				clear_buffer_dirty(bh);
 			if (io->io_bio)
-				ext4_io_submit(io);
+				if (ext4_io_submit_to_dd(inode, io) == -EOPNOTSUPP)
+					ext4_io_submit(io);
 			continue;
 		}
 		if (buffer_new(bh)) {
@@ -478,7 +505,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	bh = head = page_buffers(page);
 
 	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
-	    nr_to_submit) {
+	    nr_to_submit && !fscrypt_inline_encrypted(inode)) {
 		gfp_t gfp_flags = GFP_NOFS;
 
 	retry_encrypt:
@@ -488,7 +515,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			ret = PTR_ERR(data_page);
 			if (ret == -ENOMEM && wbc->sync_mode == WB_SYNC_ALL) {
 				if (io->io_bio) {
-					ext4_io_submit(io);
+					if (ext4_io_submit_to_dd(inode, io) == -EOPNOTSUPP)
+						ext4_io_submit(io);
 					congestion_wait(BLK_RW_ASYNC, HZ/50);
 				}
 				gfp_flags |= __GFP_NOFAIL;

@@ -1,0 +1,41 @@
+config EXYNOS_DECON_LCD
+	depends on EXYNOS_DPU20
+	bool "Select LCD panel driver"
+
+config EXYNOS_COMMON_PANEL
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "Paenl driver for TN(1440 x 2560)"
+	default y
+
+config EXYNOS_DECON_LCD_S6E3HA2K
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA2K AMOLED WQHD LCD driver(1440 x 2560)"
+
+config EXYNOS_DECON_LCD_S6E3HF4
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HF4 AMOLED WQHD LCD driver(1440 x 2560)"
+	default n
+
+config EXYNOS_DECON_LCD_S6E3HA6
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA6 AMOLED WQHD+ LCD driver(1440 x 2960)"
+	default n
+
+config EXYNOS_DECON_LCD_S6E3HA8
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA8 AMOLED WQHD+ LCD driver(1440 x 2960)"
+	default n
+
+config EXYNOS_DECON_LCD_S6E3HA9
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA9 AMOLED WQHD+ LCD driver(1440 x 3040)"
+	default n
+
+config EXYNOS_DECON_LCD_S6E3AA2
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3AA2 AMOLED HD LCD driver(720 x 1280)"
+	default n
+
+config EXYNOS_DECON_LCD_EMUL_DISP
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "Virtual LCD driver for emulator(800 x 1280)"

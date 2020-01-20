@@ -25,6 +25,21 @@
 #include <linux/notifier.h>
 #include <linux/rwsem.h>
 #include <linux/slab.h>
+#include <linux/fips.h>
+
+#define SKC_VERSION_TEXT "SKC v2.0"
+
+#define FIPS_HMAC_SIZE         (32)
+#define FIPS_CRYPTO_ADDRS_SIZE (4096)
+
+struct first_last {
+	aligned_u64 first;
+	aligned_u64 last;
+};
+
+extern const __u64 crypto_buildtime_address;
+extern const struct first_last integrity_crypto_addrs[FIPS_CRYPTO_ADDRS_SIZE];
+extern const __s8 builtime_crypto_hmac[FIPS_HMAC_SIZE];
 
 /* Crypto notification events. */
 enum {
@@ -50,6 +65,23 @@ extern struct rw_semaphore crypto_alg_sem;
 extern struct blocking_notifier_head crypto_chain;
 
 #ifdef CONFIG_PROC_FS
+
+#ifdef CONFIG_CRYPTO_FIPS
+bool in_fips_err(void);
+void set_in_fips_err(void);
+int do_integrity_check(void);
+const char *get_builtime_crypto_hmac(void);
+const void *get_pointer_in_fips_err(void);
+#ifdef CONFIG_CRYPTO_FIPS_FUNC_TEST
+void reset_in_fips_err(void);
+void set_fips_functest_KAT_mode(const int num);
+void set_fips_functest_conditional_mode(const int num);
+char *get_fips_functest_mode(void);
+#define SKC_FUNCTEST_KAT_CASE_NUM 26
+#define SKC_FUNCTEST_CONDITIONAL_CASE_NUM 2
+#define SKC_FUNCTEST_NO_TEST "NO_TEST"
+#endif /* CONFIG_CRYPTO_FIPS_FUNC_TEST */
+#endif /* CONFIG_CRYPTO_FIPS */
 void __init crypto_init_proc(void);
 void __exit crypto_exit_proc(void);
 #else
@@ -57,7 +89,7 @@ static inline void crypto_init_proc(void)
 { }
 static inline void crypto_exit_proc(void)
 { }
-#endif
+#endif /* CONFIG_PROC_FS */
 
 static inline unsigned int crypto_cipher_ctxsize(struct crypto_alg *alg)
 {
@@ -75,6 +107,9 @@ struct crypto_alg *crypto_alg_mod_lookup(const char *name, u32 type, u32 mask);
 
 int crypto_init_cipher_ops(struct crypto_tfm *tfm);
 int crypto_init_compress_ops(struct crypto_tfm *tfm);
+
+void crypto_exit_cipher_ops(struct crypto_tfm *tfm);
+void crypto_exit_compress_ops(struct crypto_tfm *tfm);
 
 struct crypto_larval *crypto_larval_alloc(const char *name, u32 type, u32 mask);
 void crypto_larval_kill(struct crypto_alg *alg);

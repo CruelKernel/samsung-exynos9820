@@ -30,6 +30,13 @@ config CONSOLE_LOGLEVEL_DEFAULT
 	  usage in the kernel. That is controlled by the MESSAGE_LOGLEVEL_DEFAULT
 	  option.
 
+config PRINTK_PROCESS
+	bool "Show process information on printks"
+	depends on PRINTK
+	help
+	  Selecting this option causes process to be
+	  included in printk output. Or add printk.process=1 at boot-time.
+
 config MESSAGE_LOGLEVEL_DEFAULT
 	int "Default message log level (1-7)"
 	range 1 7
@@ -826,9 +833,14 @@ config HARDLOCKUP_DETECTOR
 	  chance to run.  The current stack trace is displayed upon detection
 	  and the system will stay locked up.
 
+config HARDLOCKUP_DETECTOR_OTHER_CPU
+	def_bool y
+	depends on LOCKUP_DETECTOR && !HAVE_NMI_WATCHDOG
+	depends on !HARDLOCKUP_DETECTOR
+
 config BOOTPARAM_HARDLOCKUP_PANIC
 	bool "Panic (Reboot) On Hard Lockups"
-	depends on HARDLOCKUP_DETECTOR
+	depends on HARDLOCKUP_DETECTOR || HARDLOCKUP_DETECTOR_OTHER_CPU
 	help
 	  Say Y here to enable the kernel to panic on "hard lockups",
 	  which are bugs that cause the kernel to loop in kernel
@@ -839,7 +851,7 @@ config BOOTPARAM_HARDLOCKUP_PANIC
 
 config BOOTPARAM_HARDLOCKUP_PANIC_VALUE
 	int
-	depends on HARDLOCKUP_DETECTOR
+	depends on HARDLOCKUP_DETECTOR || HARDLOCKUP_DETECTOR_OTHER_CPU
 	range 0 1
 	default 0 if !BOOTPARAM_HARDLOCKUP_PANIC
 	default 1 if BOOTPARAM_HARDLOCKUP_PANIC
@@ -1013,6 +1025,20 @@ config DEBUG_TIMEKEEPING
 	  workloads.
 
 	  If unsure, say N.
+
+config TIMER_STATS
+	bool "Collect kernel timers statistics"
+	depends on DEBUG_KERNEL && PROC_FS
+	help
+	  If you say Y here, additional code will be inserted into the
+	  timer routines to collect statistics about kernel timers being
+	  reprogrammed. The statistics can be read from /proc/timer_stats.
+	  The statistics collection is started by writing 1 to /proc/timer_stats,
+	  writing 0 stops it. This feature is useful to collect information
+	  about timer usage patterns in kernel and userspace. This feature
+	  is lightweight if enabled in the kernel config but not activated
+	  (it defaults to deactivated on bootup and will only be activated
+	  if some application like powertop activates it explicitly).
 
 config DEBUG_PREEMPT
 	bool "Debug preemptible kernel"
@@ -1194,6 +1220,15 @@ config DEBUG_ATOMIC_SLEEP
 	  noisy if they are called inside atomic sections: when a spinlock is
 	  held, inside an rcu read side critical section, inside preempt disabled
 	  sections, inside an interrupt, etc...
+
+config DEBUG_ATOMIC_SLEEP_PANIC
+	bool "Panic (Reboot) On Atomic Sleep"
+	depends on DEBUG_ATOMIC_SLEEP
+	depends on SEC_DEBUG && !SAMSUNG_PRODUCT_SHIP
+	help
+	  Say Y here to enable the kernel to panic on "atomic sleep",
+
+	  Say N if you want warning messages only.
 
 config DEBUG_LOCKING_API_SELFTESTS
 	bool "Locking API boot-time self-tests"
@@ -1983,3 +2018,117 @@ config IO_STRICT_DEVMEM
 	  if the driver using a given range cannot be disabled.
 
 	  If in doubt, say Y.
+
+menuconfig DEBUG_SNAPSHOT
+	bool "Debug SnapShot Support"
+	default n
+
+config DEBUG_SNAPSHOT_LINUX_BUILD
+	bool "May be built in LINUX environment"
+	depends on DEBUG_SNAPSHOT
+	default y
+
+config DEBUG_SNAPSHOT_USER_MODE
+	bool "Enable User Mode, Most of debug feature are disabled"
+	depends on DEBUG_SNAPSHOT
+	default n
+
+config DEBUG_SNAPSHOT_CALLSTACK
+	int "shown callstack level"
+	depends on DEBUG_SNAPSHOT
+	range 1 4
+	default 4
+
+config DEBUG_SNAPSHOT_IRQ_DISABLED
+	bool "Enable debugging of interrupt disable event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default n
+
+config DEBUG_SNAPSHOT_SPINLOCK
+	bool "Enable debugging of spinlock event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && DEBUG_SPINLOCK && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_CLK
+	bool "Enable debugging of clock event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_PMU
+	bool "Enable debugging of pmu event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_FREQ
+	bool "Enable debugging of frequence event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && PM_DEVFREQ && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_DM
+	bool "Enable debugging of dvfs manager event by kevent(EXPERIMENTAL)"
+	depends on DEBUG_SNAPSHOT && EXYNOS_DVFS_MANAGER && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_HRTIMER
+	bool "Enable debugging of hrtimer by kevent"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_REG
+	bool "Enable debugging of accessing register by kevent"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default n
+
+config DEBUG_SNAPSHOT_REGULATOR
+	bool "Enable debugging of regulator and pmic driver"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_ACPM
+	bool "Enable debugging of acpm framework"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_THERMAL
+	bool "Enable debugging of thermal driver"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE && EXYNOS_THERMAL
+	default y
+
+config DEBUG_SNAPSHOT_I2C
+	bool "Enable debugging of i2c driver"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_SPI
+	bool "Enable debugging of spi driver"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_BINDER
+	bool "Enable debugging of binder driver"
+	depends on DEBUG_SNAPSHOT && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	default y
+
+config DEBUG_SNAPSHOT_PANIC_REBOOT
+	bool "Enable forced reboot after panic for ramdump"
+	depends on DEBUG_SNAPSHOT
+	default y
+
+config DEBUG_SNAPSHOT_WATCHDOG_RESET
+	bool "Support watchdog reset when hardlockup detect"
+	depends on DEBUG_SNAPSHOT && DEBUG_SNAPSHOT_PANIC_REBOOT
+	default y
+
+config DEBUG_SNAPSHOT_CRASH_KEY
+	bool "Support Crash Key to artificial panic for debugging"
+	depends on DEBUG_SNAPSHOT && KEYBOARD_GPIO
+	default y
+
+config DEBUG_SNAPSHOT_ONE_CRASH_KEY
+	bool "Support Crash key for one key model"
+	default n
+
+config DEBUG_SNAPSHOT_MINIMIZED_MODE
+	bool "Support minimized feature configuration"
+	depends on DEBUG_SNAPSHOT_USER_MODE
+	default y

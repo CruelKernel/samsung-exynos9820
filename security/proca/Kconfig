@@ -1,0 +1,21 @@
+#
+# PROCA feature configuration
+#
+
+config PROCA
+	bool "Process Authenticator"
+	depends on FIVE
+	default n
+	help
+	   Enable Process Authenticator
+
+config PROCA_DEBUG
+	bool "PROCA Debug mode"
+	depends on PROCA && !SAMSUNG_PRODUCT_SHIP
+	default y
+	help
+	   Enable the debug mode in the PROCA. When this option is enabled
+	   PROCA driver creates file /proc/<pid>/integrity/proca_certificate
+	   which contains hex representation of binary proca certificate. It
+	   might be used to check existence of task descriptor for some task
+	   in proca table.

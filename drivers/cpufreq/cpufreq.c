@@ -1170,6 +1170,43 @@ static void cpufreq_policy_free(struct cpufreq_policy *policy)
 	kfree(policy);
 }
 
+int cpufreq_fast_online(void)
+{
+	int cpu, ret;
+	struct cpufreq_policy *policy;
+	struct cpumask cl_online_mask;
+
+	for_each_cpu(cpu, &cpu_faston_mask) {
+		policy = per_cpu(cpufreq_cpu_data, cpu);
+		if (!policy)
+			panic("%s: can't to get policy\n", __func__);
+
+		WARN_ON(!cpumask_test_cpu(cpu, policy->related_cpus));
+		down_write(&policy->rwsem);
+
+		if (cpumask_test_cpu(cpu, policy->cpus)) {
+			up_write(&policy->rwsem);
+			continue;
+		}
+
+
+		if (!policy_is_inactive(policy))
+			cpufreq_stop_governor(policy);
+
+		cpumask_and(&cl_online_mask, &cpu_faston_mask, policy->related_cpus);
+		cpumask_or(policy->cpus, &cl_online_mask, policy->cpus);
+
+		policy->cpu = cpumask_first(policy->cpus);
+		ret = cpufreq_start_governor(policy);
+		if (ret)
+			panic("%s: Failed to start governor\n", __func__);
+
+		up_write(&policy->rwsem);
+	}
+
+	return 0;
+}
+
 static int cpufreq_online(unsigned int cpu)
 {
 	struct cpufreq_policy *policy;
@@ -1177,6 +1214,11 @@ static int cpufreq_online(unsigned int cpu)
 	unsigned long flags;
 	unsigned int j;
 	int ret;
+
+	if (cpumask_test_cpu(cpu, &cpu_faston_mask)) {
+		cpufreq_fast_online();
+		return 0;
+	}
 
 	pr_debug("%s: bringing CPU%u online\n", __func__, cpu);
 
@@ -1360,10 +1402,44 @@ static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 	return 0;
 }
 
+int cpufreq_fast_offline(void)
+{
+	int cpu, ret;
+	struct cpufreq_policy *policy;
+
+	for_each_cpu(cpu, &cpu_fastoff_mask) {
+		policy = per_cpu(cpufreq_cpu_data, cpu);
+		down_write(&policy->rwsem);
+		if (!cpumask_test_cpu(cpu, policy->cpus)) {
+			up_write(&policy->rwsem);
+			continue;
+		}
+
+		cpufreq_stop_governor(policy);
+
+		cpumask_andnot(policy->cpus, policy->cpus, &cpu_fastoff_mask);
+
+		if (!policy_is_inactive(policy)) {
+			policy->cpu = cpumask_first(policy->cpus);
+			ret = cpufreq_start_governor(policy);
+			if (ret)
+				panic("%s: Failed to start governor\n", __func__);
+		}
+		up_write(&policy->rwsem);
+	}
+
+	return 0;
+}
+
 static int cpufreq_offline(unsigned int cpu)
 {
 	struct cpufreq_policy *policy;
 	int ret;
+
+	if (cpumask_test_cpu(cpu, &cpu_fastoff_mask)) {
+		cpufreq_fast_offline();
+		return 0;
+	}
 
 	pr_debug("%s: unregistering CPU %u\n", __func__, cpu);
 
@@ -1945,7 +2021,7 @@ static int __target_index(struct cpufreq_policy *policy, int index)
 	return retval;
 }
 
-int __cpufreq_driver_target(struct cpufreq_policy *policy,
+int __weak __cpufreq_driver_target(struct cpufreq_policy *policy,
 			    unsigned int target_freq,
 			    unsigned int relation)
 {

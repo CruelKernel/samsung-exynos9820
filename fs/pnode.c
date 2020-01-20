@@ -13,6 +13,10 @@
 #include "internal.h"
 #include "pnode.h"
 
+#ifdef CONFIG_RKP_NS_PROT
+void rkp_set_mnt_flags(struct vfsmount *mnt,int flags);
+void rkp_reset_mnt_flags(struct vfsmount *mnt,int flags);
+#endif
 /* return the next shared peer mount of @p */
 static inline struct mount *next_peer(struct mount *p)
 {
@@ -42,7 +46,11 @@ static struct mount *get_peer_under_root(struct mount *mnt,
 
 	do {
 		/* Check the namespace first for optimization */
+#ifdef CONFIG_RKP_NS_PROT
+		if (m->mnt_ns == ns && is_path_reachable(m, m->mnt->mnt_root, root))
+#else
 		if (m->mnt_ns == ns && is_path_reachable(m, m->mnt.mnt_root, root))
+#endif
 			return m;
 
 		m = next_peer(m);
@@ -98,7 +106,11 @@ static int do_make_slave(struct mount *mnt)
 		 * slave it to anything that is available.
 		 */
 		for (m = master = next_peer(mnt); m != mnt; m = next_peer(m)) {
+#ifdef CONFIG_RKP_NS_PROT
+			if (m->mnt->mnt_root == mnt->mnt->mnt_root) {
+#else
 			if (m->mnt.mnt_root == mnt->mnt.mnt_root) {
+#endif
 				master = m;
 				break;
 			}
@@ -130,9 +142,17 @@ void change_mnt_propagation(struct mount *mnt, int type)
 		list_del_init(&mnt->mnt_slave);
 		mnt->mnt_master = NULL;
 		if (type == MS_UNBINDABLE)
+#ifdef CONFIG_RKP_NS_PROT
+			rkp_set_mnt_flags(mnt->mnt,MNT_UNBINDABLE);
+#else
 			mnt->mnt.mnt_flags |= MNT_UNBINDABLE;
+#endif
 		else
+#ifdef CONFIG_RKP_NS_PROT
+			rkp_reset_mnt_flags(mnt->mnt,MNT_UNBINDABLE);
+#else
 			mnt->mnt.mnt_flags &= ~MNT_UNBINDABLE;
+#endif
 	}
 }
 
@@ -231,7 +251,11 @@ static int propagate_one(struct mount *m)
 	if (IS_MNT_NEW(m))
 		return 0;
 	/* skip if mountpoint isn't covered by it */
+#ifdef CONFIG_RKP_NS_PROT
+	if (!is_subdir(mp->m_dentry, m->mnt->mnt_root))
+#else
 	if (!is_subdir(mp->m_dentry, m->mnt.mnt_root))
+#endif
 		return 0;
 	if (peers(m, last_dest)) {
 		type = CL_MAKE_SHARED;
@@ -262,10 +286,18 @@ static int propagate_one(struct mount *m)
 	/* Notice when we are propagating across user namespaces */
 	if (m->mnt_ns->user_ns != user_ns)
 		type |= CL_UNPRIVILEGED;
+#ifdef CONFIG_RKP_NS_PROT
+	child = copy_tree(last_source, last_source->mnt->mnt_root, type);
+#else
 	child = copy_tree(last_source, last_source->mnt.mnt_root, type);
+#endif
 	if (IS_ERR(child))
 		return PTR_ERR(child);
+#ifdef CONFIG_RKP_NS_PROT
+	rkp_reset_mnt_flags(child->mnt,MNT_LOCKED);
+#else
 	child->mnt.mnt_flags &= ~MNT_LOCKED;
+#endif
 	mnt_set_mountpoint(m, mp, child);
 	last_dest = m;
 	last_source = child;
@@ -349,7 +381,11 @@ static struct mount *find_topper(struct mount *mnt)
 		return NULL;
 
 	child = list_first_entry(&mnt->mnt_mounts, struct mount, mnt_child);
+#ifdef CONFIG_RKP_NS_PROT
+	if (child->mnt_mountpoint != mnt->mnt->mnt_root)
+#else
 	if (child->mnt_mountpoint != mnt->mnt.mnt_root)
+#endif
 		return NULL;
 
 	return child;
@@ -392,7 +428,11 @@ int propagate_mount_busy(struct mount *mnt, int refcnt)
 	for (m = propagation_next(parent, parent); m;
 	     		m = propagation_next(m, parent)) {
 		int count = 1;
+#ifdef CONFIG_RKP_NS_PROT
+		child = __lookup_mnt(m->mnt, mnt->mnt_mountpoint);
+#else
 		child = __lookup_mnt(&m->mnt, mnt->mnt_mountpoint);
+#endif
 		if (!child)
 			continue;
 
@@ -425,16 +465,26 @@ void propagate_mount_unlock(struct mount *mnt)
 
 	for (m = propagation_next(parent, parent); m;
 			m = propagation_next(m, parent)) {
+#ifdef CONFIG_RKP_NS_PROT
+		child = __lookup_mnt(m->mnt, mnt->mnt_mountpoint);
+		if (child)
+			rkp_reset_mnt_flags(child->mnt,MNT_LOCKED);
+#else
 		child = __lookup_mnt(&m->mnt, mnt->mnt_mountpoint);
 		if (child)
 			child->mnt.mnt_flags &= ~MNT_LOCKED;
+#endif
 	}
 }
 
 static void umount_one(struct mount *mnt, struct list_head *to_umount)
 {
 	CLEAR_MNT_MARK(mnt);
+#ifdef CONFIG_RKP_NS_PROT
+	rkp_set_mnt_flags(mnt->mnt,MNT_UMOUNT);
+#else
 	mnt->mnt.mnt_flags |= MNT_UMOUNT;
+#endif
 	list_del_init(&mnt->mnt_child);
 	list_del_init(&mnt->mnt_umounting);
 	list_move_tail(&mnt->mnt_list, to_umount);
@@ -455,14 +505,23 @@ static bool __propagate_umount(struct mount *mnt,
 	 * The state of the parent won't change if this mount is
 	 * already unmounted or marked as without children.
 	 */
+#ifdef CONFIG_RKP_NS_PROT
+	if (mnt->mnt->mnt_flags & (MNT_UMOUNT | MNT_MARKED))
+		goto out;
+#else
 	if (mnt->mnt.mnt_flags & (MNT_UMOUNT | MNT_MARKED))
 		goto out;
+#endif
 
 	/* Verify topper is the only grandchild that has not been
 	 * speculatively unmounted.
 	 */
 	list_for_each_entry(child, &mnt->mnt_mounts, mnt_child) {
+#ifdef CONFIG_RKP_NS_PROT
+		if (child->mnt_mountpoint == mnt->mnt->mnt_root)
+#else
 		if (child->mnt_mountpoint == mnt->mnt.mnt_root)
+#endif
 			continue;
 		if (!list_empty(&child->mnt_umounting) && IS_MNT_MARKED(child))
 			continue;
@@ -492,7 +551,11 @@ static void umount_list(struct list_head *to_umount,
 	list_for_each_entry(mnt, to_umount, mnt_list) {
 		list_for_each_entry_safe(child, tmp, &mnt->mnt_mounts, mnt_child) {
 			/* topper? */
+#ifdef CONFIG_RKP_NS_PROT
+			if (child->mnt_mountpoint == mnt->mnt->mnt_root)
+#else
 			if (child->mnt_mountpoint == mnt->mnt.mnt_root)
+#endif
 				list_move_tail(&child->mnt_umounting, to_restore);
 			else
 				umount_one(child, to_umount);
@@ -514,7 +577,11 @@ static void restore_mounts(struct list_head *to_restore)
 		/* Should this mount be reparented? */
 		mp = mnt->mnt_mp;
 		parent = mnt->mnt_parent;
+#ifdef CONFIG_RKP_NS_PROT
+		while (parent->mnt->mnt_flags & MNT_UMOUNT) {
+#else
 		while (parent->mnt.mnt_flags & MNT_UMOUNT) {
+#endif
 			mp = parent->mnt_mp;
 			parent = parent->mnt_parent;
 		}
@@ -563,7 +630,11 @@ int propagate_umount(struct list_head *list)
 		list_add_tail(&mnt->mnt_umounting, &visited);
 		for (m = propagation_next(parent, parent); m;
 		     m = propagation_next(m, parent)) {
+#ifdef CONFIG_RKP_NS_PROT
+			struct mount *child = __lookup_mnt(m->mnt,
+#else
 			struct mount *child = __lookup_mnt(&m->mnt,
+#endif
 							   mnt->mnt_mountpoint);
 			if (!child)
 				continue;
@@ -578,7 +649,11 @@ int propagate_umount(struct list_head *list)
 				 */
 				m = skip_propagation_subtree(m, parent);
 				continue;
+#ifdef CONFIG_RKP_NS_PROT
+			} else if (child->mnt->mnt_flags & MNT_UMOUNT) {
+#else
 			} else if (child->mnt.mnt_flags & MNT_UMOUNT) {
+#endif
 				/*
 				 * We have come accross an partially unmounted
 				 * mount in list that has not been visited yet.
@@ -631,12 +706,20 @@ static struct mount *next_descendent(struct mount *root, struct mount *cur)
 void propagate_remount(struct mount *mnt)
 {
 	struct mount *m = mnt;
+#ifdef CONFIG_RKP_NS_PROT
+	struct super_block *sb = mnt->mnt->mnt_sb;
+#else
 	struct super_block *sb = mnt->mnt.mnt_sb;
+#endif
 
 	if (sb->s_op->copy_mnt_data) {
 		m = next_descendent(mnt, m);
 		while (m) {
+#ifdef CONFIG_RKP_NS_PROT
+			sb->s_op->copy_mnt_data(m->mnt->data, mnt->mnt->data);
+#else
 			sb->s_op->copy_mnt_data(m->mnt.data, mnt->mnt.data);
+#endif
 			m = next_descendent(mnt, m);
 		}
 	}

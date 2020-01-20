@@ -741,15 +741,27 @@ static struct dentry *vfat_lookup(struct inode *dir, struct dentry *dentry,
 	if (alias && alias->d_parent == dentry->d_parent &&
 	    !vfat_d_anon_disconn(alias)) {
 		/*
-		 * This inode has non anonymous-DCACHE_DISCONNECTED
-		 * dentry. This means, the user did ->lookup() by an
-		 * another name (longname vs 8.3 alias of it) in past.
-		 *
-		 * Switch to new one for reason of locality if possible.
+		 * Unhashed alias is able to exist because of revalidate()
+		 * called by lookup_fast. You can easily make this status
+		 * by calling create and lookup concurrently
+		 * In such case, we reuse an alias instead of new dentry
 		 */
-		BUG_ON(d_unhashed(alias));
-		if (!S_ISDIR(inode->i_mode))
+		if (d_unhashed(alias)) {
+			BUG_ON(alias->d_name.hash_len != dentry->d_name.hash_len);
+			fat_msg(sb, KERN_INFO, "rehashed a dentry(%p) "
+					"in read lookup", alias);
+			d_drop(dentry);
+			d_rehash(alias);
+		} else if (!S_ISDIR(inode->i_mode)) {
+			/*
+			 * This inode has non anonymous-DCACHE_DISCONNECTED
+			 * dentry. This means, the user did ->lookup() by an
+			 * another name (longname vs 8.3 alias of it) in past.
+			 *
+			 * Switch to new one for reason of locality if possible.
+			 */
 			d_move(alias, dentry);
+		}
 		iput(inode);
 		mutex_unlock(&MSDOS_SB(sb)->s_lock);
 		return alias;
@@ -1043,6 +1055,9 @@ static const struct inode_operations vfat_dir_inode_operations = {
 	.rename		= vfat_rename,
 	.setattr	= fat_setattr,
 	.getattr	= fat_getattr,
+#ifdef CONFIG_FAT_VIRTUAL_XATTR
+	.listxattr      = fat_listxattr,
+#endif
 };
 
 static void setup(struct super_block *sb)

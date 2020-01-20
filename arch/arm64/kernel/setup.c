@@ -64,6 +64,10 @@
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
 
+#if defined(CONFIG_ECT)
+#include <soc/samsung/ect_parser.h>
+#endif
+
 phys_addr_t __fdt_pointer __initdata;
 
 /*
@@ -105,6 +109,32 @@ void __init smp_setup_processor_id(void)
 	set_my_cpu_offset(0);
 	pr_info("Booting Linux on physical CPU 0x%lx\n", (unsigned long)mpidr);
 }
+
+#if defined(CONFIG_ECT)
+int __init early_init_dt_scan_ect(unsigned long node, const char *uname,
+		int depth, void *data)
+{
+	int address = 0, size = 0;
+	const __be32 *paddr, *psize;
+
+	if (depth != 1 || (strcmp(uname, "ect") != 0))
+		return 0;
+
+	paddr = of_get_flat_dt_prop(node, "parameter_address", &address);
+	if (paddr == NULL)
+		return 0;
+
+	psize = of_get_flat_dt_prop(node, "parameter_size", &size);
+	if (psize == NULL)
+		return -1;
+
+	pr_info("[ECT] Address %x, Size %x\b", be32_to_cpu(*paddr), be32_to_cpu(*psize));
+	memblock_reserve(be32_to_cpu(*paddr), be32_to_cpu(*psize));
+	ect_init(be32_to_cpu(*paddr), be32_to_cpu(*psize));
+
+	return 1;
+}
+#endif
 
 bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 {
@@ -199,6 +229,11 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 
 	pr_info("Machine model: %s\n", name);
 	dump_stack_set_arch_desc("%s (DT)", name);
+
+#if defined(CONFIG_ECT)
+	/* Scan dvfs paramter information, address that loaded on DRAM and size */
+	of_scan_flat_dt(early_init_dt_scan_ect, NULL);
+#endif
 }
 
 static void __init request_standard_resources(void)

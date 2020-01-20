@@ -39,6 +39,21 @@ config DEVFREQ_GOV_SIMPLE_ONDEMAND
 	  Simple-Ondemand should be able to provide busy/total counter
 	  values that imply the usage rate. A device may provide tuned
 	  values to the governor with data field at devfreq_add_device().
+config DEVFREQ_GOV_SIMPLE_USAGE
+	tristate "Simple Usage"
+	help
+	  Chooses frequency based on the percentage of target device.
+
+config DEVFREQ_GOV_SIMPLE_EXYNOS
+	tristate "Simple Exynos"
+	help
+	  Chooses frequency based on the threshold of target device.
+
+config DEVFREQ_GOV_SIMPLE_INTERACTIVE
+	tristate "Simple Interactive"
+	help
+	  Chooses frequency based on the requested PM QoS from target device.
+	  And This governor uses timer when change frequency.
 
 config DEVFREQ_GOV_PERFORMANCE
 	tristate "Performance"
@@ -73,7 +88,29 @@ config DEVFREQ_GOV_PASSIVE
 	  through sysfs entries. The passive governor recommends that
 	  devfreq device uses the OPP table to get the frequency/voltage.
 
+config EXYNOS_ALT_DVFS
+	tristate "ALT(Active Load Tracing) DVFS"
+	depends on DEVFREQ_GOV_SIMPLE_INTERACTIVE
+	help
+	  Enable ALT-DVFS scheme for simpleinteractive governor.
+	  When ALT-DVFS is enabled, governor will start to trace and
+	  calculate memory load based on activated cycle. Simpleinteractive
+	  governor decides new frequency for DVFS by comparing current load
+	  and PM QoS requests.
+
 comment "DEVFREQ Drivers"
+
+config ARM_EXYNOS_DEVFREQ
+	bool "ARM Exynos Memory Bus DEVFREQ Common driver"
+	depends on ARCH_EXYNOS
+	select ARCH_HAS_OPP
+	select PM_OPP
+	help
+	  This adds the DEVFREQ driver for Exynos series common bus.
+
+config ARM_EXYNOS_DEVFREQ_DEBUG
+	bool "ARM Exynos DEVFREQ sysfs for Debug"
+	depends on ARM_EXYNOS_DEVFREQ
 
 config ARM_EXYNOS_BUS_DEVFREQ
 	tristate "ARM EXYNOS Generic Memory Bus DEVFREQ Driver"
@@ -114,5 +151,14 @@ config ARM_RK3399_DMC_DEVFREQ
           from hardware.
 
 source "drivers/devfreq/event/Kconfig"
+
+config ARM_EXYNOS9810_BUS_DEVFREQ
+	bool "ARM Exynos9810 Memory Bus DEVFREQ Driver"
+	default y
+	depends on ARM_EXYNOS_DEVFREQ
+	depends on SOC_EXYNOS9810
+	select DEVFREQ_GOV_SIMPLE_INTERACTIVE
+	help
+	  This adds the DEVFREQ driver for Exynos8895 memory and int.
 
 endif # PM_DEVFREQ

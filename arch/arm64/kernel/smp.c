@@ -24,6 +24,7 @@
 #include <linux/sched/mm.h>
 #include <linux/sched/hotplug.h>
 #include <linux/sched/task_stack.h>
+#include <linux/sched/clock.h>
 #include <linux/interrupt.h>
 #include <linux/cache.h>
 #include <linux/profile.h>
@@ -40,6 +41,7 @@
 #include <linux/of.h>
 #include <linux/irq_work.h>
 #include <linux/kexec.h>
+#include <linux/debug-snapshot.h>
 
 #include <asm/alternative.h>
 #include <asm/atomic.h>
@@ -57,6 +59,7 @@
 #include <asm/tlbflush.h>
 #include <asm/ptrace.h>
 #include <asm/virt.h>
+#include <soc/samsung/exynos-sdm.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/ipi.h>
@@ -77,10 +80,10 @@ enum ipi_msg_type {
 	IPI_RESCHEDULE,
 	IPI_CALL_FUNC,
 	IPI_CPU_STOP,
-	IPI_CPU_CRASH_STOP,
 	IPI_TIMER,
 	IPI_IRQ_WORK,
-	IPI_WAKEUP
+	IPI_WAKEUP,
+	IPI_CPU_CRASH_STOP
 };
 
 #ifdef CONFIG_ARM64_VHE
@@ -500,6 +503,23 @@ static bool __init is_mpidr_duplicate(unsigned int cpu, u64 hwid)
 	return false;
 }
 
+static unsigned long cpu_offmask;
+
+static int __init cpu_boot_masking(char *s)
+{
+	long mask;
+	int ret;
+
+	ret = kstrtol(s, 16, &mask);
+	if (ret)
+		return -EINVAL;
+
+	cpu_offmask = (unsigned long)mask;
+
+	return 0;
+}
+early_param("cpu_offmask", cpu_boot_masking);
+
 /*
  * Initialize cpu operations for a logical cpu and
  * set it in the possible mask on success
@@ -511,6 +531,11 @@ static int __init smp_cpu_setup(int cpu)
 
 	if (cpu_ops[cpu]->cpu_init(cpu))
 		return -ENODEV;
+
+	if (test_bit(cpu, &cpu_offmask)) {
+		pr_err("%s: CPU%d OFF by cpu offmask\n",__func__,cpu);
+		return -ENODEV;
+	}
 
 	set_cpu_possible(cpu, true);
 
@@ -757,6 +782,17 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 }
 
 void (*__smp_cross_call)(const struct cpumask *, unsigned int);
+DEFINE_PER_CPU(bool, pending_ipi);
+
+void smp_cross_call_common(const struct cpumask *cpumask, unsigned int func)
+{
+	unsigned int cpu;
+
+	for_each_cpu(cpu, cpumask)
+		per_cpu(pending_ipi, cpu) = true;
+
+	__smp_cross_call(cpumask, func);
+}
 
 void __init set_smp_cross_call(void (*fn)(const struct cpumask *, unsigned int))
 {
@@ -768,10 +804,10 @@ static const char *ipi_types[NR_IPI] __tracepoint_string = {
 	S(IPI_RESCHEDULE, "Rescheduling interrupts"),
 	S(IPI_CALL_FUNC, "Function call interrupts"),
 	S(IPI_CPU_STOP, "CPU stop interrupts"),
-	S(IPI_CPU_CRASH_STOP, "CPU stop (for crash dump) interrupts"),
 	S(IPI_TIMER, "Timer broadcast interrupts"),
 	S(IPI_IRQ_WORK, "IRQ work interrupts"),
 	S(IPI_WAKEUP, "CPU wake-up interrupts"),
+	S(IPI_CPU_CRASH_STOP, "CPU stop (for crash dump) interrupts"),
 };
 
 static void smp_cross_call(const struct cpumask *target, unsigned int ipinr)
@@ -807,18 +843,18 @@ u64 smp_irq_stat_cpu(unsigned int cpu)
 
 void arch_send_call_function_ipi_mask(const struct cpumask *mask)
 {
-	smp_cross_call(mask, IPI_CALL_FUNC);
+	smp_cross_call_common(mask, IPI_CALL_FUNC);
 }
 
 void arch_send_call_function_single_ipi(int cpu)
 {
-	smp_cross_call(cpumask_of(cpu), IPI_CALL_FUNC);
+	smp_cross_call_common(cpumask_of(cpu), IPI_CALL_FUNC);
 }
 
 #ifdef CONFIG_ARM64_ACPI_PARKING_PROTOCOL
 void arch_send_wakeup_ipi_mask(const struct cpumask *mask)
 {
-	smp_cross_call(mask, IPI_WAKEUP);
+	smp_cross_call_common(mask, IPI_WAKEUP);
 }
 #endif
 
@@ -830,11 +866,25 @@ void arch_irq_work_raise(void)
 }
 #endif
 
+static DEFINE_RAW_SPINLOCK(stop_lock);
+
 /*
  * ipi_cpu_stop - handle IPI from smp_send_stop()
  */
-static void ipi_cpu_stop(unsigned int cpu)
+static void ipi_cpu_stop(unsigned int cpu, struct pt_regs *regs)
 {
+	pr_crit("CPU%u: stopping\n", cpu);
+
+	if (system_state == SYSTEM_BOOTING ||
+	    system_state == SYSTEM_RUNNING) {
+		raw_spin_lock(&stop_lock);
+		dump_stack();
+		raw_spin_unlock(&stop_lock);
+	}
+
+	dbg_snapshot_save_context(regs);
+	exynos_sdm_flush_secdram();
+
 	set_cpu_online(cpu, false);
 
 	local_irq_disable();
@@ -873,11 +923,15 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 {
 	unsigned int cpu = smp_processor_id();
 	struct pt_regs *old_regs = set_irq_regs(regs);
+	unsigned long long start_time;
 
 	if ((unsigned)ipinr < NR_IPI) {
 		trace_ipi_entry_rcuidle(ipi_types[ipinr]);
 		__inc_irq_stat(cpu, ipi_irqs[ipinr]);
 	}
+
+	dbg_snapshot_irq_var(start_time);
+	dbg_snapshot_irq(ipinr, handle_IPI, NULL, 0, DSS_FLAG_IN);
 
 	switch (ipinr) {
 	case IPI_RESCHEDULE:
@@ -886,13 +940,18 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 	case IPI_CALL_FUNC:
 		irq_enter();
+		/*
+		 * dbg_snapshot_irq function is into
+		 * generic_smp_call_function_interrupt()
+		 *
+		 */
 		generic_smp_call_function_interrupt();
 		irq_exit();
 		break;
 
 	case IPI_CPU_STOP:
 		irq_enter();
-		ipi_cpu_stop(cpu);
+		ipi_cpu_stop(cpu, regs);
 		irq_exit();
 		break;
 
@@ -936,20 +995,34 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 	if ((unsigned)ipinr < NR_IPI)
 		trace_ipi_exit_rcuidle(ipi_types[ipinr]);
+
+	per_cpu(pending_ipi, cpu) = false;
+
+	dbg_snapshot_irq(ipinr, handle_IPI, NULL, start_time, DSS_FLAG_OUT);
+
 	set_irq_regs(old_regs);
 }
 
 void smp_send_reschedule(int cpu)
 {
-	smp_cross_call(cpumask_of(cpu), IPI_RESCHEDULE);
+	smp_cross_call_common(cpumask_of(cpu), IPI_RESCHEDULE);
 }
 
 #ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
 void tick_broadcast(const struct cpumask *mask)
 {
-	smp_cross_call(mask, IPI_TIMER);
+	smp_cross_call_common(mask, IPI_TIMER);
 }
 #endif
+
+static const char *system_state_show[SYSTEM_END] = {
+	"SYSTEM_BOOTING",
+	"SYSTEM_SCHEDULING",
+	"SYSTEM_RUNNING",
+	"SYSTEM_HALT",
+	"SYSTEM_POWER_OFF",
+	"SYSTEM_RESTART",
+};
 
 void smp_send_stop(void)
 {
@@ -961,13 +1034,13 @@ void smp_send_stop(void)
 		cpumask_copy(&mask, cpu_online_mask);
 		cpumask_clear_cpu(smp_processor_id(), &mask);
 
-		if (system_state <= SYSTEM_RUNNING)
-			pr_crit("SMP: stopping secondary CPUs\n");
-		smp_cross_call(&mask, IPI_CPU_STOP);
+		pr_crit("SMP: stopping secondary CPUs : %s\n",
+				system_state_show[system_state]);
+		smp_cross_call_common(&mask, IPI_CPU_STOP);
 	}
 
 	/* Wait up to one second for other CPUs to stop */
-	timeout = USEC_PER_SEC;
+	timeout = USEC_PER_SEC * 5;
 	while (num_online_cpus() > 1 && timeout--)
 		udelay(1);
 

@@ -1,0 +1,12 @@
+#
+# notifier
+#
+
+comment "NOTIFIER configs"
+
+config VBUS_NOTIFIER
+	bool "VBUS notifier support"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the VBUS status change notification.

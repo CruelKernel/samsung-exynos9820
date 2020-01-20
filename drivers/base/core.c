@@ -28,6 +28,9 @@
 #include <linux/netdevice.h>
 #include <linux/sched/signal.h>
 #include <linux/sysfs.h>
+#include <linux/platform_device.h>
+#include <linux/sched/clock.h>
+#include <linux/i2c.h>
 
 #include "base.h"
 #include "power/power.h"
@@ -2776,12 +2779,50 @@ out:
 }
 EXPORT_SYMBOL_GPL(device_move);
 
+#if 0
+static const char *get_dev_name(struct device *dev)
+{
+	return dev->kobj.name ? dev->kobj.name : "null";
+}
+#endif
+
+static void *get_cls_shutdown_func(struct device *dev)
+{
+	if (!dev || !dev->class)
+		return NULL;
+
+	return dev->class->shutdown_pre;
+}
+
+static void *get_bus_shutdown_func(struct device *dev)
+{
+	if (!dev || !dev->bus || !dev->driver)
+		return NULL;
+
+	if (dev->bus == &i2c_bus_type)
+		return to_i2c_driver(dev->driver)->shutdown;
+	else
+		return dev->bus->shutdown;
+}
+
+static void *get_drv_shutdown_func(struct device *dev)
+{
+	if (!dev || !dev->bus || !dev->driver)
+		return NULL;
+
+	if (dev->bus == &platform_bus_type)
+		return to_platform_driver(dev->driver)->shutdown;
+	else
+		return dev->driver->shutdown;
+}
+
 /**
  * device_shutdown - call ->shutdown() on each device to shutdown.
  */
 void device_shutdown(void)
 {
 	struct device *dev, *parent;
+	u64 before, after;
 
 	wait_for_device_probe();
 	device_block_probing();
@@ -2792,6 +2833,8 @@ void device_shutdown(void)
 	 * Beware that device unplug events may also start pulling
 	 * devices offline, even as the system is shutting down.
 	 */
+	sec_debug_set_task_in_dev_shutdown((uint64_t)current);
+
 	while (!list_empty(&devices_kset->list)) {
 		dev = list_entry(devices_kset->list.prev, struct device,
 				kobj.entry);
@@ -2822,16 +2865,29 @@ void device_shutdown(void)
 		if (dev->class && dev->class->shutdown_pre) {
 			if (initcall_debug)
 				dev_info(dev, "shutdown_pre\n");
+
+			before = local_clock();
 			dev->class->shutdown_pre(dev);
+			after = local_clock();
+			sec_debug_set_device_shutdown_timeinfo(before, after, after - before, (u64)get_cls_shutdown_func(dev));
 		}
+
 		if (dev->bus && dev->bus->shutdown) {
 			if (initcall_debug)
 				dev_info(dev, "shutdown\n");
+
+			before = local_clock();
 			dev->bus->shutdown(dev);
+			after = local_clock();
+			sec_debug_set_device_shutdown_timeinfo(before, after, after - before, (u64)get_bus_shutdown_func(dev));
 		} else if (dev->driver && dev->driver->shutdown) {
 			if (initcall_debug)
 				dev_info(dev, "shutdown\n");
+
+			before = local_clock();
 			dev->driver->shutdown(dev);
+			after = local_clock();
+			sec_debug_set_device_shutdown_timeinfo(before, after, after - before, (u64)get_drv_shutdown_func(dev));
 		}
 
 		device_unlock(dev);
@@ -2843,6 +2899,8 @@ void device_shutdown(void)
 
 		spin_lock(&devices_kset->list_lock);
 	}
+
+	sec_debug_set_task_in_dev_shutdown(0);
 	spin_unlock(&devices_kset->list_lock);
 }
 
@@ -2935,9 +2993,36 @@ int dev_printk_emit(int level, const struct device *dev, const char *fmt, ...)
 }
 EXPORT_SYMBOL(dev_printk_emit);
 
+static const char *const loglevel_message[] = {
+	"EMERG",
+	"ALERT",
+	"CRIT",
+	"ERROR",
+	"WARN",
+	"NOTICE",
+	"INFO",
+	"DEBUG",
+};
+
+static void __dev_printk_with_socdata(const char *level, const struct device *dev,
+			struct va_format *vaf)
+{
+	dev_printk_emit(level[1] - '0', dev, "[%s][%s][%6s]: %pV",
+			dev->socdata.soc,
+			dev->socdata.ip,
+			loglevel_message[level[1] - '0'],
+			vaf);
+}
+
 static void __dev_printk(const char *level, const struct device *dev,
 			struct va_format *vaf)
 {
+	/* To reduce side-effect to mainline code */
+	if (dev && dev->socdata.magic == DEV_SOCDATA_MAGIC) {
+		__dev_printk_with_socdata(level, dev, vaf);
+		return;
+	}
+
 	if (dev)
 		dev_printk_emit(level[1] - '0', dev, "%s %s: %pV",
 				dev_driver_string(dev), dev_name(dev), vaf);

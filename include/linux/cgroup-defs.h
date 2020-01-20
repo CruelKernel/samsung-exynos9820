@@ -616,6 +616,7 @@ extern struct percpu_rw_semaphore cgroup_threadgroup_rwsem;
 static inline void cgroup_threadgroup_change_begin(struct task_struct *tsk)
 {
 	percpu_down_read(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)tsk, 4);
 }
 
 /**
@@ -627,6 +628,7 @@ static inline void cgroup_threadgroup_change_begin(struct task_struct *tsk)
 static inline void cgroup_threadgroup_change_end(struct task_struct *tsk)
 {
 	percpu_up_read(&cgroup_threadgroup_rwsem);
+	sec_debug_snapshot_printkl((size_t)tsk, 12);
 }
 
 #else	/* CONFIG_CGROUPS */

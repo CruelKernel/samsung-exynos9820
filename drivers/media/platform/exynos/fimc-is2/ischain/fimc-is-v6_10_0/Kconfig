@@ -1,0 +1,16 @@
+config FIMC_IS_V6_10_0
+	bool "Use fimc-is v6.10.0"
+	depends on SOC_EXYNOS9610
+	select EXYNOS_DEVICE_MIPI_CSIS_VER4
+	select CSIS_V5_1
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select CAMERA_PAFSTAT
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_MC_SCALER_VER2_USE
+	select CAMERA_TDNR_VER2_USE
+	select MC_SCALER_V4_10
+	select USE_HW_API_COMMON
+	help
+	  fimc-is version 6.10.0

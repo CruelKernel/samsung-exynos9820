@@ -59,6 +59,22 @@ config EXTCON_INTEL_CHT_WC
 	  Say Y here to enable extcon support for charger detection / control
 	  on the Intel Cherrytrail Whiskey Cove PMIC.
 
+config EXTCON_MADERA
+	tristate "Cirrus Logic Madera codec support"
+	depends on MFD_MADERA && INPUT && SND_SOC
+	help
+	  Say Y here to enable support for external accessory detection
+	  on Cirrus Logic Madera class codecs.
+
+config EXTCON_MADERA_INPUT_EVENT
+	bool "Report events through input key events"
+	depends on EXTCON_MADERA
+	default n
+	help
+	  Say Y here to enable support for reporting external accessory
+	  detection events through input key events on Cirrus Logic Madera
+	  class codecs.
+
 config EXTCON_MAX14577
 	tristate "Maxim MAX14577/77836 EXTCON Support"
 	depends on MFD_MAX14577

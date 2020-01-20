@@ -88,6 +88,11 @@ int crypto_hash_walk_done(struct crypto_hash_walk *walk, int err)
 	unsigned int alignmask = walk->alignmask;
 	unsigned int nbytes = walk->entrylen;
 
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
+
 	walk->data -= walk->offset;
 
 	if (nbytes && walk->offset & alignmask && !err) {
@@ -134,6 +139,12 @@ EXPORT_SYMBOL_GPL(crypto_hash_walk_done);
 int crypto_hash_walk_first(struct ahash_request *req,
 			   struct crypto_hash_walk *walk)
 {
+
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
+
 	walk->total = req->nbytes;
 
 	if (!walk->total) {
@@ -358,6 +369,11 @@ static int crypto_ahash_op(struct ahash_request *req,
 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
 	unsigned long alignmask = crypto_ahash_alignmask(tfm);
 
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
+
 	if ((unsigned long)req->result & alignmask)
 		return ahash_op_unaligned(req, op);
 
@@ -467,6 +483,11 @@ static int crypto_ahash_init_tfm(struct crypto_tfm *tfm)
 {
 	struct crypto_ahash *hash = __crypto_ahash_cast(tfm);
 	struct ahash_alg *alg = crypto_ahash_alg(hash);
+
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
 
 	hash->setkey = ahash_nosetkey;
 	hash->export = ahash_no_export;
@@ -634,6 +655,11 @@ int ahash_register_instance(struct crypto_template *tmpl,
 			    struct ahash_instance *inst)
 {
 	int err;
+
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
 
 	err = ahash_prepare_alg(&inst->alg);
 	if (err)

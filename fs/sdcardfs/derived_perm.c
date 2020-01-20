@@ -32,6 +32,7 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->data->under_android = pi->data->under_android;
 	ci->data->under_cache = pi->data->under_cache;
 	ci->data->under_obb = pi->data->under_obb;
+	ci->data->under_knox = pi->data->under_knox;
 }
 
 /* helper function for derived state */
@@ -46,6 +47,7 @@ void setup_derived_state(struct inode *inode, perm_t perm, userid_t userid,
 	info->data->under_android = false;
 	info->data->under_cache = false;
 	info->data->under_obb = false;
+	info->data->under_knox = false;
 }
 
 /* While renaming, there is a point where we want the path from dentry,
@@ -62,9 +64,13 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 	int err;
 	struct qstr q_Android = QSTR_LITERAL("Android");
 	struct qstr q_data = QSTR_LITERAL("data");
+	struct qstr q_sandbox = QSTR_LITERAL("sandbox");
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_media = QSTR_LITERAL("media");
 	struct qstr q_cache = QSTR_LITERAL("cache");
+	/* refer to perm_t in sdcardfs.h */
+	struct qstr q_knox = QSTR_LITERAL("knox");
+	struct qstr q_shared = QSTR_LITERAL("shared");
 
 	/* By default, each inode inherits from its parent.
 	 * the properties are maintained on its private fields
@@ -102,12 +108,18 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 			/* App-specific directories inside; let anyone traverse */
 			info->data->perm = PERM_ANDROID;
 			info->data->under_android = true;
+		} else if (qstr_case_eq(name, &q_knox)) {
+			info->data->perm = PERM_KNOX_PRE_ROOT;
+			info->data->under_knox = true;
 		} else {
 			set_top(info, parent_info);
 		}
 		break;
 	case PERM_ANDROID:
 		if (qstr_case_eq(name, &q_data)) {
+			/* App-specific directories inside; let anyone traverse */
+			info->data->perm = PERM_ANDROID_DATA;
+		} else if (qstr_case_eq(name, &q_sandbox)) {
 			/* App-specific directories inside; let anyone traverse */
 			info->data->perm = PERM_ANDROID_DATA;
 		} else if (qstr_case_eq(name, &q_obb)) {
@@ -136,6 +148,44 @@ void get_derived_permission_new(struct dentry *parent, struct dentry *dentry,
 			info->data->perm = PERM_ANDROID_PACKAGE_CACHE;
 			info->data->under_cache = true;
 		}
+		set_top(info, parent_info);
+		break;
+
+	/* KNOX */
+	case PERM_KNOX_PRE_ROOT:
+		info->data->perm = PERM_KNOX_ROOT;
+		err = kstrtoul(name->name, 10, &user_num);
+		if (err)
+			info->data->userid = 10; /* default container no. */
+		else
+			info->data->userid = user_num;
+		break;
+	case PERM_KNOX_ROOT:
+		if (qstr_case_eq(name, &q_Android))
+			info->data->perm = PERM_KNOX_ANDROID;
+		set_top(info, parent_info);
+		break;
+	case PERM_KNOX_ANDROID:
+		if (qstr_case_eq(name, &q_data)) {
+			info->data->perm = PERM_KNOX_ANDROID_DATA;
+			set_top(info, parent_info);
+		} else if (qstr_case_eq(name, &q_shared)) {
+			info->data->perm = PERM_KNOX_ANDROID_SHARED;
+			info->data->d_uid =
+				multiuser_get_uid(parent_data->userid, 0);
+		} else {
+			set_top(info, parent_info);
+		}
+		break;
+	case PERM_KNOX_ANDROID_DATA:
+		info->data->perm = PERM_KNOX_ANDROID_PACKAGE;
+		appid = get_appid(name->name);
+		if (appid != 0 && !is_excluded(name->name, parent_data->userid))
+			info->data->d_uid =
+				multiuser_get_uid(parent_data->userid, appid);
+		break;
+	case PERM_KNOX_ANDROID_SHARED:
+	case PERM_KNOX_ANDROID_PACKAGE:
 		set_top(info, parent_info);
 		break;
 	}
@@ -356,7 +406,8 @@ int need_graft_path(struct dentry *dentry)
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	struct qstr obb = QSTR_LITERAL("obb");
 
-	if (parent_info->data->perm == PERM_ANDROID &&
+	if (!sbi->options.unshared_obb &&
+			parent_info->data->perm == PERM_ANDROID &&
 			qstr_case_eq(&dentry->d_name, &obb)) {
 
 		/* /Android/obb is the base obbpath of DERIVED_UNIFIED */

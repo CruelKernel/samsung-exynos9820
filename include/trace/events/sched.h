@@ -653,6 +653,113 @@ extern bool walt_disabled;
 #endif
 
 /*
+ * Tracepoint for logging FRT schedule activity
+ */
+
+TRACE_EVENT(sched_fluid_activated_cpus,
+
+	TP_PROTO(int cpu, int util_sum, int busy_thr, unsigned int prefer_mask),
+
+	TP_ARGS(cpu, util_sum, busy_thr, prefer_mask),
+
+	TP_STRUCT__entry(
+		__field(	int,		cpu		)
+		__field(	int,		util_sum	)
+		__field(	int,		busy_thr	)
+		__field(	unsigned int,	prefer_mask	)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->util_sum	= util_sum;
+		__entry->busy_thr	= busy_thr;
+		__entry->prefer_mask	= prefer_mask;
+	),
+
+	TP_printk("cpu=%d util_sum=%d busy_thr=%d prefer_mask=%x",
+		__entry->cpu,__entry->util_sum,
+		__entry->busy_thr, __entry->prefer_mask)
+);
+
+TRACE_EVENT(sched_fluid_stat,
+
+	TP_PROTO(struct task_struct *tsk, struct sched_avg *avg, int best, char* str),
+
+	TP_ARGS(tsk, avg, best, str),
+
+	TP_STRUCT__entry(
+		__array( char,	selectby,	TASK_COMM_LEN	)
+		__array( char,	targettsk,	TASK_COMM_LEN	)
+		__field( pid_t,	pid				)
+		__field( int,	bestcpu				)
+		__field( int,	prevcpu				)
+		__field( unsigned long,	load_avg		)
+		__field( unsigned long,	util_avg		)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->selectby, str, TASK_COMM_LEN);
+		memcpy(__entry->targettsk, tsk->comm, TASK_COMM_LEN);
+		__entry->pid			= tsk->pid;
+		__entry->bestcpu		= best;
+		__entry->prevcpu		= task_cpu(tsk);
+		__entry->load_avg		= avg->load_avg;
+		__entry->util_avg		= avg->util_avg;
+	),
+	TP_printk("frt: comm=%s pid=%d assigned to #%d from #%d load_avg=%lu util_avg=%lu "
+			"by %s.",
+		  __entry->targettsk,
+		  __entry->pid,
+		  __entry->bestcpu,
+		  __entry->prevcpu,
+		  __entry->load_avg,
+		  __entry->util_avg,
+		  __entry->selectby)
+);
+/*
+ * Tracepoint for accounting sched averages for tasks.
+ */
+TRACE_EVENT(sched_rt_load_avg_task,
+
+	TP_PROTO(struct task_struct *tsk, struct sched_avg *avg),
+
+	TP_ARGS(tsk, avg),
+
+	TP_STRUCT__entry(
+		__array( char,	comm,	TASK_COMM_LEN		)
+		__field( pid_t,	pid				)
+		__field( int,	cpu				)
+		__field( unsigned long,	load_avg		)
+		__field( unsigned long,	util_avg		)
+		__field( u64,		load_sum		)
+		__field( u32,		util_sum		)
+		__field( u32,		period_contrib		)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
+		__entry->pid			= tsk->pid;
+		__entry->cpu			= task_cpu(tsk);
+		__entry->load_avg		= avg->load_avg;
+		__entry->util_avg		= avg->util_avg;
+		__entry->load_sum		= avg->load_sum;
+		__entry->util_sum		= avg->util_sum;
+		__entry->period_contrib		= avg->period_contrib;
+	),
+	TP_printk("rt: comm=%s pid=%d cpu=%d load_avg=%lu util_avg=%lu "
+			"load_sum=%llu util_sum=%u period_contrib=%u",
+		  __entry->comm,
+		  __entry->pid,
+		  __entry->cpu,
+		  __entry->load_avg,
+		  __entry->util_avg,
+		  (u64)__entry->load_sum,
+		  (u32)__entry->util_sum,
+		  (u32)__entry->period_contrib)
+);
+
+
+/*
  * Tracepoint for cfs_rq load tracking:
  */
 TRACE_EVENT(sched_load_cfs_rq,
@@ -864,6 +971,67 @@ TRACE_EVENT(sched_tune_tasks_update,
 		__entry->cpu, __entry->tasks, __entry->idx,
 		__entry->boost, __entry->max_boost,
 		__entry->group_ts)
+);
+
+/*
+ * Tracepoint for schedtune_grouputil_update
+ */
+TRACE_EVENT(sched_tune_grouputil_update,
+
+	TP_PROTO(int idx, int total, int accumulated, unsigned long group_util,
+			struct task_struct *heaviest_p, unsigned long biggest_util),
+
+	TP_ARGS(idx, total, accumulated, group_util, heaviest_p, biggest_util),
+
+	TP_STRUCT__entry(
+		__field( int,		idx		)
+		__field( int,		total		)
+		__field( int,		accumulated	)
+		__field( unsigned long,	group_util	)
+		__field( pid_t,		pid		)
+		__array( char,	comm,	TASK_COMM_LEN	)
+		__field( unsigned long,	biggest_util	)
+	),
+
+	TP_fast_assign(
+		__entry->idx		= idx;
+		__entry->total		= total;
+		__entry->accumulated	= accumulated;
+		__entry->group_util	= group_util;
+		__entry->pid		= heaviest_p->pid;
+		memcpy(__entry->comm, heaviest_p->comm, TASK_COMM_LEN);
+		__entry->biggest_util	= biggest_util;
+	),
+
+	TP_printk("idx=%d total=%d accumulated=%d group_util=%lu "
+			"heaviest task(pid=%d comm=%s util=%lu)",
+		__entry->idx, __entry->total, __entry->accumulated, __entry->group_util,
+		__entry->pid, __entry->comm, __entry->biggest_util)
+);
+
+/*
+ * Tracepoint for checking group balancing
+ */
+TRACE_EVENT(sched_tune_check_group_balance,
+
+	TP_PROTO(int idx, int ib_count, bool balancing),
+
+	TP_ARGS(idx, ib_count, balancing),
+
+	TP_STRUCT__entry(
+		__field( int,		idx		)
+		__field( int,		ib_count	)
+		__field( bool,		balancing	)
+	),
+
+	TP_fast_assign(
+		__entry->idx		= idx;
+		__entry->ib_count	= ib_count;
+		__entry->balancing	= balancing;
+	),
+
+	TP_printk("idx=%d imbalance_count=%d balancing=%d",
+		__entry->idx, __entry->ib_count, __entry->balancing)
 );
 
 /*

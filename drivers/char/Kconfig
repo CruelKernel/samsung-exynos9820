@@ -567,6 +567,7 @@ config TELCLOCK
 
 config DEVPORT
 	bool "/dev/port character device"
+	depends on !M68K && !ARM64	
 	depends on ISA || PCI
 	default y
 	help

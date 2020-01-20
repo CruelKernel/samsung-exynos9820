@@ -103,6 +103,9 @@ static inline void local_flush_tlb_all(void)
 {
 	dsb(nshst);
 	__tlbi(vmalle1);
+#ifdef CONFIG_SOC_EXYNOS9820
+	__tlbi(vaale1is, 0);
+#endif
 	dsb(nsh);
 	isb();
 }

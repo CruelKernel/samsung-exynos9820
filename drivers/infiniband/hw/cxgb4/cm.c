@@ -3752,7 +3752,11 @@ static void build_cpl_pass_accept_req(struct sk_buff *skb, int stid , u8 tos)
 	 */
 	memset(&tmp_opt, 0, sizeof(tmp_opt));
 	tcp_clear_options(&tmp_opt);
+#ifdef CONFIG_MPTCP
+	tcp_parse_options(&init_net, skb, &tmp_opt, NULL, 0, NULL, NULL);
+#else
 	tcp_parse_options(&init_net, skb, &tmp_opt, 0, NULL);
+#endif
 
 	req = __skb_push(skb, sizeof(*req));
 	memset(req, 0, sizeof(*req));

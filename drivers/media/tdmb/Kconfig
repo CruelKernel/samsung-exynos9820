@@ -1,0 +1,158 @@
+#
+# TDMB config states
+#
+
+#klaatu TDMB
+config TDMB
+	bool "T-DMB"
+	help
+	  This allows T-DMB support for Korea.
+	  This module is designed for SPI or EBI2.
+	  Select chipset and interface
+	  Need to check I/F
+
+	config TDMB_VENDOR_FCI
+	depends on TDMB
+	bool "FCI"
+
+choice
+	depends on TDMB && TDMB_VENDOR_FCI
+	prompt "chip"
+	default TDMB_FC8080
+
+	config TDMB_FC8080
+		bool "FC8080"
+		help
+		This tuner chip named FC8080
+		Support TDMB
+		check OSC
+		check I/F
+endchoice
+
+config TDMB_VENDOR_RAONTECH
+	depends on TDMB
+	bool "Raontech"
+
+choice
+	depends on TDMB && TDMB_VENDOR_RAONTECH
+	prompt "chip"
+	default TDMB_MTV319
+	config TDMB_MTV319
+		bool "MTV319"
+		help
+		This tuner chip named MTV319
+		Support TDMB
+		check OSC
+		check I/F
+endchoice
+
+choice
+	depends on TDMB
+	prompt "AP vendor"
+	default TDMB_SLSI
+	config TDMB_QUALCOMM
+		bool "Qualcomm"
+		help
+		Use Qualcomm AP
+		Support TDMB
+		check OSC
+		check I/F
+	config TDMB_SLSI
+		bool "S.LSI"
+		help
+		Use S.LSI AP
+		Support TDMB
+		check OSC
+		check I/F
+endchoice
+
+config TDMB_SPI
+	depends on TDMB
+	bool "SPI"
+	help
+	Use SPI
+	Support TDMB
+	check clock speed
+	check DMA support
+
+config TDMB_EBI
+	depends on TDMB
+	bool "EBI"
+	help
+	Use EBI
+	Support TDMB
+	check speed
+	check AP support
+
+config TDMB_TSIF_SLSI
+	depends on TDMB
+	bool "SLSI TSIF"
+	help
+	Use TSIF
+	Support TDMB
+	check speed
+	check AP support
+
+config TDMB_TSIF_QC
+	depends on TDMB
+	bool "Qualcomm TSIF"
+	help
+	Use TSIF
+	Support TDMB
+	check speed
+	check AP support
+
+config TDMB_I2C
+	depends on TDMB
+	bool "I2C"
+	help
+	Use for command
+	Support TDMB
+	check speed
+	check AP support
+
+config TDMB_XTAL_FREQ
+	depends on TDMB
+	bool "use xtal freq"
+	default 0
+	help
+	Use external OSC
+	Support TDMB
+	check freq
+	check tuner support
+
+config TDMB_DEBUG
+	depends on TDMB
+	bool "tdmb debugfs"
+	help
+	Use for debug
+	Support TDMB
+	check source code
+	check AP support
+
+config TDMB_ANT_DET
+	depends on TDMB
+	bool "tdmb antenna detector"
+	help
+	Use for ant detection
+	Support TDMB
+	check HW schematic
+	check level
+
+config TDMB_VREG_SUPPORT
+	depends on TDMB
+	bool "tdmb use regulator vdd"
+	help
+	Use for power
+	Support TDMB
+	check HW schematic
+	check usage
+
+config TDMB_NOTIFIER
+	bool "tdmb notifier"
+	default n
+	help
+	  Say Y to enable tdmb notifier
+	  notify tdmb on or off
+	  check tunner status
+	  check usage

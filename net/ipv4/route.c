@@ -958,10 +958,12 @@ static int ip_error(struct sk_buff *skb)
 		switch (rt->dst.error) {
 		case EHOSTUNREACH:
 			__IP_INC_STATS(net, IPSTATS_MIB_INADDRERRORS);
+			IP_DUMP_STATS(skb, IPSTATS_MIB_INADDRERRORS);
 			break;
 
 		case ENETUNREACH:
 			__IP_INC_STATS(net, IPSTATS_MIB_INNOROUTES);
+			IP_DUMP_STATS(skb, IPSTATS_MIB_INNOROUTES);
 			break;
 		}
 		goto out;
@@ -977,6 +979,7 @@ static int ip_error(struct sk_buff *skb)
 	case ENETUNREACH:
 		code = ICMP_NET_UNREACH;
 		__IP_INC_STATS(net, IPSTATS_MIB_INNOROUTES);
+		IP_DUMP_STATS(skb, IPSTATS_MIB_INNOROUTES);
 		break;
 	case EACCES:
 		code = ICMP_PKT_FILTERED;

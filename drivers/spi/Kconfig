@@ -423,6 +423,12 @@ config SPI_NUC900
 	help
 	  SPI driver for Nuvoton NUC900 series ARM SoCs
 
+config SENSORS_FP_SPI_NUMBER
+	int "Fingerprint spi port number"
+	default -1
+	help
+	  Exclude setting of the Fingerprint Sensor
+
 config SPI_LANTIQ_SSC
 	tristate "Lantiq SSC SPI controller"
 	depends on LANTIQ || COMPILE_TEST

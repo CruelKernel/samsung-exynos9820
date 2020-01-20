@@ -424,6 +424,12 @@ config PCH_DMA
 	  ML7213/ML7223/ML7831 is companion chip for Intel Atom E6xx series.
 	  ML7213/ML7223/ML7831 is completely compatible for Intel EG20T PCH.
 
+config SAMSUNG_DMADEV
+	bool
+	select PL330_DMA if (ARCH_EXYNOS9)
+	help
+	  Use DMA device engine for PL330 DMA controller.
+
 config PL330_DMA
 	tristate "DMA API Driver for PL330"
 	select DMA_ENGINE

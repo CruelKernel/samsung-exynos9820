@@ -1,0 +1,26 @@
+config EXYNOS_FIMC_IS
+        bool "Use FIMC-IS"
+        depends on VIDEO_EXYNOS_FIMC_IS2
+        default y
+        help
+          This config abstracts driver source folder.
+
+choice
+	prompt "Select FIMC-IS Version"
+	depends on EXYNOS_FIMC_IS
+	help
+	  Select FIMC-IS Version.
+
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v5_2_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v4_3_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v4_0_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v3_1_1/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v3_11_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v3_20_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v5_10_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v5_15_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v6_0_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v6_10_0/Kconfig"
+source "drivers/media/platform/exynos/fimc-is2/ischain/fimc-is-v7_0_0/Kconfig"
+
+endchoice

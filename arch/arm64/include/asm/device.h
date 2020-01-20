@@ -16,6 +16,12 @@
 #ifndef __ASM_DEVICE_H
 #define __ASM_DEVICE_H
 
+struct dev_socdata {
+	unsigned int magic;
+	const char *soc;
+	const char *ip;
+};
+
 struct dev_archdata {
 #ifdef CONFIG_IOMMU_API
 	void *iommu;			/* private IOMMU data */

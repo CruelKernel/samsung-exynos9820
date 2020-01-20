@@ -527,6 +527,23 @@ static ssize_t pretimeout_governor_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(pretimeout_governor);
 
+static ssize_t reset_confirm_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct watchdog_device *wdd = dev_get_drvdata(dev);
+	int ret = watchdog_start(wdd);
+
+	if (ret)
+		return ret;
+
+	if (wdd->ops->reset_confirm)
+		wdd->ops->reset_confirm(wdd);
+
+	return sprintf(buf, "watchdog reset failed..\n");
+}
+static DEVICE_ATTR_RO(reset_confirm);
+
 static umode_t wdt_is_visible(struct kobject *kobj, struct attribute *attr,
 				int n)
 {
@@ -558,6 +575,7 @@ static struct attribute *wdt_attrs[] = {
 	&dev_attr_nowayout.attr,
 	&dev_attr_pretimeout_governor.attr,
 	&dev_attr_pretimeout_available_governors.attr,
+	&dev_attr_reset_confirm.attr,
 	NULL,
 };
 

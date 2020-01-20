@@ -1,0 +1,113 @@
+menuconfig EXYNOS_DEBUG
+	bool "Exynos Debug Features"
+	default y
+        depends on ARCH_EXYNOS
+
+config EXYNOS_ITMON
+        bool "Exynos IPs Traffic Monitor"
+        default y
+        depends on ARCH_EXYNOS && EXYNOS_DEBUG
+
+menuconfig EXYNOS_CORESIGHT
+        bool "Enable Coresight of exynos"
+        depends on ARCH_EXYNOS && EXYNOS_DEBUG
+        default n
+
+config EXYNOS_CORESIGHT_PC_INFO
+        bool "Show Porgram Counter information"
+        depends on EXYNOS_CORESIGHT
+        default y
+        help
+          Show Program Counter information When kernel panic.
+
+config PC_ITERATION
+        int "Number of Program Coutner information"
+        depends on EXYNOS_CORESIGHT_PC_INFO
+        range 1 10
+        default 5
+        help
+          Print out Program Counter as iteration value.
+
+config EXYNOS_CORESIGHT_MAINTAIN_DBG_REG
+        bool "Save/Restore Debug Registers"
+        depends on EXYNOS_CORESIGHT
+        default n
+        help
+          When core power is down, debug registers are not mainained data
+          and OS-lock is set. To maintain data, debug registers's data must
+          save in /restore from memory. If OS-lock is set, debugging to use
+          trace32 is impossible. So OS-lock must clear when core power is up.
+          This config must enable only using iTSP program.
+
+config EXYNOS_ADV_TRACER
+        bool "Exynos Advanced Tracer"
+        default n
+        depends on EXYNOS_DEBUG
+
+config EXYNOS_ADV_TRACER_S2D
+        bool "Exynos Advanced Tracer: Plug-in - S2D"
+	default n
+	depends on EXYNOS_ADV_TRACER
+
+config EXYNOS_ADV_TRACER_MISC
+	bool "Exynos Advanced Tracer: Plug-in - MISC"
+	default n
+	depends on EXYNOS_ADV_TRACER
+
+menuconfig EXYNOS_CORESIGHT_ETM
+        bool "Enable ETM driver of exynos"
+        depends on ARCH_EXYNOS && EXYNOS_DEBUG
+        default n
+        help
+          ETM driver is a driver for debugging. Also this driver enable ETR of
+          coresight feature.
+
+config EXYNOS_CORESIGHT_ETB
+        bool "This system has ETB feature"
+        depends on EXYNOS_CORESIGHT_ETM && SOC_EXYNOS7580
+        default n
+        help
+          ETB driver is the sink part of coresight components. Some coresights has
+          ETR.
+
+config EXYNOS_CORESIGHT_ETF
+        bool "This system has ETF feature"
+        depends on EXYNOS_CORESIGHT_ETM
+        default n
+        help
+          ETF driver is the sink part of coresight components. Some coresights has
+          ETR.
+
+config EXYNOS_CORESIGHT_ETR
+        bool "This system has ETR feature"
+        depends on EXYNOS_CORESIGHT_ETF && DEBUG_SNAPSHOT
+        default n
+        help
+          ETR driver is a driver for debugging. Also this driver is thr sink part of
+          coresight feature. Coresight consists of source, link, sink part.
+          This routes to DRAM or USB.
+
+config EXYNOS_CORESIGHT_ETM_SYSFS
+        bool "This system has ETM Sysfs feature"
+        depends on EXYNOS_CORESIGHT_ETM
+        default n
+        help
+          Show ETM, FUNNEL, ETB, ETF and ETR status through sysfs.
+
+config EXYNOS_DEBUG_TEST
+        bool "Exynos debug feature regression test"
+        default y
+        depends on ARCH_EXYNOS && EXYNOS_DEBUG
+
+config EXYNOS_SAVELOGS
+	bool "Exynos support savelogs"
+	default n
+	depends on ARCH_EXYNOS && EXYNOS_DEBUG
+	help
+	  For saving kernel and platform logs on storage, savelogs driver make debugfs
+	  file to extract kernel and platform new log data.
+
+config EXYNOS_EHLD
+	bool "Exynos support Early Hardlockup Detector"
+	default n
+	depends on ARCH_EXYNOS && EXYNOS_DEBUG

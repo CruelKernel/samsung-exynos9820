@@ -1,0 +1,275 @@
+menuconfig TZDEV
+	bool "Samsung TZ Based Secure OS Support"
+	default n
+	depends on ARM || ARM64
+	help
+	  Samsung TZ Based Secure OS interface driver.
+
+if TZDEV
+config TZDEV_SK_PFNS_64BIT
+	bool "Secure kernel works with 64-bit PFNs"
+	default n
+	help
+	  Enables passing of PFNs into secure kernel as 64-bit values. Should
+	  correspond to similar config in SK.
+
+config TZDEV_USE_ARM_CALLING_CONVENTION
+	bool "Comply to ARM calling convention"
+	default y
+	help
+	  Comply to ARM calling convention. New software architectures use
+	  EL3 code comply to this convention compared to old architectures
+	  when Secure kernel contains non-compatible commands handler.
+
+config TZDEV_CMA
+	bool "Allocate TrustZone environment CMA region"
+	depends on (CMA || DMA_CMA) && !ARCH_MSM
+	default n
+	help
+	  Use CMA region to allocate TrustZone environment memory.
+
+config TZDEV_MEMRESSZ
+	hex "TrustZone environment memory reservation size"
+	depends on TZDEV_CMA
+	default 0x01000000
+	help
+	  Provide reservation of memory for usage in secure world - allocation size.
+
+config TZDEV_MEMRESSZPROT
+	hex "TrustZone environment memory reservation size - protected"
+	depends on TZDEV_CMA
+	help
+	  Provide reservation of memory for usage in secure world - bootloader-protected size.
+
+config TZDEV_MEMRESADDR
+	hex "TrustZone environment memory reservation address"
+	depends on TZDEV_CMA
+	help
+	  Provide reservation of memory for usage in secure world - allocation address.
+
+config TZDEV_IWI_EVENT
+	int "IWI_EVENT interrupt number"
+	default 280 if ARCH_MSM
+	default 125 if ARCH_EXYNOS3
+	default 113 if ARCH_EXYNOS4
+	default 501 if ARCH_EXYNOS5
+	default 446 if ARCH_EXYNOS7
+
+config TZDEV_IWI_PANIC
+	int "IWI_PANIC interrupt number"
+	default 0 if ARCH_MSM
+	default 126 if ARCH_EXYNOS3
+	default 114 if ARCH_EXYNOS4
+	default 502 if ARCH_EXYNOS5
+	default 447 if ARCH_EXYNOS7
+
+config TZDEV_SWD_PANIC_IS_CRITICAL
+	bool "Panic NWd if secure world panics"
+	default n
+	help
+	  Enable support of NWd panic generation in tzdev when secure world panics.
+
+config TZDEV_NWD_PANIC_ON_CLOSE
+	bool "Panic NWd if tzdev is closed"
+	default n
+	help
+	  Panic system on crash/close of NWd components.
+
+config TZLOG
+	bool "TZDEV LOGGER support"
+	default n
+	help
+	  Enable support for Samsung Secure OS Logger.
+
+config TZLOG_POLLING
+	bool "TZDEV LOGGER polling"
+	depends on TZLOG
+	default n
+	help
+	  Enable periodic logs polling by TZDEV.
+
+config TZLOG_POLLING_PERIOD
+	int "TZDEV LOGGER polling period (in ms)"
+	depends on TZLOG_POLLING
+	default 100
+	help
+	  Define logs polling period in milliseconds. The resolution is 1/Hz ms
+	  rounded down (e.g. for Hz = 100, value 117 would mean 110 ms period).
+
+config TZLOG_PG_CNT
+	int "TZDEV LOGGER per-CPU buffer size (in pages)"
+	depends on TZLOG
+	default 1
+	help
+	  Select TZDEV logger buffer size in pages per CPU.
+
+config TZDEV_SK_MULTICORE
+	bool "TZDEV SK multicore"
+	default n
+	help
+	  Define if secure kernel can work in multicore mode.
+
+config ION_FD2PHYS
+	tristate "ION FD to physical address converter"
+	depends on ION && (ARCH_EXYNOS || ARCH_MSM || ARCH_WHALE || ARCH_MT6755 || ARCH_MT6735 || ARCH_RANCHU || MACH_MT6757)
+	default y
+	help
+	  Provide a method for userspace to get physical address from ION buffer
+	  descriptor.
+
+config TZIRS
+	bool "Integrity reporting system"
+	default n
+	help
+	  Enable Integrity reporintg system for Samsung Secure OS.
+
+config TZTUI
+	bool "Trusted user interface"
+	default n
+	help
+	  Enable Trusted user interface support for Samsung Secure OS.
+
+config TZDEV_PAGE_MIGRATION
+	bool "Page migration"
+	depends on MIGRATION && CMA
+	default n
+	help
+	  Enable Page migration functionality for CMA Migration.
+
+config TZ_TRANSPORT
+	bool "Transport module"
+	depends on TZDEV
+	default n
+	help
+	  Enable Transport module. It is used for transfering data from SK to NWd.
+
+config TZ_TRANSPORT_PG_CNT
+	int "TZDEV transport module per-CPU buffer size (in pages)"
+	depends on TZ_TRANSPORT
+	default 1
+	help
+	  Select TZDEV transport buffer size in pages per CPU.
+
+config TZDEV_HOTPLUG
+	bool "Core hotplug"
+	depends on HOTPLUG_CPU
+	default n
+	help
+	  Enable CPU Cores requested by Samsung Secure OS.
+
+config TZDEV_BOOST
+	bool "TZ booster"
+	depends on ARCH_EXYNOS
+	default n
+	help
+	  Switch high performance cluster to maximum frequency by NWd client
+	  request.
+
+config TZ_BOOT_LOG
+	bool "TZ boot stage log"
+	default n
+	help
+	  Provide ability to print TZ boot stage logs.
+
+config TZ_BOOT_LOG_PG_CNT
+	int "TZ boot stage log buffer size (in pages)"
+	depends on TZ_BOOT_LOG
+	default 1
+	help
+	  Select TZ boot stage logger buffer size in pages.
+
+config TZDEV_QC_CRYPTO_CLOCKS_MANAGEMENT
+	bool "TZDEV crypto clock management"
+	default n
+	help
+	  Enable QC HW crypto clock management.
+
+config TZDEV_QC_CRYPTO_CLOCKS_USR_MNG
+	bool "User crypto clock management"
+	depends on TZDEV_QC_CRYPTO_CLOCKS_MANAGEMENT
+	default n
+	help
+	  Enable QC HW crypto clock management from User space. If disabled,
+	  QC HW clock disable/enable is done in TZDEV.
+
+config TZDEV_DEBUG
+	bool "Debug extensions"
+	default n
+	help
+	  Debug extensions for samsung TZ Based Secure OS interface driver.
+
+config TZ_NWFS
+	bool "Normal world file system interface driver"
+	default y
+	help
+	  Normal world file system interface driver.
+
+config TZDEV_DEPLOY_TZAR
+	bool "tzdev deploy startup.tzar"
+	default n
+	help
+	  Deploy startup.tzar when tzdev init.
+
+choice
+	prompt "Choose per-cpu kthread workers variant"
+	default TZDEV_KTHREADS_NOTIFIER
+	help
+	  This option selects implementation to manage per-cpu kthreads.
+
+	config TZDEV_KTHREADS_NOTIFIER
+		bool "Use old-style cpu notifiers"
+	config TZDEV_KTHREADS_SMPBOOT
+		depends on TZDEV_SK_MULTICORE
+		bool "Use smpboot hotplug subsystem"
+endchoice
+
+if TZDEV_DEBUG
+
+config TZ_TELEMETRY
+	bool "Telemetry module"
+	select TZ_TRANSPORT
+	default n
+	help
+	  Enable Telemetry module. It is used for collecting runtime information
+	  about Secure OS state.
+
+config TZPROFILER
+	bool "TZDEV PROFILING support"
+	default n
+	help
+	  Enable support for secure kernel and userspace profiling.
+
+config TZPROFILER_BUF_PG_CNT
+	int "TZDEV PROFILER buffer size (in pages)"
+	depends on TZPROFILER
+	default 1
+	help
+	  Select TZDEV profiler buffer size in pages. Profiler uses pool
+	  of buffers. This is size of each buffer. Minimum size is a 1 page.
+	  Select the sufficient size for profiling of the target.
+
+config TZPROFILER_BUFS_CNT
+	int "TZDEV PROFILER buffers quantity"
+	depends on TZPROFILER
+	default 20
+	help
+	  Select the sufficient pool size for profiling of the target.
+	  Profiler uses two mechanisms for profiler data transferring.
+	  1. Circular buffer.
+	  2. Buffer replacing if according to the point 1 NWd had no time for
+	     cleaning the previous buffer.
+	  The profiler stops working if there are no free buffers in pool.
+
+config TZ_PANIC_DUMP
+	bool "TZ panic dump module"
+	depends on TZDEV
+	default n
+	help
+	  Enable panic dump module. This module allocates the buffer that will
+	  receive SWd memory contents when secure kernel panic
+	  occurs (if proper option is set in secure kernel config) and
+	  provides interface for userspace to access said memory contents.
+
+endif #TZDEV_DEBUG
+
+endif #TZDEV

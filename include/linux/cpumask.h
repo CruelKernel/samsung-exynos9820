@@ -115,6 +115,9 @@ extern struct cpumask __cpu_active_mask;
 #define cpu_active(cpu)		((cpu) == 0)
 #endif
 
+extern struct cpumask cpu_fastoff_mask;
+extern struct cpumask cpu_faston_mask;
+
 /* verify cpu argument to cpumask_* operators */
 static inline unsigned int cpumask_check(unsigned int cpu)
 {

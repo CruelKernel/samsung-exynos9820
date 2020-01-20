@@ -40,6 +40,10 @@
 #include <linux/tracehook.h>
 #include <linux/uaccess.h>
 
+#ifdef CONFIG_LOD_SEC
+#include <linux/linux_on_dex.h>
+#endif
+
 /**
  * struct seccomp_filter - container for seccomp BPF programs
  *
@@ -746,6 +750,12 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 	case SECCOMP_RET_KILL_THREAD:
 	case SECCOMP_RET_KILL_PROCESS:
 	default:
+#if (defined CONFIG_LOD_SEC) && (!defined CONFIG_SAMSUNG_PRODUCT_SHIP)
+		if (current_is_LOD())
+			printk(KERN_WARNING "LOD SECCOMP blocked syscall No. %d PROC %s PID %d "
+				"UID %d\n", this_syscall, current->comm, current->pid, 
+				current_cred()->uid.val);
+#endif
 		seccomp_log(this_syscall, SIGSYS, action, true);
 		/* Dump core only if this is the last remaining thread. */
 		if (action == SECCOMP_RET_KILL_PROCESS ||

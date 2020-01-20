@@ -183,6 +183,12 @@ extern int sysctl_mld_qrv;
 #define __ICMP6_INC_STATS(net, idev, field)	\
 		_DEVINCATOMIC(net, icmpv6, __, idev, field)
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+#define IP_DUMP_STATS(skb, field)	dev_queue_mib(skb, 0, field)
+#else
+#define IP_DUMP_STATS(skb, field)
+#endif
+
 #define ICMP6MSGOUT_INC_STATS(net, idev, field)		\
 	_DEVINC_ATOMIC_ATOMIC(net, icmpv6msg, idev, field +256)
 #define ICMP6MSGIN_INC_STATS(net, idev, field)	\

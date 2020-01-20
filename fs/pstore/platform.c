@@ -659,6 +659,9 @@ static int pstore_write_user_compat(struct pstore_record *record,
 		goto out;
 	}
 
+
+	dbg_snapshot_hook_pmsg((char *)buf, record->size);
+
 	ret = record->psi->write(record);
 
 	kfree(record->buf);

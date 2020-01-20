@@ -97,3 +97,7 @@ endif
 
 obj-$(CONFIG_MMC_SDHCI_XENON)	+= sdhci-xenon-driver.o
 sdhci-xenon-driver-y		+= sdhci-xenon.o sdhci-xenon-phy.o
+
+obj-$(CONFIG_MMC_DW_EXYNOS_FMP) += dw_mmc-exynos-fmp.o
+obj-$(CONFIG_MMC_DW_EXYNOS_SMU) += dw_mmc-exynos-smu.o
+obj-$(CONFIG_MMC_SRPMB)		+= dw_mmc-srpmb.o

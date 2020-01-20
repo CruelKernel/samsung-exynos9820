@@ -1,0 +1,108 @@
+#
+# CCIC devices
+#
+
+comment "CCIC configs"
+
+config USBPD_CORE
+	bool "CCIC framrework core"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  ccic core device
+
+config CCIC_NOTIFIER
+	bool "CCIC notifier support"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  the CCIC attached device status change notification.
+
+config CCIC_S2MM003 
+	bool "CCIC S2MM003"
+	depends on I2C 
+	default n
+	help
+	  If you say yes here you will get support for
+	  s2mm003 ccic full version chipset 
+
+config CCIC_S2MM005 
+	bool "CCIC S2MM005"
+	depends on I2C 
+	default n
+	help
+	  If you say yes here you will get support for
+	  s2mm005 ccic full version chipset 
+
+config USBPD_S2MM005
+	bool "USBPD S2MM005"
+	depends on USBPD_CORE
+	default n
+	help
+	  If you say yes here you will get support for
+	  s2mm005 ccic full version chipset
+
+config CCIC_MAX77705
+	bool "CCIC 77705"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  max77705 ccic full version chipset
+
+config CCIC_MAX77705_DEBUG
+	bool "CCIC 77705 DEBUG"
+	depends on CCIC_MAX77705
+	default n
+	help
+	  If you say yes here you will get support for
+	  debugging feature with max77705 ccic chipset
+
+config MAX77705_FW_PID03_SUPPORT
+	bool "support MAX77705 FW PID 0x03"
+	depends on CCIC_MAX77705
+	default n
+	help
+	  If you say yes here you will get support for
+	  specified firmware with max77705 ccic chipset
+
+config CCIC_ALTERNATE_MODE 
+	bool "support CCIC alternate mode"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  alternate mode
+
+config USBPD_ALTERNATE_MODE
+	bool "support CCIC alternate mode"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  alternate mode
+
+config CCIC_LPM_ENABLE
+	bool "Support LPM ENABLE"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  lpm enable
+
+config CCIC_WATER_DETECT
+	bool "support WATER DETECT"
+	depends on CCIC_S2MM005
+	default n
+	help
+	  If you say yes here you will get support for
+	  water detect Enable
+
+config PDIC_PD30
+	bool "support PD30"
+	depends on CCIC_MAX77705
+	default n
+	help
+	  If you say yes here you will get support for PD30

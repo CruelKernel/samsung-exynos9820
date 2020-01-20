@@ -1,0 +1,232 @@
+config MODULE_ALL_INCLUDE
+	bool "Build and include all modules"
+	depends on EXYNOS_CAMERA_MODULE
+	default n
+	help
+	  all modules are included
+
+menuconfig CAMERA_MODULE_SELECT
+	bool "Sensor module select"
+	depends on EXYNOS_CAMERA_MODULE
+	depends on !MODULE_ALL_INCLUDE
+        default y
+	help
+	  Select snesor module to use
+
+config CAMERA_SENSOR_8B1
+        bool "Use 8B1 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use 8B1 camera sensor.
+config CAMERA_SENSOR_6D1
+        bool "Use 6D1 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use 6D1 camera sensor.
+config CAMERA_SENSOR_VIRTUAL_ZEBU_OBJ
+        bool "Use Virtual Zebu(CSI Transactor) camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use ZEBU(CSI Transactor) camera sensor.
+config CAMERA_SENSOR_8B1_OBJ
+        bool "Use 8B1 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 8B1 camera sensor.
+config CAMERA_SENSOR_6D1_OBJ
+        bool "Use 6D1 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 6D1 camera sensor.
+config CAMERA_SENSOR_6B2_OBJ
+        bool "Use 6B2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 6B2 camera sensor.
+config CAMERA_SENSOR_6A3_OBJ
+        bool "Use 6A3 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 6A3 camera sensor.
+config CAMERA_SENSOR_5E3_OBJ
+        bool "Use 5E3 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 5E3 camera sensor.
+config CAMERA_SENSOR_IMX135_OBJ
+        bool "Use IMX135 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX135 camera sensor.
+config CAMERA_SENSOR_IMX134_OBJ
+        bool "Use IMX134 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX134 camera sensor.
+config CAMERA_SENSOR_3L2_OBJ
+        bool "Use 3L2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3L2 camera sensor.
+config CAMERA_SENSOR_3L8_OBJ
+        bool "Use 3L8 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3L8 camera sensor.
+config CAMERA_SENSOR_2P2_OBJ
+        bool "Use 2P2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2P2 camera sensor.
+config CAMERA_SENSOR_2P2_12M_OBJ
+        bool "Use 2P2_12M camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2P2_12M camera sensor.
+config CAMERA_SENSOR_2P8_OBJ
+        bool "Use 2P8 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2P8 camera sensor.
+config CAMERA_SENSOR_2T2_OBJ
+        bool "Use 2T2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2T2 camera sensor.
+config CAMERA_SENSOR_2P3_OBJ
+        bool "Use 2P3 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2P3 camera sensor.
+config CAMERA_SENSOR_2L1_OBJ
+        bool "Use 2L1 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 2L1 camera sensor.
+config CAMERA_SENSOR_3H5_OBJ
+        bool "Use 3H5 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3H5 camera sensor.
+config CAMERA_SENSOR_3H7_OBJ
+        bool "Use 3H7 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3H7 camera sensor.
+config CAMERA_SENSOR_3H7_SUNNY_OBJ
+        bool "Use 3H7_SUNNY camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3H7_SUNNY camera sensor.
+config CAMERA_SENSOR_4E5_OBJ
+        bool "Use 4E5 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 4E5 camera sensor.
+config CAMERA_SENSOR_IMX175_OBJ
+        bool "Use IMX175 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX175 camera sensor.
+config CAMERA_SENSOR_IMX219_OBJ
+        bool "Use IMX219 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX219 camera sensor.
+config CAMERA_SENSOR_IMX240_OBJ
+        bool "Use IMX240 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX240 camera sensor.
+config CAMERA_SENSOR_IMX260_OBJ
+        bool "Use IMX240 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build IMX260 camera sensor.
+config CAMERA_SENSOR_4H5_OBJ
+        bool "Use 4H5 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 4H5 camera sensor.
+config CAMERA_SENSOR_SR261_OBJ
+        bool "Use SR261 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build SR261 camera sensor.
+config CAMERA_SENSOR_4E6_OBJ
+        bool "Use 4E6 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 4E6 camera sensor.
+config CAMERA_SENSOR_4E6_C2_OBJ
+        bool "Use 4E6 camera sensor with preprocessor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 4E6 camera sensor.
+config CAMERA_SENSOR_3M2_OBJ
+        bool "Use 3M2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3M2 camera sensor.
+config CAMERA_SENSOR_5E2_OBJ
+        bool "Use 5E2 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 5E2 camera sensor.
+config CAMERA_SENSOR_DSIM_OBJ
+        bool "Use DSIM as an input source of CSIS"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+         Use DSIM as an input source of CSIS
+
+config CAMERA_SENSOR_VIRTUAL_OBJ
+        bool "Use Virtual sensor as an input source of CSIS"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+         Use Virtual sensor as an input source of CSIS
+config CAMERA_SENSOR_3P3_OBJ
+        bool "Use 3P3 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 3P3 camera sensor.
+ config CAMERA_SENSOR_5E6_OBJ
+        bool "Use 5E6 camera sensor"
+        depends on CAMERA_MODULE_SELECT
+        default n
+        help
+          Use to build 5E6 camera sensor.

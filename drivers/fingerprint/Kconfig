@@ -1,0 +1,35 @@
+#
+# Sensor  drivers configuration
+#
+menuconfig SENSORS_FINGERPRINT
+	bool "Finger Print Sensor devices"
+	help
+	  Say Y here, and a list of sensors drivers will be displayed.
+	  Everything that didn't fit into the other categories is here. This option
+	  doesn't affect the kernel.
+	  If unsure, say Y.
+
+config SENSORS_FPRINT_SECURE
+	tristate "fingerprint sensor support"
+	default n
+	help
+	  If you say yes here you get support for Trustzone.
+	  In case of user binary, fingerprint sensor operates within trustzone.
+	  If this feature enabled, spi communication is controlled by Trusted Application.
+	  Then it should be enabled in the user binary.
+
+config SENSORS_QBT2000
+	tristate "QBT2000 fingerprint sensor support"
+	default n
+	help
+	  If you say yes here you get support for Qualcomm's
+	  fingerprint sensor QBT2000.
+
+config SENSORS_ET5XX
+	tristate "ET5XX fingerprint sensor supprot"
+	default n
+	help
+	  Fingerprint sensor driver.
+	  If you say yes here you get support for ET5XX sensor.
+	  ET5XX is the touch type fingerprint sensor.
+	  ET5XX module can support WOF mode.

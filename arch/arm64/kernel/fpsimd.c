@@ -17,18 +17,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/bottom_half.h>
 #include <linux/cpu.h>
 #include <linux/cpu_pm.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/percpu.h>
 #include <linux/preempt.h>
 #include <linux/sched/signal.h>
 #include <linux/signal.h>
+#include <linux/hardirq.h>
 
 #include <asm/fpsimd.h>
 #include <asm/cputype.h>
+#include <asm/neon.h>
 #include <asm/simd.h>
 
 #define FPEXC_IOF	(1 << 0)
@@ -64,13 +64,6 @@
  * present in the registers. The flag is set unless the FPSIMD registers of this
  * CPU currently contain the most recent userland FPSIMD state of the current
  * task.
- *
- * In order to allow softirq handlers to use FPSIMD, kernel_neon_begin() may
- * save the task's FPSIMD context back to task_struct from softirq context.
- * To prevent this from racing with the manipulation of the task's FPSIMD state
- * from task context and thereby corrupting the state, it is necessary to
- * protect any manipulation of a task's fpsimd_state or TIF_FOREIGN_FPSTATE
- * flag with local_bh_disable() unless softirqs are already masked.
  *
  * For a certain task, the sequence may look something like this:
  * - the task gets scheduled in; if both the task's fpsimd_state.cpu field
@@ -137,6 +130,13 @@ void do_fpsimd_exc(unsigned int esr, struct pt_regs *regs)
 
 void fpsimd_thread_switch(struct task_struct *next)
 {
+	struct fpsimd_state *cur_st = &current->thread.fpsimd_state;
+	struct fpsimd_kernel_state *cur_kst
+			= &current->thread.fpsimd_kernel_state;
+	struct fpsimd_state *nxt_st = &next->thread.fpsimd_state;
+	struct fpsimd_kernel_state *nxt_kst
+			= &next->thread.fpsimd_kernel_state;
+
 	if (!system_supports_fpsimd())
 		return;
 	/*
@@ -145,7 +145,16 @@ void fpsimd_thread_switch(struct task_struct *next)
 	 * 'current'.
 	 */
 	if (current->mm && !test_thread_flag(TIF_FOREIGN_FPSTATE))
-		fpsimd_save_state(&current->thread.fpsimd_state);
+		fpsimd_save_state(cur_st);
+
+	if (atomic_read(&cur_kst->depth))
+		fpsimd_save_state((struct fpsimd_state *)cur_kst);
+
+	if (atomic_read(&nxt_kst->depth)) {
+		fpsimd_load_state((struct fpsimd_state *)nxt_kst);
+		this_cpu_write(fpsimd_last_state, (struct fpsimd_state *)nxt_kst);
+		nxt_kst->cpu = smp_processor_id();
+	}
 
 	if (next->mm) {
 		/*
@@ -155,10 +164,8 @@ void fpsimd_thread_switch(struct task_struct *next)
 		 * the TIF_FOREIGN_FPSTATE flag so the state will be loaded
 		 * upon the next return to userland.
 		 */
-		struct fpsimd_state *st = &next->thread.fpsimd_state;
-
-		if (__this_cpu_read(fpsimd_last_state) == st
-		    && st->cpu == smp_processor_id())
+		if (__this_cpu_read(fpsimd_last_state) == nxt_st
+		    && nxt_st->cpu == smp_processor_id())
 			clear_ti_thread_flag(task_thread_info(next),
 					     TIF_FOREIGN_FPSTATE);
 		else
@@ -171,14 +178,9 @@ void fpsimd_flush_thread(void)
 {
 	if (!system_supports_fpsimd())
 		return;
-
-	local_bh_disable();
-
 	memset(&current->thread.fpsimd_state, 0, sizeof(struct fpsimd_state));
 	fpsimd_flush_task_state(current);
 	set_thread_flag(TIF_FOREIGN_FPSTATE);
-
-	local_bh_enable();
 }
 
 /*
@@ -189,13 +191,10 @@ void fpsimd_preserve_current_state(void)
 {
 	if (!system_supports_fpsimd())
 		return;
-
-	local_bh_disable();
-
+	preempt_disable();
 	if (!test_thread_flag(TIF_FOREIGN_FPSTATE))
 		fpsimd_save_state(&current->thread.fpsimd_state);
-
-	local_bh_enable();
+	preempt_enable();
 }
 
 /*
@@ -207,9 +206,7 @@ void fpsimd_restore_current_state(void)
 {
 	if (!system_supports_fpsimd())
 		return;
-
-	local_bh_disable();
-
+	preempt_disable();
 	if (test_and_clear_thread_flag(TIF_FOREIGN_FPSTATE)) {
 		struct fpsimd_state *st = &current->thread.fpsimd_state;
 
@@ -217,8 +214,7 @@ void fpsimd_restore_current_state(void)
 		__this_cpu_write(fpsimd_last_state, st);
 		st->cpu = smp_processor_id();
 	}
-
-	local_bh_enable();
+	preempt_enable();
 }
 
 /*
@@ -230,9 +226,7 @@ void fpsimd_update_current_state(struct fpsimd_state *state)
 {
 	if (!system_supports_fpsimd())
 		return;
-
-	local_bh_disable();
-
+	preempt_disable();
 	fpsimd_load_state(state);
 	if (test_and_clear_thread_flag(TIF_FOREIGN_FPSTATE)) {
 		struct fpsimd_state *st = &current->thread.fpsimd_state;
@@ -240,8 +234,7 @@ void fpsimd_update_current_state(struct fpsimd_state *state)
 		__this_cpu_write(fpsimd_last_state, st);
 		st->cpu = smp_processor_id();
 	}
-
-	local_bh_enable();
+	preempt_enable();
 }
 
 /*
@@ -252,72 +245,97 @@ void fpsimd_flush_task_state(struct task_struct *t)
 	t->thread.fpsimd_state.cpu = NR_CPUS;
 }
 
+void fpsimd_set_task_using(struct task_struct *t)
+{
+	atomic_set(&t->thread.fpsimd_kernel_state.depth, 1);
+}
+
+void fpsimd_clr_task_using(struct task_struct *t)
+{
+	atomic_set(&t->thread.fpsimd_kernel_state.depth, 0);
+}
+
+void fpsimd_get(void)
+{
+	if (in_interrupt())
+		return;
+
+	if (atomic_inc_return(&current->thread.fpsimd_kernel_state.depth) == 1) {
+		preempt_disable();
+		if (current->mm &&
+		    !test_and_set_thread_flag(TIF_FOREIGN_FPSTATE)) {
+			fpsimd_save_state(&current->thread.fpsimd_state);
+			fpsimd_flush_task_state(current);
+		}
+		this_cpu_write(fpsimd_last_state, NULL);
+		preempt_enable();
+	}
+}
+
+void fpsimd_put(void)
+{
+	if (in_interrupt())
+		return;
+
+	BUG_ON(atomic_dec_return(
+		&current->thread.fpsimd_kernel_state.depth) < 0);
+
+	preempt_disable();
+	if (current->mm && test_thread_flag(TIF_FOREIGN_FPSTATE)
+		&& atomic_read(&current->thread.fpsimd_kernel_state.depth) == 0) {
+		fpsimd_load_state(&current->thread.fpsimd_state);
+		this_cpu_write(fpsimd_last_state, &current->thread.fpsimd_state);
+		current->thread.fpsimd_state.cpu = smp_processor_id();
+		clear_thread_flag(TIF_FOREIGN_FPSTATE);
+	}
+	preempt_enable();
+}
+
 #ifdef CONFIG_KERNEL_MODE_NEON
 
-DEFINE_PER_CPU(bool, kernel_neon_busy);
-EXPORT_PER_CPU_SYMBOL(kernel_neon_busy);
+static DEFINE_PER_CPU(struct fpsimd_partial_state, hardirq_fpsimdstate);
+static DEFINE_PER_CPU(struct fpsimd_partial_state, softirq_fpsimdstate);
 
 /*
  * Kernel-side NEON support functions
  */
-
-/*
- * kernel_neon_begin(): obtain the CPU FPSIMD registers for use by the calling
- * context
- *
- * Must not be called unless may_use_simd() returns true.
- * Task context in the FPSIMD registers is saved back to memory as necessary.
- *
- * A matching call to kernel_neon_end() must be made before returning from the
- * calling context.
- *
- * The caller may freely use the FPSIMD registers until kernel_neon_end() is
- * called.
- */
-void kernel_neon_begin(void)
+void kernel_neon_begin_partial(u32 num_regs)
 {
 	if (WARN_ON(!system_supports_fpsimd()))
 		return;
+	if (in_interrupt()) {
+		struct fpsimd_partial_state *s = this_cpu_ptr(
+			in_irq() ? &hardirq_fpsimdstate : &softirq_fpsimdstate);
 
-	BUG_ON(!may_use_simd());
-
-	local_bh_disable();
-
-	__this_cpu_write(kernel_neon_busy, true);
-
-	/* Save unsaved task fpsimd state, if any: */
-	if (current->mm && !test_and_set_thread_flag(TIF_FOREIGN_FPSTATE))
-		fpsimd_save_state(&current->thread.fpsimd_state);
-
-	/* Invalidate any task state remaining in the fpsimd regs: */
-	__this_cpu_write(fpsimd_last_state, NULL);
-
-	preempt_disable();
-
-	local_bh_enable();
+		BUG_ON(num_regs > 32);
+		fpsimd_save_partial_state(s, roundup(num_regs, 2));
+	} else {
+		/*
+		 * Save the userland FPSIMD state if we have one and if we
+		 * haven't done so already. Clear fpsimd_last_state to indicate
+		 * that there is no longer userland FPSIMD state in the
+		 * registers.
+		 */
+		preempt_disable();
+		if (current->mm &&
+		    !test_and_set_thread_flag(TIF_FOREIGN_FPSTATE))
+			fpsimd_save_state(&current->thread.fpsimd_state);
+		this_cpu_write(fpsimd_last_state, NULL);
+	}
 }
-EXPORT_SYMBOL(kernel_neon_begin);
+EXPORT_SYMBOL(kernel_neon_begin_partial);
 
-/*
- * kernel_neon_end(): give the CPU FPSIMD registers back to the current task
- *
- * Must be called from a context in which kernel_neon_begin() was previously
- * called, with no call to kernel_neon_end() in the meantime.
- *
- * The caller must not use the FPSIMD registers after this function is called,
- * unless kernel_neon_begin() is called again in the meantime.
- */
 void kernel_neon_end(void)
 {
-	bool busy;
-
 	if (!system_supports_fpsimd())
 		return;
-
-	busy = __this_cpu_xchg(kernel_neon_busy, false);
-	WARN_ON(!busy);	/* No matching kernel_neon_begin()? */
-
-	preempt_enable();
+	if (in_interrupt()) {
+		struct fpsimd_partial_state *s = this_cpu_ptr(
+			in_irq() ? &hardirq_fpsimdstate : &softirq_fpsimdstate);
+		fpsimd_load_partial_state(s);
+	} else {
+		preempt_enable();
+	}
 }
 EXPORT_SYMBOL(kernel_neon_end);
 
@@ -382,13 +400,22 @@ static int fpsimd_cpu_pm_notifier(struct notifier_block *self,
 {
 	switch (cmd) {
 	case CPU_PM_ENTER:
-		if (current->mm && !test_thread_flag(TIF_FOREIGN_FPSTATE))
+		if ((current->mm && !test_thread_flag(TIF_FOREIGN_FPSTATE))
+		     || atomic_read(&current->thread.fpsimd_kernel_state.depth)) {
 			fpsimd_save_state(&current->thread.fpsimd_state);
+		}
 		this_cpu_write(fpsimd_last_state, NULL);
 		break;
 	case CPU_PM_EXIT:
 		if (current->mm)
 			set_thread_flag(TIF_FOREIGN_FPSTATE);
+
+		if (atomic_read(&current->thread.fpsimd_kernel_state.depth)) {
+			fpsimd_load_state(&current->thread.fpsimd_state);
+			this_cpu_write(fpsimd_last_state,
+					&current->thread.fpsimd_state);
+			current->thread.fpsimd_state.cpu = smp_processor_id();
+		}
 		break;
 	case CPU_PM_ENTER_FAILED:
 	default:

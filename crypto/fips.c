@@ -16,10 +16,18 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sysctl.h>
+#include "internal.h"
 
-int fips_enabled;
+/* provide fips_enable always ON */
+int fips_enabled = 1;
 EXPORT_SYMBOL_GPL(fips_enabled);
 
+/* 
+	The next peace of code should be cut off. Due to:
+	1) The revision provides FIPSed kernel only 
+	2) CONFIG_CRYPTO_FIPS meaning is different comparing to vanilla kernel, "FIPS 200" -> "FIPS 140-2"
+*/
+#if 0
 /* Process kernel command-line parameter at boot time. fips=0 or fips=1 */
 static int fips_enable(char *str)
 {
@@ -30,11 +38,12 @@ static int fips_enable(char *str)
 }
 
 __setup("fips=", fips_enable);
+#endif
 
 static struct ctl_table crypto_sysctl_table[] = {
 	{
-		.procname       = "fips_enabled",
-		.data           = &fips_enabled,
+		.procname       = "fips_status",
+		.data           = NULL,
 		.maxlen         = sizeof(int),
 		.mode           = 0444,
 		.proc_handler   = proc_dointvec
@@ -55,12 +64,14 @@ static struct ctl_table_header *crypto_sysctls;
 
 static void crypto_proc_fips_init(void)
 {
+	crypto_sysctl_table[0].data = (void*)get_pointer_in_fips_err();
 	crypto_sysctls = register_sysctl_table(crypto_dir_table);
 }
 
 static void crypto_proc_fips_exit(void)
 {
-	unregister_sysctl_table(crypto_sysctls);
+	if (crypto_sysctls)
+		unregister_sysctl_table(crypto_sysctls);
 }
 
 static int __init fips_init(void)

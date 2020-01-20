@@ -1,0 +1,285 @@
+#ifdef IDIOT_DECL_SECTION
+
+#include <linux/kthread.h>
+#include <linux/atomic.h>
+#include <linux/delay.h>
+#include <linux/list.h>
+#include <linux/kfifo.h>
+#include <linux/kthread.h>
+#include <linux/slab.h>
+
+#include "npu-util-llq.h"
+
+#define DEFAULT_LEN	(2<<8)
+
+/* basic */
+struct ast_basic_data {
+	int seq;
+	void* data;
+};
+
+static void set_seq(int seq, struct ast_basic_data* pElem) {
+	// Atomic serial counter for auto-increasing sequence
+	static atomic_t incr_seq = ATOMIC_INIT(0);
+
+	if(pElem == NULL) {
+		/* Reset counter */
+		atomic_set(&incr_seq, seq);
+		return;
+	}
+	
+	pElem->seq = 0;
+
+	if(seq == 0) {
+		pElem->seq = atomic_inc_return(&incr_seq);
+	} else {
+		pElem->seq = seq;
+	}
+}
+
+LLQ_DECLARE(llq_ast_test, struct ast_basic_data, DEFAULT_LEN);
+static struct auto_sleep_thread* ast_thr;
+
+struct ast_test_result_t {
+	int code;
+	int loc;
+	int serial;
+};
+
+
+static int pop_llq_do_task(struct auto_sleep_thread_param* data) {
+	struct ast_test_result_t* param = (struct ast_test_result_t*)(data->data);
+	struct ast_basic_data elem;
+	
+	if(LLQ_GET(llq_ast_test, &elem) == 0) {
+		return 0;
+	}
+	if(elem.seq != param->serial) {
+		param->code = -2;
+		param->loc = param->serial;
+	}
+	(param->serial)++;
+	return 1;
+}
+
+static int pop_llq_check_work(struct auto_sleep_thread_param* data) {
+	return !(LLQ_IS_EMPTY(llq_ast_test));
+}
+
+
+static void AST_basic_signal(void) {
+	printk(KERN_INFO "NPU: %s : %s() invoked.\n", __FILE__, __func__);
+	if(ast_thr) {
+		auto_sleep_thread_signal(ast_thr);
+	} else {
+		printk(KERN_ERR "NPU: %s : %s() ast_thr is null.\n", __FILE__, __func__);
+	}
+}
+
+static struct auto_sleep_thread* AST_basic_setup(void) {
+	int ret;
+	struct auto_sleep_thread* ast_thr = NULL;
+	
+	set_seq(0,  NULL);
+	ast_thr = kmalloc(sizeof(*ast_thr), GFP_ATOMIC);
+	LLQ_REGISTER_TASK(llq_ast_test, AST_basic_signal);
+	
+	if(ast_thr) {
+		ret = auto_sleep_thread_create(ast_thr, "AST_test_pop_llq", pop_llq_do_task, pop_llq_check_work);
+		if (ret) return NULL;
+		else return ast_thr;
+	} else {
+		return NULL;
+	}
+}
+
+static void AST_basic_teardown(struct auto_sleep_thread* ast_thr) {
+	auto_sleep_thread_terminate(ast_thr);
+	LLQ_PURGE(llq_ast_test);
+	
+	kfree(ast_thr);
+	ast_thr = NULL;
+}
+
+static int AST_llq_enqueue_worker(void* data) {
+	struct ast_basic_data entry = {};
+	int delay = 0;
+	if(data != NULL) {
+		delay = *((int*)data);
+	}
+	
+	/* Reset sequence counter */
+	set_seq(0, NULL);
+	
+	while(!kthread_should_stop()) {
+		set_seq(0, &entry);
+		LLQ_PUT(llq_ast_test, entry);
+		if(delay)	udelay(delay);
+	}
+	
+	return 0;
+}
+
+#endif
+
+
+TESTDEF(AST_02_simple_wakeup_01,
+	struct ast_basic_data entry = {};
+	struct ast_test_result_t result = {.code = 0, .loc = 0, .serial = 1};
+	struct auto_sleep_thread_param ast_param;
+	
+	ast_thr = AST_basic_setup();
+	IDIOT_ASSERT_NOT(struct auto_sleep_thread*, %p, ast_thr, NULL);
+	
+	ast_param.data = &result;
+	IDIOT_ASSERT(int, %d, auto_sleep_thread_start(ast_thr, ast_param), 0);
+	
+	/* Wait until the thread sleep */
+	msleep(100);
+	
+	/* Push entry */
+	set_seq(0, &entry);
+	IDIOT_MSG("test-put element\n");
+	LLQ_PUT(llq_ast_test, entry);
+
+	/* Wait until the thread sleep */
+	msleep(100);
+	
+	printk(KERN_ERR "NPU: test-check condition\n");
+	IDIOT_ASSERT(int, %d, atomic_read(&(ast_thr->thr_state)), THREAD_STATE_SLEEPING);
+	IDIOT_ASSERT_NOT(int, %d, LLQ_IS_EMPTY(llq_ast_test), 0);	/* Shall be empty */
+
+	/* check result*/
+	IDIOT_ASSERT(int, %d, result.loc, 0);
+
+	AST_basic_teardown(ast_thr);
+	
+)
+
+TESTDEF(AST_03_termination_01,
+	struct ast_test_result_t result = {.code = 0, .loc = 0, .serial = 1};
+	struct auto_sleep_thread_param ast_param;
+	
+	ast_thr = AST_basic_setup();
+	IDIOT_ASSERT_NOT(struct auto_sleep_thread*, %p, ast_thr, NULL);
+	
+	ast_param.data = &result;
+	IDIOT_ASSERT(int, %d, auto_sleep_thread_start(ast_thr, ast_param), 0);
+	
+	/* Wait until the thread sleep */
+	msleep(100);
+	
+	
+	IDIOT_ASSERT(int, %d, atomic_read(&(ast_thr->thr_state)), THREAD_STATE_SLEEPING);
+
+	/* Shutdown */	
+	AST_basic_teardown(ast_thr);
+)
+
+TESTDEF(AST_4_termination_03,
+	struct ast_test_result_t result = {.code = 0, .loc = 0, .serial = 1};
+	struct task_struct* worker;
+	int check;
+	struct auto_sleep_thread_param ast_param;
+	
+	ast_thr = AST_basic_setup();
+	IDIOT_ASSERT_NOT(struct auto_sleep_thread*, %p, ast_thr, NULL);
+	
+	ast_param.data = &result;
+	IDIOT_ASSERT(int, %d, auto_sleep_thread_start(ast_thr, ast_param), 0);
+	
+	/* Execute worker enqueue data */
+	worker = kthread_run(AST_llq_enqueue_worker, NULL, "LLQ_TEST_02_WORKER");
+	
+	/* Wait while the counter increasing */
+	msleep(1000);
+	
+	/* Check current counter */
+	check = result.serial;
+	IDIOT_ASSERT_NOT(int, %d, result.serial, 1);
+
+	/* Wait a little and terminate the thread */
+	msleep(10);
+	auto_sleep_thread_terminate(ast_thr);
+	
+	IDIOT_ASSERT(int, %d, atomic_read(&(ast_thr->thr_state)), THREAD_STATE_TERMINATED);
+	IDIOT_ASSERT_NOT(int, %d, result.serial, check);	/* Need to be increased */
+	check = result.serial;
+	
+	/* Wait a little more */
+	msleep(100);
+	IDIOT_ASSERT(int, %d, result.serial, check);	/* Should not be changed */
+
+	/* Tear down */
+	kthread_stop(worker);
+
+	/* AST is already terminated. Just empty the LLQ */
+	LLQ_PURGE(llq_ast_test);
+	kfree(ast_thr);
+	ast_thr = NULL;
+)
+
+TESTDEF(AST_05_check_race,
+	struct ast_test_result_t result = {.code = 0, .loc = 0, .serial = 1};
+	struct auto_sleep_thread_param ast_param = {};
+	struct ast_basic_data entry = {};
+	const int TEST_COUNT = 10000;
+	int i;
+	
+	ast_thr = AST_basic_setup();
+	IDIOT_ASSERT_NEQ(ast_thr, NULL, %p);
+	
+	ast_param.data = &result;
+	IDIOT_ASSERT_EQ(auto_sleep_thread_start(ast_thr, ast_param), 0, %d);
+	
+	/* Enqueue data */
+	for(i = 0; i < TEST_COUNT; i++) {
+		entry.seq = i + 1;
+		while(LLQ_PUT(llq_ast_test, entry) == 0) {
+			udelay(1);	// Flow control
+		}
+	}
+	/* Double check last entry's serial number */
+	IDIOT_ASSERT_EQ(entry.seq, TEST_COUNT, %d);
+
+	/* Wait while the task is done */
+	msleep(1000);
+	
+	/* Make sure all the entries are processed */
+	IDIOT_ASSERT_EQ(result.serial, TEST_COUNT + 1, %d);
+	
+	/* Shutdown */	
+	AST_basic_teardown(ast_thr);
+)
+
+TESTDEF(AST_06_check_race_longtime_func,
+	struct ast_test_result_t result = {.code = 0, .loc = 0, .serial = 1};
+	struct auto_sleep_thread_param ast_param;
+	struct ast_basic_data entry = {};
+	const int TEST_COUNT = 10000;
+	int i;
+	
+	ast_thr = AST_basic_setup();
+	IDIOT_ASSERT_NEQ(ast_thr, NULL, %p);
+	
+	ast_param.data = &result;
+	IDIOT_ASSERT_EQ(auto_sleep_thread_start(ast_thr, ast_param), 0, %d);
+	
+	/* Enqueue data */
+	for(i = 0; i < TEST_COUNT; i++) {
+		entry.seq = i + 1;
+		while(LLQ_PUT(llq_ast_test, entry) == 0);
+		msleep(10);
+	}
+	/* Double check last entry's serial number */
+	IDIOT_ASSERT_EQ(entry.seq, TEST_COUNT, %d);
+
+	/* Wait while the task is done */
+	msleep(1000);
+	
+	/* Make sure all the entries are processed */
+	IDIOT_ASSERT_EQ(result.serial, TEST_COUNT + 1, %d);
+	
+	/* Shutdown */	
+	AST_basic_teardown(ast_thr);
+)

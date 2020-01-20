@@ -88,7 +88,11 @@ _head:
 	le64sym	_kernel_offset_le		// Image load offset from start of RAM, little-endian
 	le64sym	_kernel_size_le			// Effective size of kernel image, little-endian
 	le64sym	_kernel_flags_le		// Informative flags, little-endian
+#ifdef CONFIG_UH_RKP
+	.quad	rkp_init_data - .		// rkp init data
+#else
 	.quad	0				// reserved
+#endif
 	.quad	0				// reserved
 	.quad	0				// reserved
 	.ascii	"ARM\x64"			// Magic number
@@ -137,8 +141,13 @@ preserve_boot_args:
 	mov	x21, x0				// x21=FDT
 
 	adr_l	x0, boot_args			// record the contents of
+#ifndef CONFIG_RANDOMIZE_BASE
 	stp	x21, x1, [x0]			// x0 .. x3 at kernel entry
 	stp	x2, x3, [x0, #16]
+#else
+	stp	x21, xzr, [x0]			// x0 .. x3 at kernel entry
+	stp	xzr, xzr, [x0, #16]
+#endif
 
 	dmb	sy				// needed before dc ivac with
 						// MMU off
@@ -672,7 +681,10 @@ ENTRY(__enable_mmu)
 	 * been dynamically patched at the PoU.
 	 */
 	ic	iallu
-	dsb	nsh
+#ifdef CONFIG_SOC_EXYNOS9820
+	tlbi    vaale1is, xzr                   // dummy TLBI
+#endif
+	dsb	ish
 	isb
 	ret
 ENDPROC(__enable_mmu)
@@ -738,12 +750,18 @@ __primary_switch:
 	bl	__create_page_tables		// recreate kernel mapping
 
 	tlbi	vmalle1				// Remove any stale TLB entries
+#ifdef CONFIG_SOC_EXYNOS9820
+	tlbi    vaale1is, xzr                   // dummy TLBI
+#endif
 	dsb	nsh
 
 	msr	sctlr_el1, x19			// re-enable the MMU
 	isb
 	ic	iallu				// flush instructions fetched
-	dsb	nsh				// via old mapping
+#ifdef CONFIG_SOC_EXYNOS9820
+	tlbi    vaale1is, xzr                   // dummy TLBI
+#endif
+	dsb	ish				// via old mapping
 	isb
 
 	bl	__relocate_kernel

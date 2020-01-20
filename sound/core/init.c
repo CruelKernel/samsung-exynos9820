@@ -282,6 +282,9 @@ int snd_card_new(struct device *parent, int idx, const char *xid,
 		goto __error_ctl;
 	}
 	*card_ret = card;
+	dev_info(parent, "%s: card%d is created %s:%s\n", __func__, idx, 
+			dev_driver_string(card->dev), dev_name(&card->card_dev));
+
 	return 0;
 
       __error_ctl:

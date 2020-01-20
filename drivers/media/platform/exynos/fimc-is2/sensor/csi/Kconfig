@@ -1,0 +1,13 @@
+config CSIS_V3_2
+        bool "Use CSI H/W v3.2"
+        depends on EXYNOS_DEVICE_MIPI_CSIS
+        default n
+        help
+          csi version 3.2
+
+config CSIS_V3_4
+        bool "Use CSI H/W v3.4"
+        depends on EXYNOS_DEVICE_MIPI_CSIS
+        default n
+        help
+          csi version 3.4

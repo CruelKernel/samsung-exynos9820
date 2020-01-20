@@ -1,0 +1,101 @@
+menuconfig CAMERA_ACT_SELECT
+	bool "Sensor actuator select"
+	depends on USE_DIRECT_IS_CONTROL
+	help
+	  Say Y here to enable support for platform-specific V4L drivers.
+
+config CAMERA_ACT_AK7348_OBJ
+        bool "Use actuator AK7348"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build AK7348 driver.
+
+config CAMERA_ACT_AK7345_OBJ
+        bool "Use actuator AK7345"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build AK7345 driver.
+
+config CAMERA_ACT_AK7371_OBJ
+        bool "Use actuator AK7371"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build AK7371 driver.
+
+config CAMERA_ACT_DW9714_OBJ
+        bool "Use actuator DW9714"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build DW9714 driver.
+
+config CAMERA_ACT_DW9780_OBJ
+        bool "Use actuator DW9780"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build DW9780 driver.
+
+config CAMERA_ACT_DW9804_OBJ
+        bool "Use actuator DW9804"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build DW9804 driver.
+
+config CAMERA_ACT_DW9807_OBJ
+        bool "Use actuator DW9807"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build DW9807 driver.
+
+config CAMERA_ACT_AK7372_OBJ
+        bool "Use actuator AK7372"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build AK7372 driver.
+
+config CAMERA_ACT_LC898217_OBJ
+        bool "Use actuator LC898217"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build LC898217 driver.
+
+config CAMERA_ACT_AK737X_OBJ
+        bool "Use actuator AK737X"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build AK737X driver.
+
+config CAMERA_ACT_ZC533_OBJ
+        bool "Use actuator ZC533"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build ZC533 driver.
+
+config CAMERA_ACT_ZC569_OBJ
+        bool "Use actuator ZC569"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_ACT_SELECT
+        default n
+        help
+          Use to build ZC569 driver.

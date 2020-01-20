@@ -1,0 +1,165 @@
+/*
+ * SAMSUNG EXYNOS device tree source for reserved-memory
+ *
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "../../../../../include/generated/autoconf.h"
+#include <dt-bindings/soc/samsung/debug-snapshot-table.h>
+#include <dt-bindings/soc/samsung/exynos9820-seclog.h>
+
+/ {
+	ion-hpa-heap {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+		ion,hpa_limit = <0xA 0x00000000>;
+		ion,hpa_alloc_exception = <0x0 0xF0000000 0x10000000>;
+		ion_video_fw {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vfw_heap";
+			ion,secure;
+			ion,protection_id = <2>;
+			ion,alignment = <0x10000>;
+		};
+
+		ion_video_nfw {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vnfw_heap";
+			ion,protection_id = <7>;
+			ion,alignment = <0x10000>;
+		};
+
+		ion_video_frame {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vframe_heap";
+			ion,secure;
+			ion,protection_id = <5>;
+			ion,alignment = <0x10000>;
+		};
+
+		ion_video_scaler {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vscaler_heap";
+			ion,secure;
+			ion,protection_id = <6>;
+			ion,alignment = <0x10000>;
+		};
+
+		ion_gpu_buffer {
+			compatible = "exynos9820-ion";
+			ion,heapname = "gpu_buffer";
+			ion,secure;
+			ion,protection_id = <9>;
+			ion,alignment = <0x10000>;
+		};
+	};
+
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		ion_video_stream {
+			compatible = "exynos9820-ion";
+			size = <0x4800000>;
+			alloc-ranges = <0x0 0x40000000 0xB0000000>;
+			alignment = <0x0 0x00400000>;
+			ion,heapname = "vstream_heap";
+			ion,secure;
+			ion,reusable;
+			ion,protection_id = <3>;
+			ion,alignment = <0x10000>;
+		};
+
+		ion_crypto{
+			compatible = "exynos9820-ion";
+			size = <0x1800000>;
+			alignment = <0x0 0x00400000>;
+			ion,heapname = "crypto_heap";
+			ion,reusable;
+			ion,alignment = <0x10000>;
+		};
+
+		sec_debug_magic {
+			compatible = "exynos,sec_debug_magic";
+			reg = <0x0 0x80000000 0x1000>;
+		};
+
+		debug_snapshot {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			header {
+				compatible = "debug-snapshot,header";
+				reg = <0 DSS_HEADER_ADDR DSS_HEADER_SIZE>;
+			};
+			log_kernel {
+				compatible = "debug-snapshot,log_kernel";
+				reg = <0 DSS_LOG_KERNEL_ADDR DSS_LOG_KERNEL_SIZE>;
+			};
+			log_platform {
+				compatible = "debug-snapshot,log_platform";
+				reg = <0 DSS_LOG_PLATFORM_ADDR DSS_LOG_PLATFORM_SIZE>;
+			};
+			log_sfr {
+				compatible = "debug-snapshot,log_sfr";
+				reg = <0 DSS_LOG_SFR_ADDR DSS_LOG_SFR_SIZE>;
+			};
+			log_s2d {
+				compatible = "debug-snapshot,log_s2d";
+				reg = <0 DSS_LOG_S2D_ADDR DSS_LOG_S2D_SIZE>;
+			};
+			log_cachedump {
+				compatible = "debug-snapshot,log_cachedump";
+				reg = <0 DSS_LOG_CACHEDUMP_ADDR DSS_LOG_CACHEDUMP_SIZE>;
+			};
+			log_arraydump {
+				compatible = "debug-snapshot,log_arraydump";
+				reg = <0 DSS_LOG_ARRAYDUMP_ADDR DSS_LOG_CACHEDUMP_SIZE>;
+			};
+			log_etm {
+				compatible = "debug-snapshot,log_etm";
+				reg = <0 DSS_LOG_ETM_ADDR DSS_LOG_ETM_SIZE>;
+			};
+			log_bcm {
+				compatible = "debug-snapshot,log_bcm";
+				reg = <0 DSS_LOG_BCM_ADDR DSS_LOG_BCM_SIZE>;
+			};
+			log_llc {
+				compatible = "debug-snapshot,log_llc";
+				reg = <0 DSS_LOG_LLC_ADDR DSS_LOG_LLC_SIZE>;
+			};
+			log_dbgc {
+				compatible = "debug-snapshot,log_dbgc";
+				reg = <0 DSS_LOG_DBGC_ADDR DSS_LOG_DBGC_SIZE>;
+			};
+			log_pstore {
+				compatible = "debug-snapshot,log_pstore";
+				reg = <0 DSS_LOG_PSTORE_ADDR DSS_LOG_PSTORE_SIZE>;
+			};
+			log_kevents {
+				compatible = "debug-snapshot,log_kevents";
+				reg = <0 DSS_LOG_KEVENTS_ADDR DSS_LOG_KEVENTS_SIZE>;
+			};
+		};
+
+		abox_rmem: abox-rmem {
+			compatible = "exynos,abox_rmem";
+			size = <0x3800000>;
+			alloc-ranges = <0x0 0xC0000000 0x20000000>;
+			alignment = <0x0 0x00400000>;
+		};
+
+		seclog_mem {
+			compatible = "exynos,seclog";
+			reg = <0 SECLOG_LOG_BUF_BASE SECLOG_LOG_BUF_TOTAL_SIZE>;
+		};
+
+	};
+};

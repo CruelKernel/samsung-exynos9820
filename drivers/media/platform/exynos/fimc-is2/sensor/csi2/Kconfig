@@ -1,0 +1,41 @@
+config CSIS_V4_0
+	bool "Use CSI H/W v4.0"
+        depends on EXYNOS_DEVICE_MIPI_CSIS_VER2 || EXYNOS_DEVICE_MIPI_CSIS_VER3
+	default n
+	select USE_CSI_DMAOUT_FEATURE
+	help
+	  csi version 4.0
+
+config CSIS_V4_1
+	bool "Use CSI H/W v4.1"
+        depends on EXYNOS_DEVICE_MIPI_CSIS_VER2 || EXYNOS_DEVICE_MIPI_CSIS_VER3
+	default n
+	select USE_CSI_DMAOUT_FEATURE
+	help
+	  csi version 4.1
+
+config CSIS_V5_0
+	bool "Use CSI H/W v5.0"
+        depends on EXYNOS_DEVICE_MIPI_CSIS_VER2 || EXYNOS_DEVICE_MIPI_CSIS_VER3
+	default n
+	help
+	  csi version 5.0
+
+config CSIS_V5_1
+	bool "Use CSI H/W v5.1"
+	default n
+	help
+	  csi version 5.1
+
+config CSIS_V5_2
+	bool "Use CSI H/W v5.2"
+	default n
+	help
+	  csi version 5.2
+
+config USE_CSI_DMAOUT_FEATURE
+	bool "Use csi dmaout feature"
+        depends on CSIS_V4_0 || CSIS_V4_1 || CSIS_V5_0 || CSIS_V5_1 || CSIS_V5_2
+	default n
+	help
+	  csi dmaout feature

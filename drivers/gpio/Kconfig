@@ -793,6 +793,12 @@ config GPIO_PCA953X_IRQ
 	  Say yes here to enable the pca953x to be used as an interrupt
 	  controller. It requires the driver to be built in the kernel.
 
+config GPIO_PCAL6524
+	bool "PCAL6524 GPIO expander"
+	depends on I2C
+	help
+	  GPIO driver for PCAL6524 I2C-based GPIO expander.
+
 config GPIO_PCF857X
 	tristate "PCF857x, PCA{85,96}7x, and MAX732[89] I2C GPIO expanders"
 	select GPIOLIB_IRQCHIP
@@ -985,6 +991,12 @@ config GPIO_LP87565
 
 	  This driver can also be built as a module. If so, the module will be
 	  called gpio-lp87565.
+
+config GPIO_MADERA
+	bool "Cirrus Logic Madera class codecs"
+	depends on PINCTRL_MADERA
+	help
+	  Support for GPIOs on Cirrus Logic Madera class codecs.
 
 config GPIO_MAX77620
 	tristate "GPIO support for PMIC MAX77620 and MAX20024"
@@ -1297,5 +1309,12 @@ config GPIO_VIPERBOARD
           of the module parameters.
 
 endmenu
+
+config SEC_CONNECTOR_DETECTOR
+	tristate "Setting Samsung Connector Detector feature"
+	depends on SEC_FACTORY
+	help
+	  To detect connection of connector, set this feature.
+	  This feature should be enabled for factory mode.
 
 endif

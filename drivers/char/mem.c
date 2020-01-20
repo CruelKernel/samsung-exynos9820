@@ -35,6 +35,9 @@
 #ifdef CONFIG_IA64
 # include <linux/efi.h>
 #endif
+#ifdef CONFIG_MST_LDO
+#include <linux/mst_ctrl.h>
+#endif
 
 #define DEVPORT_MINOR	4
 
@@ -870,6 +873,9 @@ static const struct memdev {
 	 [9] = { "urandom", 0666, &urandom_fops, 0 },
 #ifdef CONFIG_PRINTK
 	[11] = { "kmsg", 0644, &kmsg_fops, 0 },
+#endif
+#ifdef CONFIG_MST_LDO
+	[14] = { "mst_ctrl", 0666, &mst_ctrl_fops, 0 },
 #endif
 };
 

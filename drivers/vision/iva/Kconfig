@@ -1,0 +1,12 @@
+config EXYNOS_IVA
+	bool "samsung IVA driver support"
+	default n
+	help
+		Enable samsung iva driver
+
+config IVA_VER
+	int "version information of IVA vision IP"
+	default 30
+	help
+	  user only for IVA FPGA
+

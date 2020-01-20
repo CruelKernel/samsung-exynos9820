@@ -46,6 +46,11 @@ void __ablkcipher_walk_complete(struct ablkcipher_walk *walk)
 {
 	struct ablkcipher_buffer *p, *tmp;
 
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return;
+#endif
+
 	list_for_each_entry_safe(p, tmp, &walk->buffers, entry) {
 		ablkcipher_buffer_write(p);
 		list_del(&p->entry);
@@ -103,6 +108,11 @@ int ablkcipher_walk_done(struct ablkcipher_request *req,
 	struct crypto_tfm *tfm = req->base.tfm;
 	unsigned int n; /* bytes processed */
 	bool more;
+
+#ifdef CONFIG_CRYPTO_FIPS
+	if (unlikely(in_fips_err()))
+		return -EACCES;
+#endif
 
 	if (unlikely(err < 0))
 		goto finish;

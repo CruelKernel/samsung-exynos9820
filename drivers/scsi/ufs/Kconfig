@@ -35,8 +35,6 @@
 config SCSI_UFSHCD
 	tristate "Universal Flash Storage Controller Driver Core"
 	depends on SCSI && SCSI_DMA
-	select PM_DEVFREQ
-	select DEVFREQ_GOV_SIMPLE_ONDEMAND
 	select NLS
 	---help---
 	This selects the support for UFS devices in Linux, say Y and make
@@ -49,6 +47,10 @@ config SCSI_UFSHCD
 	  <file:Documentation/scsi/ufs.txt>.
 	  However, do not compile this as a module if your root file system
 	  (the one containing the directory /) is located on a UFS device.
+
+config UFS_UN_18DIGITS
+	bool "The digits of SEC unique number"
+	depends on SCSI_UFSHCD
 
 config SCSI_UFSHCD_PCI
 	tristate "PCI bus based UFS Controller support"
@@ -88,6 +90,51 @@ config SCSI_UFS_DWC_TC_PLATFORM
 
 	  If unsure, say N.
 
+config SCSI_UFS_ASYNC_RELINK
+	tristate "Asynchronous link establishment on UFS device resume"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+	---help---
+	  This feature is to support concurrency of UFS resume and the others.
+	  In UFS re-link, system wake-up may task a long time when UFS resume
+	  time is increased for device latency or etc.
+
+	  If you want to enable this feature, say Y or M here.
+
+	  If unsure, say N.
+
+config SCSI_UFS_CMD_LOGGING
+	tristate "UFS cmd loggging support"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+	---help---
+	  This feature is to support UFS cmd logging.
+	  When UFS cmd transferred to UFS HCI
+	  various data logs for debugging purpose.
+
+	  If you want to enable this feature, say Y or M here.
+
+	  If unsure, say N.
+
+config SCSI_UFS_TEST_MODE
+       bool "Samsung UFS TEST feature"
+       depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+       ---help---
+         This selects support for test mode for debugging.
+         Select this option if this feature is needed on working.
+
+config UFS_DATA_LOG
+	bool "Samsung UFS DATA logging"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+	---help---
+	  This feature support for UFS Data logging.
+	  Select this option if this feature is needed on working.
+
+config UFS_DATA_LOG_MAGIC_CODE
+	bool "Samsung UFS DATA logging"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM && UFS_DATA_LOG
+	---help---
+	  This feature support for UFS Data logging include magic code.
+	  Select this option if this feature is needed on working.
+
 config SCSI_UFS_QCOM
 	tristate "QCOM specific hooks to UFS controller platform driver"
 	depends on SCSI_UFSHCD_PLATFORM && ARCH_QCOM
@@ -99,4 +146,45 @@ config SCSI_UFS_QCOM
 	  specific registers.
 
 	  Select this if you have UFS controller on QCOM chipset.
+	  If unsure, say N.
+
+config SCSI_UFS_EXYNOS
+	tristate "EXYNOS UFS Host Controller Driver"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+	---help---
+	  This selects the EXYNOS UFS host controller driver.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
+config SCSI_UFS_FMP_DUMP
+	tristate "EXYNOS Flash Memory Protector Dump for UFS Host"
+	depends on SCSI_UFSHCD && SCSI_UFSHCD_PLATFORM
+	---help---
+	  This selects the EXYNOS UFS FMP DUMP.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
+config SCSI_UFS_EXYNOS_FMP
+	tristate "EXYNOS Flash Memory Protector for UFS Host"
+	depends on SCSI_UFS_EXYNOS && EXYNOS_FMP
+	select SCSI_UFS_EXYNOS_SMU
+	---help---
+	  This selects the EXYNOS UFS FMP Driver.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
+config SCSI_UFS_EXYNOS_SMU
+	tristate "EXYNOS Secure Management Unit for UFS Host"
+	depends on SCSI_UFS_EXYNOS && EXYNOS_SMU
+	---help---
+	  This selects the EXYNOS UFS SMU Driver.
+
+	  If you have a controller with this interface, say Y or M here.
+
 	  If unsure, say N.

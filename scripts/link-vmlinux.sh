@@ -403,5 +403,22 @@ if [ -n "${CONFIG_KALLSYMS}" ]; then
 	fi
 fi
 
+# CFP instrumentation will change binary, need to be before FIPS
+if [ -n "${CONFIG_RKP_CFP}" ]; then
+	echo '  RKP_CFP : instrumenting vmlinux... '
+	"${srctree}/scripts/rkp_cfp/instrument.py" --vmlinux "${objtree}/vmlinux" \
+	--config "${objtree}/.config"  --inplace
+fi
+
+if [ -n "${CONFIG_CRYPTO_FIPS}" ]; then
+	echo '  FIPS : Generating hmac of crypto and updating vmlinux... '
+	PYTHONDONTWRITEBYTECODE=0 "${srctree}/scripts/crypto/fips_crypto_integrity.py" "${objtree}/vmlinux"
+fi
+
+if [ -n "${CONFIG_EXYNOS_FMP_FIPS}" ]; then
+    echo '  FIPS : Generating hmac of fmp and updating vmlinux... '
+	PYTHONDONTWRITEBYTECODE=0 "${srctree}/scripts/fmp/fips_fmp_integrity.py" "${objtree}/vmlinux"
+fi
+
 # We made a new kernel - delete old version file
 rm -f .old_version

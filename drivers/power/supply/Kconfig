@@ -610,4 +610,26 @@ config CHARGER_RT9455
 	help
 	  Say Y to enable support for Richtek RT9455 battery charger.
 
+config FUELGAUGE_S2MU004
+    tristate "s2mu004 fuel gauge driver"
+    default n
+    depends on (MFD_S2MU004) && I2C
+    help
+      say y to include support
+      for s.lsi s2mu004 fuel gauge driver.
+
+config CHARGER_S2MU004
+    tristate "S2MU004 charger support"
+    depends on (MFD_S2MU004) && I2C
+    help
+      Say Y here to enable support for the S2MU004 charger
+      S2MU004 incluse pmic, led driver.
+      You have to define MFD_S2MU004
+
+config BATTERY_S2MU00X
+    tristate "S2MU00x battery drivera"
+	depends on (MFD_S2MU004) && I2C
+	help
+	  Say Y here to enable support for S2MU00x battery driver.
+
 endif # POWER_SUPPLY

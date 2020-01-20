@@ -259,7 +259,9 @@ struct sock_tag {
 	/* Used to associate with a given pid */
 	struct list_head list;   /* in proc_qtu_data.sock_tag_list */
 	pid_t pid;
-
+#ifdef CONFIG_MPTCP
+	uid_t fuid;
+#endif
 	tag_t tag;
 };
 

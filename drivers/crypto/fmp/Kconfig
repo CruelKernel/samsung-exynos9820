@@ -1,0 +1,54 @@
+#
+# SMU/FMP controller drivers
+#
+
+config EXYNOS_SMU
+	tristate "Samsung EXYNOS SMU driver"
+	help
+	  Say yes here to build support for SMU (Secure Manangement Unit)
+	  to control access permission to storage device.
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here
+
+config EXYNOS_FMP
+	tristate "Samsung EXYNOS FMP driver"
+	depends on CRYPTO_DISKCIPHER
+	select EXYNOS_SMU
+	help
+	  Say yes here to build support for FMP (Flash Memory Protector)
+	  to encrypt and decrypt userdata using inline H/W crypto module.
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here
+
+config EXYNOS_FMP_FIPS
+	tristate "Samsung EXYNOS FMP Validation Driver for FIPS"
+	depends on EXYNOS_FMP
+	depends on !FUNCTION_TRACER
+	help
+	  Say yes here to build support for FMP (Flash Memory Protector)
+	  FIPS validation driver for integrity checking, self and functional test.
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here
+
+choice
+	prompt "Option for self-test failure"
+	depends on EXYNOS_FMP_FIPS
+	default NODE_FOR_SELFTEST_FAIL
+
+config NODE_FOR_SELFTEST_FAIL
+	bool "Set fips fmp node when self-test fails"
+	depends on EXYNOS_FMP_FIPS
+	help
+	  Choose here to select that fips fmp node was set to zero
+	  when FMP self-test fails.
+
+config PANIC_FOR_SELFTEST_FAIL
+	bool "Panic when self-test fails"
+	depends on EXYNOS_FMP_FIPS
+	help
+	  Choose here to select that kernel panic occurs when FMP self-test fails.
+
+endchoice

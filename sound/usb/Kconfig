@@ -22,6 +22,12 @@ config SND_USB_AUDIO
 	  To compile this driver as a module, choose M here: the module
 	  will be called snd-usb-audio.
 
+config SND_EXYNOS_USB_AUDIO
+	bool "EXYNOS USB Audio offloading"
+	depends on SND_USB_AUDIO && SND_SOC_SAMSUNG_ABOX
+	help
+	 Say Y here to include support for Exynos USB Audio ABOX offloading.
+
 config SND_USB_UA101
 	tristate "Edirol UA-101/UA-1000 driver"
 	select SND_PCM

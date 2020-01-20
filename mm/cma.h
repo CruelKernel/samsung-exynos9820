@@ -3,6 +3,9 @@
 #define __MM_CMA_H__
 
 struct cma {
+#ifdef CONFIG_RBIN
+	bool is_rbin;
+#endif
 	unsigned long   base_pfn;
 	unsigned long   count;
 	unsigned long   *bitmap;

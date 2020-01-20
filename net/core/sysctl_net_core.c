@@ -459,6 +459,15 @@ static struct ctl_table net_core_table[] = {
 		.extra1		= &one,
 		.extra2		= &max_skb_frags,
 	},
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	{
+		.procname	= "support_dropdump",
+		.data		= &netdev_support_dropdump,
+		.maxlen 	= sizeof(int),
+		.mode		= 0444,
+		.proc_handler	= proc_dointvec,
+	},
+#endif
 	{
 		.procname	= "netdev_budget_usecs",
 		.data		= &netdev_budget_usecs,

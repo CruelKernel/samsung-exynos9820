@@ -77,6 +77,13 @@
 #define PAGE_READONLY_EXEC	__pgprot(_PAGE_DEFAULT | PTE_USER | PTE_RDONLY | PTE_NG | PTE_PXN)
 #define PAGE_EXECONLY		__pgprot(_PAGE_DEFAULT | PTE_RDONLY | PTE_NG | PTE_PXN)
 
+#ifdef CONFIG_UH_RKP
+#define PTE_RKP_RO			(_AT(pteval_t, 1) << 57)
+#define PAGE_KERNEL_RKP_RO	__pgprot(PROT_NORMAL | PTE_RKP_RO)
+#define pgprot_rkp_ro(prot)	(!!(pgprot_val(prot) & (PTE_RKP_RO)))
+#define addr_rkp_ro(addr)	(!(addr & (PTE_RKP_RO)))
+#endif
+
 #define __P000  PAGE_NONE
 #define __P001  PAGE_READONLY
 #define __P010  PAGE_READONLY

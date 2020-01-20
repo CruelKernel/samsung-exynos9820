@@ -5,6 +5,8 @@
 #include <linux/printk.h>
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
+#include <linux/ems.h>
+#include <linux/ems_service.h>
 
 #include <trace/events/sched.h>
 
@@ -35,6 +37,19 @@ struct schedtune {
 	/* Hint to bias scheduling of tasks on that SchedTune CGroup
 	 * towards idle CPUs */
 	int prefer_idle;
+
+	/* Hint to bias scheduling of tasks on that SchedTune CGroup
+	 * towards high performance CPUs */
+	int prefer_perf;
+
+	/* SchedTune util-est */
+	int util_est_en;
+
+	/* Hint to group tasks by process */
+	int band;
+
+	/* SchedTune ontime migration */
+	int ontime_en;
 };
 
 static inline struct schedtune *css_st(struct cgroup_subsys_state *css)
@@ -65,6 +80,8 @@ static struct schedtune
 root_schedtune = {
 	.boost	= 0,
 	.prefer_idle = 0,
+	.prefer_perf = 0,
+	.band = 0,
 };
 
 /*
@@ -364,6 +381,26 @@ void schedtune_cancel_attach(struct cgroup_taskset *tset)
 	WARN(1, "SchedTune cancel attach not implemented");
 }
 
+static void schedtune_attach(struct cgroup_taskset *tset)
+{
+	struct task_struct *task;
+	struct cgroup_subsys_state *css;
+
+	cgroup_taskset_for_each(task, css, tset)
+		sync_band(task, css_st(css)->band);
+}
+
+static void band_switch(struct schedtune *st)
+{
+	struct css_task_iter it;
+	struct task_struct *p;
+
+	css_task_iter_start(&st->css, 0, &it);
+	while ((p = css_task_iter_next(&it)))
+		sync_band(p, st->band);
+	css_task_iter_end(&it);
+}
+
 /*
  * NOTE: This function must be called while holding the lock on the CPU RQ
  */
@@ -425,6 +462,40 @@ int schedtune_task_boost(struct task_struct *p)
 	return task_boost;
 }
 
+int schedtune_util_est_en(struct task_struct *p)
+{
+	struct schedtune *st;
+	int util_est_en;
+
+	if (unlikely(!schedtune_initialized))
+		return 0;
+
+	/* Get util_est value */
+	rcu_read_lock();
+	st = task_schedtune(p);
+	util_est_en = st->util_est_en;
+	rcu_read_unlock();
+
+	return util_est_en;
+}
+
+int schedtune_ontime_en(struct task_struct *p)
+{
+	struct schedtune *st;
+	int ontime_en;
+
+	if (unlikely(!schedtune_initialized))
+		return 0;
+
+	/* Get ontime value */
+	rcu_read_lock();
+	st = task_schedtune(p);
+	ontime_en = st->ontime_en;
+	rcu_read_unlock();
+
+	return ontime_en;
+}
+
 int schedtune_prefer_idle(struct task_struct *p)
 {
 	struct schedtune *st;
@@ -442,6 +513,82 @@ int schedtune_prefer_idle(struct task_struct *p)
 	return prefer_idle;
 }
 
+int schedtune_prefer_perf(struct task_struct *p)
+{
+	struct schedtune *st;
+	int prefer_perf;
+
+	if (unlikely(!schedtune_initialized))
+		return 0;
+
+	/* Get prefer_perf value */
+	rcu_read_lock();
+	st = task_schedtune(p);
+	prefer_perf = max(st->prefer_perf, kpp_status(st->idx));
+	rcu_read_unlock();
+
+	return prefer_perf;
+}
+
+static u64
+util_est_en_read(struct cgroup_subsys_state *css, struct cftype *cft)
+{
+	struct schedtune *st = css_st(css);
+
+	return st->util_est_en;
+}
+
+static int
+util_est_en_write(struct cgroup_subsys_state *css, struct cftype *cft,
+	    u64 util_est_en)
+{
+	struct schedtune *st = css_st(css);
+	st->util_est_en = util_est_en;
+
+	return 0;
+}
+
+static u64
+ontime_en_read(struct cgroup_subsys_state *css, struct cftype *cft)
+{
+	struct schedtune *st = css_st(css);
+
+	return st->ontime_en;
+}
+
+static int
+ontime_en_write(struct cgroup_subsys_state *css, struct cftype *cft,
+	    u64 ontime_en)
+{
+	struct schedtune *st = css_st(css);
+	st->ontime_en = ontime_en;
+
+	return 0;
+}
+
+static u64
+band_read(struct cgroup_subsys_state *css, struct cftype *cft)
+{
+	struct schedtune *st = css_st(css);
+
+	return st->band;
+}
+
+static int
+band_write(struct cgroup_subsys_state *css, struct cftype *cft,
+	    u64 band)
+{
+	struct schedtune *st = css_st(css);
+
+	if (st->band == band)
+		return 0;
+
+	st->band = band;
+	band_switch(st);
+
+	return 0;
+}
+
 static u64
 prefer_idle_read(struct cgroup_subsys_state *css, struct cftype *cft)
 {
@@ -455,7 +602,25 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	    u64 prefer_idle)
 {
 	struct schedtune *st = css_st(css);
-	st->prefer_idle = prefer_idle;
+	st->prefer_idle = !!prefer_idle;
+
+	return 0;
+}
+
+static u64
+prefer_perf_read(struct cgroup_subsys_state *css, struct cftype *cft)
+{
+	struct schedtune *st = css_st(css);
+
+	return st->prefer_perf;
+}
+
+static int
+prefer_perf_write(struct cgroup_subsys_state *css, struct cftype *cft,
+	    u64 prefer_perf)
+{
+	struct schedtune *st = css_st(css);
+	st->prefer_perf = prefer_perf;
 
 	return 0;
 }
@@ -495,6 +660,26 @@ static struct cftype files[] = {
 		.name = "prefer_idle",
 		.read_u64 = prefer_idle_read,
 		.write_u64 = prefer_idle_write,
+	},
+	{
+		.name = "prefer_perf",
+		.read_u64 = prefer_perf_read,
+		.write_u64 = prefer_perf_write,
+	},
+	{
+		.name = "band",
+		.read_u64 = band_read,
+		.write_u64 = band_write,
+	},
+	{
+		.name = "util_est_en",
+		.read_u64 = util_est_en_read,
+		.write_u64 = util_est_en_write,
+	},
+	{
+		.name = "ontime_en",
+		.read_u64 = ontime_en_read,
+		.write_u64 = ontime_en_write,
 	},
 	{ }	/* terminate */
 };
@@ -585,6 +770,7 @@ struct cgroup_subsys schedtune_cgrp_subsys = {
 	.css_free	= schedtune_css_free,
 	.can_attach     = schedtune_can_attach,
 	.cancel_attach  = schedtune_cancel_attach,
+	.attach		= schedtune_attach,
 	.legacy_cftypes	= files,
 	.early_init	= 1,
 };
@@ -616,6 +802,7 @@ schedtune_init(void)
 {
 	schedtune_spc_rdiv = reciprocal_value(100);
 	schedtune_init_cgroups();
+
 	return 0;
 }
 postcore_initcall(schedtune_init);

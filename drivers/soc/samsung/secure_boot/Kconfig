@@ -1,0 +1,28 @@
+#
+# Secure boot driver configuration
+#
+
+menuconfig EXYNOS_SIGNATURE_BIN
+	bool "Add secure boot signature"
+	help
+	  This option is to enable signing of the Image for signature verification.
+
+config SB_SIGN_TYPE
+	int "set sign type"
+	default 3 if EXYNOS_SIGNATURE_BIN
+	depends on EXYNOS_SIGNATURE_BIN
+
+config SB_KEY_TYPE
+	int "set key type"
+	default 1 if EXYNOS_SIGNATURE_BIN
+	depends on EXYNOS_SIGNATURE_BIN
+
+config SB_RB_COUNT
+	int "set roll back prevention count"
+	default 0 if EXYNOS_SIGNATURE_BIN
+	depends on EXYNOS_SIGNATURE_BIN
+
+config SB_KERNEL_SIZE
+	int "set kernel image size"
+	default 31457280 if EXYNOS_SIGNATURE_BIN
+	depends on EXYNOS_SIGNATURE_BIN

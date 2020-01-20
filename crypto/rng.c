@@ -15,6 +15,9 @@
 
 #include <linux/atomic.h>
 #include <crypto/internal/rng.h>
+#ifdef CONFIG_CRYPTO_FIPS
+#include <crypto/drbg.h>
+#endif
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -229,6 +232,30 @@ void crypto_unregister_rngs(struct rng_alg *algs, int count)
 		crypto_unregister_rng(algs + i);
 }
 EXPORT_SYMBOL_GPL(crypto_unregister_rngs);
+
+
+#ifdef CONFIG_CRYPTO_FIPS
+int crypto_rng_check_entropy(struct crypto_rng *rng)
+{
+	struct drbg_state *drbg;
+	const char *algo = NULL;
+
+	if (!rng)
+		return -EINVAL;
+
+	algo = crypto_tfm_alg_driver_name(crypto_rng_tfm(rng));
+	if (!algo)
+		return -EINVAL;
+
+	if (!memcmp(algo, "drbg_", 5)) {
+		drbg = crypto_rng_ctx(rng);
+		if (drbg->hw_entropy)
+			return 0;
+	}
+	return -1;
+}
+EXPORT_SYMBOL_GPL(crypto_rng_check_entropy);
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Random Number Generator");

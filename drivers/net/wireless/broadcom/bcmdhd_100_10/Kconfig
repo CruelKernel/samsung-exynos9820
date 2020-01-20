@@ -1,0 +1,240 @@
+config BROADCOM_WIFI
+	bool "Broadcom WiFi Driver"
+	depends on WLAN
+	default n
+	---help---
+	  This is a configuration for Broadcom WLAN driver.
+
+config BCM4330
+	tristate "Broadcom 4330 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4330 chipset.
+
+config BCM4343
+	tristate "Broadcom 4343 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4343 chipset.
+
+config BCM4334
+	tristate "Broadcom 4334 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4334 chipset.
+
+config BCM4335
+	tristate "Broadcom 4335 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4335 chipset.
+
+config BCM4339
+	tristate "Broadcom 4339 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4339 chipset.
+
+config BCM4354
+	tristate "Broadcom 4354 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4354 chipset.
+
+config BCM43012
+	tristate "Broadcom 43012 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 43012 chipset.
+
+config BCM4358
+	tristate "Broadcom 4358 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4358 chipset.
+
+config BCM4359
+	tristate "Broadcom 4359 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4359 chipset.
+
+config BCM4361
+	tristate "Broadcom 4361 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4361 chipset.
+
+config BCM4375
+	tristate "Broadcom 4375 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4375 chipset.
+
+config BCM43241
+	tristate "Broadcom 43241 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 43241 chipset.
+
+config BCM43455
+        tristate "Broadcom 43455 wireless cards support"
+        depends on BROADCOM_WIFI
+        ---help---
+          This module adds support for wireless adapters based on
+          Broadcom 43455 chipset.
+
+config BCM4334W
+	tristate "Broadcom 4334W wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4334W chipset.
+
+config BCM43454
+        tristate "Broadcom 43454 wireless cards support"
+        depends on BROADCOM_WIFI
+        ---help---
+          This module adds support for wireless adapters based on
+          Broadcom 43454 chipset.
+
+config BCMDHD_FW_PATH
+	depends on BROADCOM_WIFI
+	string "Firmware path"
+	default "/etc/wifi/bcmdhd_sta.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_NVRAM_PATH
+	depends on BROADCOM_WIFI
+	string "NVRAM path"
+	default "/etc/wifi/nvram_net.txt"
+	---help---
+	  Path to the nvram file.
+
+config BROADCOM_WIFI_RESERVED_MEM
+	bool "BROADCOM Reserved memory for wifi device"
+	depends on BROADCOM_WIFI
+	---help---
+	  This is a configuration for Broadcom WLAN driver.
+
+config WIFI_BROADCOM_COB
+        bool "BROADCOM WIFI COB"
+        depends on (BCM43455 || BCM4343 || BCM43454 || BCM43012)
+        ---help---
+          This is a configuration for Broadcom WIFI COB Type.
+
+config BCM4335BT
+	bool "BROADCOM BTLOCK Enable"
+	depends on BCM4335
+	default y
+	---help---
+	  This is a configuration for bt lock enable.
+
+config WLAN_REGION_CODE
+	int "---Region codes for Broadcom WiFi Driver"
+	depends on BROADCOM_WIFI
+	default 100
+	---help---
+		This is a region code for Broadcom Wi-Fi featured functions.
+		- 100 : EUR OPEN
+		- 101 : EUR ORG
+		- 200 : KOR OPEN
+		- 201 : KOR SKT
+		- 202 : KOR KTT
+		- 203 : KOR LGT
+		- 300 : CHN OPEN
+
+config WLAIBSS
+	bool "Advanced IBSS mode"
+	depends on (BCM4335 || BCM4339 || BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4375)
+	default y
+	---help---
+	  This is a configuration for Oxygen Network.
+
+config WL_RELMCAST
+	bool "Reliable Multicast Support"
+	depends on (BCM4335 || BCM4339 || BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4375)
+	default y
+	---help---
+	  This is a configuration for RMC.
+
+config WL_NAN
+	bool "NAN Feature"
+	depends on BROADCOM_WIFI
+	default n
+	---help---
+	  This is a configuration for NAN Feature.
+
+config BCMDHD_PCIE
+	bool "Enable PCIe I/F Support"
+	depends on (BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4375)
+	---help---
+	  Enable PCI Express I/F Support
+
+config BCMDHD_PREALLOC_PKTIDMAP
+	bool "BROADCOM PCIE specific memory reserved for PKTIDMAP"
+	depends on BROADCOM_WIFI_RESERVED_MEM && BCMDHD_PCIE
+	---help---
+	  Preallocated memory support for PCIE interface in Broadcom
+	  WLAN driver.
+
+config BCMDHD_PREALLOC_MEMDUMP
+	bool "BROADCOM PCIE specific memory reserved for MEMDUMP"
+	depends on BROADCOM_WIFI_RESERVED_MEM
+	default y
+	---help---
+	  Preallocated memory support for dongle memory dump
+
+config BCMDHD_OOB_HOST_WAKE
+	bool "Use the external WLAN_HOST_WAKE pin"
+	depends on BROADCOM_WIFI
+	default y
+	---help---
+	  Use the external GPIO pin to wake up host
+
+config SPLIT_ARGOS_SET
+	bool "Support argos table"
+	depends on BROADCOM_WIFI
+	---help---
+	To support SPLIT_ARGOS_SET
+
+config BCM_DETECT_CONSECUTIVE_HANG
+	bool "Detect consecutive hang event"
+	depends on BROADCOM_WIFI
+	default n
+	---help---
+	Detecting defect module from consecutive hang event
+
+config WLAN_TSQ_MULTIPLIER
+	bool "Enable TCP TSQ_MULTIPLIER"
+	depends on BROADCOM_WIFI
+	default n
+	---help---
+	This is configuration for TCP TSQ_MULTIPLIER
+
+config WLAN_VENDOR_DUMP_ENABLE
+	bool "Enable dump policy as Android Global DE Policy"
+	depends on BROADCOM_WIFI
+	default n
+	---help---
+	Change WLAN Debug dump policy as Global DE policy
+
+config BCMDHD_GET_OOB_STATE
+        bool "Support WLAN_HOST_WAKE pin level information"
+        depends on BCMDHD_OOB_HOST_WAKE
+        default y
+        ---help---
+          Support WLAN_HOST_WAKE pin level information

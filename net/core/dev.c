@@ -145,6 +145,7 @@
 #include <linux/crash_dump.h>
 #include <linux/sctp.h>
 #include <net/udp_tunnel.h>
+#include <linux/linkforward.h>
 
 #include "net-sysfs.h"
 
@@ -158,6 +159,9 @@ static DEFINE_SPINLOCK(ptype_lock);
 static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+struct list_head ptype_log __read_mostly;
+#endif
 static struct list_head offload_base __read_mostly;
 
 static int netif_rx_internal(struct sk_buff *skb);
@@ -383,6 +387,11 @@ static inline void netdev_set_addr_lockdep_class(struct net_device *dev)
 
 static inline struct list_head *ptype_head(const struct packet_type *pt)
 {
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	if (unlikely(pt->type == htons(ETH_P_LOG)))
+		return &ptype_log;
+	else
+#endif
 	if (pt->type == htons(ETH_P_ALL))
 		return pt->dev ? &pt->dev->ptype_all : &ptype_all;
 	else
@@ -1911,6 +1920,170 @@ static inline bool skb_loop_sk(struct packet_type *ptype, struct sk_buff *skb)
 
 	return false;
 }
+
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+static void dev_queue_print_pkt(struct sk_buff *skb)
+{
+	struct iphdr *ip4hdr = (struct iphdr *)skb_network_header(skb);
+
+	if (ip4hdr->version == 4) {
+		pr_info("dqn: ip: src:%pI4, dst:%pI4, raw:%*ph\n",
+				&ip4hdr->saddr, &ip4hdr->daddr, 48, ip4hdr);
+	} else if (ip4hdr->version == 6) {
+		struct ipv6hdr *ip6hdr = (struct ipv6hdr *)ip4hdr;
+		pr_info("dqn: ip: src:%pI6, dst:%pI6, raw:%*ph\n",
+				&ip6hdr->saddr, &ip6hdr->daddr, 48, ip6hdr);
+	}
+}
+
+void dev_queue_nit(struct sk_buff *skb, u8 pkt_type, u16 drop_type)
+{
+	struct packet_type *ptype;
+	struct packet_type *pt_prev = NULL;
+	struct sk_buff *skb2 = NULL;
+	struct list_head *ptype_list = &ptype_log;
+	struct net_device *dev = NULL;
+	struct net_device *old_dev = skb->dev;
+	struct iphdr *iphdr;
+
+	if (!skb)
+		return;
+
+	if (skb->dev)
+		dev = skb->dev;
+	else if (skb_dst(skb) && skb_dst(skb)->dev)
+		dev = skb_dst(skb)->dev;
+	else
+		dev = init_net.loopback_dev;
+
+	/* final check */
+	if (!dev)
+		return;
+
+	rcu_read_lock();
+	skb->dev = dev;
+
+	list_for_each_entry_rcu(ptype, ptype_list, list) {
+		if (pt_prev) {
+			deliver_skb(skb2, pt_prev, dev);
+			pt_prev = ptype;
+			continue;
+		}
+
+		/* need to clone skb, done only once */
+		skb2 = skb_clone(skb, GFP_ATOMIC);
+		if (!skb2)
+			goto out_unlock;
+
+		net_timestamp_set(skb2);
+
+		/* skb->nh should be correctly
+		 * set by sender, so that the second statement is
+		 * just protection against buggy protocols.
+		 */
+		skb_reset_mac_header(skb2);
+
+		if (skb_network_header(skb2) > skb_tail_pointer(skb2)) {
+			net_crit_ratelimited("protocol %04x is buggy, dev %s\n",
+					ntohs(skb2->protocol),
+					dev->name);
+			skb_reset_network_header(skb2);
+		}
+
+		if (pkt_type != PACKET_OUTGOING &&
+				skb2->data > skb_network_header(skb2)) {
+			if (skb->transport_header - skb->network_header > 0)
+				skb_push(skb2, skb_network_header_len(skb2));
+			else
+				skb_push(skb2, skb2->data - skb_network_header(skb2));
+		}
+
+		skb2->transport_header = skb2->network_header;
+		skb2->pkt_type = pkt_type; /*PACKET_OUTGOING*/
+		pt_prev = ptype;
+
+		iphdr = (struct iphdr *)skb_network_header(skb2);
+		if (iphdr->version == 4) {
+			iphdr->ttl = (u8)drop_type;
+		} else if (iphdr->version == 6) {
+			struct ipv6hdr *ip6hdr = (struct ipv6hdr *)iphdr;
+			ip6hdr->hop_limit = (u8)drop_type;
+		} else {
+			/* no IP packet */
+		}
+	}
+
+out_unlock:
+	if (pt_prev) {
+		if (!skb_orphan_frags_rx(skb2, GFP_ATOMIC))
+			pt_prev->func(skb2, skb->dev, pt_prev, skb->dev);
+		else
+			kfree_skb(skb2);
+	}
+
+	skb->dev = old_dev;
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(dev_queue_nit);
+
+void dev_queue_mib(struct sk_buff *skb, u8 proto, u8 drop_type)
+{
+	u16 drop_type_param = 0;
+
+	switch (proto){
+	case 0:	/* IP */
+		switch (drop_type) {
+		case IPSTATS_MIB_INHDRERRORS:
+		case IPSTATS_MIB_INTOOBIGERRORS:			
+		case IPSTATS_MIB_INNOROUTES:			
+		case IPSTATS_MIB_INADDRERRORS:
+		case IPSTATS_MIB_INUNKNOWNPROTOS:
+		case IPSTATS_MIB_INTRUNCATEDPKTS:
+		case IPSTATS_MIB_INDISCARDS:
+		case IPSTATS_MIB_CSUMERRORS:
+			dev_queue_print_pkt(skb);
+			dev_queue_nit(skb, PACKET_HOST,
+					(drop_type_param + drop_type) & 0xFF);
+			break;
+
+		case IPSTATS_MIB_OUTDISCARDS:
+		case IPSTATS_MIB_OUTNOROUTES:
+		case IPSTATS_MIB_FRAGFAILS:
+			dev_queue_print_pkt(skb);
+			dev_queue_nit(skb, PACKET_OUTGOING,
+					(drop_type_param + drop_type) & 0xFF);
+			break;
+		}
+		break;
+
+	case 1: /* ICMP */
+		drop_type_param = __IPSTATS_MIB_MAX;
+		break;
+
+	case 2: /* ICMPv6 */
+		drop_type_param = __IPSTATS_MIB_MAX + __ICMP_MIB_MAX;
+		break;
+
+	case 3: /* TCP */
+		drop_type_param = __IPSTATS_MIB_MAX + __ICMP_MIB_MAX + __ICMP6_MIB_MAX;
+
+		switch (drop_type) {
+		case TCP_MIB_INERRS:
+		case TCP_MIB_CSUMERRORS:
+			dev_queue_print_pkt(skb);
+			dev_queue_nit(skb, PACKET_HOST,
+					(drop_type_param + drop_type) & 0xFF);
+			break;
+		}
+		break;
+
+	case 4: /* UDP */
+		break;
+	}
+}
+EXPORT_SYMBOL_GPL(dev_queue_mib);
+
+#endif
 
 /*
  *	Support routine. Sends outgoing frames to any network
@@ -3582,6 +3755,11 @@ int dev_weight_tx_bias __read_mostly = 1;  /* bias for output_queue quota */
 int dev_rx_weight __read_mostly = 64;
 int dev_tx_weight __read_mostly = 64;
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+int netdev_support_dropdump = 1;
+EXPORT_SYMBOL(netdev_support_dropdump);
+#endif
+
 /* Called with irq disabled */
 static inline void ____napi_schedule(struct softnet_data *sd,
 				     struct napi_struct *napi)
@@ -4496,6 +4674,11 @@ static int __netif_receive_skb(struct sk_buff *skb)
 {
 	int ret;
 
+#ifdef CONFIG_LINK_FORWARD
+	if (CHECK_LINK_FORWARD(*((u32 *)&skb->cb)))
+		return dev_linkforward_queue_xmit(skb);
+#endif
+
 	if (sk_memalloc_socks() && skb_pfmemalloc(skb)) {
 		unsigned int noreclaim_flag;
 
@@ -5198,7 +5381,11 @@ static int process_backlog(struct napi_struct *napi, int quota)
 			rcu_read_unlock();
 			input_queue_head_incr(sd);
 			if (++work >= quota)
+#ifdef CONFIG_MODEM_IF_NET_GRO
+				goto state_changed;
+#else
 				return work;
+#endif
 
 		}
 
@@ -5222,6 +5409,12 @@ static int process_backlog(struct napi_struct *napi, int quota)
 		rps_unlock(sd);
 		local_irq_enable();
 	}
+
+#ifdef CONFIG_MODEM_IF_NET_GRO
+state_changed:
+	napi_gro_flush(napi, false);
+	sd->current_napi = NULL;
+#endif
 
 	return work;
 }
@@ -5592,6 +5785,11 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	 */
 	work = 0;
 	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
+#ifdef CONFIG_MODEM_IF_NET_GRO
+		struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+		sd->current_napi = n;
+#endif
 		work = n->poll(n, weight);
 		trace_napi_poll(n, work, weight);
 	}
@@ -5634,6 +5832,20 @@ out_unlock:
 
 	return work;
 }
+
+#if defined(CONFIG_SEC_SIPC_MODEM_IF) || defined(CONFIG_SEC_SIPC_DUAL_MODEM_IF)
+struct napi_struct *napi_get_current(void)
+{
+#ifdef CONFIG_MODEM_IF_NET_GRO
+	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+	return sd->current_napi;
+#else
+	return NULL;
+#endif
+}
+EXPORT_SYMBOL(napi_get_current);
+#endif
 
 static __latent_entropy void net_rx_action(struct softirq_action *h)
 {
@@ -6766,7 +6978,11 @@ int __dev_change_flags(struct net_device *dev, unsigned int flags)
 
 	dev->flags = (flags & (IFF_DEBUG | IFF_NOTRAILERS | IFF_NOARP |
 			       IFF_DYNAMIC | IFF_MULTICAST | IFF_PORTSEL |
-			       IFF_AUTOMEDIA)) |
+			       IFF_AUTOMEDIA
+#ifdef CONFIG_MPTCP
+					 | IFF_NOMULTIPATH | IFF_MPBACKUP
+#endif
+)) |
 		     (dev->flags & (IFF_UP | IFF_VOLATILE | IFF_PROMISC |
 				    IFF_ALLMULTI));
 
@@ -8747,6 +8963,9 @@ static int __init net_dev_init(void)
 	if (netdev_kobject_init())
 		goto out;
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	INIT_LIST_HEAD(&ptype_log);
+#endif
 	INIT_LIST_HEAD(&ptype_all);
 	for (i = 0; i < PTYPE_HASH_SIZE; i++)
 		INIT_LIST_HEAD(&ptype_base[i]);
@@ -8799,6 +9018,10 @@ static int __init net_dev_init(void)
 
 	open_softirq(NET_TX_SOFTIRQ, net_tx_action);
 	open_softirq(NET_RX_SOFTIRQ, net_rx_action);
+
+#ifdef CONFIG_LINK_FORWARD
+	linkforward_init();
+#endif
 
 	rc = cpuhp_setup_state_nocalls(CPUHP_NET_DEV_DEAD, "net/dev:dead",
 				       NULL, dev_cpu_dead);

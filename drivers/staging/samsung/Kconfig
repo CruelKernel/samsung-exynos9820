@@ -1,0 +1,299 @@
+# drivers/staging/samsung/Kconfig
+#
+# Copyright (c) 2010-2011 Samsung Electronics Co., Ltd.
+#		http://www.samsung.com/
+#
+# Licensed under GPLv2
+
+config SEC_EXT
+	bool "Samsung TN extension Feature"
+	default y
+
+comment "sec sysfs Feature"
+config SEC_SYSFS
+	bool "Samsung sec sysfs Feature"
+	default y
+	depends on SEC_EXT
+	help
+	  Samsung sysfs name 'sec' directory create.
+
+config SEC_REBOOT
+	bool "Enable TN reboot features"
+	depends on SEC_EXT
+	default y
+	help
+	  Samsung TN reboot extension Feature. Do additional work when reboot.
+
+menuconfig SEC_DEBUG
+	bool "Enable TN debugging features"
+	depends on DEBUG_SNAPSHOT && SEC_REBOOT
+	default y
+
+config SEC_DEBUG_RESET_REASON
+	bool "Enable TN reset reason"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables storing reset reason history file
+	  This option enables reading the reset reason history using proc/reset_reason file
+
+config SEC_DEBUG_EXTRA_INFO
+	bool "Enable TN reset reason extra info"
+	depends on SEC_DEBUG && SEC_DEBUG_RESET_REASON
+	default y
+	help
+	  This option enables storing reset reason extra info
+	  This option enables ap reset info bigdata based on reset reason extra info
+
+config SEC_DEBUG_HW_PARAM
+	bool "Enable TN HW PARAM bigdata info"
+	depends on SEC_DEBUG && SEC_DEBUG_RESET_REASON
+	default y
+	help
+	  This option enables storing hw param bigdata info
+
+config SEC_DEBUG_AUTO_COMMENT
+	bool "Enable TN kernel fault auto comment"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables kernel fault auto comment feature
+	  This option also requires bootloader change that enables auto comment extraction along with ramdump
+
+config SEC_DEBUG_DUMP_SUMMARY
+	bool "Enable TN kernel fault dump summary"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables kernel fault dump summary feature
+	  This option also requires bootloader change that enables dump summary extraction along with ramdump
+
+config SEC_DEBUG_LAST_KMSG
+	bool "Write last_kmsg at /proc/last_kmsg"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables /proc/last_kmsg support. This stores the previous
+	  kernel log into separate buffer. /proc/last_kmsg shows the stored log.
+
+config SEC_DEBUG_PPMPU
+	bool "Print ppmpu inforamtion by smc call"
+	depends on SEC_DEBUG
+	default n
+	help
+	  This option enables the kernel to print out ppmpu information when
+	  kernel oops. El3 monitor supports smc calls for this option.
+
+config SEC_DEBUG_INIT_LOG
+	bool "support hooking of init task log"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables hooking of init task log. 
+	  It can be used for debugging purpose in case of booting failure or something else.
+
+config SEC_DEBUG_PCPRWSEM
+	bool "support logging percpu rwsemaphore"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables logging of read/write_lock/unlock of cgroup_threadgroup_rwsem.
+	  The log will be recorded only while system is shutting down.
+
+comment "Samsung ubsan debug feature"
+config SEC_DEBUG_UBSAN
+	bool "Enable ubsan debug feature"
+	default n
+	help
+	  This option enables ubsan debug feature.
+
+comment "Samsung kasan debug feature"
+config SEC_DEBUG_KASAN
+	bool "Enable kasan debug feature"
+	default n
+	help
+	  This option enables kasan debug feature.
+
+config SEC_BOOTSTAT
+	bool "Enable TN Bootstat logging"
+	depends on SEC_EXT
+	default y
+
+comment "Samsung TN Build Options"
+config SEC_FACTORY
+	bool "SAMSUNG Factory build option"
+	depends on SEC_EXT && SEC_DEBUG
+	default n
+	select SEC_PANIC_PCIE_ERR
+	help
+	  Include some codes for Factory binary.
+	  This option is enabled by Factory build option.
+	  In samsung build script, '-F' enables this option.
+
+comment "Samsung TN BSP Options"
+config ARGOS
+	bool "Throughput monitoring Feature"
+	default n
+	help
+	  This option enables monitoring the data throughput and doing several actions for
+	  enhancing the performance such as adjusting the CPU freqency, allocating the tasks
+	  to the appropriate CPU and so on
+
+config SEC_PARAM
+	bool "Enable Param modification"
+	depends on SEC_DEBUG
+	default y
+	help
+	  Samsung TN Param Feature.
+
+config CM_OFFSET
+	int "Charging Mode Offset"
+	default 0
+	depends on SEC_PARAM
+	help
+	  set Charging Mode Offset when you enable SEC_PARAM.
+
+config SAMSUNG_PRODUCT_SHIP
+	bool "set up for product shipping"
+	depends on SEC_EXT
+	default n
+
+config SEC_HQM_DEVICE
+	bool "Samsung sec hqm device"
+	default n
+	help
+	  Samsung hqm device feature
+
+comment "Samsung TN Logging Options"
+config SEC_AVC_LOG
+	default n
+	bool "Enable avc audit log support" if EMBEDDED
+	depends on SEC_EXT
+	help
+	  This option enables additional log buffer for audit log.
+
+config SEC_DEBUG_TSP_LOG
+	default n
+	bool "Enable tsp log support" if EMBEDDED
+	depends on SEC_EXT
+	help
+	  This option enables additional log buffer for tsp log.
+
+comment "Samsung Mobile Power Management Options"
+menuconfig SEC_PM
+	bool "Samsung Mobile Power Management"
+	default y
+	help
+	  This option enables support for various drivers and features for
+	  Samsung Mobile Power Management.
+
+config SEC_PM_DEBUG
+	bool "Enable Samsung Mobile Power management debug support"
+	default y
+	depends on SEC_PM
+	help
+	  This option enables Samsung Mobile Power management debug support.
+	  Intended for test and debug only.
+
+config SEC_PM_BIGDATA
+	bool "Enable Samsung Mobile Power management big data support"
+	default y
+	depends on SEC_PM
+	help
+	  This option enables Samsung Mobile Power management big data support.
+
+comment "Samsung TN NAD Options"
+config SEC_NAD
+	bool "Samsung TN NAD Feature"
+	default n
+	help
+	  Samsung TN NAD Feature, support AT CMD for NAD 2.0
+
+config SEC_NAD_MANUAL_PARAM_READTIME
+	int "Samsung TN NAD Feature"
+	depends on SEC_NAD
+	default "10"
+	help
+	  Samsung TN NAD Feature, set param reading time manually.
+
+config SEC_SUPPORT_SECOND_NAD
+	bool "Samsung TN 2nd NAD Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, support 2nd NAD feature.
+
+config SEC_NAD_BALANCER
+	bool "Samsung TN NAD Balancer Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  This option enables Samsung TN NAD Balancer Feature.
+	  This option also can generate thread to change dvfs frequency. It helps keep balancing
+	  between user and factory binary.
+
+config SEC_NAD_HPM
+	bool "Samsung TN NAD HPM Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD HPM
+
+config SEC_NAD_API
+	bool "Samsung TN NAD API Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Support NAD API to check gpio pull-up registance
+
+config SEC_SUPPORT_VST
+	bool "Samsung TN NAD 4.0 Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, support NAD 4.0 feature.
+	  
+config SEC_NAD_LOG
+	bool "Samsung TN NAD LOG Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD LOG
+	  
+config SEC_NAD_X
+	bool "Samsung TN NAD X Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD X
+
+comment "Logging Heavy Task Cpu Options"
+config SEC_HEAVY_TASK_CPU
+	bool "Enable heacy cpu core counting"
+	default n
+	help
+	  This option enables heavy cpu core counting.
+
+comment "Samsung TN option for VTS test"
+config SEC_VTS_TEST
+	bool "VTS TEST"
+	default n
+	help
+	  This option notices this binary for VTS test.
+
+choice
+	prompt "Version of GAF structure"
+	depends on SEC_DEBUG
+	default SEC_DEBUG_GAF_V5 if PROCA
+	default SEC_DEBUG_GAF_V4
+
+	config SEC_DEBUG_GAF_V4
+		bool "Use GAF structure version 4"
+		help
+		  Default option for kernel without PROCA LSM module.
+
+	config SEC_DEBUG_GAF_V5
+		bool "Use GAF structure version 5"
+		help
+		  Default option for kernel with PROCA LSM module.
+endchoice

@@ -1,0 +1,145 @@
+CS40L20/CS40L25/CS40L25A/CS40L25B Boosted Haptics Driver
+
+Required properties:
+
+  - compatible : One of "cirrus,cs40l20", "cirrus,cs40l25", "cirrus,cs40l25a"
+    or "cirrus,cs40l25b".
+
+  - reg : The I2C slave address of the device.
+
+  - VA-supply, VP-supply : Regulators for the device's VA and VP supplies,
+    respectively. See the following:
+    Documentation/devicetree/bindings/regulator/regulator.txt
+
+  - cirrus,boost-ind-nanohenry : Boost inductor value, expressed in nH. Valid
+    values include 1000, 1200, 1500 and 2200.
+
+  - cirrus,boost-cap-microfarad : Total equivalent boost capacitance on the VBST
+    and VAMP pins, derated at 11 volts DC. The value must be rounded to the
+    nearest integer and expressed in uF.
+
+  - cirrus,boost-ipk-milliamp : Boost inductor peak current, expressed in mA.
+    Valid values range from 1600 to 4500 (inclusive) in steps of 50.
+
+Optional properties:
+
+  - reset-gpios : GPIO used for resetting the device.
+
+  - interrupt-parent : Single phandle representing the interrupt controller to
+    which the /ALERT pin is connected (silicon revision B1 only).
+
+  - interrupts : interrupt specifiers for the device (silicon revision B1 only).
+    See the following:
+    Documentation/devicetree/bindings/interrupt-controller/interrupts.txt
+
+  - cirrus,refclk-gpio2 : Boolean for configuring the device to expect its
+    32.768-kHz reference clock on the REFCLK/GPIO2 pin. If this property is
+    omitted, the device expects its 32.768-kHz reference clock on the
+    ASP_BCLK/REFCLK pin. This property is ignored for silicon revision B1 as
+    reference clock selection is configured automatically in that case.
+
+  - cirrus,f0-default : Default LRA resonant frequency (f0), expressed as
+    follows: cirrus,f0-default = f0 (Hz) * 2^14. This value represents the
+    frequency used during playback of PWLE segments specified with frequency
+    equal to f0; it also serves as the unit-specific f0 input to the click
+    compensation algorithm. It can be overwritten at a later time by writing
+    to the f0_stored sysfs control.
+
+    If this value is omitted or specified as zero, the measurement recorded in
+    the f0_measured sysfs control is used. If LRA diagnostics has not been
+    administered and f0_measured is uninitialized, 2621440 (160 Hz) is used.
+
+  - cirrus,f0-min : Minimum LRA resonant frequency (f0) that may be written to
+    the f0_stored sysfs control, expressed using the same numerical format as
+    cirrus,f0-default. If this value is omitted or specified as zero, no lower-
+    bound validation is performed.
+
+  - cirrus,f0-max : Maximum LRA resonant frequency (f0) that may be written to
+    the f0_stored sysfs control, expressed using the same numerical format as
+    cirrus,f0-default. If this value is omitted or specified as zero, no upper-
+    bound validation is performed.
+
+  - cirrus,redc-default : Default LRA series resistance (ReDC), expressed as
+    follows: cirrus,redc-default = ReDC (ohms) / 5.857 * 2^17. This value
+    represents the unit-specific ReDC input to the click compensation algorithm.
+    It can be overwritten at a later time by writing to the redc_stored sysfs
+    control.
+
+    If this value is omitted or specified as zero, the measurement recorded in
+    the redc_measured sysfs control is used. If LRA diagnostics has not been
+    administered and redc_measured is uninitialized, 340787 (15.2 ohms) is used.
+
+  - cirrus,redc-min : Minimum LRA series resistance (ReDC) that may be written
+    to the redc_stored sysfs control, expressed using the same numerical format
+    as cirrus,redc-default. If this value is omitted or specified as zero, no
+    lower-bound validation is performed.
+
+  - cirrus,redc-max : Maximum LRA series resistance (ReDC) that may be written
+    to the redc_stored sysfs control, expressed using the same numerical format
+    as cirrus,redc-default. If this value is omitted or specified as zero, no
+    upper-bound validation is performed.
+
+  - cirrus,gpio1-rise-index : Specifies the wavetable index mapped to GPIO1
+    rising edges. If this value is omitted, specified as zero or exceeds the
+    maximum available index in the wavetable, GPIO1 rising edges are mapped to
+    index 1.
+
+  - cirrus,gpio1-fall-index : Specifies the wavetable index mapped to GPIO1
+    falling edges. If this value is omitted, specified as zero or exceeds the
+    maximum available index in the wavetable, GPIO1 falling edges are mapped to
+    index 2.
+
+  - cirrus,gpio1-fall-timeout : Specifies the number of 48-kHz periods for
+    which the device remains in the active state in search of a GPIO1 falling
+    edge, following a GPIO1 rising edge (the latter of which renders the device
+    active). If a GPIO1 falling edge does not arrive within this timeout, the
+    device automatically returns to the standby state and the subsequent GPIO1
+    falling edge is ignored. If this value is omitted or exceeds the maximum
+    timeout (8388607) then a default of 240000 is assumed (corresponding to
+    240000 / 48000 = 5 seconds). If this value is specified as zero, the timeout
+    is effectively disabled.
+
+  - cirrus,gpio1-mode : Specifies the operating mode of the GPIO1 pin, equal to
+    one of the following.
+
+    0 = enabled by default
+    1 = disabled by default
+    2 = disabled by default, but automatically enabled and disabled upon suspend
+        and resume, respectively
+
+    If this value is omitted or given an invalid value, mode 0 (enabled by
+    default) is assumed. Regardless of mode, the GPIO1 pin can be enabled or
+    disabled at will from user space using the gpio1_enable sysfs control.
+
+  - cirrus,hiber-enable : Boolean for instructing the device to enter and exit
+    hibernation mode upon suspend and resume, respectively. Hibernation mode is
+    supported by silicon revision B1 only. If this property is omitted, the
+    device remains in standby and automatic entry into hibernation mode is
+    effectively disabled.
+
+Examples:
+
+  cs40l20: cs40l20@43 {
+    compatible = "cirrus,cs40l20";
+    reg = <0x43>;
+    reset-gpios = <&gpio0 54 0>;
+    VA-supply = <&dummy_vreg>;
+    VP-supply = <&dummy_vreg>;
+    cirrus,boost-ind-nanohenry = <1000>;
+    cirrus,boost-cap-microfarad = <4>;
+    cirrus,boost-ipk-milliamp = <4500>;
+    cirrus,refclk-gpio2;
+  };
+
+  cs40l25a: cs40l25a@43 {
+    compatible = "cirrus,cs40l25a";
+    reg = <0x43>;
+    reset-gpios = <&gpio0 54 0>;
+    interrupt-parent = <&gpio0>;
+    interrupts = <55 8>;
+    VA-supply = <&dummy_vreg>;
+    VP-supply = <&dummy_vreg>;
+    cirrus,boost-ind-nanohenry = <1000>;
+    cirrus,boost-cap-microfarad = <4>;
+    cirrus,boost-ipk-milliamp = <4500>;
+  };

@@ -155,7 +155,9 @@ static int soc_compr_open_fe(struct snd_compr_stream *cstream)
 	fe->dpcm[stream].state = SND_SOC_DPCM_STATE_OPEN;
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_NO;
 
+	mutex_lock_nested(&fe->pcm_mutex, fe->pcm_subclass);
 	snd_soc_runtime_activate(fe, stream);
+	mutex_unlock(&fe->pcm_mutex);
 
 	mutex_unlock(&fe->card->mutex);
 
@@ -278,7 +280,9 @@ static int soc_compr_free_fe(struct snd_compr_stream *cstream)
 	else
 		stream = SNDRV_PCM_STREAM_CAPTURE;
 
+	mutex_lock_nested(&fe->pcm_mutex, fe->pcm_subclass);
 	snd_soc_runtime_deactivate(fe, stream);
+	mutex_unlock(&fe->pcm_mutex);
 
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
 
@@ -354,6 +358,7 @@ static int soc_compr_trigger_fe(struct snd_compr_stream *cstream, int cmd)
 	struct snd_soc_pcm_runtime *fe = cstream->private_data;
 	struct snd_soc_platform *platform = fe->platform;
 	struct snd_soc_dai *cpu_dai = fe->cpu_dai;
+	enum snd_soc_dpcm_trigger trigger;
 	int ret = 0, stream;
 
 	if (cmd == SND_COMPR_TRIGGER_PARTIAL_DRAIN ||
@@ -370,6 +375,37 @@ static int soc_compr_trigger_fe(struct snd_compr_stream *cstream, int cmd)
 	else
 		stream = SNDRV_PCM_STREAM_CAPTURE;
 
+	trigger = fe->dai_link->trigger[stream];
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		switch (trigger) {
+		case SND_SOC_DPCM_TRIGGER_PRE_POST:
+			trigger = SND_SOC_DPCM_TRIGGER_PRE;
+			break;
+		case SND_SOC_DPCM_TRIGGER_POST_PRE:
+			trigger = SND_SOC_DPCM_TRIGGER_POST;
+			break;
+		default:
+			break;
+		}
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		switch (trigger) {
+		case SND_SOC_DPCM_TRIGGER_PRE_POST:
+			trigger = SND_SOC_DPCM_TRIGGER_POST;
+			break;
+		case SND_SOC_DPCM_TRIGGER_POST_PRE:
+			trigger = SND_SOC_DPCM_TRIGGER_PRE;
+			break;
+		default:
+			break;
+		}
+		break;
+	}
 
 	mutex_lock_nested(&fe->card->mutex, SND_SOC_CARD_CLASS_RUNTIME);
 
@@ -379,10 +415,12 @@ static int soc_compr_trigger_fe(struct snd_compr_stream *cstream, int cmd)
 			goto out;
 	}
 
-	if (platform->driver->compr_ops && platform->driver->compr_ops->trigger) {
-		ret = platform->driver->compr_ops->trigger(cstream, cmd);
-		if (ret < 0)
-			goto out;
+	if (trigger != SND_SOC_DPCM_TRIGGER_POST) {
+		if (platform->driver->compr_ops && platform->driver->compr_ops->trigger) {
+			ret = platform->driver->compr_ops->trigger(cstream, cmd);
+			if (ret < 0)
+				goto out;
+			}
 	}
 
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
@@ -404,6 +442,13 @@ static int soc_compr_trigger_fe(struct snd_compr_stream *cstream, int cmd)
 		break;
 	}
 
+	if (trigger == SND_SOC_DPCM_TRIGGER_POST) {
+		if (platform->driver->compr_ops && platform->driver->compr_ops->trigger) {
+			ret = platform->driver->compr_ops->trigger(cstream, cmd);
+			if (ret < 0)
+				goto out;
+		}
+	}
 out:
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_NO;
 	mutex_unlock(&fe->card->mutex);
@@ -506,6 +551,13 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 	 */
 	memset(&fe->dpcm[fe_substream->stream].hw_params, 0,
 		sizeof(struct snd_pcm_hw_params));
+
+	if (platform->driver->compr_ops && platform->driver->compr_ops->get_hw_params) {
+		ret = platform->driver->compr_ops->get_hw_params(cstream,
+				&fe->dpcm[fe_substream->stream].hw_params);
+		if (ret < 0)
+			goto out;
+	}
 
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
 

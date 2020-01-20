@@ -23,14 +23,13 @@ if CRYPTO
 comment "Crypto core or helper"
 
 config CRYPTO_FIPS
-	bool "FIPS 200 compliance"
-	depends on (CRYPTO_ANSI_CPRNG || CRYPTO_DRBG) && !CRYPTO_MANAGER_DISABLE_TESTS
-	depends on (MODULE_SIG || !MODULES)
+	bool "FIPS 140-2 compliance"
+	default y
 	help
-	  This options enables the fips boot option which is
-	  required if you want to system to operate in a FIPS 200
-	  certification.  You should say no unless you know what
-	  this is.
+	  This options enables the fips option which is
+	  required if you want to system to operate in a FIPS 140-2
+	  certification. 
+	  depends on !CRYPTO_MANAGER_DISABLE_TESTS
 
 config CRYPTO_ALGAPI
 	tristate
@@ -161,7 +160,7 @@ config CRYPTO_USER
 
 config CRYPTO_MANAGER_DISABLE_TESTS
 	bool "Disable run-time self tests"
-	default y
+	default n
 	depends on CRYPTO_MANAGER2
 	help
 	  Disable run-time self tests that normally take place at
@@ -239,7 +238,7 @@ config CRYPTO_AUTHENC
 
 config CRYPTO_TEST
 	tristate "Testing module"
-	depends on m
+	default n
 	select CRYPTO_MANAGER
 	help
 	  Quick & dirty crypto test module.
@@ -388,6 +387,16 @@ config CRYPTO_KEYWRAP
 	help
 	  Support for key wrapping (NIST SP800-38F / RFC3394) without
 	  padding.
+
+comment "KDF modes"
+
+config CRYPTO_KBKDF_CTR_HMAC_SHA512
+    tristate "KBKDF CTR HMAC(SHA512) support"
+    select CRYPTO_HMAC
+    select CRYPTO_SHA512
+    help
+      NIST SP 800-108 Key Derivation Function (KDF).
+      Counter mode. HMAC(SHA512) based
 
 comment "Hash modes"
 
@@ -1468,20 +1477,6 @@ config CRYPTO_SERPENT_AVX2_X86_64
 	  See also:
 	  <http://www.cl.cam.ac.uk/~rja14/serpent.html>
 
-config CRYPTO_SPECK
-	tristate "Speck cipher algorithm"
-	select CRYPTO_ALGAPI
-	help
-	  Speck is a lightweight block cipher that is tuned for optimal
-	  performance in software (rather than hardware).
-
-	  Speck may not be as secure as AES, and should only be used on systems
-	  where AES is not fast enough.
-
-	  See also: <https://eprint.iacr.org/2013/404.pdf>
-
-	  If unsure, say N.
-
 config CRYPTO_TEA
 	tristate "TEA, XTEA and XETA cipher algorithms"
 	select CRYPTO_ALGAPI
@@ -1601,6 +1596,20 @@ config CRYPTO_TWOFISH_AVX_X86_64
 	  See also:
 	  <http://www.schneier.com/twofish.html>
 
+config CRYPTO_DISKCIPHER
+	bool "Diskcipher support"
+	default n
+	help
+	 Diskcipher support the crypt operation of the block host device
+	 that has inline crypto engine.
+
+config CRYPTO_DISKCIPHER_DEBUG
+	bool "Diskcipher debug support"
+	default n
+	depends on CRYPTO_DISKCIPHER
+	help
+	 support Diskcipher debug
+
 comment "Compression"
 
 config CRYPTO_DEFLATE
@@ -1650,6 +1659,15 @@ config CRYPTO_LZ4HC
 	select LZ4_DECOMPRESS
 	help
 	  This is the LZ4 high compression mode algorithm.
+
+config CRYPTO_ZSTD
+	tristate "Zstd compression algorithm"
+	select CRYPTO_ALGAPI
+	select CRYPTO_ACOMP2
+	select ZSTD_COMPRESS
+	select ZSTD_DECOMPRESS
+	help
+	  This is the zstd algorithm.
 
 comment "Random Number Generation"
 

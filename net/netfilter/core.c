@@ -469,6 +469,8 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state,
 		case NF_ACCEPT:
 			break;
 		case NF_DROP:
+			/* drop logging */
+			dev_queue_nit(skb, state->hook == NF_INET_LOCAL_OUT ? PACKET_OUTGOING : 0, 0xFF);
 			kfree_skb(skb);
 			ret = NF_DROP_GETERR(verdict);
 			if (ret == 0)

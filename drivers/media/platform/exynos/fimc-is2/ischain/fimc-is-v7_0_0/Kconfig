@@ -1,0 +1,18 @@
+config FIMC_IS_V7_0_0
+	bool "Use fimc-is v7.0.0"
+	depends on SOC_EXYNOS9820
+	select EXYNOS_DEVICE_MIPI_CSIS_VER4
+	select CSIS_V5_2
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select CAMERA_PDP
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_MC_SCALER_VER2_USE
+	select CAMERA_TDNR_VER2_USE
+	select MC_SCALER_V5_0
+	select VRA_V2_0
+	select USE_HW_API_COMMON
+#	select DCP_V1_0
+	help
+	  fimc-is version 7.0.0

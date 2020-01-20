@@ -1,0 +1,9 @@
+config VIDEO_EXYNOS_MFC
+	bool "Exynos MFC Driver"
+	default n
+	depends on VIDEO_EXYNOS
+	select VIDEOBUF2_CORE
+	select VIDEOBUF2_DMA_SG
+	---help---
+	  MFC driver for V4L2.
+

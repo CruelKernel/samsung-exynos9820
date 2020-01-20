@@ -1,0 +1,6 @@
+config CAMERA_PDP
+        bool "Use PDP"
+	depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          Use to build PDP.

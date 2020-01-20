@@ -1,0 +1,10 @@
+#
+# Exynos tsmux device driver
+#
+
+config VIDEO_EXYNOS_TSMUX
+	bool "EXYNOS TSMUX Driver"
+	depends on VIDEO_EXYNOS
+	default n
+	---help---
+	  Repeater driver for WFD

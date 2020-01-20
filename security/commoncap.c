@@ -35,6 +35,10 @@
 #include <linux/android_aid.h>
 #endif
 
+#ifdef CONFIG_LOD_SEC
+#include <linux/linux_on_dex.h>
+#endif
+
 /*
  * If a non-root user executes a setuid-root binary in
  * !secure(SECURE_NOROOT) mode, then we raise capabilities.
@@ -77,6 +81,24 @@ int __cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 {
 	struct user_namespace *ns = targ_ns;
 
+/*
+ * Check the LoD capabilities
+ * If no cap, return EPERM immediately, skipping following checks
+ * If has cap, continue namespace check
+ */
+#ifdef CONFIG_LOD_SEC
+	if (cred_is_LOD(cred)) {
+		if (cap_raised(CAP_LOD_SET, cap) == 0){
+#ifndef CONFIG_SAMSUNG_PRODUCT_SHIP
+			if (cap != 21) //ignore 21 avoid flooding
+				printk(KERN_ERR "LOD cap_capable: blocking CAP %d PROC %s "
+					"PID %d UID %d\n", cap, current->comm, current->pid,
+					cred->uid.val);
+#endif
+			return -EPERM;
+		}
+	}
+#endif
 	/* See if cred has the capability in the target user namespace
 	 * by examining the target user namespace and all of the target
 	 * user namespace's parents.

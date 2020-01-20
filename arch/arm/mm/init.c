@@ -235,6 +235,7 @@ static void __init arm_initrd_init(void)
 #ifdef CONFIG_BLK_DEV_INITRD
 	phys_addr_t start;
 	unsigned long size;
+	phys_addr_t start_down, end_up;
 
 	/* FDT scan will populate initrd_start */
 	if (initrd_start && !phys_initrd_size) {
@@ -270,7 +271,10 @@ static void __init arm_initrd_init(void)
 	}
 
 	memblock_reserve(start, size);
-
+	start_down = phys_initrd_start & PAGE_MASK;
+	end_up = PAGE_ALIGN(phys_initrd_start + phys_initrd_size);
+	record_memsize_reserved("initrd", start_down, end_up - start_down,
+				false, false);
 	/* Now convert initrd to virtual addresses */
 	initrd_start = __phys_to_virt(phys_initrd_start);
 	initrd_end = initrd_start + phys_initrd_size;
@@ -280,8 +284,13 @@ static void __init arm_initrd_init(void)
 void __init arm_memblock_init(const struct machine_desc *mdesc)
 {
 	/* Register the kernel text, kernel data and initrd with memblock. */
+	set_memsize_kernel_type(MEMSIZE_KERNEL_KERNEL);
 	memblock_reserve(__pa(KERNEL_START), KERNEL_END - KERNEL_START);
+	set_memsize_kernel_type(MEMSIZE_KERNEL_STOP);
+	record_memsize_reserved("initmem", __pa(__init_begin),
+				__init_end - __init_begin, false, false);
 
+	set_memsize_kernel_type(MEMSIZE_KERNEL_OTHERS);
 	arm_initrd_init();
 
 	arm_mm_memblock_reserve();
@@ -291,10 +300,12 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 		mdesc->reserve();
 
 	early_init_fdt_reserve_self();
+	set_memsize_kernel_type(MEMSIZE_KERNEL_STOP);
 	early_init_fdt_scan_reserved_mem();
 
 	/* reserve memory for DMA contiguous allocations */
 	dma_contiguous_reserve(arm_dma_limit);
+	set_memsize_kernel_type(MEMSIZE_KERNEL_OTHERS);
 
 	arm_memblock_steal_permitted = false;
 	memblock_dump_all();
@@ -386,6 +397,7 @@ static void __init free_unused_memmap(void)
 	unsigned long start, prev_end = 0;
 	struct memblock_region *reg;
 
+	set_memsize_kernel_type(MEMSIZE_KERNEL_PAGING);
 	/*
 	 * This relies on each bank being in address order.
 	 * The banks are sorted previously in bootmem_init().
@@ -429,6 +441,7 @@ static void __init free_unused_memmap(void)
 		free_memmap(prev_end,
 			    ALIGN(prev_end, PAGES_PER_SECTION));
 #endif
+	set_memsize_kernel_type(MEMSIZE_KERNEL_MM_INIT);
 }
 
 #ifdef CONFIG_HIGHMEM

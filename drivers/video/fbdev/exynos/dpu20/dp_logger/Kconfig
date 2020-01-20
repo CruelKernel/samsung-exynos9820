@@ -1,0 +1,12 @@
+config SEC_DISPLAYPORT_LOGGER
+	bool "DISPLAYPORT logger"
+	default n
+	---help---
+	  Enable DISPLAYPORT logger.
+
+config SEC_DISPLAYPORT_BIGDATA
+	bool "DISPLAYPORT bigdata"
+	depends on !SEC_FACTORY
+	default n
+	---help---
+	  Enable DISPLAYPORT bigdata.

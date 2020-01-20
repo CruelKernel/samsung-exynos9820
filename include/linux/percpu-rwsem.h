@@ -8,6 +8,7 @@
 #include <linux/rcuwait.h>
 #include <linux/rcu_sync.h>
 #include <linux/lockdep.h>
+#include <linux/sec_debug.h>
 
 struct percpu_rw_semaphore {
 	struct rcu_sync		rss;
@@ -32,6 +33,7 @@ extern void __percpu_up_read(struct percpu_rw_semaphore *);
 static inline void percpu_down_read_preempt_disable(struct percpu_rw_semaphore *sem)
 {
 	might_sleep();
+	sec_debug_pcprwsem_log_print(__func__, 1, sem);
 
 	rwsem_acquire_read(&sem->rw_sem.dep_map, 0, 0, _RET_IP_);
 
@@ -48,6 +50,7 @@ static inline void percpu_down_read_preempt_disable(struct percpu_rw_semaphore *
 	if (unlikely(!rcu_sync_is_idle(&sem->rss)))
 		__percpu_down_read(sem, false); /* Unconditional memory barrier */
 	barrier();
+	sec_debug_pcprwsem_log_print(__func__, 3, sem);
 	/*
 	 * The barrier() prevents the compiler from
 	 * bleeding the critical section out.
@@ -85,6 +88,7 @@ static inline int percpu_down_read_trylock(struct percpu_rw_semaphore *sem)
 
 static inline void percpu_up_read_preempt_enable(struct percpu_rw_semaphore *sem)
 {
+	sec_debug_pcprwsem_log_print(__func__, 1, sem);
 	/*
 	 * The barrier() prevents the compiler from
 	 * bleeding the critical section out.
@@ -100,6 +104,7 @@ static inline void percpu_up_read_preempt_enable(struct percpu_rw_semaphore *sem
 	preempt_enable();
 
 	rwsem_release(&sem->rw_sem.dep_map, 1, _RET_IP_);
+	sec_debug_pcprwsem_log_print(__func__, 3, sem);
 }
 
 static inline void percpu_up_read(struct percpu_rw_semaphore *sem)

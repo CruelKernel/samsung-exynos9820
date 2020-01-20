@@ -1,0 +1,68 @@
+config MC_SCALER_V1_20
+        bool "Use MC-SCALER H/W v1.20"
+	depends on CAMERA_MC_SCALER_VER1_USE
+        default n
+        help
+          use mc-scaler v1.20
+
+config MC_SCALER_V1_22_V1_23
+        bool "Use MC-SCALER H/W v1.22 / v1.23"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v1.22/v1.23
+
+config MC_SCALER_V2_0
+        bool "Use MC-SCALER H/W v2.0"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v2.0
+
+config MC_SCALER_V2_10
+        bool "Use MC-SCALER H/W v2.10"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v2.10
+
+config MC_SCALER_V3_0
+        bool "Use MC-SCALER H/W v3.0"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v3.0
+
+config MC_SCALER_V3_20
+        bool "Use MC-SCALER H/W v3.20"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v3.20
+
+config MC_SCALER_V4_0
+        bool "Use MC-SCALER H/W v4.0"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v4.0
+
+config MC_SCALER_V4_10
+        bool "Use MC-SCALER H/W v4.10"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v4.10
+
+config MC_SCALER_V5_0
+        bool "Use MC-SCALER H/W v5.0"
+	depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use mc-scaler v5.0
+
+config VRA_V2_0
+        bool "Use VRA H/W v2.0"
+        default n
+        help
+          use vra v2.0

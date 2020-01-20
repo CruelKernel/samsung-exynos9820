@@ -1,0 +1,53 @@
+menuconfig CAMERA_FLASH_SELECT
+	bool "Sensor flash select"
+	depends on USE_DIRECT_IS_CONTROL
+	help
+	  Say Y here to enable support for platform-specific V4L drivers.
+
+config CAMERA_FLASH_LM3560_OBJ
+        bool "Use LM3560"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build LM3560 driver.
+
+config CAMERA_FLASH_RT5033_OBJ
+        bool "Use RT5033"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build RT5033 driver.
+
+config CAMERA_FLASH_S2MPB02_OBJ
+        bool "Use S2MPB02"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build S2MPB02 driver.
+
+config CAMERA_FLASH_GPIO_OBJ
+        bool "Use GPIO"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build GPIO driver.
+
+config CAMERA_FLASH_I2C_OBJ
+        bool "Use I2C"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build I2C driver.
+
+config CAMERA_FLASH_KTD2692_OBJ
+        bool "Use KTD2692"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_FLASH_SELECT
+        default n
+        help
+          Use to build KTD2692 driver.

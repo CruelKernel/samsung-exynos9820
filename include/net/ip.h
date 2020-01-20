@@ -217,6 +217,11 @@ void ip_send_unicast_reply(struct sock *sk, struct sk_buff *skb,
 #define __NET_INC_STATS(net, field)	__SNMP_INC_STATS((net)->mib.net_statistics, field)
 #define NET_ADD_STATS(net, field, adnd)	SNMP_ADD_STATS((net)->mib.net_statistics, field, adnd)
 #define __NET_ADD_STATS(net, field, adnd) __SNMP_ADD_STATS((net)->mib.net_statistics, field, adnd)
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+#define IP_DUMP_STATS(skb, field)	dev_queue_mib(skb, 0, field)
+#else
+#define IP_DUMP_STATS(skb, field)
+#endif
 
 u64 snmp_get_cpu_field(void __percpu *mib, int cpu, int offct);
 unsigned long snmp_fold_field(void __percpu *mib, int offt);

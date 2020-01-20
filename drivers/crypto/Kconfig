@@ -728,4 +728,11 @@ config CRYPTO_DEV_ARTPEC6
 
 	  To compile this driver as a module, choose M here.
 
+config CRYPTO_DEV_FMP
+	bool "FMP diskcipher engine driver"
+	depends on CRYPTO_DISKCIPHER && EXYNOS_FMP
+	default y
+
+source "drivers/crypto/fmp/Kconfig"
+
 endif # CRYPTO_HW

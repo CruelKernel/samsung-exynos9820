@@ -1,0 +1,56 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *              http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+
+/* Populate the buffer with character with ascii code between 65~127 */
+#define		MAKE_DATA_ST	65
+#define		MAKE_DATE_ED	127
+int makeData(char* buf, size_t len, const char first) {
+	size_t i;
+	char ch = first;
+	if(MAKE_DATA_ST > first || MAKE_DATA_ED < first) {
+		return -1;
+	}
+	
+	for(i = 0; i < len; i++) {
+		buf[i] = ch;
+		ch++;
+		if(ch > MAKE_DATE_ED) ch = MAKE_DATA_ST;
+	}
+	
+	return i;
+}
+
+#define INPUT_BUF_LEN	4096
+#define OUTPUT_BUF_LEN	4096
+char TEST_INPUT_BUF[INPUT_BUF_LEN];
+char TEST_OUTPUT_BUF[OUTPUT_BUF_LEN];
+#define FIRST_CHAR	'a'
+
+static struct npu_ring_log_buffer fw_log_keeper = {
+	.magic = NPU_RING_LOG_BUFFER_MAGIC,
+	.name = "NPU FW log",
+};
+#endif	/* IDIOT_DECL_SECTION */
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	struct npu_ring_log_buffer sut; \
+			npu_ring_log_buffer_start(&sut, 2 << 4);
+#define TEARDOWN_CODE	npu_ring_log_buffer_stop(&sut);
+
+TESTDEF(ring_log_buf_01_single_chars,
+	IDIOT_ASSERT_EQ(makeData(TEST_BUF, 1, FIRST_CHAR));
+	
+	
+)

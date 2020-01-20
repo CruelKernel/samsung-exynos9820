@@ -16,6 +16,7 @@
 #include <net/xfrm.h>
 #include <linux/jhash.h>
 #include <linux/rtnetlink.h>
+#include <linux/linkforward.h>
 
 #include <net/netfilter/nf_conntrack.h>
 #include <net/netfilter/nf_conntrack_core.h>
@@ -503,6 +504,12 @@ unsigned int nf_nat_packet(struct nf_conn *ct,
 		l3proto = __nf_nat_l3proto_find(target.src.l3num);
 		l4proto = __nf_nat_l4proto_find(target.src.l3num,
 						target.dst.protonum);
+
+#ifdef CONFIG_LINK_FORWARD
+		if (hooknum == NF_INET_PRE_ROUTING)
+			nf_linkforward_monitor(ct);
+#endif
+
 		if (!l3proto->manip_pkt(skb, 0, l4proto, &target, mtype))
 			return NF_DROP;
 	}

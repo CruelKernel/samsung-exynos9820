@@ -19,6 +19,7 @@
 int ufshcd_pltfrm_init(struct platform_device *pdev,
 		       struct ufs_hba_variant_ops *vops);
 void ufshcd_pltfrm_shutdown(struct platform_device *pdev);
+void ufshcd_pltfrm_exit(struct platform_device *pdev);
 
 #ifdef CONFIG_PM
 

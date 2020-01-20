@@ -83,6 +83,25 @@ config BLK_DEV_BSGLIB
 
 	  If unsure, say N.
 
+config BLK_DEV_CRYPT
+	bool "Block layer inline-crypto device support"
+	default y
+	help
+	  Block layer inline crypto device support. It is needed to
+	  support inline encryption of fscrypto.
+
+	  If unsure, say Y.
+
+config BLK_DEV_CRYPT_DISKCIPHER
+	bool "Disk-cipher support for block crypt"
+	default y
+	depends on BLK_DEV_CRYPT
+	depends on CRYPTO_DISKCIPHER
+	help
+	  Support block crypto driver for Disk-cipher solution.
+
+	  If unsure, say Y.
+
 config BLK_DEV_INTEGRITY
 	bool "Block layer data integrity support"
 	select CRC_T10DIF if BLK_DEV_INTEGRITY
@@ -210,6 +229,11 @@ config BLK_MQ_VIRTIO
 config BLK_MQ_RDMA
 	bool
 	depends on BLOCK && INFINIBAND
+	default y
+
+config BLOCK_SUPPORT_STLOG
+	bool "Enable storage log"
+	depends on BLOCK && PROC_STLOG
 	default y
 
 source block/Kconfig.iosched

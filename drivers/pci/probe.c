@@ -1419,7 +1419,7 @@ int pci_setup_device(struct pci_dev *dev)
 	pci_dev_assign_slot(dev);
 	/* Assume 32-bit PCI; let 64-bit PCI cards (which are far rarer)
 	   set this higher, assuming the system even supports it.  */
-	dev->dma_mask = 0xffffffff;
+	dev->dma_mask = DMA_BIT_MASK(36);
 
 	dev_set_name(&dev->dev, "%04x:%02x:%02x.%d", pci_domain_nr(dev->bus),
 		     dev->bus->number, PCI_SLOT(dev->devfn),
@@ -2093,10 +2093,10 @@ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus)
 	set_dev_node(&dev->dev, pcibus_to_node(bus));
 	dev->dev.dma_mask = &dev->dma_mask;
 	dev->dev.dma_parms = &dev->dma_parms;
-	dev->dev.coherent_dma_mask = 0xffffffffull;
+	dev->dev.coherent_dma_mask = DMA_BIT_MASK(36);
 
 	pci_set_dma_max_seg_size(dev, 65536);
-	pci_set_dma_seg_boundary(dev, 0xffffffff);
+	pci_set_dma_seg_boundary(dev, DMA_BIT_MASK(36));
 
 	/* Fix up broken headers */
 	pci_fixup_device(pci_fixup_header, dev);

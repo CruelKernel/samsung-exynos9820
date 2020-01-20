@@ -36,6 +36,13 @@ static char abort_reason[MAX_SUSPEND_ABORT_LEN];
 static struct kobject *wakeup_reason;
 static DEFINE_SPINLOCK(resume_reason_lock);
 
+#ifdef CONFIG_SEC_PM_DEBUG
+#define MAX_WAKEUP_SRCS 32
+static const char* wakeup_src_list[MAX_WAKEUP_SRCS];
+static int wakeup_src_cnt;
+static bool wakeup_src_by_name;
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 static ktime_t last_monotime; /* monotonic time before last suspend */
 static ktime_t curr_monotime; /* monotonic time after last suspend */
 static ktime_t last_stime; /* monotonic boottime offset before last suspend */
@@ -60,6 +67,18 @@ static ssize_t last_resume_reason_show(struct kobject *kobj, struct kobj_attribu
 						irq_list[irq_no]);
 		}
 	}
+
+#ifdef CONFIG_SEC_PM_DEBUG
+	if (!suspend_abort && wakeup_src_by_name) {
+		int i;
+		for (i = 0; i < wakeup_src_cnt; i++) {
+			/* XXX: 999 is dummy irq number for batterystats*/
+			buf_offset += sprintf(buf + buf_offset, "999 %s\n",
+					wakeup_src_list[i]);
+		}
+	}
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 	spin_unlock(&resume_reason_lock);
 	return buf_offset;
 }
@@ -130,6 +149,26 @@ void log_wakeup_reason(int irq)
 	spin_unlock(&resume_reason_lock);
 }
 
+#ifdef CONFIG_SEC_PM_DEBUG
+void log_wakeup_reason_name(const char *name)
+{
+	printk(KERN_INFO "Resume caused by wakeup source: %s\n", name);
+
+	spin_lock(&resume_reason_lock);
+	if (wakeup_src_cnt == MAX_WAKEUP_SRCS) {
+		spin_unlock(&resume_reason_lock);
+		printk(KERN_WARNING
+			"Resume caused by more than %d wakeup sources\n",
+			MAX_WAKEUP_REASON_IRQS);
+		return;
+	}
+
+	wakeup_src_list[wakeup_src_cnt++] = name;
+	wakeup_src_by_name = true;
+	spin_unlock(&resume_reason_lock);
+}
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 int check_wakeup_reason(int irq)
 {
 	int irq_no;
@@ -173,6 +212,10 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
 		spin_lock(&resume_reason_lock);
 		irqcount = 0;
 		suspend_abort = false;
+#ifdef CONFIG_SEC_PM_DEBUG
+		wakeup_src_cnt = 0;
+		wakeup_src_by_name = false;
+#endif /* CONFIG_SEC_PM_DEBUG */
 		spin_unlock(&resume_reason_lock);
 		/* monotonic time since boot */
 		last_monotime = ktime_get();
@@ -222,4 +265,4 @@ int __init wakeup_reason_init(void)
 	return 0;
 }
 
-late_initcall(wakeup_reason_init);
+subsys_initcall(wakeup_reason_init);

@@ -1,0 +1,6 @@
+config CAMERA_APERTURE_AK7372_OBJ
+        bool "Use aperture AK7372"
+	depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          Use to build AK7372 driver.

@@ -134,6 +134,8 @@ enum otg_fsm_timer {
  *		to a_wait_vfall
  */
 struct otg_fsm {
+	int reset;
+
 	/* Input */
 	int id;
 	int adp_change;

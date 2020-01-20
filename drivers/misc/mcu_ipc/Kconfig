@@ -1,0 +1,30 @@
+#
+# MCU_IPC Device Driver
+#
+
+config MCU_IPC
+	bool "MCU IPC Support"
+	default n
+	help
+	  This enables MCU_IPC driver to control the MCU_IPC Device.
+	  MCU_IPC is the Mailbox which has 16 interrupts for TX/RX each
+	  and 256 bytes memory for communicating messages.
+	  AP and CP can share the messages through this device.
+
+if MCU_IPC
+
+config MCU_IPC_TEST
+	bool "MCU_IPC driver test"
+	depends on MCU_IPC
+	help
+	  This enables MCU_IPC_TEST for checking mailbox at probe time.
+
+endif
+
+config SHM_IPC
+	bool "Shared Memory for IPC support"
+	depends on LINK_DEVICE_SHMEM || LINK_DEVICE_PCIE
+	default n
+	help
+	  This enables SHM_IPC driver to control the Shared memory
+	  for AP-CP Interface.

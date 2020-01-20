@@ -389,6 +389,7 @@ create_s32_tzp_attr(k_d);
 create_s32_tzp_attr(integral_cutoff);
 create_s32_tzp_attr(slope);
 create_s32_tzp_attr(offset);
+create_s32_tzp_attr(integral_max);
 #undef create_s32_tzp_attr
 
 /*
@@ -424,6 +425,7 @@ static struct attribute *thermal_zone_dev_attrs[] = {
 	&dev_attr_integral_cutoff.attr,
 	&dev_attr_slope.attr,
 	&dev_attr_offset.attr,
+	&dev_attr_integral_max.attr,
 	NULL,
 };
 

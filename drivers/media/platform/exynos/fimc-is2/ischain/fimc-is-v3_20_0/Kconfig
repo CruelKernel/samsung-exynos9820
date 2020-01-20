@@ -1,0 +1,16 @@
+config FIMC_IS_V3_20_0
+	bool "Use fimc-is v3.20.0"
+	depends on SOC_EXYNOS7570
+	select EXYNOS_DEVICE_MIPI_CSIS_VER2
+	select CSIS_V4_1
+	select EXYNOS_FIMC_BNS
+	select FIMC_BSC_V1_20_0
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_MC_SCALER_VER2_USE
+	select MC_SCALER_V1_22_V1_23
+	select USE_HW_API_COMMON
+	help
+	  fimc-is version 3.20.0

@@ -379,6 +379,18 @@ config S3C2410_WATCHDOG
 	  The driver can be built as a module by choosing M, and will
 	  be called s3c2410_wdt
 
+config S3C2410_SHUTDOWN_REBOOT
+	bool "Support watchdog reset after watchdog shutdown"
+	depends on S3C2410_WATCHDOG
+	default n
+	help
+	  This config disable the shutdown function of S3C2410 watchdog.
+	  To prevent stuck after watchdog driver shutdown, shutdown
+	  function will not stop or disable watchdog and it will just
+	  kick 30 second. It will prevent being stucked in reset
+	  sequence with some other failure.
+	  This feature is not recommeneded for debugging.
+
 config SA1100_WATCHDOG
 	tristate "SA1100/PXA2xx watchdog"
 	depends on ARCH_SA1100 || ARCH_PXA

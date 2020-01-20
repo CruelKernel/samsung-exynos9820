@@ -114,3 +114,22 @@ config FAT_DEFAULT_UTF8
 	  Say Y if you use UTF-8 encoding for file names, N otherwise.
 
 	  See <file:Documentation/filesystems/vfat.txt> for more information.
+
+config FAT_VIRTUAL_XATTR
+	bool "Virtual xattr support for FAT filesystem"
+	default y
+	depends on FAT_FS
+	help
+	  Modification of FAT filesystem for virtual xattr
+
+config FAT_VIRTUAL_XATTR_SELINUX_LABEL
+	string "Default string for SELinux label"
+	depends on FAT_FS && FAT_VIRTUAL_XATTR
+	default "u:object_r:sdcard_external:s0"
+	help
+	  Set this to the default string for SELinux label.
+
+config FAT_SUPPORT_STLOG
+	bool "Enable storage log"
+	default y
+	depends on FAT_FS && PROC_STLOG

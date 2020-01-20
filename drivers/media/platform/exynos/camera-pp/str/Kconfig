@@ -1,0 +1,17 @@
+menuconfig VIDEO_EXYNOS_CAMERA_POSTPROCESS_STR
+	bool "EXYNOS CAMERA POSTPROCESS STR Driver"
+	depends on VIDEO_EXYNOS_CAMERA_POSTPROCESS
+	default n
+	help
+		This is a representative exynos CAMERA-PP STR device.
+
+config CAMERA_PP_STR_V1_0_0_OBJ
+	bool "Use camera post-processing STR V1.0.0"
+	depends on VIDEO_EXYNOS_CAMERA_POSTPROCESS_STR
+	default n
+	help
+		Use to build STR v1.0 driver
+
+		When this config is enabled,
+		STR device driver will use the API defined for STR v1.0.0.
+		The user interface to control STR driver must be matched with this API version.

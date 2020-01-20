@@ -42,6 +42,14 @@ config ARM64_RANDOMIZE_TEXT_OFFSET
 	  of TEXT_OFFSET and platforms must not require a specific
 	  value.
 
+config DEBUG_EXCEPTION_STACK
+	bool "Preserve stack data when the exception happened"
+	default n
+	help
+	  If this is set, kernel can preserve the specific size of stack data
+	  when an exception occurs from EL1. This can help to fiqure out the
+	  stack data before the exception happened.
+
 config DEBUG_WX
 	bool "Warn on W+X mappings at boot"
 	select ARM64_PTDUMP_CORE
@@ -95,6 +103,40 @@ config DEBUG_EFI
 config ARM64_RELOC_TEST
 	depends on m
 	tristate "Relocation testing module"
+
+comment "Samsung Rooting Restriction Feature"
+config SEC_RESTRICT_ROOTING
+	bool "Samsung Rooting Restriction Feature"
+	depends on SAMSUNG_PRODUCT_SHIP
+	default n
+	help
+	  Restrict unauthorized executions with root permission.
+
+config SEC_RESTRICT_SETUID
+	bool "Restrict changing root privilege except allowed process"
+	depends on SEC_RESTRICT_ROOTING
+	default y
+	help
+	  Say Y here if you want to restrict functions related setuid. Only allowed
+	  process can chanage ROOT privilege. Saying N will not restrict changing
+	  permission.
+
+config SEC_RESTRICT_FORK
+	bool "Restrict forking process except allowed process"
+	depends on SEC_RESTRICT_ROOTING
+	default y
+	help
+	  Say Y here if you want to restrict function related fork. Process matched
+	  special condition will be not forked. Saying N will not restrict forking
+	  process.
+
+config SEC_RESTRICT_ROOTING_LOG
+	bool "Print restricted result to kernel log"
+	depends on SEC_RESTRICT_ROOTING
+	default n
+	help
+	   Say Y here if you want to see result of restricting SETUID or FORK. It will
+	   be displayed by kernel error log. Saying N will not be displayed anything.
 
 source "drivers/hwtracing/coresight/Kconfig"
 

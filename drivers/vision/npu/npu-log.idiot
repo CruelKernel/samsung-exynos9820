@@ -1,0 +1,536 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *              http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+
+#include <linux/slab.h>
+
+#include "npu-config.h"
+
+/* Test configuration */
+const size_t ST_LOG_BUF_SIZE = 1024 * 1024;	/* 1MB */
+const size_t ST_LOG_SMALL_BUF_SIZE = NPU_STORE_LOG_DUMP_SIZE_ON_ERROR * 2; /* 32KB */
+
+/* Test data */
+static struct {
+	/* Memory buffer */
+	void*	buf;
+	npu_log_level_e	prev_pr_level;
+	npu_log_level_e	prev_st_level;
+} test_data;
+
+static int setup_inner(size_t buf_size)
+{
+	char	lv_buf[16];
+
+	test_data.buf = kzalloc(buf_size, GFP_KERNEL);
+	if (!test_data.buf) {
+		return -ENOMEM;
+	}
+
+	npu_store_log_init(test_data.buf, buf_size);
+
+	/* Backup old log level */
+	test_data.prev_pr_level = npu_log.pr_level;
+	test_data.prev_st_level = npu_log.st_level;
+
+	/* Setup log-level */
+	snprintf(lv_buf, ARRAY_SIZE(lv_buf), "%d.%d\n", NPU_LOG_ERR, NPU_LOG_TRACE);
+	npu_chg_log_level_store(NULL, NULL, lv_buf, strlen(lv_buf));
+
+	return 0;
+}
+
+/* 1M Buffer setup */
+static int setup(void)
+{
+	return setup_inner(ST_LOG_BUF_SIZE);
+}
+
+/* small Buffer setup */
+static int setup_small(void)
+{
+	return setup_inner(ST_LOG_SMALL_BUF_SIZE);
+}
+
+static int teardown(void)
+{
+	char	lv_buf[16];
+
+	/* Restore log-level */
+	snprintf(lv_buf, ARRAY_SIZE(lv_buf), "%d.%d\n",
+		test_data.prev_pr_level, test_data.prev_st_level);
+	npu_chg_log_level_store(NULL, NULL, lv_buf, strlen(lv_buf));
+
+	npu_store_log_deinit();
+	kfree(test_data.buf);
+
+	return 0;
+}
+
+/* Store log message until the buffer is rollover */
+static void populate_logbuf_rollover(void)
+{
+	size_t last_wr_pos = 0;
+	int linecnt = 0;
+
+	do {
+		last_wr_pos = npu_log.wr_pos;
+		npu_trace("############## Fill the buffer (line %d) ###################\n", ++linecnt);
+		msleep(10);
+	} while (last_wr_pos <= npu_log.wr_pos);
+}
+#endif /* IDIOT_DECL_SECTION */
+
+/*
+ * Check whether the setup and teardown is working
+ */
+TESTDEF(NPU_DD_LG_BASE_01,
+
+	IDIOT_ASSERT_EQ(setup(), 0, %d);
+
+	IDIOT_ASSERT_EQ(teardown(), 0, %d);
+)
+
+/* Common test fixture */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup();
+#define TEARDOWN_CODE	teardown();
+
+/*
+ * Put one message and verify its properly logged.
+ */
+TESTDEF(NPU_DD_LG_BASE_02,
+	const char *test_msg = "TEST";
+	size_t	cmp_pos;
+
+	/* Print log */
+	npu_trace("%s\n", test_msg);
+
+	/* Check contents */
+	cmp_pos = npu_log.wr_pos - strlen(test_msg) - 1;
+
+	IDIOT_ASSERT_EQ(memcmp(test_msg, npu_log.st_buf + cmp_pos, strlen(test_msg)), 0, %d);
+)
+
+/*
+ * Try fill the buffer till the end
+ */
+TESTDEF(NPU_DD_LG_BASE_03,
+	const char *test_msg = "TEST";
+	size_t	cmp_pos;
+	size_t	last_wr_pos;
+
+	do {
+		last_wr_pos = npu_log.wr_pos;
+		/* Print log */
+		npu_trace("%s\n", test_msg);
+	} while (last_wr_pos < npu_log.wr_pos);
+
+	/* Check contents */
+	cmp_pos = npu_log.wr_pos - strlen(test_msg) - 1;
+
+	IDIOT_MSG("%zu.%zu.%zu[%c]\n", npu_log.wr_pos, last_wr_pos, cmp_pos, npu_log.st_buf[cmp_pos]);
+	IDIOT_MSG("%s\n", npu_log.st_buf);
+	IDIOT_ASSERT_NEQ(npu_log.st_buf[npu_log.st_size - 1], '\0', %d);
+	IDIOT_ASSERT_EQ(memcmp(test_msg, npu_log.st_buf + cmp_pos, strlen(test_msg)), 0, %d);
+
+)
+
+/*
+ * Printout log at end - 1, end, end + 1
+ */
+TESTDEF(NPU_DD_LG_BASE_04,
+	const char *test_msg = "TEST\n";
+	size_t	cmp_pos;
+	size_t	last_wr_pos;
+	size_t	log_len;
+
+	/* Determine log message length */
+	last_wr_pos = npu_log.wr_pos;
+	/* Print log */
+	npu_trace("%s", test_msg);
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Advance to length - 1 */
+	npu_log.wr_pos = npu_log.st_size - log_len - 1;
+
+	/* Print log */
+	npu_trace("%s", test_msg);
+
+	/* Check contents */
+	cmp_pos = npu_log.wr_pos - strlen(test_msg);
+
+	/* Shall NOT BE rolled */
+	IDIOT_ASSERT_EQ_T(ENDBUF_END-1, npu_log.st_buf[npu_log.st_size - 1], '\0', %d);
+	IDIOT_ASSERT_EQ_T(WRPOS_END-1, npu_log.wr_pos, npu_log.st_size - 1, %zu);
+	IDIOT_ASSERT_EQ_T(LOGMSG_END-1, memcmp(test_msg, npu_log.st_buf + cmp_pos, strlen(test_msg)), 0, %d);
+
+	/* Advance to length - 0 */
+	npu_log.wr_pos = npu_log.st_size - log_len;
+
+	/* Print log */
+	npu_trace("%s", test_msg);
+
+	/* Check contents */
+	cmp_pos = npu_log.wr_pos - strlen(test_msg);
+
+	/* Shall BE rolled */
+	IDIOT_ASSERT_NEQ_T(ENDBUF_END-0, npu_log.st_buf[npu_log.st_size - 1], '\0', %d);	/* Place holder */
+	IDIOT_ASSERT_EQ_T(WRPOS_END-0, npu_log.wr_pos, log_len, %zu);
+	IDIOT_ASSERT_EQ_T(LOGMSG_END-0, memcmp(test_msg, npu_log.st_buf + cmp_pos, strlen(test_msg)), 0, %d);
+
+	/* Advance to length + 1 */
+	npu_log.wr_pos = npu_log.st_size - log_len + 1;
+
+	/* Print log */
+	npu_trace("%s", test_msg);
+
+	/* Check contents */
+	cmp_pos = npu_log.wr_pos - strlen(test_msg);
+
+	/* Shall BE rolled */
+	IDIOT_ASSERT_NEQ_T(ENDBUF_END+1, npu_log.st_buf[npu_log.st_size - 1], '\0', %d);	/* Place holder */
+	IDIOT_ASSERT_EQ_T(WRPOS_END+1, npu_log.wr_pos, log_len, %zu);
+	IDIOT_ASSERT_EQ_T(LOGMSG_END+1, memcmp(test_msg, npu_log.st_buf + cmp_pos, strlen(test_msg)), 0, %d);
+)
+
+/*
+ * Try fill the buffer with sleep to
+ * reserve time for checking debugfs read function.
+ */
+TESTDEF(NPU_DD_LG_DBGFS_01,
+	const u32	CNT = 50;
+	int	i;
+
+	for (i = 0; i < CNT; i++) {
+		msleep(1 * 1000);
+		/* Print log */
+		npu_trace("TEST Message Logging [%d]\n", i);
+	}
+	IDIOT_ASSERT_EQ(npu_store_log_dump(4096), 0, %d);
+	IDIOT_ASSERT_EQ(npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %d);
+)
+
+/*
+ * Check dump scenario
+ */
+TESTDEF(NPU_DD_LG_CHK_DUMP_MARK,
+	const char *test_msg_1 = "TEST 1\n";
+	const char *test_msg_2 = "TEST ERR\n";
+	size_t	last_wr_pos;
+	size_t	log_len;
+
+	/* Determine log message length */
+	last_wr_pos = npu_log.wr_pos;
+
+	/* Print log */
+	npu_trace("%s", test_msg_1);
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Raise an error to let the log dumped */
+	npu_err("%s", test_msg_2);
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Check dump mark is present */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+)
+
+/*
+ * Check consecutive dump scenario
+ */
+TESTDEF(NPU_DD_LG_CHK_SEQ_DUMP_MARK,
+	size_t	last_wr_pos;
+	size_t	log_len;
+
+	/* Determine log message length */
+	last_wr_pos = npu_log.wr_pos;
+
+	/* Print log */
+	npu_trace("First log\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Raise an error to let the log dumped */
+	npu_err("First error\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Check dump mark is present */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+
+	/* Append a conventional message */
+	npu_trace("Second log\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Raise an error again */
+	npu_err("Second error\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Check dump mark is present */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+
+	IDIOT_MSG("Please check /dev/kmsg and 'First error' should not be included on second error dump\n");
+
+)
+
+/*
+ * Testcase located below use smaller log buffer
+ */
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_small();
+#define TEARDOWN_CODE	teardown();
+
+/*
+ * Dump after rollover
+ * Use smaller buffer
+ */
+TESTDEF(NPU_DD_LG_CHK_SEQ_FILL,
+	size_t	last_wr_pos;
+	size_t	log_len;
+
+	/* Determine log message length */
+	last_wr_pos = npu_log.wr_pos;
+
+	/* Print log */
+	npu_trace("First log\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Let the buffer filled with bogus message */
+	populate_logbuf_rollover();
+
+	/* Check Rollover mark */
+	IDIOT_ASSERT_NEQ_T(ROLLOVER_MARK-1, npu_log.st_buf[npu_log.st_size - 1], '\0', %x);
+
+	/* Raise an error to let the log dumped */
+	npu_err("First error\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Check dump mark is present */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+
+	/* Append a conventional message */
+	npu_trace("Second log\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Raise an error again */
+	npu_err("Second error\n");
+	log_len = npu_log.wr_pos - last_wr_pos;
+	IDIOT_MSG("log_len=%zu\n", log_len);
+
+	/* Check dump mark is present */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+
+	IDIOT_MSG("Please check /dev/kmsg and 'First error' should not be included on second error dump\n");
+)
+
+
+/*
+ * Log dump after rollover
+ * Use smaller buffer
+ */
+TESTDEF(NPU_DD_LG_CHK_DUMP_AFTER_ROLLOVER,
+	size_t	dump_pos;
+	struct npu_store_log_read_obj robj;
+
+	/* Print log */
+	npu_trace("First log\n");
+
+	/* Raise an error to let the log dumped */
+	npu_err("First error\n");
+
+	/* Check Rollover mark */
+	IDIOT_ASSERT_EQ_T(DUMP_MARK-1, npu_log.st_buf[npu_log.wr_pos - 1], NPU_LOG_DUMP_MARK, %x);
+
+	/* Save dump postion */
+	dump_pos = npu_log.wr_pos - 1;
+
+	/* Let the buffer filled with bogus message */
+	populate_logbuf_rollover();
+
+	/* Add more log until the dump mark is overwrtten */
+	while (npu_log.wr_pos <= dump_pos) {
+		npu_trace("Dummy until dump mark\n");
+	}
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos need to be somewhere after wr_pos(which is roolover position). */
+	IDIOT_ASSERT_GE_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+)
+
+
+/* Log message which takes 100 + x byte on the buffer */
+#define FILL_UNIT	100
+
+#define FILL_BUFFER_REMAINING(REMAIN)		\
+do {											\
+	char temp_buf[(FILL_UNIT * 2) + 1] = "";					\
+	int i;										\
+	size_t	last_wr_pos;								\
+	size_t	log_len = 0;								\
+											\
+	/* Construct 100 byte message */						\
+	for ( i = 1;									\
+		(log_len != FILL_UNIT)	&& (i < ARRAY_SIZE(temp_buf))			\
+		&& (npu_log.st_size - npu_log.wr_pos - FILL_UNIT - (REMAIN));		\
+		i++) {									\
+											\
+		temp_buf[i-1] = '#';							\
+		temp_buf[i] = '\0';							\
+		last_wr_pos = npu_log.wr_pos;						\
+		npu_trace("%s", temp_buf);						\
+		log_len = npu_log.wr_pos - last_wr_pos;					\
+	}										\
+	IDIOT_ASSERT_EQ_T(CHECK_UNIT, log_len, FILL_UNIT, %zu);				\
+											\
+	/* Fill the buffer, until [st_size - 2]*/					\
+	pr_err("wr_pos=%zu\n", npu_log.wr_pos);						\
+	while (npu_log.st_size - npu_log.wr_pos >= FILL_UNIT * 2) {			\
+		npu_trace("%s", temp_buf);						\
+		pr_err("wr_pos=%zu\n", npu_log.wr_pos);					\
+	}										\
+	for (i--; i < npu_log.st_size - npu_log.wr_pos - FILL_UNIT - (REMAIN); i++) {	\
+		temp_buf[i] = '@';							\
+	}										\
+	temp_buf[i] = '\0';								\
+	npu_trace("%s", temp_buf);							\
+} while(0)
+
+
+
+/*
+ * Message at boundary (End at the end of buffer)
+ * Note that the last character is reserved and should not be used.
+ * Use smaller buffer
+ */
+TESTDEF(NPU_DD_LG_MSG_BOUNDARY_1,
+	struct npu_store_log_read_obj robj;
+
+	FILL_BUFFER_REMAINING(2);
+
+	/* wr_pos should be at the end of buffer */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.wr_pos, (npu_log.st_size - 2), %zu);
+
+	/* Last character is NULL because it has not been rollovered yet */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\0', %x);
+
+	/* Add one more log to make the buffer rollover */
+	npu_trace("Rollover message\n");
+
+	/* wr_pos should be rollovered */
+	IDIOT_ASSERT_LE_T(WR_POS-2, npu_log.wr_pos, FILL_UNIT, %zu);
+
+	/* Last character is now '\n' due to the rollover */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\n', %x);
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos need to be somewhere after wr_pos(which is roolover position). */
+	IDIOT_ASSERT_GE_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+)
+
+/*
+ * Message at boundary -2
+ */
+TESTDEF(NPU_DD_LG_MSG_BOUNDARY_2,
+	struct npu_store_log_read_obj robj;
+
+	FILL_BUFFER_REMAINING(3);
+
+	/* wr_pos should be one character before of end of buffer */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.wr_pos, (npu_log.st_size - 3), %zu);
+
+	/* Last character is NULL because it has not been rollovered yet */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\0', %x);
+
+	/* Add one more log to make the buffer rollover */
+	npu_trace("Rollover message\n");
+
+	/* wr_pos should be rollovered */
+	IDIOT_ASSERT_LE_T(WR_POS-2, npu_log.wr_pos, FILL_UNIT, %zu);
+
+	/* Last character is now '\n' due to the rollover */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\n', %x);
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos need to be somewhere after wr_pos(which is roolover position). */
+	IDIOT_ASSERT_GE_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+)
+
+
+/*
+ * Message at boundary -> Should be rollovered
+ */
+TESTDEF(NPU_DD_LG_MSG_BOUNDARY_3,
+	struct npu_store_log_read_obj robj;
+
+	FILL_BUFFER_REMAINING(1);
+
+	/* wr_pos should be rollovered */
+	IDIOT_ASSERT_LE_T(WR_POS-2, npu_log.wr_pos, FILL_UNIT * 2, %zu);
+
+	/* Last character of buffer is now '\n' due to the rollover */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\n', %x);
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos need to be somewhere after wr_pos(which is roolover position). */
+	IDIOT_ASSERT_GE_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+)
+
+
+/*
+ * Dump after message at boundary (End at the end of buffer)
+ * Use smaller buffer
+ */
+TESTDEF(NPU_DD_LG_DUMP_AT_BOUNDARY_1,
+	struct npu_store_log_read_obj robj;
+
+	FILL_BUFFER_REMAINING(2);
+
+	/* wr_pos should be at the end of buffer */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.wr_pos, (npu_log.st_size - 2), %zu);
+
+	/* Last character is NULL because it has not been rollovered yet */
+	IDIOT_ASSERT_EQ_T(WR_POS-1, npu_log.st_buf[npu_log.st_size - 1], '\0', %x);
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos need to be somewhere before wr_pos. */
+	IDIOT_ASSERT_LE_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+
+	/* Raise an error to let the buffer dumped */
+	npu_err("Error after boundary\n");
+
+	/* Get the log offset */
+	npu_store_log_set_offset(&robj, 0);
+
+	/* read_pos is same with wr_pos, because there was no log addition after error */
+	IDIOT_ASSERT_EQ_T(DUMPSIZE, robj.read_pos, npu_log.wr_pos, %zu);
+)

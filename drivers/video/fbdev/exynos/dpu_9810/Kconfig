@@ -1,0 +1,95 @@
+config EXYNOS_DECON_9810
+	bool "Samsung Exynos9810 Display system (DPP, DECON, MIPI, HDMI)"
+	default y
+	depends on FB
+
+if EXYNOS_DECON_9810
+config EXYNOS_DECON_FB
+	bool "Samsung DECON Framebuffer driver"
+	depends on EXYNOS_DECON_9810
+	default y
+	help
+	  Say Y here if you want support for the DECON in Samsung S5P SoCs.
+	  This device produce image data to one of output interfaces.
+
+config EXYNOS_DPP
+	bool "Samsung Exynos Display Post Processor driver"
+	depends on EXYNOS_DECON_9810
+	default y
+
+config EXYNOS_MIPI_DSIM
+	bool "Samsung Exynos MIPI-DSI driver"
+	depends on EXYNOS_DECON_9810
+	default y
+	help
+	  Enable MIPI-DSI driver.
+
+config EXYNOS_DISPLAYPORT
+	bool "Samsung Exynos DISPLAYPORT driver"
+	depends on EXYNOS_DECON_9810
+	default y
+	help
+	  Enable DISPLAYPORT driver.
+
+config EXYNOS_ZEBU_EMUL_DISP
+	bool "Zebu Emulator Display driver"
+	depends on EXYNOS_DECON_9810
+	default n
+
+config FB_WINDOW_UPDATE
+        bool "DECON window update mode"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config DECON_BLOCKING_MODE
+	bool "DECON blocking mode"
+        depends on EXYNOS_DECON_9810
+        default y
+
+config DECON_EVENT_LOG
+	bool "Display sub-system event logger (DECON/DSIM/DPP)"
+        depends on DEBUG_INFO && EXYNOS_DECON_9810
+        default y
+
+config DECON_HIBER
+	bool "DECON hiber mode"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config EXYNOS_AFBC
+	bool "Display sub-system AFBC stream"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config EXYNOS_DSIM_DITHER
+	bool "DSIM SSCG feature"
+        depends on EXYNOS_MIPI_DSIM
+        default y
+
+config DECON_BTS_LEGACY
+	bool "Legacy BTS scheme of display"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config DPU_2_0_FENCE
+	bool "fence is signaled at the beginning of a frame"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config FB_TEST
+	bool "FB test only"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config DSIM_CMD_TEST
+	bool "DSIM command test only"
+        depends on EXYNOS_DECON_9810
+        default n
+
+config DPU_2_0_RELEASE_FENCES
+	bool "Release fence FD is created per each enable window"
+        depends on EXYNOS_DECON_9810
+        default n
+endif
+
+source "drivers/video/fbdev/exynos/dpu_9810/panels/Kconfig"

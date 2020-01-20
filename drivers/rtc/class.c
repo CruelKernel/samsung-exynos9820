@@ -20,6 +20,7 @@
 #include <linux/idr.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/suspend.h>
 
 #include "rtc-core.h"
 
@@ -140,6 +141,9 @@ static int rtc_resume(struct device *dev)
 
 	if (sleep_time.tv_sec >= 0)
 		timekeeping_inject_sleeptime64(&sleep_time);
+	else
+		pm_deferred_pr_dbg("rtc: suspended for 0.000 seconds (%lld)\n",
+				sleep_time.tv_sec);
 	rtc_hctosys_ret = 0;
 	return 0;
 }

@@ -1,0 +1,14 @@
+menuconfig CAMERA_OIS_SELECT
+	bool "Sensor ois select"
+	depends on USE_DIRECT_IS_CONTROL
+	help
+	  Say Y here to enable support for platform-specific V4L drivers.
+
+config CAMERA_OIS_IDG2030_OBJ
+        bool "Use IDG2030 ois"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_OIS_SELECT
+        default n
+        help
+          Use to build IDG2030 ois.
+

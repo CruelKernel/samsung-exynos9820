@@ -572,6 +572,8 @@ struct hid_device {							/* device report descriptor */
 	struct list_head inputs;					/* The list of inputs */
 	void *hiddev;							/* The hiddev structure */
 	void *hidraw;
+	void *hidovr;
+	void *hidtvr;
 
 	char name[128];							/* Device name */
 	char phys[64];							/* Device physical location */

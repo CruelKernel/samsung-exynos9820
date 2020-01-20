@@ -389,6 +389,24 @@ config RTC_DRV_RS5C372
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-rs5c372.
 
+config RTC_DRV_S2MPS18
+	tristate "Samsung PMIC Series RTC"
+	depends on MFD_S2MPS18
+	help
+	  If you say yes here you will get support for the
+	  RTC of Samsung PMIC series.
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-s2mps18.
+
+config RTC_DRV_S2MPS19
+	tristate "Samsung PMIC S2MPS19 RTC"
+	depends on MFD_S2MPS19
+	help
+	  If you say yes here you will get support for the
+	  RTC of Samsung PMIC series.
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-s2mps18.
+
 config RTC_DRV_ISL1208
 	tristate "Intersil ISL1208"
 	help

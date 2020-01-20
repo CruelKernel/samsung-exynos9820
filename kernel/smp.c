@@ -238,6 +238,9 @@ static void flush_smp_call_function_queue(bool warn_cpu_offline)
 		smp_call_func_t func = csd->func;
 		void *info = csd->info;
 
+		/* This should be called by handle_IPI in smp.c */
+		dbg_snapshot_irq(DSS_FLAG_SMP_CALL_FN, func, NULL, 0, DSS_FLAG_IN);
+
 		/* Do we wait until *after* callback? */
 		if (csd->flags & CSD_FLAG_SYNCHRONOUS) {
 			func(info);
@@ -246,6 +249,8 @@ static void flush_smp_call_function_queue(bool warn_cpu_offline)
 			csd_unlock(csd);
 			func(info);
 		}
+
+		dbg_snapshot_irq(DSS_FLAG_SMP_CALL_FN, func, NULL, 0, DSS_FLAG_OUT);
 	}
 
 	/*
@@ -499,6 +504,8 @@ EXPORT_SYMBOL(smp_call_function);
 /* Setup configured maximum number of CPUs to activate */
 unsigned int setup_max_cpus = NR_CPUS;
 EXPORT_SYMBOL(setup_max_cpus);
+struct cpumask early_cpu_mask;
+EXPORT_SYMBOL(early_cpu_mask);
 
 
 /*
@@ -560,6 +567,7 @@ void __init setup_nr_cpu_ids(void)
 }
 
 /* Called by boot processor to activate the rest. */
+bool smp_init_done = false;
 void __init smp_init(void)
 {
 	int num_nodes, num_cpus;
@@ -570,12 +578,16 @@ void __init smp_init(void)
 
 	pr_info("Bringing up secondary CPUs ...\n");
 
+	cpumask_clear(&early_cpu_mask);
+	cpumask_set_cpu(0, &early_cpu_mask);
 	/* FIXME: This should be done in userspace --RR */
 	for_each_present_cpu(cpu) {
 		if (num_online_cpus() >= setup_max_cpus)
 			break;
-		if (!cpu_online(cpu))
+		if (!cpu_online(cpu)) {
 			cpu_up(cpu);
+			cpumask_set_cpu(cpu, &early_cpu_mask);
+		}
 	}
 
 	num_nodes = num_online_nodes();
@@ -588,6 +600,7 @@ void __init smp_init(void)
 	cpu_smt_check_topology();
 	/* Any cleanup work */
 	smp_cpus_done(setup_max_cpus);
+	smp_init_done = true;
 }
 
 /*

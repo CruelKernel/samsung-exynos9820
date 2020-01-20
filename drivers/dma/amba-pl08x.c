@@ -2093,7 +2093,7 @@ static struct dma_async_tx_descriptor *pl08x_prep_slave_sg(
 static struct dma_async_tx_descriptor *pl08x_prep_dma_cyclic(
 		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
 		size_t period_len, enum dma_transfer_direction direction,
-		unsigned long flags)
+		unsigned long flags, void *context)
 {
 	struct pl08x_dma_chan *plchan = to_pl08x_chan(chan);
 	struct pl08x_driver_data *pl08x = plchan->host;

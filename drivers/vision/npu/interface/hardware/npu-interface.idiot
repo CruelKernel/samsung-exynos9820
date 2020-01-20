@@ -1,0 +1,391 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *	http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+#include <linux/slab.h>
+#define ReqCnt 3
+#define RIGHT TRUE
+#define WRONG FALSE
+#define MBOX_SFR_LENGTH (NPU_IOMEM_MBOX_SFR_END - NPU_IOMEM_MBOX_SFR_START)
+
+struct npu_system test_system;
+volatile struct mailbox_hdr *mbox_hdr;
+struct ncp_header *hdr;
+static volatile void *sfr;
+static volatile void *org_sfr;
+
+struct message GoodMsg = {
+		.magic		= MESSAGE_MAGIC,
+		.command	= COMMAND_DONE,
+		.length		= sizeof(struct command),
+		.mid		= 0,
+};
+
+struct message BadMsg = {
+	.magic		= MESSAGE_MAGIC,
+	.command	= COMMAND_NDONE,
+	.length		= sizeof(struct command),
+	.mid		= 0,
+};
+
+struct command GoodDone = {
+	.c.done.fid = 0x5A1AD,
+	.length = 0,
+	.payload = 0,
+};
+
+struct command NotDone = {
+	.c.ndone.error = 0xE2202,
+	.length = 0,
+	.payload = 0,
+};
+
+struct command TimedOut = {
+	.c.ndone.error = ETIMEDOUT,
+	.length = 0,
+	.payload = 0,
+};
+
+typedef enum {
+	IDIOT_DO_LOAD = 10,
+	IDIOT_DO_UNLOAD,
+	IDIOT_DO_PROC,
+	IDIOT_DO_PURGE,
+	IDIOT_DO_POWERDOWN,
+	IDIOT_DO_TIMEOUT,
+	IDIOT_DO_NDONE,
+	IDIOT_DI_ENGAGE_TIMEOUT,
+} idiot_scenario;
+
+const char *IDIOT_COMMAND_NAME[COMMAND_H2F_MAX_ID +2]
+	= {"LOAD", "UNLOAD", "PROCESS", "PROFILE_CTL", "PURGE", "POWERDOWN", "DONE"};
+
+/*
+PROTO_DRV_REQ_TYPE_NW : from 0 to 15
+PROTO_DRV_REQ_TYPE_FRAME : from 16 to 31
+*/
+int get_type(int val){
+	npu_info("[BAE] get_type for mid : %d\n", val);
+	if(val >= 0 && val <= 15)
+		return PROTO_DRV_REQ_TYPE_NW;
+	else if(val >= 16 && val <= 31)
+		return PROTO_DRV_REQ_TYPE_FRAME;
+	else
+		BUG_ON(1);
+}
+
+int register_msgid_get_type_idiot(int (*msgid_get_type_func)(int))
+{
+	interface.msgid_get_type = get_type;
+	return 0;
+}
+
+void init_sfr(int mbox_idx)
+{
+	interface.sfr->grp[mbox_idx].g = 0;
+	interface.sfr->grp[mbox_idx].c = 0;
+	interface.sfr->grp[mbox_idx].m = 0;
+	interface.sfr->grp[mbox_idx].s = 0;
+	interface.sfr->grp[mbox_idx].ms = 0;
+}
+
+void open_interface(struct npu_system system, volatile void *sfr)
+{
+	register_msgid_get_type_idiot(get_type);
+	system.mbox_hdr->signature1 = MAILBOX_SIGNATURE1;
+	interface.sfr = (volatile struct mailbox_sfr *)sfr;
+}
+
+void close_interface(void)
+{
+	kfree((void *)sfr);
+	kfree((void *)mbox_hdr);
+	interface.sfr = (volatile struct mailbox_sfr *)org_sfr;
+	interface.mbox_hdr = NULL;
+	interface.addr = NULL;
+}
+
+static void setup_basic(void) {
+	npu_info("[BAE] setup_basic(void)\n");
+	sfr = kmalloc(0x017C, GFP_KERNEL);
+	org_sfr = (void *)interface.sfr;
+	mbox_hdr = kmalloc(0x100000, GFP_KERNEL);
+	test_system.tcu_sram.vaddr = (void *)mbox_hdr;
+	test_system.mbox_hdr = (volatile struct mailbox_hdr *)((void *)test_system.tcu_sram.vaddr + NPU_MAILBOX_BASE - sizeof(struct mailbox_hdr));
+	open_interface(test_system, sfr);
+}
+
+static void teardown_basic(void) {
+	npu_info("[BAE] teardown_basic(void)\n");
+	close_interface();
+}
+
+int is_Match_Cmd(struct command inp, struct command chk)
+{
+	if((inp.c.done.fid == chk.c.done.fid) && (inp.length == chk.length))
+		return TRUE;
+	else
+		return FALSE;
+}
+int is_Match_Msg(struct message inp, struct message chk)
+{
+	if((inp.magic == chk.magic)&& (inp.command == chk.command))
+		return TRUE;
+	else
+		return FALSE;
+}
+
+int test_Fake_Proto(int mid, int expected, int nCase)
+{
+	int ret = 0;
+	struct npu_nw nw = {};
+	struct npu_frame fr = {};
+	int ret_id = mid;
+	npu_info("[BAE] Fake Proto Driver with mid : %d\n", ret_id);
+	ret = fr_rslt_manager(&ret_id, &fr);
+	ret += nw_rslt_manager(&ret_id, &nw);
+	init_sfr(2);
+	if(ret != TRUE)
+		return FALSE;//1
+
+	switch (nCase){
+	case IDIOT_DO_LOAD:
+	case IDIOT_DO_PURGE:
+	case IDIOT_DO_UNLOAD:
+	case IDIOT_DO_POWERDOWN:
+		if(nw.result_code != NPU_ERR_NO_ERROR)
+			ret = FALSE;
+		break;
+	case IDIOT_DO_PROC:
+		if(fr.result_code != NPU_ERR_NO_ERROR)
+			ret = FALSE;
+		break;
+	case IDIOT_DO_TIMEOUT:
+		if(nw.result_code != ETIMEDOUT)
+			ret = FALSE;
+		break;
+	case IDIOT_DO_NDONE:
+		if(nw.result_code != 0xE2202)
+			ret = FALSE;
+		break;
+	case IDIOT_DI_ENGAGE_TIMEOUT:
+		ret = FALSE;
+		break;
+	}
+	if(ret == TRUE)
+		return TRUE;//1
+	else
+		return FALSE;//0
+}
+
+int test_Fake_FW(int mbox_idx, int mid, int expected, int nCase)
+{
+	int ret = 0;
+	u32 val = 0;
+	struct message rMsg = {};
+	struct message sMsg = {};
+	struct command rCmd = {};
+	struct command sCmd = {};
+	npu_info("[IDIOT] Fake_FW.\n");
+	val = interface.sfr->grp[mbox_idx].ms;
+	if(val) {
+		interface.sfr->grp[mbox_idx].c = val;
+		init_sfr(mbox_idx);
+		ret = mbx_ipc_get_msg((void *)interface.addr, &interface.mbox_hdr->h2fctrl[mbox_idx], &rMsg);
+		if(ret <=0) {
+			if(ret < 0)
+				npu_info("mbx_ipc_get_msg Error - %d\n", ret);
+			return -1;
+		}
+		ret = mbx_ipc_get_cmd((void *)interface.addr, &interface.mbox_hdr->h2fctrl[mbox_idx], &rMsg, &rCmd);
+		if(ret) {
+			npu_info("mbx_ipc_get_cmd Error - %d\n", ret);
+			return -1;
+		}
+	}
+	else
+		return -1;
+	npu_info("=== Received Msg and Cmd === \n");
+
+	switch (nCase){
+	case IDIOT_DO_LOAD:
+	case IDIOT_DO_PROC:
+	case IDIOT_DO_PURGE:
+	case IDIOT_DO_UNLOAD:
+	case IDIOT_DO_POWERDOWN:
+		npu_info("Command in MSG \t: %s\n", IDIOT_COMMAND_NAME[rMsg.command]);
+		sMsg = GoodMsg;
+		sCmd = GoodDone;
+		break;
+	case IDIOT_DO_TIMEOUT:
+	case IDIOT_DI_ENGAGE_TIMEOUT:
+		sMsg = BadMsg;
+		sCmd = TimedOut;
+		break;
+	case IDIOT_DO_NDONE:
+		sMsg = BadMsg;
+		sCmd = NotDone;
+		break;
+	default:
+		break;
+	}
+	sMsg.mid = rMsg.mid;
+	npu_info("=== Sending Msg and Cmd === \n");
+	ret = mbx_ipc_put((void *)interface.addr, &interface.mbox_hdr->f2hctrl[0], &sMsg, &sCmd);
+	mbx_ipc_print((void *)interface.addr, &interface.mbox_hdr->f2hctrl[0]);
+	interface.sfr->grp[3].g = 0xFFFFFFFF;
+	if(ret == expected)
+		return 0;
+	else
+		return -1;
+}
+
+#endif          /* IDIOT_DECL_SECTION */
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE	setup_basic();
+#define TEARDOWN_CODE	teardown_basic();
+
+TESTDEF(interface_01_Interface_Open,
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		dbg_print_interface();
+)
+
+TESTDEF(interface_02_Put_NW,
+		struct npu_nw nw = {};
+		u32 nSeed = 1;
+		int mid = 0;
+		int mbox_idx = NPU_MBOX_REQUEST_LOW;
+		struct ncp_header nhdr = {
+			.magic_number1 = NCP_MAGIC1,
+			.hdr_size = 111,
+		};
+
+		nw.cmd = NPU_NW_CMD_LOAD;
+		nw.uid = nSeed;
+		nw.npu_req_id = nSeed;
+		nw.ncp_addr.vaddr = (void *)&nhdr;
+
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(nw_req_manager(mid, &nw), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_LOAD), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_LOAD), TRUE, %d);
+)
+
+TESTDEF(interface_02_Put_FR,
+		struct npu_frame fr = {};
+		u32 nSeed = 1;
+		int mid = 17;
+		int mbox_idx = NPU_MBOX_REQUEST_HIGH;
+		struct mbox_process_dat process_dat;
+		memset(&process_dat, sizeof(process_dat), 0);
+
+		fr.cmd = NPU_FRAME_CMD_Q;
+		fr.uid = nSeed;
+		fr.frame_id = nSeed + 1;
+		process_dat.address_vector_cnt = 10;
+		process_dat.address_vector_start_daddr = 100;
+		fr.mbox_process_dat = process_dat;
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(fr_req_manager(mid, &fr), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_PROC), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_PROC), TRUE, %d);
+)
+
+TESTDEF(interface_03_Put_PURGE,
+		struct npu_nw nw = {};
+		u32 nSeed = 1;
+		int mid = 0;
+		int mbox_idx = NPU_MBOX_REQUEST_LOW;
+		struct ncp_header nhdr = {
+			.magic_number1 = NCP_MAGIC1,
+			.hdr_size = 111,
+		};
+
+		nw.cmd = NPU_NW_CMD_STREAMOFF;
+		nw.uid = nSeed;
+		nw.npu_req_id = nSeed;
+		nw.ncp_addr.vaddr = (void *)&nhdr;
+
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(nw_req_manager(mid, &nw), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_LOAD), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_LOAD), TRUE, %d);
+)
+
+TESTDEF(interface_04_Put_UNLOAD,
+		struct npu_nw nw = {};
+		u32 nSeed = 1;
+		int mid = 0;
+		int mbox_idx = NPU_MBOX_REQUEST_LOW;
+		struct ncp_header nhdr = {
+			.magic_number1 = NCP_MAGIC1,
+			.hdr_size = 111,
+		};
+
+		nw.cmd = NPU_NW_CMD_UNLOAD;
+		nw.uid = nSeed;
+		nw.npu_req_id = nSeed;
+		nw.ncp_addr.vaddr = (void *)&nhdr;
+
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(nw_req_manager(mid, &nw), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_UNLOAD), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_UNLOAD), TRUE, %d);
+)
+TESTDEF(interface_05_Rcv_Timeout,
+		struct npu_nw nw = {};
+		u32 nSeed = 1;
+		int mid = 0;
+		int mbox_idx = NPU_MBOX_REQUEST_LOW;
+		struct ncp_header nhdr = {
+			.magic_number1 = NCP_MAGIC1,
+			.hdr_size = 111,
+		};
+
+		nw.cmd = NPU_NW_CMD_LOAD;
+		nw.uid = nSeed;
+		nw.npu_req_id = nSeed;
+		nw.ncp_addr.vaddr = (void *)&nhdr;
+
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(nw_req_manager(mid, &nw), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_TIMEOUT), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_TIMEOUT), TRUE, %d);
+)
+
+TESTDEF(interface_06_Rcv_Ndone,
+		struct npu_nw nw = {};
+		u32 nSeed = 1;
+		int mid = 0;
+		int mbox_idx = NPU_MBOX_REQUEST_LOW;
+		struct ncp_header nhdr = {
+			.magic_number1 = NCP_MAGIC1,
+			.hdr_size = 111,
+		};
+
+		nw.cmd = NPU_NW_CMD_LOAD;
+		nw.uid = nSeed;
+		nw.npu_req_id = nSeed;
+		nw.ncp_addr.vaddr = (void *)&nhdr;
+
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), 0, %d);
+		IDIOT_ASSERT_EQ(nw_req_manager(mid, &nw), TRUE, %d);
+		IDIOT_ASSERT_EQ(test_Fake_FW(mbox_idx, mid, 0, IDIOT_DO_NDONE), 0, %d);
+		IDIOT_ASSERT_EQ(test_Fake_Proto(mid, TRUE, IDIOT_DO_NDONE), TRUE, %d);
+)
+
+TESTDEF(interface_07_Chk_Magic,
+		test_system.mbox_hdr->signature1 = MAILBOX_SIGNATURE2;
+		IDIOT_ASSERT_EQ(npu_interface_open(&test_system), -ETIMEDOUT, %d);
+)

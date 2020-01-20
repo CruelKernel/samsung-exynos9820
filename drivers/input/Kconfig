@@ -191,11 +191,59 @@ config INPUT_KEYRESET
 	---help---
 	  Say Y here if you want to reboot when some keys are pressed;
 
+config INPUT_TOUCHSCREEN_TCLMV2
+	bool "touchscreen tclmv2"
+	depends on I2C
+	help
+	  Say Y here if you need to use tclm.
+
+	  If unsure, say N.
+
 config INPUT_KEYCOMBO
 	bool "Key combo"
 	depends on INPUT
 	---help---
 	  Say Y here if you want to take action when some keys are pressed;
+
+config HALL
+	tristate "Enable HALL IC"
+	default n
+	help
+	  Say Y here if you want to enable Hall IC Feature
+	  and send a event when cover state is changed.
+	  Active gpio state is low and active event value is 0.
+
+	  If unsure, say N.
+
+config CERTIFY_HALL
+	tristate "Enable CERTIFY HALL IC"
+	default n
+	help
+	  Say Y here if you want to enable Certify Hall IC Feature and
+	  send a event when cover is detected.
+	  Active gpio state is low and active event value is 1.
+
+	  If unsure, say N.
+
+config SEC_AUTO_INPUT
+	tristate "Samsung auto input"
+	depends on !SAMSUNG_PRODUCT_SHIP
+	default y
+	help
+	  Say Y here if you use auto input function.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called autoinput.
+
+config TOUCHSCREEN_DUMP_MODE
+	bool "touchscreen dump mode"
+	depends on I2C
+	help
+	  Say Y here if you need to get raw data.
+	  
+	  If unsure, say N.
 
 comment "Input Device Drivers"
 
@@ -212,6 +260,8 @@ source "drivers/input/touchscreen/Kconfig"
 source "drivers/input/misc/Kconfig"
 
 source "drivers/input/rmi4/Kconfig"
+
+source "drivers/input/wacom/Kconfig"
 
 endif
 

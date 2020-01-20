@@ -23,6 +23,7 @@
 #include <linux/sched.h>
 #include <linux/freezer.h>
 #include <linux/kthread.h>
+#include <linux/sync_file.h>
 
 #include <media/v4l2-dev.h>
 #include <media/v4l2-fh.h>
@@ -145,7 +146,7 @@ static void vb2_warn_zero_bytesused(struct vb2_buffer *vb)
 		return;
 
 	check_once = true;
-	WARN_ON(1);
+	/* WARN_ON(1); */
 
 	pr_warn("use of bytesused == 0 is deprecated and will be removed in the future,\n");
 	if (vb->vb2_queue->allow_zero_bytesused)
@@ -178,6 +179,17 @@ static int vb2_queue_or_prepare_buf(struct vb2_queue *q, struct v4l2_buffer *b,
 		return -EINVAL;
 	}
 
+	if ((b->fence_fd != 0 && b->fence_fd != -1) &&
+	    !(b->flags & V4L2_BUF_FLAG_IN_FENCE)) {
+		dprintk(1, "%s: fence_fd set without IN_FENCE flag\n", opname);
+		return -EINVAL;
+	}
+
+	if (b->fence_fd < 0 && (b->flags & V4L2_BUF_FLAG_IN_FENCE)) {
+		dprintk(1, "%s: IN_FENCE flag set but no fence_fd\n", opname);
+		return -EINVAL;
+	}
+
 	return __verify_planes_array(q->bufs[b->index], b);
 }
 
@@ -203,10 +215,20 @@ static void __fill_v4l2_buffer(struct vb2_buffer *vb, void *pb)
 	b->timestamp = ns_to_timeval(vb->timestamp);
 	b->timecode = vbuf->timecode;
 	b->sequence = vbuf->sequence;
-	b->reserved2 = 0;
-	b->reserved = 0;
+	b->reserved2 = vbuf->reserved2;
 
-	if (q->is_multiplanar) {
+	if (b->flags & V4L2_BUF_FLAG_OUT_FENCE) {
+		b->fence_fd = vb->out_fence_fd;
+	} else {
+		b->fence_fd = 0;
+	}
+
+	if (vb->in_fence)
+		b->flags |= V4L2_BUF_FLAG_IN_FENCE;
+	else
+		b->flags &= ~V4L2_BUF_FLAG_IN_FENCE;
+
+	if (V4L2_TYPE_IS_MULTIPLANAR(b->type)) {
 		/*
 		 * Fill in plane-related data if userspace provided an array
 		 * for it. The caller has already verified memory and size.
@@ -320,6 +342,7 @@ static int __fill_vb2_buffer(struct vb2_buffer *vb,
 	}
 	vb->timestamp = 0;
 	vbuf->sequence = 0;
+	vbuf->reserved2 = b->reserved2;
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(b->type)) {
 		if (b->memory == VB2_MEMORY_USERPTR) {
@@ -336,6 +359,8 @@ static int __fill_vb2_buffer(struct vb2_buffer *vb,
 					b->m.planes[plane].m.fd;
 				planes[plane].length =
 					b->m.planes[plane].length;
+				planes[plane].data_offset =
+					b->m.planes[plane].data_offset;
 			}
 		}
 
@@ -477,6 +502,10 @@ int vb2_querybuf(struct vb2_queue *q, struct v4l2_buffer *b)
 	ret = __verify_planes_array(vb, b);
 	if (!ret)
 		vb2_core_querybuf(q, b->index, b);
+
+	/* Do not return the out-fence fd on querybuf */
+	if (vb->out_fence)
+		b->fence_fd = -1;
 	return ret;
 }
 EXPORT_SYMBOL(vb2_querybuf);
@@ -560,6 +589,7 @@ EXPORT_SYMBOL_GPL(vb2_create_bufs);
 
 int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b)
 {
+	struct dma_fence *in_fence = NULL;
 	int ret;
 
 	if (vb2_fileio_is_active(q)) {
@@ -568,7 +598,28 @@ int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b)
 	}
 
 	ret = vb2_queue_or_prepare_buf(q, b, "qbuf");
-	return ret ? ret : vb2_core_qbuf(q, b->index, b);
+	if (ret)
+		return ret;
+
+	if (b->flags & V4L2_BUF_FLAG_IN_FENCE) {
+		in_fence = sync_file_get_fence(b->fence_fd);
+		if (!in_fence) {
+			dprintk(1, "failed to get in-fence from fd %d\n",
+				b->fence_fd);
+			return -EINVAL;
+		}
+	}
+
+	if (b->flags & V4L2_BUF_FLAG_OUT_FENCE) {
+		ret = vb2_setup_out_fence(q, b->index);
+		if (ret) {
+			dprintk(1, "failed to set up out-fence\n");
+			dma_fence_put(in_fence);
+			return ret;
+		}
+	}
+
+	return vb2_core_qbuf(q, b->index, b, in_fence);
 }
 EXPORT_SYMBOL_GPL(vb2_qbuf);
 
@@ -958,6 +1009,12 @@ void vb2_ops_wait_finish(struct vb2_queue *vq)
 	mutex_lock(vq->lock);
 }
 EXPORT_SYMBOL_GPL(vb2_ops_wait_finish);
+
+bool vb2_ops_set_unordered(struct vb2_queue *q)
+{
+	return true;
+}
+EXPORT_SYMBOL_GPL(vb2_ops_set_unordered);
 
 MODULE_DESCRIPTION("Driver helper framework for Video for Linux 2");
 MODULE_AUTHOR("Pawel Osciak <pawel@osciak.com>, Marek Szyprowski");

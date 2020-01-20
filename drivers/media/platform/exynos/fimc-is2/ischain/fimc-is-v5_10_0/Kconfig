@@ -1,0 +1,16 @@
+config FIMC_IS_V5_10_0
+	bool "Use fimc-is v5.10.0"
+	depends on SOC_EXYNOS7880
+	select EXYNOS_DEVICE_MIPI_CSIS_VER2
+	select CSIS_V4_1
+	select EXYNOS_FIMC_BNS
+	select FIMC_BNS_V4_10_0
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_MC_SCALER_VER2_USE
+	select MC_SCALER_V2_10
+	select USE_HW_API_COMMON
+	help
+	  fimc-is version 5.10.0

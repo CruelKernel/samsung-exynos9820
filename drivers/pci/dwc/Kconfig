@@ -65,11 +65,30 @@ config PCIE_DW_PLAT
 config PCI_EXYNOS
 	bool "Samsung Exynos PCIe controller"
 	depends on PCI
-	depends on SOC_EXYNOS5440
+	depends on ARCH_EXYNOS && OF
 	depends on PCI_MSI_IRQ_DOMAIN
 	select PCIEPORTBUS
 	select PCIE_DW_HOST
 
+config EXYNOS_PCIE_IOMMU
+	bool "Enable Exynos PCIe IOMMU"
+	depends on PCI_EXYNOS && IOMMU_SUPPORT
+
+config PCIE_IOMMU_HISTORY_LOG
+	bool "Enable Exynos PCIe IOMMU Map/Unmap History"
+	depends on EXYNOS_PCIE_IOMMU
+	default y
+	help
+	  Say Y here if you want to see map/unmap informations for
+	  debugging prupopse. It stores map/unmap requested address and
+	  size.
+	  If no problmes, say N.
+
+config SEC_PANIC_PCIE_ERR
+	depends on PCI_EXYNOS
+	default n
+	bool "Force PANIC on PCIe Main Errors"
+	
 config PCI_IMX6
 	bool "Freescale i.MX6 PCIe controller"
 	depends on PCI

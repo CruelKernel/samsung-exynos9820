@@ -1,0 +1,51 @@
+#
+# TEE Driver configuration
+#
+
+config FIVE_TEE_DRIVER
+    bool "Integrity TEE Driver"
+    depends on FIVE
+    default y
+    ---help---
+      Enable Integrity Trusted Execution Environment support
+
+choice
+    prompt "FIVE Secure OS"
+    default FIVE_USE_TZDEV if TZDEV
+    default FIVE_USE_TRUSTONIC
+    ---help---
+      Select Secure OS for FIVE TEE Driver
+
+    config FIVE_USE_TRUSTONIC
+        bool "Integrity TEE Driver based on Trustonic Secure OS"
+        depends on TRUSTONIC_TEE
+        ---help---
+          Use Trustonic as base Trusted Execution Environment
+
+    config FIVE_USE_TZDEV
+        bool "Integrity TEE Driver based on TEEgris Secure OS"
+        depends on TZDEV
+        ---help---
+          Use TEEgris as base Trusted Execution Environment
+endchoice
+
+config TEE_DRIVER_DEBUG
+    bool "Integrity TEE Driver Debug mode"
+    depends on FIVE_TEE_DRIVER
+    default n
+    ---help---
+      Enable Debug mode in TEE Driver
+
+config FIVE_TRUSTLET_PATH
+    string "FIVE trustlet"
+    depends on FIVE_USE_TRUSTONIC && FIRMWARE_IN_KERNEL
+    default "five/ffffffff000000000000000000000072.tlbin"
+    ---help---
+      This option defines FIVE trustlet path which will be built-in kernel
+
+config FIVE_EARLY_LOAD_TRUSTED_APP
+    bool "Load trusted application in early boot"
+    depends on FIVE_TEE_DRIVER
+    default n
+    help
+      Enable the load of trusted application on during initialization of driver

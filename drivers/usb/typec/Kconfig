@@ -3,7 +3,9 @@ menu "USB Power Delivery and Type-C drivers"
 
 config TYPEC
 	tristate
-
+	default y
+	depends on ANDROID_MAJOR_VERSION != "o"
+	
 config TYPEC_WCOVE
 	tristate "Intel WhiskeyCove PMIC USB Type-C PHY driver"
 	depends on ACPI

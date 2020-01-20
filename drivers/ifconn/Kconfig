@@ -1,0 +1,29 @@
+#
+# IF Conn Manager driver
+#
+
+config IFCONN_MANAGER
+    bool "IF Conn Manager driver"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you will get support for
+	  IF Conn Manager function.
+
+config IFCONN_NOTIFIER
+    bool "IF Conn Notifier driver"
+	depends on I2C
+	default n
+    help
+      If you say yes here you will get support for
+      IF Conn Notifier function.
+
+config IFCONN_SUPPORT_THREAD
+    bool "IF Conn driver supports thread"
+	depends on I2C
+	default n
+    help
+      If you say yes here you will get support for
+      IF Conn thread function.
+      This makes the module concurrent.
+      Take a module test when take this option.

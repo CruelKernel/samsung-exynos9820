@@ -389,7 +389,10 @@ struct v4l2_buffer32 {
 	} m;
 	__u32			length;
 	__u32			reserved2;
-	__u32			reserved;
+	union {
+		__u32		fence_fd;
+		__u32		reserved;
+	};
 };
 
 static int get_v4l2_plane32(struct v4l2_plane __user *up,
@@ -507,6 +510,8 @@ static int get_v4l2_buffer32(struct v4l2_buffer __user *kp,
 
 	if (V4L2_TYPE_IS_OUTPUT(type))
 		if (assign_in_user(&kp->bytesused, &up->bytesused) ||
+		    assign_in_user(&kp->reserved2, &up->reserved2) ||
+		    assign_in_user(&kp->fence_fd, &up->fence_fd) ||
 		    assign_in_user(&kp->field, &up->field) ||
 		    assign_in_user(&kp->timestamp.tv_sec,
 				   &up->timestamp.tv_sec) ||
@@ -606,8 +611,8 @@ static int put_v4l2_buffer32(struct v4l2_buffer __user *kp,
 	    assign_in_user(&up->timestamp.tv_usec, &kp->timestamp.tv_usec) ||
 	    copy_in_user(&up->timecode, &kp->timecode, sizeof(kp->timecode)) ||
 	    assign_in_user(&up->sequence, &kp->sequence) ||
+	    assign_in_user(&up->fence_fd, &kp->fence_fd) ||
 	    assign_in_user(&up->reserved2, &kp->reserved2) ||
-	    assign_in_user(&up->reserved, &kp->reserved) ||
 	    get_user(length, &kp->length) ||
 	    put_user(length, &up->length))
 		return -EFAULT;

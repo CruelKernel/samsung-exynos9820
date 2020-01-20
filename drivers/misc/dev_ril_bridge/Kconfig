@@ -1,0 +1,7 @@
+#
+# DEV_RIL_BRIDGE Device Driver
+#
+
+config DEV_RIL_BRIDGE
+	bool "Support a bridge between device and RIL"
+	default n

@@ -169,6 +169,11 @@ struct tmc_drvdata {
 	enum tmc_mem_intf_width	memwidth;
 	u32			trigger_cntr;
 	u32			etr_caps;
+
+	/* samsung coresight sfr */
+	bool			hwacg;
+	void __iomem		*sfr_base;
+	u32			q_offset;
 };
 
 /* Generic functions */

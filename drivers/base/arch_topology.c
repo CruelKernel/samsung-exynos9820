@@ -81,6 +81,12 @@ static ssize_t cpu_capacity_show(struct device *dev,
 static void update_topology_flags_workfn(struct work_struct *work);
 static DECLARE_WORK(update_topology_flags_work, update_topology_flags_workfn);
 
+void topology_update(void)
+{
+	if (topology_detect_flags())
+		schedule_work(&update_topology_flags_work);
+}
+
 static ssize_t cpu_capacity_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf,
@@ -162,9 +168,9 @@ static int register_cpu_capacity_sysctl(void)
 }
 subsys_initcall(register_cpu_capacity_sysctl);
 
-enum asym_cpucap_type { no_asym, asym_thread, asym_core, asym_die };
+enum asym_cpucap_type { no_asym, asym_thread, asym_core, asym_cluster, asym_die };
 static enum asym_cpucap_type asym_cpucap = no_asym;
-enum share_cap_type { no_share_cap, share_cap_thread, share_cap_core, share_cap_die};
+enum share_cap_type { no_share_cap, share_cap_thread, share_cap_core, share_cap_cluster, share_cap_die};
 static enum share_cap_type share_cap = no_share_cap;
 
 #ifdef CONFIG_CPU_FREQ
@@ -189,6 +195,12 @@ int detect_share_cap_flag(void)
 		if (cpumask_equal(topology_core_cpumask(cpu),
 				  policy->related_cpus)) {
 			share_cap_level = share_cap_core;
+			continue;
+		}
+
+		if (cpumask_equal(topology_cluster_cpumask(cpu),
+				  policy->related_cpus)) {
+			share_cap_level = share_cap_cluster;
 			continue;
 		}
 
@@ -245,7 +257,7 @@ int topology_detect_flags(void)
 
 check_core:
 		if (asym_level >= asym_core)
-			goto check_die;
+			goto check_cluster;
 
 		for_each_cpu(core, topology_core_cpumask(cpu)) {
 			capacity = topology_get_cpu_scale(NULL, core);
@@ -253,6 +265,20 @@ check_core:
 			if (capacity > max_capacity) {
 				if (max_capacity != 0)
 					asym_level = asym_core;
+
+				max_capacity = capacity;
+			}
+		}
+check_cluster:
+		if (asym_level >= asym_cluster)
+			goto check_die;
+
+		for_each_cpu(core, topology_cluster_cpumask(cpu)) {
+			capacity = topology_get_cpu_scale(NULL, core);
+
+			if (capacity > max_capacity) {
+				if (max_capacity != 0)
+					asym_level = asym_cluster;
 
 				max_capacity = capacity;
 			}
@@ -309,12 +335,19 @@ int topology_core_flags(void)
 	return flags;
 }
 
+int topology_cluster_flags(void)
+{
+	int flags = SD_ASYM_CPUCAPACITY;
+
+	if (share_cap == share_cap_cluster)
+		flags |= SD_SHARE_CAP_STATES;
+
+	return flags;
+}
+
 int topology_cpu_flags(void)
 {
-	int flags = 0;
-
-	if (asym_cpucap == asym_die)
-		flags |= SD_ASYM_CPUCAPACITY;
+	int flags = SD_ASYM_CPUCAPACITY;
 
 	if (share_cap == share_cap_die)
 		flags |= SD_SHARE_CAP_STATES;
@@ -479,11 +512,13 @@ static int __init register_cpufreq_notifier(void)
 
 	cpumask_copy(cpus_to_visit, cpu_possible_mask);
 
+#ifndef CONFIG_SIMPLIFIED_ENERGY_MODEL
 	ret = cpufreq_register_notifier(&init_cpu_capacity_notifier,
 					CPUFREQ_POLICY_NOTIFIER);
 
 	if (ret)
 		free_cpumask_var(cpus_to_visit);
+#endif
 
 	return ret;
 }

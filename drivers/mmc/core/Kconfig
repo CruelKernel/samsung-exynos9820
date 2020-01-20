@@ -43,6 +43,16 @@ config MMC_BLOCK
 	  mount the filesystem. Almost everyone wishing MMC support
 	  should say Y or M here.
 
+config MMC_BLOCK_DEFERRED_RESUME
+	bool "Enable Deferred Resume"
+	depends on MMC_BLOCK
+	default n
+	help
+	  This option is support deferred resume on card.
+	  when there are the first I/O after the resume operation,
+	  card initialization eventually starts for saving resume time.
+	  Set this to Y to use this option.
+
 config MMC_BLOCK_MINORS
 	int "Number of minors per block device"
 	depends on MMC_BLOCK

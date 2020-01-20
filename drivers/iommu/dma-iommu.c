@@ -274,6 +274,10 @@ int iommu_dma_init_domain(struct iommu_domain *domain, dma_addr_t base,
 	struct iova_domain *iovad = &cookie->iovad;
 	unsigned long order, base_pfn, end_pfn;
 
+	/* HACK: return success always */
+	if (!cookie)
+		return 0;
+
 	if (!cookie || cookie->type != IOMMU_DMA_IOVA_COOKIE)
 		return -EINVAL;
 

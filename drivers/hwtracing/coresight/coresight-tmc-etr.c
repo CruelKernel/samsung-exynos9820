@@ -29,6 +29,8 @@ static void tmc_etr_enable_hw(struct tmc_drvdata *drvdata)
 
 	CS_UNLOCK(drvdata->base);
 
+	if (drvdata->hwacg)
+		writel_relaxed(0x1, drvdata->sfr_base + drvdata->q_offset);
 	/* Wait for TMCSReady bit to be set */
 	tmc_wait_for_tmcready(drvdata);
 
@@ -114,6 +116,9 @@ static void tmc_etr_disable_hw(struct tmc_drvdata *drvdata)
 	if (drvdata->mode == CS_MODE_SYSFS)
 		tmc_etr_dump_hw(drvdata);
 	tmc_disable_hw(drvdata);
+
+	if (drvdata->hwacg)
+		writel_relaxed(0x0, drvdata->sfr_base + drvdata->q_offset);
 
 	CS_LOCK(drvdata->base);
 }

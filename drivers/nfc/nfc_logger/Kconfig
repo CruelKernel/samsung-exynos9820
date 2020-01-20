@@ -1,0 +1,5 @@
+config SEC_NFC_LOGGER
+	bool "NFC logger"
+	default n
+	---help---
+	  Enable DISPLAYPORT logger.

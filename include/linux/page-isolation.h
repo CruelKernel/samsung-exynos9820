@@ -61,7 +61,7 @@ undo_isolate_page_range(unsigned long start_pfn, unsigned long end_pfn,
  * Test all pages in [start_pfn, end_pfn) are isolated or not.
  */
 int test_pages_isolated(unsigned long start_pfn, unsigned long end_pfn,
-			bool skip_hwpoisoned_pages);
+			bool skip_hwpoisoned_pages, gfp_t gfp_mask);
 
 struct page *alloc_migrate_target(struct page *page, unsigned long private,
 				int **resultp);

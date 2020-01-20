@@ -1,0 +1,574 @@
+/*
+ * SAMSUNG EXYNOS9820 SoC device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS9820 SoC device nodes are listed in this file.
+ * EXYNOS9820 based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include <dt-bindings/clock/exynos9820.h>
+
+/ {
+	debug-snapshot-soc {
+		compatible = "debug-snapshot-soc";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		use_multistage_wdt_irq = <497>;
+		/* -----------<< Example >>-------------------
+		dump-info@0x0 {
+			sfr-dump-list = "sfr-dump-cmu-peris", "sfr-dump-cmu-abox";
+			sfr-dump-cmu-peris {
+				reg = <0x10010100 0x4000>;
+				addr = <0x10010100 0x10010104 0x10010108 0xFFFFFFFF>;
+			};
+
+			sfr-dump-cmu-abox {
+				reg = <0x103e0000 0x4000>;
+				addr = <0x103e0100 0x103e0104 0x103e0108 0xFFFFFFFF>;
+			};
+		};
+		*/
+	};
+
+	exynos-helper {
+		compatible = "samsung,exynos-helper";
+	};
+
+	exynos-handler {
+		compatible = "samsung,exynos-handler";
+		interrupts = <0 INTREQ__CPUCL0_ERRIRQ_0 0>, /* CPUCL0 L3 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_1 0>, /* CPUCL0_0 L1 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_2 0>, /* CPUCL0_1 L1 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_3 0>, /* CPUCL0_2 L1 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_4 0>, /* CPUCL0_3 L1 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_5 0>, /* CPUCL1_1 L1 ECC */
+			     <0 INTREQ__CPUCL0_ERRIRQ_6 0>, /* CPUCL1_2 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_0 0>, /* CPUCL0_0 L3 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_1 0>, /* CPUCL0_0 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_2 0>, /* CPUCL0_1 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_3 0>, /* CPUCL0_2 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_4 0>, /* CPUCL0_3 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_5 0>, /* CPUCL1_0 L1 ECC */
+			     <0 INTREQ__CPUCL0_FAULTIRQ_6 0>, /* CPUCL1_1 L1 ECC */
+			     <0 INTREQ__CPUCL2_INTERRIRQ 0>; /* CPUCL1 L2, L3 ECC */
+		handler_nr_irq = <15>;
+	};
+
+	exynos-itmon {
+		compatible = "samsung,exynos-itmon";
+		interrupts = <0 INTREQ__TREX_D0_DEBUG 0>,  		/* DATA_BUS_C */
+			     <0 INTREQ__TREX_D1_DEBUG 0>, 		/* DATA_BUS_C1 */
+			     <0 INTREQ__TREX_D_CORE_debugInterrupt 0>,  /* DATA_CORE */
+			     <0 INTREQ__TREX_P0_CORE_debugInterrupt 0>, /* PERI_CORE_0 */
+			     <0 INTREQ__TREX_P1_CORE_debugInterrupt 0>, /* PERI_CORE_1 */
+			     <0 INTREQ__TREX_P_DEBUG 0>;  		/* PERI_BUS_C */
+	};
+
+	exynos-adv_tracer {
+		compatible = "samsung,exynos-adv-tracer";
+		reg = <0x0 0x158d0000 0x1000>;
+		reg-names = "mailbox";
+		interrupts = <0 INTREQ__MAILBOX_DBGCORE2AP 0>;
+		status = "ok";
+	};
+
+	s2d: exynos_adv_tracer_s2d {
+		compatible = "samsung,exynos-adv-tracer-s2d";
+		plugin-len = <3>;
+		plugin-name = "S2D";
+		status = "ok";
+	};
+
+	misc: exynos_adv_tracer_misc {
+		compatible = "samsung,exynos-adv-tracer-misc";
+		status = "ok";
+
+		/* -----------<< Example >>--------------
+		save-fw-dss-region-name = "log_cachedump";
+		plugin-info {
+			plugin-list = "MIS", "REG";
+			MIS {
+				plugin-fw-name = "eat_plugins/exynos9820_eat_plugin_misc.fw";
+				plugin-len = <2>;
+				plugin-name = "MIS";
+			};
+
+			REG {
+				plugin-fw-name = "eat_plugins/binary.fw";
+				plugin-len = <4>;
+				plugin-name = "REG";
+			}
+		};
+		*/
+	};
+
+	exynos-ehld {
+		compatible = "exynos-ehld";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		cs_base = <0x1e000000>;
+
+		cpu0 {
+			dbg-offset = <0x810000>;
+		};
+		cpu1 {
+			dbg-offset = <0x910000>;
+		};
+		cpu2 {
+			dbg-offset = <0xa10000>;
+		};
+		cpu3 {
+			dbg-offset = <0xb10000>;
+		};
+		cpu4 {
+			dbg-offset = <0xc10000>;
+		};
+		cpu5 {
+			dbg-offset = <0xd10000>;
+		};
+		cpu6 {
+			dbg-offset = <0x410000>;
+		};
+		cpu7 {
+			dbg-offset = <0x510000>;
+		};
+	};
+
+	coresight@1e000000 {
+		compatible = "exynos,coresight";
+		base = <0x1e000000>;
+		sj-offset = <0x6000>;
+		/* coresight component count */
+		funnel-num = <3>;
+		etf-num = <2>;
+
+		cl0_cpu0@800000 {
+			device_type = "cs";
+			dbg-offset = <0x810000>;
+			etm-offset = <0x840000>;
+			funnel-port = <0 0>;
+		};
+		cl0_cpu1@900000 {
+			device_type = "cs";
+			dbg-offset = <0x910000>;
+			etm-offset = <0x940000>;
+			funnel-port = <0 1>;
+		};
+		cl0_cpu2@A00000 {
+			device_type = "cs";
+			dbg-offset = <0xA10000>;
+			etm-offset = <0xA40000>;
+			funnel-port = <0 2>;
+		};
+		cl0_cpu3@B00000 {
+			device_type = "cs";
+			dbg-offset = <0xB10000>;
+			etm-offset = <0xB40000>;
+			funnel-port = <0 3>;
+		};
+		cl1_cpu0@C00000 {
+			device_type = "cs";
+			dbg-offset = <0xC10000>;
+			etm-offset = <0xC40000>;
+			funnel-port = <0 4>;
+		};
+		cl1_cpu1@D00000 {
+			device_type = "cs";
+			dbg-offset = <0xD10000>;
+			etm-offset = <0xD40000>;
+			funnel-port = <0 5>;
+		};
+		cl2_cpu0@400000 {
+			device_type = "cs";
+			dbg-offset = <0x410000>;
+			etm-offset = <0x440000>;
+			funnel-port = <1 0>;
+		};
+		cl2_cpu1@500000 {
+			device_type = "cs";
+			dbg-offset = <0x510000>;
+			etm-offset = <0x540000>;
+			funnel-port = <1 1>;
+		};
+		cs_etf0: cs_etf0@4000 {
+			device_type = "etf";
+			offset = <0x4000>;
+			funnel-port = <2 0>;
+		};
+		cs_etf1: cs_etf1@5000 {
+			device_type = "etf";
+			offset = <0x5000>;
+			funnel-port = <2 1>;
+		};
+		cs_funnel0@4000 {
+			device_type = "funnel";
+			offset = <0x7000>;
+		};
+		cs_funnel1@9000 {
+			device_type = "funnel";
+			offset = <0x8000>;
+		};
+		cs_funnelm2@9000 {
+			device_type = "funnel";
+			offset = <0x9000>;
+		};
+		cs_etr@A000 {
+			device_type = "etr";
+			samsung,cs-sfr = <0x1E00c000 0x100>;
+			samsung,q-offset = <0x2c>;
+			offset = <0xA000>;
+		};
+	};
+
+	/* CL0 ETMs */
+	etm@1e840000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x0bbd05>;
+		reg = <0 0x1e840000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu0>;
+		port {
+			etm0_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port0>;
+			};
+		};
+	};
+
+	etm@1e940000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x0bbd05>;
+		reg = <0 0x1e940000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu1>;
+		port {
+			etm1_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port1>;
+			};
+		};
+	};
+
+	etm@1ea40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x0bbd05>;
+		reg = <0 0x1ea40000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu2>;
+		port {
+			etm2_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port2>;
+			};
+		};
+	};
+
+	etm@1eb40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x0bbd05>;
+		reg = <0 0x1eb40000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu3>;
+		port {
+			etm3_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port3>;
+			};
+		};
+	};
+
+	/* CL1 */
+	etm@1ec40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x000bbd0a>;
+		reg = <0 0x1ec40000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu4>;
+		port {
+			etm4_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port4>;
+			};
+		};
+	};
+
+	etm@1ed40000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x000bbd0a>;
+		reg = <0 0x1ed40000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu5>;
+		port {
+			etm5_out_port: endpoint {
+				remote-endpoint = <&funnel0_in_port5>;
+			};
+		};
+	};
+
+	/* CL2 */
+	etm@1e440000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x000ce003>;
+		reg = <0 0x1e440000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu6>;
+		port {
+			etm6_out_port: endpoint {
+				remote-endpoint = <&funnel1_in_port0>;
+			};
+		};
+	};
+
+	etm@1e540000 {
+		compatible = "arm,coresight-etm4x", "arm,primecell";
+		arm,primecell-periphid = <0x000ce003>;
+		reg = <0 0x1e540000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		cpu = <&cpu7>;
+		port {
+			etm7_out_port: endpoint {
+				remote-endpoint = <&funnel1_in_port1>;
+			};
+		};
+	};
+
+	/* ETF0 link (from CL1 sources) */
+	etf0@1e004000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		arm,primecell-periphid = <0x001bb961>;
+		reg = <0 0x1e004000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* funnel0 input port */
+			port@0 {
+				reg = <0>;
+				etf0_in_port: endpoint@0 {
+					slave-mode;
+					remote-endpoint = <&funnel0_out_port0>;
+				};
+			};
+			/* funnelm output port */
+			port@1 {
+				reg = <0>;
+				etf0_out_port: endpoint@0 {
+					remote-endpoint = <&funnelm_in_port0>;
+				};
+			};
+		};
+	};
+
+	/* ETF1 link (from CL0 sources) */
+	etf1@1e005000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		arm,primecell-periphid = <0x001bb961>;
+		reg = <0 0x1e005000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* funnel1 input port */
+			port@0 {
+				reg = <0>;
+				etf1_in_port: endpoint@0 {
+					slave-mode;
+					remote-endpoint = <&funnel1_out_port0>;
+				};
+			};
+			/* funnelm output port */
+			port@1 {
+				reg = <0>;
+				etf1_out_port: endpoint@0 {
+					remote-endpoint = <&funnelm_in_port1>;
+				};
+			};
+		};
+	};
+
+	/* ETR sink */
+	etr@1e00a000 {
+		compatible = "arm,coresight-tmc", "arm,primecell";
+		arm,primecell-periphid = <0x001bb962>;
+		reg = <0 0x1e00a000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		samsung,cs-sfr = <0x1E00c000 0x100>;
+		samsung,q-offset = <0x2c>;
+		port {
+			etr_in_port: endpoint {
+				slave-mode;
+				remote-endpoint = <&funnelm_out_port0>;
+			};
+		};
+	};
+
+
+	/* FUNNEL0 link (to FUNNELm from ETF0) */
+	funnel0@1e007000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		arm,primecell-periphid = <0x001bb908>;
+		reg = <0 0x1e007000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* funnel output port */
+			port@0 {
+				reg = <0>;
+				funnel0_out_port0: endpoint {
+					remote-endpoint = <&etf0_in_port>;
+				};
+			};
+
+			/* funnel input ports */
+			port@1 {
+				reg = <0>;
+				funnel0_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm0_out_port>;
+				};
+			};
+
+			port@2 {
+				reg = <1>;
+				funnel0_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm1_out_port>;
+				};
+			};
+
+			port@3 {
+				reg = <2>;
+				funnel0_in_port2: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm2_out_port>;
+				};
+			};
+
+			port@4 {
+				reg = <3>;
+				funnel0_in_port3: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm3_out_port>;
+				};
+			};
+
+			port@5 {
+				reg = <4>;
+				funnel0_in_port4: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm4_out_port>;
+				};
+			};
+
+			port@6 {
+				reg = <5>;
+				funnel0_in_port5: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm5_out_port>;
+				};
+			};
+		};
+	};
+
+	/* FUNNEL1 link (to FUNNELm from ETF1) */
+	funnel1@1e008000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		arm,primecell-periphid = <0x001bb908>;
+		reg = <0 0x1e008000 0x1000>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* funnel output port */
+			port@0 {
+				reg = <0>;
+				funnel1_out_port0: endpoint {
+					remote-endpoint = <&etf1_in_port>;
+				};
+			};
+
+			/* funnel input ports */
+			port@1 {
+				reg = <0>;
+				funnel1_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm6_out_port>;
+				};
+			};
+
+			port@2 {
+				reg = <1>;
+				funnel1_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&etm7_out_port>;
+				};
+			};
+		};
+	};
+
+	/* FUNNEL1 link (to ETR from FUNNEL0 & FUNNEL1) */
+	funnelm@1e009000 {
+		compatible = "arm,coresight-funnel", "arm,primecell";
+		reg = <0 0x1e009000 0x1000>;
+		arm,primecell-periphid = <0x001bb908>;
+		clocks = <&clock OSCCLK>;
+		clock-names = "apb_pclk";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* funnel output port */
+			port@0 {
+				reg = <0>;
+				funnelm_out_port0: endpoint {
+					remote-endpoint = <&etr_in_port>;
+				};
+			};
+
+			/* funnel input ports */
+			port@1 {
+				reg = <0>;
+				funnelm_in_port0: endpoint {
+					slave-mode;
+					remote-endpoint = <&etf0_out_port>;
+				};
+			};
+
+			port@2 {
+				reg = <1>;
+				funnelm_in_port1: endpoint {
+					slave-mode;
+					remote-endpoint = <&etf1_out_port>;
+				};
+			};
+		};
+	};
+
+	exynos-debug-test {
+		compatible = "samsung,exynos-debug-test";
+		enabled = "";
+		ps_hold_control_offset = <0x030C>;
+		nr_cpu = <0x8>;
+		nr_little_cpu = <0x4>;
+		nr_mid_cpu = <0x2>;
+		nr_big_cpu = <0x2>;
+		little_cpu_start = <0x0>;
+		mid_cpu_start = <0x4>;
+		big_cpu_start = <0x6>;
+	};
+};

@@ -1,0 +1,9 @@
+#
+# Exynos multimedia device drivers
+#
+config VIDEO_EXYNOS_JPEG_SQZ
+        bool "Exynos JPEG Squeeze driver"
+        depends on VIDEO_EXYNOS
+        default y
+        help
+          This is a representative exynos Jpeg squeezer device

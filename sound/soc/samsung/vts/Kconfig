@@ -1,0 +1,11 @@
+config SND_SOC_SAMSUNG_MAILBOX
+	bool "Samsung MAILBOX"
+	select GENERIC_IRQ_CHIP
+	help
+	  Say Y if you want to use mailbox for voice trigger system.
+
+config SND_SOC_SAMSUNG_VTS
+	bool "Samsung VTS"
+	depends on SND_SOC_SAMSUNG_MAILBOX
+	help
+	  Say Y if you want to use voice trigger system.

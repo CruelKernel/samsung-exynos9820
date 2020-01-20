@@ -77,6 +77,7 @@ config EXT4_FS_POSIX_ACL
 	bool "Ext4 POSIX Access Control Lists"
 	depends on EXT4_FS
 	select FS_POSIX_ACL
+	default y if ANDROID_VERSION >= "90000"
 	help
 	  POSIX Access Control Lists (ACLs) support permissions for users and
 	  groups beyond the owner/group/world scheme.

@@ -42,7 +42,12 @@ enum ion_heap_type {
 			       * must be last so device specific heaps always
 			       * are at the end of this enum
 			       */
+	ION_HEAP_TYPE_CUSTOM2,
+	ION_HEAP_TYPE_HPA = ION_HEAP_TYPE_CUSTOM,
 };
+
+/* Samsung specific ION heap types */
+#define ION_HEAP_TYPE_RBIN	ION_HEAP_TYPE_CUSTOM2
 
 #define ION_NUM_HEAP_IDS		(sizeof(unsigned int) * 8)
 
@@ -56,6 +61,31 @@ enum ion_heap_type {
  * when the buffer is mapped for dma
  */
 #define ION_FLAG_CACHED 1
+/*
+ * the allocated buffer is not cleared with zeroes to avoid initialization
+ * overhead. Mapping to userspace is not allowed.
+ */
+#define ION_FLAG_NOZEROED 8
+/*
+ * the allocated buffer is not allowed to access without a proper permission.
+ * Both of mmap() and dmabuf kmap/vmap will fail. Acessing by any other mapping
+ * will generate data abort exception and get oops.
+ * ION_FLAG_PROTECTED is only applicable to the heaps with security property.
+ * Other heaps ignore this flag.
+ */
+#define ION_FLAG_PROTECTED 16
+/*
+ * the allocated buffer does not have dirty cache line allocated. In other
+ * words, ION flushes the cache even though allocation flags includes
+ * ION_FLAG_CACHED. This is required by some H/W drivers that wants to reduce
+ * overhead by explicit cache maintenance.
+ */
+#define ION_FLAG_SYNC_FORCE 32
+/*
+ * the allocated buffer is possibly written by H/W(GPU) before initializing by
+ * S/W except buffer initialization by ION on allocation.
+ */
+#define ION_FLAG_MAY_HWRENDER 64
 
 /**
  * DOC: Ion Userspace API
@@ -86,17 +116,33 @@ struct ion_allocation_data {
 #define MAX_HEAP_NAME			32
 
 /**
+ * freed buffer to the heap may not be returned to the free pool immediately
+ */
+#define ION_HEAPDATA_FLAGS_DEFER_FREE		1
+/**
+ * ION_FLAG_PROTECTED is applicable.
+ */
+#define ION_HEAPDATA_FLAGS_ALLOW_PROTECTION	2
+/**
+ * access to the buffer from this heap is not allowed in both of userland and
+ * kernel space. mmap() and dmabuf kmap/vmap always fail.
+ */
+#define ION_HEAPDATA_FLAGS_UNTOUCHABLE		4
+/**
  * struct ion_heap_data - data about a heap
  * @name - first 32 characters of the heap name
  * @type - heap type
  * @heap_id - heap id for the heap
+ * @size - size of the memory pool if the heap type is dma, carveout and chunk
+ * @heap_flags - properties of heap
+ *
  */
 struct ion_heap_data {
 	char name[MAX_HEAP_NAME];
 	__u32 type;
 	__u32 heap_id;
-	__u32 reserved0;
-	__u32 reserved1;
+	__u32 size;       /* reserved0 */
+	__u32 heap_flags; /* reserved1 */
 	__u32 reserved2;
 };
 

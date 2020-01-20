@@ -8,3 +8,11 @@ config EXYNOS_THERMAL
 	  the TMU, reports temperature and handles cooling action if defined.
 	  This driver uses the Exynos core thermal APIs and TMU configuration
 	  data from the supported SoCs.
+
+config EXYNOS_ACPM_THERMAL
+	bool
+	prompt "Exynos ACPM TMU plug-in support"
+	depends on EXYNOS_THERMAL
+	help
+	  This feature supports ACPM TMU plug-in for Exynos thermal driver.
+

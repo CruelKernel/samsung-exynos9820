@@ -68,5 +68,6 @@ config INTEGRITY_AUDIT
 
 source security/integrity/ima/Kconfig
 source security/integrity/evm/Kconfig
+source security/integrity/five/Kconfig
 
 endif   # if INTEGRITY

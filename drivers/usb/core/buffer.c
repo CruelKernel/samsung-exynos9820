@@ -128,6 +128,8 @@ void *hcd_buffer_alloc(
 	if (size == 0)
 		return NULL;
 
+	mem_flags |= __GFP_NOWARN;
+
 	/* some USB hosts just use PIO */
 	if (!IS_ENABLED(CONFIG_HAS_DMA) ||
 	    (!is_device_dma_capable(bus->sysdev) &&

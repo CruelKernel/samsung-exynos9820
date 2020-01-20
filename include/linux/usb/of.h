@@ -19,6 +19,8 @@ int of_usb_update_otg_caps(struct device_node *np,
 struct device_node *usb_of_get_child_node(struct device_node *parent,
 			int portnum);
 struct device *usb_of_get_companion_dev(struct device *dev);
+
+unsigned int of_usb_get_suspend_clk_freq(struct device *dev);
 #else
 static inline enum usb_dr_mode
 of_usb_get_dr_mode_by_phy(struct device_node *np, int arg0)

@@ -1869,6 +1869,15 @@ config SENSORS_XGENE
 	  If you say yes here you get support for the temperature
 	  and power sensors for APM X-Gene SoC.
 
+config SENSORS_SEC_THERMISTOR
+    tristate "SEC Thermistor support"
+    depends on EXYNOS_ADC
+    default n
+    help
+      This driver supports SEC Thermistor sensor reading and its
+      interpretation. The driver uses s3c adc driver and needs
+      adc-temperature mapping table for conversion.
+
 if ACPI
 
 comment "ACPI drivers"

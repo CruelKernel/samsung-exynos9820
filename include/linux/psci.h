@@ -17,6 +17,12 @@
 #include <linux/init.h>
 #include <linux/types.h>
 
+#define PSCI_CUSTOMIZED_INDEX		(1 << 7)
+#define PSCI_CLUSTER_SLEEP		(PSCI_CUSTOMIZED_INDEX)
+#define PSCI_SYSTEM_IDLE		(1 << 8)
+#define PSCI_CP_CALL			(1 << 9)
+#define PSCI_SYSTEM_SLEEP		(1 << 10)
+
 #define PSCI_POWER_STATE_TYPE_STANDBY		0
 #define PSCI_POWER_STATE_TYPE_POWER_DOWN	1
 

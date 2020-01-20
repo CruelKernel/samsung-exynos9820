@@ -49,6 +49,9 @@ enum ftr_type {
 	FTR_HIGHER_SAFE,/* Bigger value is safe */
 };
 
+#define FTR_STRICT_WITH(config)	\
+		(IS_ENABLED(config) ? FTR_STRICT : FTR_NONSTRICT)
+
 #define FTR_STRICT	true	/* SANITY check strict matching required */
 #define FTR_NONSTRICT	false	/* SANITY check ignored */
 

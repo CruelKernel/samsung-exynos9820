@@ -132,6 +132,8 @@ struct snd_compr_ops {
 			struct snd_compr_caps *caps);
 	int (*get_codec_caps) (struct snd_compr_stream *stream,
 			struct snd_compr_codec_caps *codec);
+	int (*get_hw_params)(struct snd_compr_stream *stream,
+			 struct snd_pcm_hw_params *params);
 };
 
 /**

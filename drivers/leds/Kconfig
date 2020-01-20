@@ -40,6 +40,26 @@ config LEDS_BRIGHTNESS_HW_CHANGED
 
 comment "LED drivers"
 
+config LEDS_SEP
+	bool "LED support for SEP"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for the LEDs on the SEP.
+
+config LEDS_ET6034A
+	bool "LED support for the ET6034A"
+	depends on LEDS_SEP
+	depends on I2C
+	help
+	  This option enables support for the LEDs on the ET6034A.
+
+config LEDS_ET6312B
+	bool "LED support for the ET6312B"
+	depends on LEDS_SEP
+	depends on I2C
+	help
+	  This option enables support for the LEDs on the ET6312B.
+
 config LEDS_88PM860X
 	tristate "LED Support for Marvell 88PM860x PMIC"
 	depends on LEDS_CLASS
@@ -569,6 +589,15 @@ config LEDS_MAX77693
 	  multifunction device. It has build in control for two leds in flash
 	  and torch mode.
 
+config LEDS_MAX77705_RGB
+	tristate "LED support for MAX77705 RGB"
+	depends on MFD_MAX77705 && LEDS_CLASS && I2C
+	help
+	  If you say yes here you will get support for
+	  the MAX77705 RGB led chip.
+	  To enable this driver, MFD_MAX77705 should be enabled and
+	  MFD_MAX77705 calls this driver.	  
+
 config LEDS_MAX8997
 	tristate "LED support for MAX8997 PMIC"
 	depends on LEDS_CLASS && MFD_MAX8997
@@ -695,6 +724,30 @@ config LEDS_NIC78BX
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called leds-nic78bx.
+
+config LEDS_S2MPB02
+	bool "LED support for the S2MPB02"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for the LEDs on the S2MPB02.
+
+config LEDS_KTD2692
+	bool "LED support for the KTD2692"
+	help
+	  If you say yes here you will get support for
+	  for the KTD2692 FLASH led chip.
+
+config LEDS_S2MPB02_MULTI_TORCH_REAR2
+	bool "LED support for second multi flash"
+	help
+	  If you say yes here you will get support for
+	  for second multi flash.
+
+config LEDS_KTD2692_MULTI_TORCH_REAR3
+	bool "LED support for third multi flash"
+	help
+	  If you say yes here you will get support for
+	  for third multi flash.
 
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"

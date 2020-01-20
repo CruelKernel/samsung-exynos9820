@@ -1,0 +1,15 @@
+
+config EXYNOS_HDR_TUNABLE_TONEMAPPING
+	bool "HDR Tuneable debugfs nodes for Tone mapping"
+	---help---
+	  Creates hdr/tm_x and hdr/tm_y nodes under debugfs for overriding the
+	  tone mapping LUT coefficients configured in G2D and DPU with the
+	  values stored in the nodes. Configuring 33 integer values to both
+	  nodes immediately replaces the tone mapping LUT coefficients used by
+	  G2D and DPU. Writing 0 to one of both nodes stops overriding.
+
+	  This is just for display tunning purpose only for HDR videos.
+
+menu "Exynos Graphic Devices"
+source "drivers/gpu/exynos/g2d/Kconfig"
+endmenu

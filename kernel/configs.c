@@ -53,6 +53,7 @@
 	(sizeof(kernel_config_data) - 1 - MAGIC_SIZE * 2)
 
 #ifdef CONFIG_IKCONFIG_PROC
+extern void sec_debug_set_kconfig(unsigned long base, unsigned long size);
 
 static ssize_t
 ikconfig_read_current(struct file *file, char __user *buf,
@@ -78,6 +79,9 @@ static int __init ikconfig_init(void)
 			    &ikconfig_file_ops);
 	if (!entry)
 		return -ENOMEM;
+
+	sec_debug_set_kconfig((unsigned long)kernel_config_data,
+				(unsigned long)sizeof(kernel_config_data));
 
 	proc_set_size(entry, kernel_config_data_size);
 

@@ -1,0 +1,44 @@
+#ifndef FIMC_IS_EEPROM_FRONT_3H1_V001_H
+#define FIMC_IS_EEPROM_FRONT_3H1_V001_H
+
+/* Header referenced section */
+#define ROM_HEADER_VERSION_START_ADDR_FRONT      0x30
+#define ROM_HEADER_CAL_MAP_VER_START_ADDR_FRONT  0x40
+#define ROM_HEADER_OEM_START_ADDR_FRONT          0x8
+#define ROM_HEADER_OEM_END_ADDR_FRONT            0xC
+#define ROM_HEADER_AWB_START_ADDR_FRONT          0x10
+#define ROM_HEADER_AWB_END_ADDR_FRONT            0x14
+#define ROM_HEADER_AP_SHADING_START_ADDR_FRONT   0x20
+#define ROM_HEADER_AP_SHADING_END_ADDR_FRONT     0x24
+#define ROM_HEADER_PROJECT_NAME_START_ADDR_FRONT 0x4C
+#define ROM_HEADER_SENSOR_ID_ADDR_FRONT          0x54
+
+#define ROM_HEADER_MTF_DATA_ADDR_FRONT           0x64
+#define ROM_HEADER_MODULE_ID_ADDR_FRONT          0xAE
+
+#define ROM_HEADER_CAL_DATA_START_ADDR_FRONT     0x0100
+
+/* OEM referenced section */
+#define ROM_OEM_VER_START_ADDR_FRONT         0x150
+
+/* AWB referenced section */
+#define ROM_AWB_VER_START_ADDR_FRONT         0x220
+
+/* AP Shading referenced section */
+#define ROM_AP_SHADING_VER_START_ADDR_FRONT  0X3B00
+
+#define ROM_AF_CAL_PAN_ADDR_FRONT            0x104
+#define ROM_AF_CAL_MACRO_ADDR_FRONT          0x110
+
+/* Checksum referenced section */
+#define ROM_CHECKSUM_HEADER_ADDR_FRONT       0xFC
+#define ROM_CHECKSUM_OEM_ADDR_FRONT          0x1FC
+#define ROM_CHECKSUM_AWB_ADDR_FRONT          0x2FC
+#define ROM_CHECKSUM_AP_SHADING_ADDR_FRONT   0x3BFC
+#define ROM_CHECKSUM_C2_SHADING_ADDR_FRONT   0x1FFC
+
+/* etc section */
+#define FIMC_IS_MAX_CAL_SIZE_FRONT	(16 * 1024)
+#define HEADER_CRC32_LEN_FRONT		(0xC0)
+
+#endif /* FIMC_IS_EEPROM_FRONT_3H1_V001_H */

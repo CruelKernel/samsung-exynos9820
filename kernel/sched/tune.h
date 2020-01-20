@@ -16,6 +16,9 @@ int schedtune_cpu_boost(int cpu);
 int schedtune_task_boost(struct task_struct *tsk);
 
 int schedtune_prefer_idle(struct task_struct *tsk);
+int schedtune_prefer_perf(struct task_struct *tsk);
+int schedtune_util_est_en(struct task_struct *tsk);
+int schedtune_ontime_en(struct task_struct *tsk);
 
 void schedtune_enqueue_task(struct task_struct *p, int cpu);
 void schedtune_dequeue_task(struct task_struct *p, int cpu);
@@ -26,6 +29,9 @@ void schedtune_dequeue_task(struct task_struct *p, int cpu);
 #define schedtune_task_boost(tsk) 0
 
 #define schedtune_prefer_idle(tsk) 0
+#define schedtune_prefer_perf(tsk) 0
+#define schedtune_util_est_en(tsk) 0
+#define schedtune_ontime_en(tsk) 0
 
 #define schedtune_enqueue_task(task, cpu) do { } while (0)
 #define schedtune_dequeue_task(task, cpu) do { } while (0)

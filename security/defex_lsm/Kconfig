@@ -1,0 +1,16 @@
+config SECURITY_DEFEX
+	bool "Defex Support"
+	depends on SECURITY
+	default n
+	help
+	  This selects the Defex support.
+	  If you are unsure how to answer this question, answer N.
+
+config DEFEX_KERNEL_ONLY
+	bool "Defex Kernel Only"
+	depends on SECURITY
+	default n
+	help
+	  This lets defex know whether kernel-only build or not.
+	  Default value will be set to "y" if the build is kernel-only.
+	  And it will be changed to "n" by build.py at platform-build.

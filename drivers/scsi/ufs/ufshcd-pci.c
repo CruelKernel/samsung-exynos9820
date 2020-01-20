@@ -134,7 +134,10 @@ static void ufshcd_pci_remove(struct pci_dev *pdev)
 
 	pm_runtime_forbid(&pdev->dev);
 	pm_runtime_get_noresume(&pdev->dev);
+
+	disable_irq(pdev->irq);
 	ufshcd_remove(hba);
+	pci_set_drvdata(pdev, NULL);
 	ufshcd_dealloc_host(hba);
 }
 
@@ -198,7 +201,7 @@ static const struct dev_pm_ops ufshcd_pci_pm_ops = {
 			   ufshcd_pci_runtime_idle)
 };
 
-static const struct pci_device_id ufshcd_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(ufshcd_pci_tbl) = {
 	{ PCI_VENDOR_ID_SAMSUNG, 0xC00C, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },
 	{ PCI_VDEVICE(INTEL, 0x9DFA), (kernel_ulong_t)&ufs_intel_cnl_hba_vops },
 	{ }	/* terminate list */

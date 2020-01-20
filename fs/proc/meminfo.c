@@ -95,6 +95,15 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    (unsigned long)atomic_long_read(&mmap_pages_allocated));
 #endif
 
+#ifdef CONFIG_RBIN
+	show_val_kb(m, "RbinTotal:       ", totalrbin_pages);
+	show_val_kb(m, "RbinAlloced:       ",
+		    atomic_read(&rbin_allocated_pages)
+		    + atomic_read(&rbin_pool_pages));
+	show_val_kb(m, "RbinPool:       ", atomic_read(&rbin_pool_pages));
+	show_val_kb(m, "RbinFree:        ",
+		    global_zone_page_state(NR_FREE_RBIN_PAGES));
+#endif
 	show_val_kb(m, "SwapTotal:      ", i.totalswap);
 	show_val_kb(m, "SwapFree:       ", i.freeswap);
 	show_val_kb(m, "Dirty:          ",

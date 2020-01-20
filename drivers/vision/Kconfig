@@ -1,0 +1,19 @@
+menuconfig VISION_SUPPORT
+	bool "Vision Support"
+	select VISION_CORE
+	select VIDEOBUF2_DMA_SG
+	help
+	  If you want to use hardware acceleration for vision
+	  enable this option and other options below.
+
+if VISION_SUPPORT
+
+source "drivers/vision/vision-core/Kconfig"
+
+source "drivers/vision/npu/Kconfig"
+
+source "drivers/vision/score/Kconfig"
+
+source "drivers/vision/iva/Kconfig"
+
+endif # VISION_SUPPORT

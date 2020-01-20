@@ -121,6 +121,7 @@
  */
 
 struct menu_device {
+	bool		initialized;
 	int		last_state_idx;
 	int             needs_update;
 	int             tick_wakeup;
@@ -195,6 +196,7 @@ static inline int performance_multiplier(unsigned long nr_iowaiters, unsigned lo
 }
 
 static DEFINE_PER_CPU(struct menu_device, menu_devices);
+DEFINE_PER_CPU(struct cpuidle_info, cpuidle_inf);
 
 static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev);
 
@@ -291,6 +293,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		       bool *stop_tick)
 {
 	struct menu_device *data = this_cpu_ptr(&menu_devices);
+	struct cpuidle_info *idle_info = this_cpu_ptr(&cpuidle_inf);
 	struct device *device = get_cpu_device(dev->cpu);
 	int latency_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
 	int i;
@@ -307,6 +310,10 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		data->needs_update = 0;
 	}
 
+	/* enable c2 state on big cpus for temporary */
+	if (dev->cpu >= 6)
+		latency_req = PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE;
+
 	/* resume_latency is 0 means no restriction */
 	if (resume_latency && resume_latency < latency_req)
 		latency_req = resume_latency;
@@ -314,6 +321,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	/* Special case when user has set very strict latency requirement */
 	if (unlikely(latency_req == 0)) {
 		*stop_tick = false;
+		idle_info->bUse_GovDecision = 1;
 		return 0;
 	}
 
@@ -357,6 +365,10 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	 */
 	data->predicted_us = min(data->predicted_us, expected_interval);
 
+	/* The criterion for shallower idle selection is using C2 idle residency.
+	 * But in Exynos SOC, the C2 Target residency is less than TICk USEC.
+	 * So the shallower idle selection has some malfunction in NFR
+	 */
 	if (tick_nohz_tick_stopped()) {
 		/*
 		 * If the tick is already stopped, the cost of possible short
@@ -386,6 +398,10 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	 * our constraints.
 	 */
 	idx = -1;
+	idle_info->predicted_us = data->predicted_us;
+	idle_info->latency_req = latency_req;
+	idle_info->bfirst_idx = first_idx;
+	idle_info->bUse_GovDecision = 0;
 	for (i = first_idx; i < drv->state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 		struct cpuidle_state_usage *su = &dev->states_usage[i];
@@ -409,15 +425,16 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		idx = i;
 	}
 
-	if (idx == -1)
+	if (idx == -1) {
 		idx = 0; /* No states enabled. Must use 0. */
+	}
 
 	/*
 	 * Don't stop the tick if the selected state is a polling one or if the
 	 * expected idle duration is shorter than the tick period length.
 	 */
 	if ((drv->states[idx].flags & CPUIDLE_FLAG_POLLING) ||
-	    expected_interval < TICK_USEC) {
+	    expected_interval < drv->states[1].target_residency) {
 		unsigned int delta_next_us = ktime_to_us(delta_next);
 
 		*stop_tick = false;
@@ -435,6 +452,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 			        dev->states_usage[i].disable)
 					continue;
 
+				idle_info->bUse_GovDecision = 1;
 				idx = i;
 				if (drv->states[i].target_residency <= delta_next_us)
 					break;
@@ -443,6 +461,13 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	}
 
 	data->last_state_idx = idx;
+
+	/* Re-evaluating the tick_stop for preserving the power and performance */
+	if (idx == 0 && data->predicted_us > TICK_USEC && *stop_tick == true) {
+		/* It never happens, but who knows? */
+		idle_info->bUse_GovDecision = 1;
+		*stop_tick = false;
+	}
 
 	return data->last_state_idx;
 }
@@ -559,7 +584,11 @@ static int menu_enable_device(struct cpuidle_driver *drv,
 	struct menu_device *data = &per_cpu(menu_devices, dev->cpu);
 	int i;
 
+	if (data->initialized)
+		return 0;
+
 	memset(data, 0, sizeof(struct menu_device));
+	data->initialized = true;
 
 	/*
 	 * if the correction factor is 0 (eg first time init or cpu hotplug

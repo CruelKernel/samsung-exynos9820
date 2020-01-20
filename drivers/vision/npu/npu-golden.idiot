@@ -1,0 +1,270 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *              http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+
+#define		TESTFILE_NUM    5
+#define		SIZE_STEP	100
+#define		TMP_DIR		"/storage"
+const char*	FILENAME_FMT = TMP_DIR "/img%03d";
+const char*	GOLDEN_FMT = "%d\t" TMP_DIR "/img%03d\n";
+
+#define		DEFAULT_FRAME_ID	0
+#define		DEFAULT_NET_ID		4084
+
+struct addr_info drv_addr_ary[TESTFILE_NUM];
+struct av_info mem = {
+	.address_vector_cnt = TESTFILE_NUM,
+	.addr_info = drv_addr_ary,
+};
+
+static void dealloc_session(struct npu_session* sess)
+{
+	int i;
+	if(sess->ncp_info.ncp_addr.vaddr) {
+		kfree(sess->ncp_info.ncp_addr.vaddr);
+	}
+
+	for(i = 0; i < TESTFILE_NUM; ++i) {
+		if(mem.addr_info[i].vaddr)	vfree(mem.addr_info[i].vaddr);
+		mem.addr_info[i].vaddr = NULL;
+	}
+}
+
+static int generate_files(struct npu_session* sess)
+{
+	int ret = 0;
+	int i;
+	size_t j;
+	mm_segment_t old_fs;
+	struct file *fp = NULL;
+	char file_name[128];
+	size_t size;
+	loff_t file_offset = 0;
+
+	u8* data;
+	struct ncp_header*	header_obj;
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	/* Setting number vector */
+
+	header_obj = kmalloc(sizeof(struct ncp_header), GFP_KERNEL);
+	if(header_obj == NULL) {
+		npu_err("Memory allocation for session failed.");
+		ret = -ENOMEM;
+		goto err_exit;
+	}
+	header_obj->magic_number1 = NCP_MAGIC1;
+	header_obj->magic_number2 = NCP_MAGIC2;
+	header_obj->address_vector_cnt = sess->ncp_info.address_vector_cnt = TESTFILE_NUM;
+	header_obj->net_id = DEFAULT_NET_ID;
+	sess->ncp_info.ncp_addr.vaddr = header_obj;
+
+	mem.address_vector_cnt = TESTFILE_NUM;
+	/* Setting each memeory vector and make files */
+	for(i = 0; i < TESTFILE_NUM; ++i) {
+		size = (i+1) * SIZE_STEP;
+		data = vmalloc(size);
+		file_offset = 0;
+
+		if(data == NULL) {
+			npu_err("Memory allocation failed.");
+			ret = -ENOMEM;
+			goto err_header;
+		}
+		for(j = 0; j < size; j++) {
+			data[j] = j % 256;
+		}
+
+		scnprintf(file_name, sizeof(file_name)-1, FILENAME_FMT, i);
+		fp = filp_open(file_name, O_RDWR|O_CREAT, 0666);
+		if (!fp) {
+			npu_err("Cannot open file [%s].\n", file_name);
+			ret = -EBADFD;
+			goto err_data;
+		}
+		ret = kernel_write(fp, data, size, &file_offset);
+		if(ret != size) {
+			npu_err("File write error on file [%s] ret = %d.\n", file_name, ret);
+			ret = -EBADFD;
+			goto err_data;
+		}
+
+		mem.addr_info[i].size = (u32)size;
+		mem.addr_info[i].vaddr = data;
+		mem.addr_info[i].av_index = i;
+		filp_close(fp, NULL);
+		fp = NULL;
+	}
+	sess->IMB_info = mem.addr_info;
+	sess->IMB_cnt = mem.address_vector_cnt;
+
+	ret = 0;
+err_data:
+	vfree(data);
+err_header:
+	kfree(header_obj);
+err_exit:
+	if(fp)		filp_close(fp, NULL);
+	set_fs(old_fs);
+	return ret;
+}
+
+static int setup_failed = 0;
+static struct npu_session g_session;
+static struct file dummy_file;
+
+static void setup_basic(void)
+{
+	int	ret;
+	int	i;
+	char	golden_buf[128];
+
+	memset(&g_session, 0, sizeof(g_session));
+	ret = generate_files(&g_session);
+	if(ret)		setup_failed = 1;
+
+	/* Load configuration */
+	ret = npu_golden_set_open(NULL, &dummy_file);
+	if(ret) {
+		npu_err("npu_golden_set_open failed.\n");
+		setup_failed = 1;
+	}
+	for(i = 0; i < TESTFILE_NUM; i++) {
+		ret = scnprintf(golden_buf, sizeof(golden_buf), GOLDEN_FMT, i, i);
+		ret = npu_golden_set_write_kern(&dummy_file, golden_buf, ret, 0);
+		if(ret <= 0) {
+			npu_err("npu_golden_set_write_kern failed.\n");
+			setup_failed = 1;
+		}
+	}
+	ret = npu_golden_set_close(NULL, &dummy_file);
+	if(ret) {
+		npu_err("npu_golden_set_close failed.\n");
+		setup_failed = 1;
+	}
+
+	setup_failed = 0;
+}
+
+static void teardown_basic(void)
+{
+	dealloc_session(&g_session);
+}
+
+#endif	/* IDIOT_DECL_SECTION */
+
+
+#undef SETUP_CODE
+#undef TEARDOWN_CODE
+#define SETUP_CODE      setup_basic();
+#define TEARDOWN_CODE   teardown_basic();
+
+TESTDEF(golden_01_basic_setup,
+	IDIOT_ASSERT_EQ(setup_failed, 0, %d);
+)
+
+TESTDEF(golden_02_basic_compare,
+	int 	ret;
+	struct vb_container_list vbcl = {
+		.index = 0,
+	};
+	struct npu_frame frame = {
+		.session = &g_session,
+		.frame_id = 0,
+		.av_info = &mem,
+		.input = &vbcl,
+	};
+
+	IDIOT_ASSERT_EQ(setup_failed, 0, %d);
+
+	frame.session = &g_session;
+	frame.frame_id = 0;
+	frame.av_info = &mem;
+	frame.input = &vbcl;
+
+	ret = npu_golden_compare(&frame);
+	IDIOT_ASSERT_EQ(ret, 0, %d);
+)
+
+TESTDEF(golden_02_fail_one,
+	int 	ret;
+	struct vb_container_list vbcl = {
+		.index = 0,
+	};
+	struct npu_frame frame = {
+		.session = &g_session,
+		.frame_id = 0,
+		.av_info = &mem,
+		.input = &vbcl,
+	};
+
+	IDIOT_ASSERT_EQ(setup_failed, 0, %d);
+
+	/* Make failure data */
+	((u8*)mem.addr_info[0].vaddr)[10]++;
+
+	ret = npu_golden_compare(&frame);
+	IDIOT_ASSERT_EQ(ret, 1, %d);
+)
+
+TESTDEF(golden_03_fail_three,
+	int 	ret;
+	struct vb_container_list vbcl = {
+		.index = 0,
+	};
+	struct npu_frame frame = {
+		.session = &g_session,
+		.frame_id = 0,
+		.av_info = &mem,
+		.input = &vbcl,
+	};
+
+	IDIOT_ASSERT_EQ(setup_failed, 0, %d);
+
+	/* Make failure data */
+	((u8*)mem.addr_info[0].vaddr)[10]++;
+	((u8*)mem.addr_info[1].vaddr)[20]++;
+	((u8*)mem.addr_info[4].vaddr)[80]++;
+
+	ret = npu_golden_compare(&frame);
+	IDIOT_ASSERT_EQ(ret, 3, %d);
+)
+
+TESTDEF(golden_04_fail_all,
+	int 	i, j, size;
+	int 	ret;
+	struct vb_container_list vbcl = {
+		.index = 0,
+	};
+	struct npu_frame frame = {
+		.session = &g_session,
+		.frame_id = 0,
+		.av_info = &mem,
+		.input = &vbcl,
+	};
+
+	IDIOT_ASSERT_EQ(setup_failed, 0, %d);
+
+	/* Make failure data */
+	for(i = 0; i < TESTFILE_NUM; ++i) {
+		size = (i+1) * SIZE_STEP;
+		for(j = 0; j < size; ++j) {
+			((u8*)mem.addr_info[i].vaddr)[j]++;
+		}
+	}
+
+	ret = npu_golden_compare(&frame);
+	IDIOT_ASSERT_NEQ(ret, 0, %d);
+)

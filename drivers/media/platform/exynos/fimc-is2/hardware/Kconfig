@@ -1,0 +1,64 @@
+#menu depth2
+menu "Direct FIMC-IS Control Setting"
+
+config USE_DIRECT_IS_CONTROL
+	bool "Use IS hardware directly"
+	default n
+	help
+	  Enable HW direct control.
+
+config CAMERA_FIMC_SCALER_USE
+        bool "Use FIMC-SCALER"
+        depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          use fimc-scaler
+
+config CAMERA_MC_SCALER_VER1_USE
+        bool "Use MC-SCALER S/W VERSION 1"
+        depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          use mc-scaler version 1(scp param)
+
+config CAMERA_MC_SCALER_VER2_USE
+        bool "Use MC-SCALER S/W VERSION 2"
+        depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          use mc-scaler version 2(mcs param)
+
+config CAMERA_TDNR_VER1_USE
+        bool "Use TDNR in MC-SCALER S/W VERSION 1"
+        depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use tdnr version 1
+
+config CAMERA_TDNR_VER2_USE
+        bool "Use TDNR in MC-SCALER S/W VERSION 2"
+        depends on CAMERA_MC_SCALER_VER2_USE
+        default n
+        help
+          use tdnr version 2(has compressor)
+
+source "drivers/media/platform/exynos/fimc-is2/hardware/api/Kconfig"
+endmenu
+
+config USE_HW_API_COMMON
+	bool "Use HW API Common library"
+	default y
+	help
+	  Enalbe HW API Common library.
+
+config USE_SENSOR_GROUP
+	bool "Use sensor group feature"
+	default n
+	help
+	  Enalbe sensor group feature.
+
+config DCP_V1_0
+        bool "Use DCP H/W v1.0"
+        default n
+        help
+          use dcp v1.0

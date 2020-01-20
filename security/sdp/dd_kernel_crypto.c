@@ -1,0 +1,493 @@
+/*
+ * dd_kernel_crypto.c
+ *
+ *  Created on: Sep 24, 2018
+ *      Author: olic.moon
+ */
+
+#include <linux/random.h>
+#include <keys/user-type.h>
+#include <linux/scatterlist.h>
+#include <crypto/aead.h>
+#include <crypto/aes.h>
+#include <crypto/sha.h>
+#include <crypto/skcipher.h>
+#include <linux/bio.h>
+
+#include "dd_common.h"
+
+#define DD_XTS_TWEAK_SIZE       16
+
+#define DD_AES_256_XTS_KEY_SIZE 64
+#define DD_AES_256_GCM_KEY_SIZE 32
+#define DD_AES_256_GCM_TAG_SIZE 16
+#define DD_AES_256_GCM_IV_SIZE  12
+#define DD_AES_256_GCM_AAD      "DDAR_ADDITIONAL_AUTHENTICATION_DATA"
+
+int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy) {
+	struct dd_crypt_context crypt_context;
+	int rc = 0;
+
+	memset(&crypt_context, 0, sizeof(struct dd_crypt_context));
+	memcpy(&crypt_context.policy, policy, sizeof(struct dd_policy));
+
+	dd_verbose("ino:%ld applying policy user:%d flags:%x\n",
+			inode->i_ino, policy->userid, policy->flags);
+	if (dd_policy_kernel_crypto(policy->flags) && S_ISREG(inode->i_mode)) {
+		// generate file key and encrypt it with master key
+		struct fscrypt_key master_key;
+		struct crypto_aead *key_aead = NULL;
+		struct aead_request *aead_req = NULL;
+		struct scatterlist src_sg[3], dst_sg[3];
+		char *aad = NULL;
+		unsigned char iv[DD_AES_256_GCM_IV_SIZE];
+		unsigned char *tag;
+		unsigned char *file_encryption_key;
+		unsigned char *cipher_file_encryption_key;
+
+		rc = get_dd_master_key(policy->userid, &master_key);
+		if (rc) {
+			dd_error("failed to retrieve master key user:%d rc:%d\n", policy->userid, rc);
+			return -ENOKEY;
+		}
+
+		file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+		cipher_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+		aad = kzalloc(strlen(DD_AES_256_GCM_AAD)+1, GFP_KERNEL);
+		tag = kzalloc(DD_AES_256_GCM_TAG_SIZE, GFP_KERNEL);
+		if (!file_encryption_key || !cipher_file_encryption_key || !tag || !aad) {
+			rc = -ENOMEM;
+			goto out;
+		}
+
+		memcpy(aad, DD_AES_256_GCM_AAD, strlen(DD_AES_256_GCM_AAD));
+		aad[strlen(DD_AES_256_GCM_AAD)] = '\0';
+		memset(iv, 0, DD_AES_256_GCM_IV_SIZE);
+		memset(tag, 0, DD_AES_256_GCM_TAG_SIZE);
+
+		dd_dump("ddar master key", master_key.raw, master_key.size);
+
+		get_random_bytes(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+
+		dd_dump("ddar file key", file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+
+		key_aead = crypto_alloc_aead("gcm(aes)", 0, CRYPTO_ALG_ASYNC);
+		if (IS_ERR(key_aead)) {
+			rc = PTR_ERR(key_aead);
+			key_aead = NULL;
+			goto out;
+		}
+
+		rc = crypto_aead_setauthsize(key_aead, DD_AES_256_GCM_TAG_SIZE);
+		if (rc < 0) {
+			dd_error("can't set crypto auth tag len: %d\n", rc);
+			goto out;
+		}
+
+		aead_req = aead_request_alloc(key_aead, GFP_KERNEL);
+		if (!aead_req) {
+			rc = -ENOMEM;
+			goto out;
+		}
+
+		sg_init_table(src_sg, 3);
+		sg_set_buf(&src_sg[0], aad, strlen(aad));
+		sg_set_buf(&src_sg[1], file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		sg_set_buf(&src_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
+
+		sg_init_table(dst_sg, 3);
+		sg_set_buf(&dst_sg[0], aad, strlen(aad));
+		sg_set_buf(&dst_sg[1], cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		sg_set_buf(&dst_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
+
+		aead_request_set_ad(aead_req, strlen(aad));
+		aead_request_set_crypt(aead_req, src_sg, dst_sg, DD_AES_256_XTS_KEY_SIZE, iv);
+		if (crypto_aead_setkey(key_aead, master_key.raw, DD_AES_256_GCM_KEY_SIZE)) {
+			rc = -EAGAIN;
+			goto out;
+		}
+
+		rc = crypto_aead_encrypt(aead_req);
+		if (rc) {
+			dd_error("failed to encrypt file key\n");
+			goto out;
+		}
+
+		memcpy(crypt_context.cipher_file_encryption_key, cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		memcpy(crypt_context.tag, tag, DD_AES_256_GCM_TAG_SIZE);
+		dd_dump("ddar file key (cipher)", crypt_context.cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		dd_dump("ddar tag ", crypt_context.tag, DD_AES_256_GCM_TAG_SIZE);
+
+		dd_verbose("crypt context created (kernel crypto)\n");
+
+out:
+		crypto_free_aead(key_aead);
+
+		if (file_encryption_key) {
+			memzero_explicit(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+			kfree(file_encryption_key);
+		}
+		if (cipher_file_encryption_key) kfree(cipher_file_encryption_key);
+		if (aad) kfree(aad);
+		if (tag) kfree(tag);
+		if (aead_req) aead_request_free(aead_req);
+		secure_zeroout(__func__, master_key.raw, master_key.size);
+	}
+
+	if (rc) {
+		dd_error("failed to create crypt context rc:%d\n", rc);
+		return rc;
+	}
+	return dd_write_crypt_context(inode, &crypt_context);
+}
+
+#if USE_KEYRING
+int get_dd_master_key(int userid, void *key) {
+	struct fscrypt_key *dd_master_key = (struct fscrypt_key *)key;
+	int key_desc_len = DD_KEY_DESC_PREFIX_LEN + 3;
+	unsigned char key_desc[key_desc_len];
+	struct key *keyring_key = NULL;
+	const struct user_key_payload *ukp;
+
+	int rc = 0;
+
+	memcpy(key_desc, DD_KEY_DESC_PREFIX, DD_KEY_DESC_PREFIX_LEN);
+	sprintf(key_desc + DD_KEY_DESC_PREFIX_LEN, "%03d", userid);
+	keyring_key = request_key(&key_type_logon, key_desc, NULL);
+
+	if (IS_ERR(keyring_key)) {
+		rc = PTR_ERR(keyring_key);
+		dd_error("error get keyring! (%s): err:%d\n",
+				key_desc, rc);
+		keyring_key = NULL;
+		goto out;
+	}
+
+	if (keyring_key->type != &key_type_logon) {
+		dd_error("key type must be logon\n");
+		rc = -ENOKEY;
+		goto out;
+	}
+
+	down_read(&keyring_key->sem);
+	ukp = user_key_payload_locked(keyring_key);
+	if (ukp->datalen != sizeof(struct fscrypt_key)) {
+		dd_error("payload size mismatch:%d (expected:%ld)\n",
+				ukp->datalen, sizeof(struct fscrypt_key));
+		rc = -EINVAL;
+		goto out_free;
+	}
+
+	memcpy(dd_master_key, ukp->data, sizeof(struct fscrypt_key));
+	BUG_ON(dd_master_key->mode != FS_ENCRYPTION_MODE_AES_256_GCM);
+	BUG_ON(dd_master_key->size != DD_AES_256_GCM_KEY_SIZE);
+
+out_free:
+	up_read(&keyring_key->sem);
+out:
+	return rc;
+}
+#else
+
+static LIST_HEAD(dd_master_key_head);
+static DEFINE_SPINLOCK(dd_master_key_lock);
+
+struct dd_master_key {
+	struct list_head list;
+
+	int userid;
+	struct fscrypt_key key;
+};
+
+int dd_add_master_key(int userid, void *key, int len) {
+	struct dd_master_key *mk = NULL;
+	struct list_head *entry;
+
+	BUG_ON(len != sizeof(struct fscrypt_key));
+
+	list_for_each(entry, &dd_master_key_head) {
+		struct dd_master_key *k = list_entry(entry, struct dd_master_key, list);
+
+		if (k->userid == userid) {
+			dd_error("failed to add master key: exists");
+			return -EEXIST;
+		}
+	}
+
+	mk = kmalloc(sizeof(struct dd_master_key), GFP_ATOMIC);
+	if (!mk) {
+		dd_error("failed to add master key: no memory");
+		return -ENOMEM;
+	}
+	INIT_LIST_HEAD(&mk->list);
+	mk->userid = userid;
+
+	memcpy(&mk->key, key, sizeof(struct fscrypt_key));
+	spin_lock(&dd_master_key_lock);
+	list_add_tail(&mk->list, &dd_master_key_head);
+	spin_unlock(&dd_master_key_lock);
+
+	return 0;
+}
+
+void dd_evict_master_key(int userid) {
+	struct dd_master_key *mk = NULL;
+	struct list_head *entry;
+
+	list_for_each(entry, &dd_master_key_head) {
+		struct dd_master_key *k = list_entry(entry, struct dd_master_key, list);
+
+		if (k->userid == userid) {
+			mk = k;
+		}
+	}
+
+	if (mk) {
+		spin_lock(&dd_master_key_lock);
+		secure_zeroout("dd_evict_master_key", mk->key.raw, mk->key.size);
+		list_del(&mk->list);
+		spin_unlock(&dd_master_key_lock);
+		kzfree(mk);
+	}
+}
+
+int get_dd_master_key(int userid, void *key) {
+	struct list_head *entry;
+	int rc = -ENOENT;
+
+	spin_lock(&dd_master_key_lock);
+	list_for_each(entry, &dd_master_key_head) {
+		struct dd_master_key *k = list_entry(entry, struct dd_master_key, list);
+
+		if (k->userid == userid) {
+			memcpy(key, (void *)&k->key, sizeof(struct fscrypt_key));
+			rc = 0;
+			break;
+		}
+	}
+	spin_unlock(&dd_master_key_lock);
+
+	return rc;
+}
+#endif
+
+static int get_dd_file_key(struct dd_crypt_context *crypt_context,
+		struct fscrypt_key *dd_master_key, unsigned char *raw_key) {
+	struct crypto_aead *key_aead = NULL;
+	struct aead_request *aead_req = NULL;
+	struct scatterlist src_sg[3], dst_sg[3];
+	char *aad = NULL;
+	char iv[DD_AES_256_GCM_IV_SIZE];
+	char *tag = NULL;
+
+	int rc = 0;
+
+	unsigned char *cipher_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+	aad = kzalloc(strlen(DD_AES_256_GCM_AAD)+1, GFP_KERNEL);
+	tag = kzalloc(DD_AES_256_GCM_TAG_SIZE, GFP_KERNEL);
+	if (!cipher_file_encryption_key || !aad || !tag) {
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	memcpy(aad, DD_AES_256_GCM_AAD, strlen(DD_AES_256_GCM_AAD));
+	aad[strlen(DD_AES_256_GCM_AAD)] = '\0';
+	dd_dump("aad", aad, strlen(DD_AES_256_GCM_AAD));
+	memset(iv, 0, DD_AES_256_GCM_IV_SIZE);
+	memcpy(tag, crypt_context->tag, DD_AES_256_GCM_TAG_SIZE);
+	dd_dump("tag", crypt_context->tag, DD_AES_256_GCM_TAG_SIZE);
+	key_aead = crypto_alloc_aead("gcm(aes)", 0, CRYPTO_ALG_ASYNC);
+	if (IS_ERR(key_aead)) {
+		rc = PTR_ERR(key_aead);
+		key_aead = NULL;
+		goto out;
+	}
+
+	rc = crypto_aead_setauthsize(key_aead, DD_AES_256_GCM_TAG_SIZE);
+	if (rc < 0) {
+		dd_error("can't set crypto auth tag len: %d\n", rc);
+		goto out;
+	}
+
+	aead_req = aead_request_alloc(key_aead, GFP_KERNEL);
+	if (!aead_req) {
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	dd_dump("ddar file key (cipher)", crypt_context->cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+	memcpy(cipher_file_encryption_key, crypt_context->cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+
+	sg_init_table(src_sg, 3);
+	sg_set_buf(&src_sg[0], aad, strlen(aad));
+	sg_set_buf(&src_sg[1], cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+	sg_set_buf(&src_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
+
+	sg_init_table(dst_sg, 3);
+	sg_set_buf(&dst_sg[0], aad, strlen(aad));
+	sg_set_buf(&dst_sg[1], raw_key, DD_AES_256_XTS_KEY_SIZE);
+	sg_set_buf(&dst_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
+
+	aead_request_set_ad(aead_req, strlen(aad));
+	aead_request_set_crypt(aead_req, src_sg, dst_sg, DD_AES_256_XTS_KEY_SIZE + DD_AES_256_GCM_TAG_SIZE, iv);
+	if (crypto_aead_setkey(key_aead, dd_master_key->raw, DD_AES_256_GCM_KEY_SIZE)) {
+		rc = -EAGAIN;
+		goto out;
+	}
+
+	rc = crypto_aead_decrypt(aead_req);
+	if (rc) {
+		dd_error("failed to decrypt file key\n");
+		goto out;
+	}
+
+	dd_dump("ddar file key", raw_key, DD_AES_256_XTS_KEY_SIZE);
+out:
+    if (rc)
+        dd_error("file key derivation failed\n");
+
+	crypto_free_aead(key_aead);
+	if (cipher_file_encryption_key) kfree(cipher_file_encryption_key);
+	if (aad) kfree(aad);
+	if (tag) kfree(tag);
+	if (aead_req) aead_request_free(aead_req);
+
+	return rc;
+}
+
+struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, void *key) {
+	struct fscrypt_key *dd_master_key = (struct fscrypt_key *)key;
+	struct crypto_skcipher *ctfm = NULL;
+	unsigned char *raw_key;
+	int rc;
+
+	raw_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+	if (!raw_key) {
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	rc = get_dd_file_key(crypt_context, dd_master_key, raw_key);
+	if (rc) {
+		dd_error("Failed to retrieve file key rc:%d\n", rc);
+		goto out;
+	}
+
+	ctfm = crypto_alloc_skcipher("xts(aes)", 0, 0);
+	if (!ctfm || IS_ERR(ctfm)) {
+		rc = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
+		dd_error("Failed allocating crypto tfm rc:%d\n", rc);
+		goto out;
+	}
+
+	crypto_skcipher_clear_flags(ctfm, ~0);
+	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
+	rc = crypto_skcipher_setkey(ctfm, raw_key, DD_AES_256_XTS_KEY_SIZE);
+	if (rc) {
+		dd_error("failed to set file key rc:%d\n", rc);
+		goto out;
+	}
+
+out:
+	if (raw_key) {
+		secure_zeroout(__func__, raw_key, DD_AES_256_XTS_KEY_SIZE);
+		kfree(raw_key);
+	}
+
+	if (rc) {
+		if (ctfm)
+			crypto_free_skcipher(ctfm);
+
+		return ERR_PTR(rc);
+	}
+
+	return ctfm;
+}
+
+int dd_sec_crypt_page(struct dd_info *info, dd_crypto_direction_t rw,
+		struct page *src_page, struct page *dst_page) {
+	struct skcipher_request *req = NULL;
+	DECLARE_CRYPTO_WAIT(wait);
+	struct scatterlist dst, src;
+	struct crypto_skcipher *tfm = info->ctfm;
+	char iv[DD_XTS_TWEAK_SIZE];
+
+	int rc = 0;
+
+	memset(iv, 0, DD_XTS_TWEAK_SIZE);
+	req = skcipher_request_alloc(tfm, GFP_ATOMIC);
+	if (!req) {
+		dd_error("crypto_request_alloc() failed\n");
+		return -ENOMEM;
+	}
+
+	skcipher_request_set_callback(
+			req, CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+			crypto_req_done, &wait);
+
+	sg_init_table(&dst, 1);
+	sg_set_page(&dst, dst_page, PAGE_SIZE, 0);
+	sg_init_table(&src, 1);
+	sg_set_page(&src, src_page, PAGE_SIZE, 0);
+	skcipher_request_set_crypt(req, &src, &dst, PAGE_SIZE, iv);
+	if (rw == DD_DECRYPT)
+	    rc = crypto_wait_req(crypto_skcipher_decrypt(req), &wait);
+	else
+	    rc = crypto_wait_req(crypto_skcipher_encrypt(req), &wait);
+
+	skcipher_request_free(req);
+	if (rc) {
+		dd_error("crypto_skcipher_encrypt() returned %d\n", rc);
+		return rc;
+	}
+	return 0;
+}
+
+int dd_sec_crypt_bio_pages(struct dd_info *info, struct bio *orig,
+		struct bio *clone, dd_crypto_direction_t rw) {
+    struct bvec_iter iter_backup;
+    int rc = 0;
+
+	BUG_ON(rw == DD_ENCRYPT && !clone);
+    // back up bio iterator. restore before submitting it to block layer
+    memcpy(&iter_backup, &orig->bi_iter, sizeof(struct bvec_iter));
+
+	while (orig->bi_iter.bi_size) {
+		if (rw == DD_ENCRYPT) {
+			struct bio_vec orig_bv = bio_iter_iovec(orig, orig->bi_iter);
+			struct bio_vec clone_bv = bio_iter_iovec(clone, clone->bi_iter);
+			struct page *plaintext_page = orig_bv.bv_page;
+			struct page *ciphertext_page = clone_bv.bv_page;
+
+			dd_dump("dd_crypto_bio_pages::encryption start", page_address(plaintext_page), PAGE_SIZE);
+			rc = dd_sec_crypt_page(info, DD_ENCRYPT, plaintext_page, ciphertext_page);
+			if (rc) {
+				dd_error("failed encryption rc:%d\n", rc);
+				return rc;
+			}
+			dd_dump("dd_crypto_bio_pages::encryption finished", page_address(ciphertext_page), PAGE_SIZE);
+
+            bio_advance_iter(orig, &orig->bi_iter, 1 << PAGE_SHIFT);
+            bio_advance_iter(clone, &clone->bi_iter, 1 << PAGE_SHIFT);
+		} else {
+            struct bio_vec orig_bv = bio_iter_iovec(orig, orig->bi_iter);
+            struct page *ciphertext_page = orig_bv.bv_page;
+
+			dd_dump("dd_crypto_bio_pages::decryption start", page_address(ciphertext_page), PAGE_SIZE);
+			rc = dd_sec_crypt_page(info, DD_DECRYPT, ciphertext_page, ciphertext_page);
+			if (rc) {
+				dd_error("failed encryption rc:%d\n", rc);
+				return rc;
+			}
+			dd_dump("dd_crypto_bio_pages::decryption finished", page_address(ciphertext_page), PAGE_SIZE);
+
+            bio_advance_iter(orig, &orig->bi_iter, 1 << PAGE_SHIFT);
+		}
+    }
+
+    memcpy(&orig->bi_iter, &iter_backup, sizeof(struct bvec_iter));
+    if (rw == DD_ENCRYPT)
+        memcpy(&clone->bi_iter, &iter_backup, sizeof(struct bvec_iter));
+
+	return 0;
+}

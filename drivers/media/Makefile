@@ -22,6 +22,9 @@ endif
 obj-$(CONFIG_VIDEO_DEV) += v4l2-core/
 obj-$(CONFIG_DVB_CORE)  += dvb-core/
 
+obj-$(CONFIG_MEDIA_M2M1SHOT) += m2m1shot.o m2m1shot-helper.o
+obj-$(CONFIG_MEDIA_M2M1SHOT_TESTDEV) += m2m1shot-testdev.o
+
 # There are both core and drivers at RC subtree - merge before drivers
 obj-y += rc/
 
@@ -33,4 +36,5 @@ obj-$(CONFIG_CEC_CORE) += cec/
 
 obj-y += common/ platform/ pci/ usb/ mmc/ firewire/ spi/
 obj-$(CONFIG_VIDEO_DEV) += radio/
+obj-$(CONFIG_TDMB)  += tdmb/
 

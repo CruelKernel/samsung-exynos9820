@@ -53,8 +53,11 @@ extern void rcuwait_wake_up(struct rcuwait *w);
 		set_current_state(TASK_UNINTERRUPTIBLE);		\
 		if (condition)						\
 			break;						\
-									\
-		schedule();						\
+		/* SEC workaround: use schedule_timeout			\
+		 * Avoid a stuck caused by race condition between	\
+		 * __percpu_up_read and percpu_down_write		\
+		 */							\
+		schedule_timeout(msecs_to_jiffies(300));		\
 	}								\
 									\
 	WRITE_ONCE((w)->task, NULL);					\

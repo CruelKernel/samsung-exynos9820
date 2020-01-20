@@ -561,11 +561,14 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	unsigned raw_port = port1;
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
+	if (!dev) {
+		pr_info("%s kzalloc failed\n", __func__);
 		return NULL;
+	}
 
 	if (!usb_get_hcd(usb_hcd)) {
 		kfree(dev);
+		pr_info("%s usb_get_hcd failed\n", __func__);
 		return NULL;
 	}
 	/* Root hubs aren't true devices, so don't allocate HCD resources */
@@ -573,6 +576,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 		!usb_hcd->driver->alloc_dev(usb_hcd, dev)) {
 		usb_put_hcd(bus_to_hcd(bus));
 		kfree(dev);
+		pr_info("%s hcd->alloc_dev failed\n", __func__);
 		return NULL;
 	}
 

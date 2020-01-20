@@ -1,0 +1,10 @@
+config VISION_CORE
+        bool "Vision Core"
+        help
+          This is a vision core
+
+menuconfig VISION_UNITTEST
+        bool "Build unittest for Vision"
+        depends on VISION_CORE
+        help
+                Include unittest code into the vision-core

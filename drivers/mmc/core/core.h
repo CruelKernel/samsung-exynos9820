@@ -130,6 +130,8 @@ int mmc_set_blockcount(struct mmc_card *card, unsigned int blockcount,
 
 int __mmc_claim_host(struct mmc_host *host, atomic_t *abort);
 void mmc_release_host(struct mmc_host *host);
+int mmc_try_claim_host(struct mmc_host *host, unsigned int delay);
+
 void mmc_get_card(struct mmc_card *card);
 void mmc_put_card(struct mmc_card *card);
 

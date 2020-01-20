@@ -21,6 +21,9 @@ static inline struct sg_table *vb2_dma_sg_plane_desc(
 	return (struct sg_table *)vb2_plane_cookie(vb, plane_no);
 }
 
+dma_addr_t vb2_dma_sg_plane_dma_addr(struct vb2_buffer *vb,
+				     unsigned int plane_no);
+
 extern const struct vb2_mem_ops vb2_dma_sg_memops;
 
 #endif

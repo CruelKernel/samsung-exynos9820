@@ -1,0 +1,11 @@
+#
+# USB TypeC Manager driver
+#
+
+comment "USB TypeC Manager configs"
+
+config USB_TYPEC_MANAGER_NOTIFIER
+    bool "USB TypeC Manager driver"
+    help
+    If you say yes here you will get support for
+      USB TypeC Manager function

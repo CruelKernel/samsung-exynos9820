@@ -1,0 +1,5 @@
+config FIMC_IS_V4_0_0
+	bool "Use fimc-is v4.0.0"
+	depends on SOC_EXYNOS7420
+	help
+	  fimc-is version 4.0.0

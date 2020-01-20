@@ -139,6 +139,12 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
 					    selected_limit,
 					    &dma_contiguous_default_area,
 					    fixed);
+		if (dma_contiguous_default_area) {
+			record_memsize_reserved("default_CMA",
+				cma_get_base(dma_contiguous_default_area),
+				cma_get_size(dma_contiguous_default_area),
+				false, true);
+		}
 	}
 }
 
@@ -272,6 +278,7 @@ static int __init rmem_cma_setup(struct reserved_mem *rmem)
 
 	rmem->ops = &rmem_cma_ops;
 	rmem->priv = cma;
+	rmem->reusable = true;
 
 	pr_info("Reserved memory: created CMA memory pool at %pa, size %ld MiB\n",
 		&rmem->base, (unsigned long)rmem->size / SZ_1M);

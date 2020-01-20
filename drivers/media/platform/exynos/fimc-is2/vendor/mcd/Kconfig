@@ -1,0 +1,186 @@
+config CAMERA_EEPROM_SUPPORT_REAR
+        bool "Enable eeprom for rear cam"
+        depends on VENDER_MCD
+        default n
+        help
+          Enable eeprom for rear cam.
+config CAMERA_EEPROM_SUPPORT_FRONT
+        bool "Enable eeprom for front cam"
+        depends on VENDER_MCD
+        default n
+        help
+          Enable eeprom for front cam.
+config COMPANION_USE
+        bool "Use companion"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion.
+ config COMPANION_C1_USE
+        bool "Use companion C1"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion C1.
+ config COMPANION_C2_USE
+        bool "Use companion C2"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion C2.
+ config COMPANION_C3_USE
+        bool "Use companion C3"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion C3.
+ config COMPANION_DIRECT_USE
+        bool "Use direct control for companion"
+        depends on VENDER_MCD
+        depends on COMPANION_USE
+        depends on USE_DIRECT_IS_CONTROL
+        default n
+        help
+          Use device companion direct control.
+ config COMPANION_C2_DIRECT_USE
+        bool "Use direct control for companion C2"
+        depends on VENDER_MCD
+        depends on COMPANION_C2_USE
+        depends on COMPANION_DIRECT_USE
+        default n
+        help
+          Use device companion C2.
+ config COMPANION_C3_DIRECT_USE
+        bool "Use direct control for companion C3"
+        depends on VENDER_MCD
+        depends on COMPANION_C3_USE
+        depends on COMPANION_DIRECT_USE
+        default n
+        help
+          Use device companion C3.
+config COMPANION_DCDC_USE
+        bool "Use companion DCDC regulator"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion DCDC regulator.
+config PREPROCESSOR_STANDBY_USE
+        bool "Use companion standby"
+        depends on VENDER_MCD
+        default n
+        help
+          Use companion standby.
+config SENSOR_RETENTION_USE
+	bool "Use sensor retention"
+	depends on VENDER_MCD
+	default n
+	help
+	  Use sensor retention.
+config OIS_USE
+        bool "Use ois"
+        depends on VENDER_MCD
+        default n
+        help
+          Use ois.
+config OIS_FW_UPDATE_THREAD_USE
+        bool "Enable ois fw update thread"
+        depends on OIS_USE
+        default n
+        help
+          Enable ois fw update thread.
+config AF_HOST_CONTROL
+        bool "Enable host af control"
+        depends on VENDER_MCD
+        default n
+        help
+          Enable host af control.
+config TORCH_CURRENT_CHANGE_SUPPORT
+        bool "Change torch current in recording mode"
+        depends on VENDER_MCD
+        default n
+        help
+          Change torch current in recording mode.
+config FLASH_CURRENT_CHANGE_SUPPORT
+        bool "Change flash current in capturing image"
+        depends on VENDER_MCD
+        default n
+        help
+           Change torch current in capturing image.
+config OIS_USE_RUMBA_S4
+        bool "Use RUMBA S4 ois driver IC"
+        depends on OIS_USE
+        default n
+        help
+          Use RUMBA S4 ois driver IC.
+config CAMERA_BEYOND0
+        bool "This camera is beyond0 project"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is beyond0 project.
+config CAMERA_BEYOND1
+        bool "This camera is beyond1 project"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is beyond1 project.
+config CAMERA_BEYOND2
+        bool "This camera is beyond2 project"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is beyond2 project.
+config CAMERA_BEYONDX
+        bool "This camera is beyondx project"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is beyondx project.
+config CAMERA_DAVINCI5G
+        bool "This camera is davinci5g project"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is davinci5g project.
+config OIS_USE_RUMBA_S6
+        bool "Use RUMBA S6 ois driver IC"
+        depends on OIS_USE
+        default n
+        help
+          Use RUMBA S6 ois driver IC.
+config SECURE_CAMERA_USE
+        bool "Use secure camera"
+        depends on VENDER_MCD
+        default n
+        help
+          Use secure camera.
+config USE_SIGNED_BINARY
+        bool "Enable signed binary processing."
+        depends on VENDER_MCD
+        default n
+        help
+          Enable signed binary processing.
+config USE_CAMERA_LDU
+        bool "Use Camera LDU"
+        depends on VENDER_MCD
+        default n
+        help
+          Use Camera LDU.
+config CAMERA_CIS_IMX316_BUCK_USE
+        bool "Use isl91128 for tof"
+        depends on VENDER_MCD
+        default n
+        help
+          Use isl91128.
+config CAMERA_USE_MCU
+	bool "Use Camera mcu"
+	depends on VENDER_MCD
+	default n
+	help
+          Use Camera MCU.
+config SENSORCORE_MCU_CONTROL
+	bool "Use sensor core mcu control"
+	depends on VENDER_MCD
+	default n
+	help
+          Use sensor control mcu.

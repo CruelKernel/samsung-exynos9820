@@ -10,6 +10,8 @@ ifneq ($(CONFIG_TRACING),)
 	dwc3-y				+= trace.o
 endif
 
+dwc3-y					+= otg.o
+
 ifneq ($(filter y,$(CONFIG_USB_DWC3_HOST) $(CONFIG_USB_DWC3_DUAL_ROLE)),)
 	dwc3-y				+= host.o
 endif

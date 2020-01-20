@@ -26,6 +26,7 @@
 #include <linux/hardirq.h>
 #include <linux/task_work.h>
 #include <linux/ima.h>
+#include <linux/task_integrity.h>
 #include <linux/swap.h>
 
 #include <linux/atomic.h>
@@ -205,6 +206,7 @@ static void __fput(struct file *file)
 		if (file->f_op->fasync)
 			file->f_op->fasync(-1, file, 0);
 	}
+	five_file_free(file);
 	ima_file_free(file);
 	if (file->f_op->release)
 		file->f_op->release(inode, file);

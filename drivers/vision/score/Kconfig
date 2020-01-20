@@ -1,0 +1,13 @@
+config EXYNOS_SCORE
+	bool "Samsung EXYNOS SCore common driver"
+	depends on ARCH_EXYNOS
+
+config EXYNOS_SCORE_V2
+	bool "Samsung EXYNOS9810 SCore driver"
+	depends on SOC_EXYNOS9810
+	depends on EXYNOS_SCORE
+
+config EXYNOS_SCORE_V3
+	bool "Samsung EXYNOS9820 SCore driver"
+	depends on SOC_EXYNOS9820
+	depends on EXYNOS_SCORE

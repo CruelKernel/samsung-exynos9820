@@ -1,0 +1,15 @@
+#
+# Exynos Camera PostProcessing IP device drivers
+#
+config VIDEO_EXYNOS_CAMERA_POSTPROCESS
+		bool "Exynos Camera Post-Processing Devices"
+		depends on VIDEO_EXYNOS
+		select V4L2_MEM2MEM_DEV
+		select MEDIA_M2M1SHOT
+		select VIDEOBUF2_DMA_SG
+		default n
+		help
+			This is a representative exynos Camera PostProcessing device.
+
+source "drivers/media/platform/exynos/camera-pp/gdc/Kconfig"
+source "drivers/media/platform/exynos/camera-pp/str/Kconfig"

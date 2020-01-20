@@ -1,0 +1,4 @@
+config EXYNOS_MCD_HDR
+    bool "Support MCD HDR10+"
+    default n
+    depends on EXYNOS_DPU20

@@ -88,3 +88,21 @@ config PROC_UID
 	depends on PROC_FS && RT_MUTEXES
 	help
 	Provides aggregated per-uid information under /proc/uid.
+
+config PROC_FSLOG
+	bool "Enable FS logs for improving filesystem debug"
+	depends on PROC_FS
+	select PROC_STLOG
+	select PROC_DLOG
+	default y
+
+config PROC_STLOG
+	bool "Enable Storage log"
+
+config PROC_DLOG
+	bool "Enable delete logs for improving filesystem debug"
+
+config PROC_PARSE_OPTION_ON_MOUNT
+	bool "Parsing mount option on mount"
+	depends on PROC_FS
+	default y

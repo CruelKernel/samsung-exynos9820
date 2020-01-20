@@ -3,6 +3,7 @@
 #include <linux/linkage.h>
 #include <asm/asm-offsets.h>
 #include <asm/assembler.h>
+#include <asm/cputype.h>
 
 	.text
 /*
@@ -76,6 +77,10 @@ ENTRY(__cpu_suspend_enter)
 	/* find the mpidr_hash */
 	ldr_l	x1, sleep_save_stash
 	mrs	x7, mpidr_el1
+	tst	x7, #MPIDR_MT_BITMASK
+	b.eq	1f
+	lsr	x7, x7, #MPIDR_LEVEL_BITS
+1:
 	adr_l	x9, mpidr_hash
 	ldr	x10, [x9, #MPIDR_HASH_MASK]
 	/*
@@ -110,6 +115,10 @@ ENDPROC(cpu_resume)
 
 ENTRY(_cpu_resume)
 	mrs	x1, mpidr_el1
+	tst	x1, #MPIDR_MT_BITMASK
+	b.eq	1f
+	lsr	x1, x1, #MPIDR_LEVEL_BITS
+1:
 	adr_l	x8, mpidr_hash		// x8 = struct mpidr_hash virt address
 
 	/* retrieve mpidr_hash members to compute the hash */

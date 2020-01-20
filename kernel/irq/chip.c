@@ -390,8 +390,10 @@ static inline void mask_ack_irq(struct irq_desc *desc)
 
 void mask_irq(struct irq_desc *desc)
 {
+#if 0
 	if (irqd_irq_masked(&desc->irq_data))
 		return;
+#endif
 
 	if (desc->irq_data.chip->irq_mask) {
 		desc->irq_data.chip->irq_mask(&desc->irq_data);
@@ -401,8 +403,10 @@ void mask_irq(struct irq_desc *desc)
 
 void unmask_irq(struct irq_desc *desc)
 {
+#if 0
 	if (!irqd_irq_masked(&desc->irq_data))
 		return;
+#endif
 
 	if (desc->irq_data.chip->irq_unmask) {
 		desc->irq_data.chip->irq_unmask(&desc->irq_data);
@@ -926,8 +930,10 @@ __irq_do_set_handler(struct irq_desc *desc, irq_flow_handler_t handle,
 		if (desc->irq_data.chip != &no_irq_chip)
 			mask_ack_irq(desc);
 		irq_state_set_disabled(desc);
-		if (is_chained)
+		if (is_chained) {
+			printk("%s : desc action of irq_desc %llx becomes null\n", __func__, (unsigned long long)desc);
 			desc->action = NULL;
+		}
 		desc->depth = 1;
 	}
 	desc->handle_irq = handle;

@@ -14,3 +14,27 @@ config FS_ENCRYPTION
 	  feature is similar to ecryptfs, but it is more memory
 	  efficient since it avoids caching the encrypted and
 	  decrypted pages in the page cache.
+
+config FS_CRYPTO_SEC_EXTENSION
+	bool "FS crypto extension for Samsung Mobile"
+	default n
+	depends on FS_ENCRYPTION
+	help
+	  This option enable the cc certification logic for file based encryption.
+
+config FS_INLINE_ENCRYPTION
+	bool "Enable inline encryption"
+	depends on FS_ENCRYPTION
+	depends on BLK_DEV_CRYPT
+	default y
+	help
+	  This option enables inline encryption to support inline crypto H/W.
+
+config FSCRYPT_SDP
+	bool "Sensitive Data Protection for Per-file-encryption"
+	depends on FS_ENCRYPTION
+	depends on SDP
+	help
+	  Enable SDP functional to fscrypto module.
+	  This feature is supporting "Data-At-Rest" for file systems using
+	  Per-file-encryption being controlled by SDP user status.

@@ -1,0 +1,6 @@
+if SOC_EXYNOS9820 || SOC_EXYNOS9810
+
+source "drivers/video/fbdev/exynos/dpu20/Kconfig"
+source "drivers/video/fbdev/exynos/panel/Kconfig"
+
+endif # SOC_EXYNOS9820

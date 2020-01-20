@@ -20,6 +20,10 @@
 #include <linux/user_namespace.h>
 #include <linux/uaccess.h>
 
+#ifdef CONFIG_LOD_SEC
+#include <linux/linux_on_dex.h>
+#endif
+
 /*
  * Leveraged for setting/resetting capabilities
  */
@@ -483,6 +487,18 @@ bool privileged_wrt_inode_uidgid(struct user_namespace *ns, const struct inode *
 bool capable_wrt_inode_uidgid(const struct inode *inode, int cap)
 {
 	struct user_namespace *ns = current_user_ns();
+
+	//Never allow LOD container process access outside inodes
+#ifdef CONFIG_LOD_SEC
+	if (current_is_LOD() && (!inode_is_LOD(inode))){
+#ifndef CONFIG_SAMSUNG_PRODUCT_SHIP
+		printk(KERN_ERR "LOD capable_wrt_inode_uidgid: blocking CAP %d of PROC %s "
+			"PID %d PROC_UID %d INODE_UID %d\n", cap, current->comm, current->pid, 
+			current_cred()->uid.val, inode->i_uid.val);
+#endif
+		return false;
+	}
+#endif
 
 	return ns_capable(ns, cap) && privileged_wrt_inode_uidgid(ns, inode);
 }

@@ -1,0 +1,583 @@
+
+config BATTERY_SAMSUNG
+	tristate "samsung battery driver"
+	help
+	 Say Y to include support for samsung battery driver
+	 This battery driver integrated all battery-related functions
+	 To see battery-related functions,
+	 refer to sec_charging_common.h
+
+config BATTERY_SAMSUNG_V2
+	tristate "samsung battery driver version 2"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support for samsung battery driver
+	 This battery driver integrated all battery-related functions
+	 To see battery-related functions,
+	 refer to sec_charging_common.h
+
+config BATTERY_SAMSUNG_MHS
+	tristate "samsung battery driver for mhs model"
+	default n
+	depends on BATTERY_SAMSUNG_V2
+	help
+	 Say Y to include support for samsung battery driver
+	 This battery driver integrated all battery-related functions
+	 To see battery-related functions,
+	 refer to sec_charging_common.h
+
+config BATTERY_SAMSUNG_DC
+	tristate "samsung battery driver for direct charging model"
+	default n
+	depends on BATTERY_SAMSUNG_V2 && DIRECT_CHARGING
+	help
+	 Say Y to include support for samsung battery driver
+	 This battery driver integrated all battery-related functions
+	 To see battery-related functions,
+	 refer to sec_charging_common.h
+
+config BATTERY_SWELLING
+	bool "prevent battery swelling"
+	help
+	  Say Y to include support for prevent battery swelling
+
+config BATTERY_SWELLING_SELF_DISCHARGING
+	bool "prevent battery swelling with self discharging"
+	help
+	  Say Y to include support for prevent battery swelling with self discharging
+
+config CALC_TIME_TO_FULL
+	tristate "calculate time to full"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y to use calc time to full function.
+
+config SW_SELF_DISCHARGING
+	bool "enable sw_self_discharging"
+	default n
+	help
+	  Say Y to enable CONFIG_SW_SELF_DISCHARGING
+
+config BATTERY_AGE_FORECAST
+	tristate "battery age forecast"
+	default n
+	depends on BATTERY_SWELLING
+	help
+	Say Y to use calc time to full function.
+
+config MULTI_CHARGING
+	bool "support for multi charger ICs"
+	help
+	Say Y to include support for multi charger ICs
+
+config STEP_CHARGING
+	bool "support for step charging"
+	help
+	 Say Y to include support for step charging
+
+config ENABLE_FULL_BY_SOC
+	bool "make full by soc 100%"
+	help
+	default n
+	 Say Y to include support to make full by soc 100%
+
+config DIRECT_CHARGING
+	bool "support for direct charging"
+	help
+	 Say Y to include support for direct charging
+
+config UPDATE_BATTERY_DATA
+	bool "support for updating battery data"
+	default n
+	depends on BATTERY_SAMSUNG && OF
+	help
+	 Say Y to include support for step charging
+
+config ENG_BATTERY_CONCEPT
+	tristate "set test mode in eng build"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to set test mode in eng build
+
+config AFC_CURR_CONTROL_BY_TEMP
+	tristate "fast charging current control by temp"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to set afc current control by temp
+
+ config BATTERY_CISD
+	 bool "support for cisd"
+	 help
+	 Say Y to include support for cisd
+	 cisd means cell internal short detection
+
+config WIRELESS_AUTH
+	 bool "support for samsung wireless authentication massage"
+	 help
+	 Say Y to include support for swam
+	 samsung wireless authentication massage 
+
+# Fuel Gauge
+
+config FUELGAUGE_DUMMY
+	tristate "dummy fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for dummy fuel gauge driver.
+	 This driver source code implemented
+	 skeleton source code for fuel gauge functions.
+
+config FUELGAUGE_MAX17042
+	tristate "MAX17042 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX17042 fuel gauge driver.
+	 This fuel-gauge can be used in voltage-tracking mode
+	 or coulomb-counting mode.
+
+config FUELGAUGE_MAX17042_VOLTAGE_TRACKING
+	tristate "use MAX17042 fuel gauge only as voltage tracking"
+	default n
+	depends on FUELGAUGE_MAX17042
+	help
+	 Say Y to use MAX17042 fuel gauge
+	 only as voltage tracking.
+	 This mode is for target that consumes low current
+	 like smart-phone.
+
+config FUELGAUGE_MAX17042_COULOMB_COUNTING
+	tristate "use MAX17042 fuel gauge as coulomb counting (including voltage tracking)"
+	default n
+	depends on FUELGAUGE_MAX17042
+	help
+	 Say Y to use MAX17042 fuel gauge
+	 as coulomb counting (including voltage tracking).
+	 This mode is for target that consumes high current
+	 like tablet.
+
+config FUELGAUGE_MAX17048
+	tristate "MAX17048 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX17048 fuel gauge driver.
+	 This fuel-gauge can be used
+	 only in voltage-tracking mode.
+
+config FUELGAUGE_MAX17050
+	tristate "MAX17050 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX17047 or MAX17050 fuel gauge driver.
+	 This fuel-gauge can be used in voltage-tracking mode
+	 or coulomb-counting mode.
+
+config FUELGAUGE_MAX17050_VOLTAGE_TRACKING
+	tristate "use MAX17050 fuel gauge only as voltage tracking"
+	default n
+	depends on FUELGAUGE_MAX17050
+	help
+	 Say Y to use MAX17050 fuel gauge
+	 only as voltage tracking.
+	 This mode is for target that consumes low current
+	 like smart-phone.
+
+config FUELGAUGE_MAX17050_COULOMB_COUNTING
+	tristate "use MAX17050 fuel gauge as coulomb counting (including voltage tracking)"
+	default n
+	depends on FUELGAUGE_MAX17050
+	help
+	 Say Y to use MAX17050 fuel gauge
+	 as coulomb counting (including voltage tracking).
+	 This mode is for target that consumes high current
+	 like tablet.
+
+config FUELGAUGE_MAX77823
+	tristate "MAX77823 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX17047 or MAX17050 fuel gauge driver.
+	 This fuel-gauge can be used in voltage-tracking mode
+	 or coulomb-counting mode.
+
+config FUELGAUGE_MAX77843
+	tristate "MAX77843 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX17047 or MAX17050 fuel gauge driver.
+	 This fuel-gauge can be used in voltage-tracking mode
+	 or coulomb-counting mode.
+
+config FUELGAUGE_MAX77833
+	tristate "MAX77833 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX77833 fuel gauge driver.
+	 This fuel-gauge can be used in coulomb-counting mode.
+
+config FUELGAUGE_MAX77854
+	tristate "MAX77854 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX77854 fuel gauge driver.
+	 This fuel-gauge can be used in coulomb-counting mode.
+
+config FUELGAUGE_MAX77865
+	tristate "MAX77865 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX77865 fuel gauge driver.
+	 This fuel-gauge can be used in coulomb-counting mode.
+
+config FUELGAUGE_MAX77705
+	tristate "MAX77705 fuel gauge driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX77705 fuel gauge driver.
+	 This fuel-gauge can be used in coulomb-counting mode.
+
+config FUELGAUGE_MAX77823_VOLTAGE_TRACKING
+	tristate "use MAX77823 fuel gauge only as voltage tracking"
+	default n
+	depends on FUELGAUGE_MAX77823
+	help
+	 Say Y to use MAX17050 fuel gauge
+	 only as voltage tracking.
+	 This mode is for target that consumes low current
+	 like smart-phone.
+
+config FUELGAUGE_MAX77823_COULOMB_COUNTING
+	tristate "use MAX77823 fuel gauge as coulomb counting (including voltage tracking)"
+	default n
+	depends on FUELGAUGE_MAX77823
+	help
+	 Say Y to use MAX77823 fuel gauge
+	 as coulomb counting (including voltage tracking).
+	 This mode is for target that consumes high current
+	 like tablet.
+
+# Charger
+
+config CHARGER_DUMMY
+	tristate "dummy charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for dummy charger driver.
+	 This driver source code implemented
+	 skeleton source code for charger functions.
+
+config CHARGER_MAX8903
+	tristate "MAX8903 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for MAXIM MAX8903 charger driver.
+	 This driver source code implemented
+	 all functions for MAX8903 charger.
+
+config CHARGER_SMB328
+	tristate "SMB328 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for Summit SMB328 charger driver.
+	 This driver source code implemented
+	 all functions for SMB328 charger.
+
+config CHARGER_SMB347
+	tristate "SMB347 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for Summit SMB347 charger driver.
+	 This driver source code implemented
+	 all functions for SMB347 charger.
+
+config CHARGER_BQ24157
+	tristate "BQ24157 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for TI BQ24157 charger driver.
+	 This driver source code implemented
+	 all functions for BQ24157 charger.
+
+config CHARGER_BQ24190
+	tristate "BQ24190 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for TI BQ24190 charger driver.
+	 This driver source code implemented
+	 all functions for BQ24190 charger.
+
+config CHARGER_BQ24191
+	tristate "BQ24191 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for TI BQ24191 charger driver.
+	 This driver source code implemented
+	 all functions for BQ24191 charger.
+
+config CHARGER_BQ24260
+	tristate "BQ24260 charger driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	 Say Y to include support
+	 for TI BQ24260 charger driver.
+	 This driver source code implemented
+	 all functions for BQ24260 charger.
+
+config CHARGER_MAX77693
+	tristate "MAX77693 battery charger support"
+	depends on MFD_MAX77693 && I2C
+	help
+	  Say Y here to enable support for the MAX77693 charger
+	  MAX77693 incluse muic, pmic, haptic, led,
+	  flash driver.
+	  You have to define MFD_MAX77693
+
+config CHARGER_MAX77823
+	tristate "MAX77823 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77823 charger
+
+config CHARGER_MAX77843
+	tristate "MAX77843 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77843 charger
+
+config CHARGER_MAX77833
+	tristate "MAX77833 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77833 charger
+
+config CHARGER_MAX77854
+	tristate "MAX77854 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77854 charger
+
+config CHARGER_MAX77865
+	tristate "MAX77865 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77865 charger
+
+config CHARGER_MAX77705
+	tristate "MAX77705 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the MAX77705 charger
+
+config CHARGER_MAX77705_OTG_LIMIT
+	bool "enable for controlling limitation"
+	default n
+	depends on CHARGER_MAX77705
+	help
+	  Say Y to control limitation
+
+config MAX77705_CHECK_B2SOVRC
+	bool "enable for check B2SOVRC"
+	default n
+	depends on CHARGER_MAX77705
+	help
+	  Say Y to check B2SOVRC
+
+config CHARGER_MAX77804
+	tristate "MAX77804 battery charger support"
+	depends on (MFD_MAX77804 || MFD_MAX77804K) && I2C
+	help
+	  Say Y here to enable support for the MAX77804 charger
+	  MAX77804 incluse muic, pmic, haptic, led,
+	  flash driver.
+	  You have to define MFD_MAX77804
+
+config CHARGER_MAX77888
+	tristate "MAX77888 battery charger support"
+	depends on (MFD_MAX77888) && I2C
+	help
+	  Say Y here to enable support for the MAX77888 charger
+	  MAX77888 incluse muic, pmic, haptic, led,
+	  flash driver.
+	  You have to define MFD_MAX77888
+
+config CHARGER_S2MU003
+        tristate "S2MU003 charger support"
+        depends on (MFD_S2MU003) && I2C
+        help
+          Say Y here to enable support for the S2MU003 charger
+          S2MU003 incluse pmic, led driver.
+          You have to define MFD_S2MU003
+config CHARGER_DA9155
+	tristate "DA9155 charger driver"
+	default n
+	help
+	Say Y here to support for the da9155 charger
+	The DA9155 is a slave charger that extends
+	the current capability of an existing charging solution.
+
+config CHARGER_PCA9468
+	tristate "PCA9468 charger driver"
+	default n
+	depends on DIRECT_CHARGING
+	help
+	  Say Y here to enable support for the PCA9468 charger
+
+config WIRELESS_CHARGER_HIGH_VOLTAGE
+	tristate "high voltage wireless charger"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the wireless charger charger
+	  driver.
+
+config WIRELESS_NO_HV
+	tristate "wireless no hv"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to disable HV wireless charging
+	  driver.
+
+config CS100_JPNCONCEPT
+	tristate "cs100 command support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	 Say Y here to support for CS100 command to stop when full-charged
+	 on wireless charging for JPN models
+
+config WIRELESS_CHARGER_BQ51221
+        tristate "bq51221 battery charger support"
+        depends on BATTERY_SAMSUNG && I2C
+        help
+          Say Y here to enable support for the bq51221 charger
+          bq51221 wireless charger driver.
+
+config WIRELESS_CHARGER_P9220
+	tristate "p9220 battery charger support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the p9220 charger
+	  p9220 wireless charger driver.
+
+config WIRELESS_CHARGER_S2MIW03
+	tristate "s2miw03 wireless battery charger support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the S2MIW03 charger
+	  S2MIW03 wireless charger driver.
+
+config WIRELESS_CHARGER_MFC
+	tristate "MFC IC charger support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the MFC IC
+	  MFC wireless charger driver.
+
+config WIRELESS_FIRMWARE_UPDATE
+	tristate "p9220 battery charger support"
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y here to enable support for the wireless charger firmware update
+	  wireless charger IC firmware update.
+
+config AFC_CHARGER_MODE
+	bool "afc charging support in sec battery driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y to include support for sec afc charging support
+
+config SUPPORT_HV_CTRL
+	bool "afc charging support in sec battery driver"
+	default n
+	depends on AFC_CHARGER_MODE
+	help
+	  Say Y to include support for sec afc charging support
+
+config SAMSUNG_LPM_MODE
+	bool "Off charging mode support in sec battery driver"
+	default n
+	help
+	  Say Y to include support for sec off charging support
+	  This value defined at bootloader.
+	  Before enable this feature,
+	  implemet power off charging in the bootloader.
+
+config WIRELESS_TX_MODE
+	bool "wireless power sharing support in sec battery driver"
+	default n
+	depends on BATTERY_SAMSUNG
+	help
+	  Say Y to include support for sec afc charging support
+
+config EN_OOPS
+	bool "enable oops filter"
+	default n
+	help
+	  Say Y to enable oops filter
+
+config STORE_MODE
+       bool "enable store mode"
+       default n
+       help
+	 Say Y to enable CONFIG_STORE_MODE
+
+config QH_ALGORITHM
+       bool "enable QH algorithm"
+       default n
+       help
+	 Say Y to enable CONFIG_QH_ALGORITHM
+
+config BATTERY_NOTIFIER
+	bool "battery notifier"
+	default n
+	help
+	  Say Y to enable battery notifier
+
+config ENABLE_100MA_CHARGING_BEFORE_USB_CONFIGURED
+	bool "enable 100mA before usb configured"
+	default n
+	help
+	  Say Y to enable 100mA before usb configured
+
+config CALC_WPC_TX_POWER
+	bool "calculate how much power was used by wireless power sharing"
+	help
+	default n
+	 Say Y to include support to calculate power consumption by wireless power sharing

@@ -31,6 +31,7 @@
  * @field:	enum v4l2_field; field order of the image in the buffer
  * @timecode:	frame timecode
  * @sequence:	sequence count of this frame
+ * @reserved2:  reserved field for future extensions
  *
  * Should contain enough information to be able to cover all the fields
  * of struct v4l2_buffer at videodev2.h
@@ -42,6 +43,7 @@ struct vb2_v4l2_buffer {
 	__u32			field;
 	struct v4l2_timecode	timecode;
 	__u32			sequence;
+	__u32			reserved2;
 };
 
 /*
@@ -285,5 +287,15 @@ void vb2_ops_wait_prepare(struct vb2_queue *vq);
  * ..note:: only use if vq->lock is non-NULL.
  */
 void vb2_ops_wait_finish(struct vb2_queue *vq);
+
+/**
+ * vb2_ops_set_unordered - helper function to mark queue as unordered
+ *
+ * @vq: pointer to &struct vb2_queue
+ *
+ * This helper just return true to notify that the driver can't deal with
+ * ordered queues.
+ */
+bool vb2_ops_set_unordered(struct vb2_queue *q);
 
 #endif /* _MEDIA_VIDEOBUF2_V4L2_H */

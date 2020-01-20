@@ -67,6 +67,9 @@ struct mnt_namespace;
 struct vfsmount {
 	struct dentry *mnt_root;	/* root of the mounted tree */
 	struct super_block *mnt_sb;	/* pointer to superblock */
+#ifdef CONFIG_RKP_NS_PROT
+	struct mount *bp_mount;	/* pointer to mount*/
+#endif
 	int mnt_flags;
 	void *data;
 } __randomize_layout;

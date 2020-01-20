@@ -1,0 +1,56 @@
+Guide for A-Box Dump
+
+Introduction:
+
+	A-Box driver and firmware support dump or print log and PCM data.
+	This document describes how to use it.
+
+Location:
+
+	Log: /d/abox/log-00 or /sys/kernel/debug/abox/log-00
+
+	PCM dump start: /d/abox/dump_auto_start
+		or /sys/kernel/debug/abox/dump_auto_start
+
+	PCM dump stop: /d/abox/dump_auto_stop
+		or /sys/kernel/debug/abox/dump_auto_stop
+
+How to use:
+
+	Log: Use cat
+
+	(In console or adb shell)
+	# cat /d/abox/log-00
+	[   0.000069] <core0> [00000000] [IPC:INFO]abox_ipc_init(80854000, 16384
+	, 80850000, 16384)
+	[   0.000119] <core0> [00000000] abox_msg_init: tx_cmd: 80854000(0x388),
+	 tx_data: 80854388(0xc + 0x3c6c)
+	[   0.000166] <core0> [00000000] abox_msg_init: rx_cmd: 80850000(0x388),
+	 rx_data: 80850388(0xc + 0x3c6c)
+	......
+
+	PCM dump: Use automatic file dump into /data/
+
+	(Set selinux to permissive mode)
+	# setenforce 0
+
+	(Check supported PCM dump list)
+	# cat /d/abox/dump_auto_stop
+	0(rd0) 1(rd1) 2(rd2) 3(rd3) 4(rd7) 5(wr0) 6(wr1) 7(wr3) 8(wr4) 9(rd5) 10
+	(rd4) 11(wr2) 12(dbg) 13(dec) 14(src) 15(ef1) 16(om0) 17(om1) 18(om2) 19
+	(ef2) 20(ef3) 21(dm1) 22(dm2) 23(dm3) 24(tx0) 25(uou) 26(uin) 27(fm0) 28
+	(dv1) 29(dv2) 30(dv3)
+
+	Note: rd means RDMA, wr means WDMA. Other dump names are firmware
+	internally defined. Contact firmware engineer to know position of each
+	dump in PCM pipeline. It can be changed by further development.
+
+	(Echo PCM name into dump_auto_start)
+	# echo "rd0 rd1 rd2" > /d/abox/dump_auto_start
+
+	(Run test and then echo PCM name into dump_auto_stop to stop the dump)
+	# echo "rd0 rd1 rd2" > /d/abox/dump_auto_stop
+
+	(Check dump file in /data/)
+	# ls /data/abox*
+	/data/abox_dump-rd1.raw

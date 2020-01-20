@@ -567,9 +567,13 @@ int nf_ct_frag6_gather(struct net *net, struct sk_buff *skb, u32 user)
 	hdr = ipv6_hdr(skb);
 	fhdr = (struct frag_hdr *)skb_transport_header(skb);
 
+#if 0
+	/* SEC_PATCH : Disable minimum mtu rimitation on frag pkts.
+	               Request from operator JIO in INDIA.          */
 	if (skb->len - skb_network_offset(skb) < IPV6_MIN_MTU &&
 	    fhdr->frag_off & htons(IP6_MF))
 		return -EINVAL;
+#endif
 
 	skb_orphan(skb);
 	fq = fq_find(net, fhdr->identification, user, hdr,

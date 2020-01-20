@@ -1,0 +1,258 @@
+/*
+ * Copyright (C) 2013 Samsung Electronics
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+ *
+ */
+
+#ifndef _SM5508_MUIC_H_
+#define _SM5508_MUIC_H_
+
+#include <linux/muic/muic.h>
+
+/* SM5508 I2C registers */
+enum sm5508_muic_reg {
+	SM5508_MUIC_REG_DEVID			= 0x01,
+	SM5508_MUIC_REG_CTRL			= 0x02,
+	SM5508_MUIC_REG_INT1			= 0x03,
+	SM5508_MUIC_REG_INT2			= 0x04,
+	SM5508_MUIC_REG_INT3			= 0x05,
+	SM5508_MUIC_REG_INTMASK1		= 0x06,
+	SM5508_MUIC_REG_INTMASK2		= 0x07,
+	SM5508_MUIC_REG_INTMASK3		= 0x08,
+	SM5508_MUIC_REG_ADC				= 0x09,
+	SM5508_MUIC_REG_DEV_T1			= 0x0A,
+	SM5508_MUIC_REG_DEV_T2			= 0x0B,
+	SM5508_MUIC_REG_DEV_T3			= 0x0C,
+	SM5508_MUIC_REG_TIMING1			= 0x0D,
+	SM5508_MUIC_REG_TIMING2			= 0x0E,
+	SM5508_MUIC_REG_BUTTON1			= 0x10,
+	SM5508_MUIC_REG_BUTTON2			= 0x11,
+	SM5508_MUIC_REG_CARKIT_STATUS	= 0x12,
+	SM5508_MUIC_REG_MANSW1			= 0x13,
+	SM5508_MUIC_REG_MANSW2			= 0x14,
+	SM5508_MUIC_REG_VBUS_VALID		= 0x15,
+	SM5508_MUIC_REG_RESERVED_ID2	= 0x16,
+	SM5508_MUIC_REG_CHG_TYPE		= 0x17,
+	SM5508_MUIC_REG_AFC_CTRL		= 0x18,
+	SM5508_MUIC_REG_AFC_TXD			= 0x19,
+	SM5508_MUIC_REG_AFC_STATUS		= 0x1A,
+	SM5508_MUIC_REG_AFC_RXD1		= 0x1D,
+	SM5508_MUIC_REG_AFC_RXD2		= 0x1E,
+	SM5508_MUIC_REG_AFC_RXD3		= 0x1F,
+	SM5508_MUIC_REG_AFC_RXD4		= 0x20,
+	SM5508_MUIC_REG_AFC_RXD5		= 0x21,
+	SM5508_MUIC_REG_AFC_RXD6		= 0x22,
+	SM5508_MUIC_REG_STATUS			= 0x23,
+	SM5508_MUIC_REG_RESET			= 0x24,
+	SM5508_MUIC_REG_GPIO			= 0x25,
+	SM5508_MUIC_REG_END,
+};
+
+/* SM5508 Control register */
+#define SM5508_CTRL_SWITCH_OPEN_SHIFT		4
+#define SM5508_CTRL_RAW_DATA_SHIFT			3
+#define SM5508_CTRL_MANUAL_SW_SHIFT			2
+#define SM5508_CTRL_WAIT_SHIFT				1
+#define SM5508_CTRL_MASK_INT_SHIFT			0
+
+#define SM5508_CTRL_SWITCH_OPEN_MASK		(1 << SM5508_CTRL_SWITCH_OPEN_SHIFT)
+#define SM5508_CTRL_RAW_DATA_MASK			(1 << SM5508_CTRL_RAW_DATA_SHIFT)
+#define SM5508_CTRL_MANUAL_SW_MASK			(1 << SM5508_CTRL_MANUAL_SW_SHIFT)
+#define SM5508_CTRL_WAIT_MASK				(1 << SM5508_CTRL_WAIT_SHIFT)
+#define SM5508_CTRL_MASK_INT_MASK			(1 << SM5508_CTRL_MASK_INT_SHIFT)
+#define SM5508_CTRL_MASK					(SM5508_CTRL_SWITCH_OPEN_MASK | SM5508_CTRL_WAIT_MASK)
+
+/* SM5508 Interrupt 1 register */
+#define SM5508_INT1_LKR_SHIFT			4
+#define SM5508_INT1_LKP_SHIFT			3
+#define SM5508_INT1_KP_SHIFT			2
+#define SM5508_INT1_DETACH_SHIFT		1
+#define SM5508_INT1_ATTACH_SHIFT		0
+
+#define SM5508_INT1_LKR_MASK			(1 << SM5508_INT1_LKR_SHIFT)
+#define SM5508_INT1_LKP_MASK			(1 << SM5508_INT1_LKP_SHIFT)
+#define SM5508_INT1_KP_MASK				(1 << SM5508_INT1_KP_SHIFT)
+#define SM5508_INT1_DETACH_MASK			(1 << SM5508_INT1_DETACH_SHIFT)
+#define SM5508_INT1_ATTACH_MASK			(1 << SM5508_INT1_ATTACH_SHIFT)
+
+
+/* SM5508 Interrupt 2 register */
+#define SM5508_INT2_VBUS_U_ON_SHIFT			7
+#define SM5508_INT2_RID_CHARGER_SHIFT		6
+#define SM5508_INT2_MHL_SHIFT				5
+#define SM5508_INT2_STUCK_KEY_RCV_SHIFT		4
+#define SM5508_INT2_STUCK_KEY_SHIFT			3
+#define SM5508_INT2_ADC_CHANGE_SHIFT		2
+#define SM5508_INT2_RSRV_ATTACH_SHIFT		1
+#define SM5508_INT2_VBUS_U_OFF_SHIFT		0
+
+#define SM5508_INT2_VBUS_U_ON_MASK			(1 << SM5508_INT2_VBUS_U_ON_SHIFT)
+#define SM5508_INT2_RID_CHARGER_MASK		(1 << SM5508_INT2_RID_CHARGER_SHIFT)
+#define SM5508_INT2_MHL_MASK				(1 << SM5508_INT2_MHL_SHIFT)
+#define SM5508_INT2_STUCK_KEY_RCV_MASK		(1 << SM5508_INT2_STUCK_KEY_RCV_SHIFT)
+#define SM5508_INT2_STUCK_KEY_MASK			(1 << SM5508_INT2_STUCK_KEY_SHIFT)
+#define SM5508_INT2_ADC_CHANGE_MASK			(1 << SM5508_INT2_ADC_CHANGE_SHIFT)
+#define SM5508_INT2_RSRV_ATTACH_MASK		(1 << SM5508_INT2_RSRV_ATTACH_SHIFT)
+#define SM5508_INT2_VBUS_U_OFF_MASK			(1 << SM5508_INT2_VBUS_U_OFF_SHIFT)
+
+
+/* SM5508 Interrupt 3  AFC register */
+#define SM5508_INT3_AFC_QC_VBUS_9V_SHIFT		7
+#define SM5508_INT3_AFC_QC20ACCEPTED_SHIFT		6
+#define SM5508_INT3_AFC_ERROR_SHIFT				5
+#define SM5508_INT3_AFC_STA_CHG_SHIFT			4
+#define SM5508_INT3_AFC_MULTI_BYTE_SHIFT		3
+#define SM5508_INT3_AFC_AFC_VBUS_9V_SHIFT		2
+#define SM5508_INT3_AFC_ACCEPTED_SHIFT			1
+#define SM5508_INT3_AFC_TA_ATTACHED_SHIFT		0
+
+#define SM5508_INT3_AFC_QC_VBUS_9V_MASK			(1 << SM5508_INT3_AFC_QC_VBUS_9V_SHIFT)
+#define SM5508_INT3_AFC_QC20ACCEPTED_MASK		(1 << SM5508_INT3_AFC_QC20ACCEPTED_SHIFT)
+#define SM5508_INT3_AFC_ERROR_MASK				(1 << SM5508_INT3_AFC_ERROR_SHIFT)
+#define SM5508_INT3_AFC_STA_CHG_MASK			(1 << SM5508_INT3_AFC_STA_CHG_SHIFT)
+#define SM5508_INT3_AFC_MULTI_BYTE_MASK			(1 << SM5508_INT3_AFC_MULTI_BYTE_SHIFT)
+#define SM5508_INT3_AFC_AFC_VBUS_9V_MASK		(1 << SM5508_INT3_AFC_AFC_VBUS_9V_SHIFT)
+#define SM5508_INT3_AFC_ACCEPTED_MASK			(1 << SM5508_INT3_AFC_ACCEPTED_SHIFT)
+#define SM5508_INT3_AFC_TA_ATTACHED_MASK		(1 << SM5508_INT3_AFC_TA_ATTACHED_SHIFT)
+
+
+/* SM5508 AFC CTRL register */
+#define SM5508_AFC_ENQC20_12V_SHIFT		7
+#define SM5508_AFC_ENQC20_9V_SHIFT		6
+#define SM5508_AFC_DISAFC_SHIFT			5
+#define SM5508_AFC_DM_RESET_SHIFT		2
+#define SM5508_AFC_DP_RESET_SHIFT		1
+#define SM5508_AFC_ENAFC_SHIFT			0
+
+#define SM5508_AFC_ENQC20_12V_MASK		(1 << SM5508_AFC_ENQC20_12V_SHIFT)
+#define SM5508_AFC_ENQC20_9V_MASK		(1 << SM5508_AFC_ENQC20_9V_SHIFT)
+#define SM5508_AFC_DISAFC_MASK			(1 << SM5508_AFC_DISAFC_SHIFT)
+#define SM5508_AFC_DM_RESET_MASK		(1 << SM5508_AFC_DM_RESET_SHIFT)
+#define SM5508_AFC_DP_RESET_MASK		(1 << SM5508_AFC_DP_RESET_SHIFT)
+#define SM5508_AFC_ENAFC_MASK			(1 << SM5508_AFC_ENAFC_SHIFT)
+
+/* SM5508 Device Type 1 register */
+#define SM5508_DEV_TYPE1_USB_OTG		(1 << 7)
+#define SM5508_DEV_TYPE1_TA				(1 << 6)
+#define SM5508_DEV_TYPE1_CDP			(1 << 5)
+#define SM5508_DEV_TYPE1_CARKIT_CHG		(1 << 4)
+#define SM5508_DEV_TYPE1_UART			(1 << 3)
+#define SM5508_DEV_TYPE1_USB			(1 << 2)
+#define SM5508_DEV_TYPE1_AUDIO_2		(1 << 1)
+#define SM5508_DEV_TYPE1_AUDIO_1		(1 << 0)
+
+/* SM5508 Device Type 2 register */
+#define SM5508_DEV_TYPE2_AV				(1 << 6)
+#define SM5508_DEV_TYPE2_TTY			(1 << 5)
+#define SM5508_DEV_TYPE2_PPD			(1 << 4)
+#define SM5508_DEV_TYPE2_JIG_UART_OFF	(1 << 3)
+#define SM5508_DEV_TYPE2_JIG_UART_ON	(1 << 2)
+#define SM5508_DEV_TYPE2_JIG_USB_OFF	(1 << 1)
+#define SM5508_DEV_TYPE2_JIG_USB_ON		(1 << 0)
+
+/* SM5508 Device Type 3 register */
+#define SM5508_DEV_TYPE3_AFC_TA_CHG			(1 << 7)
+#define SM5508_DEV_TYPE3_U200_CHG			(1 << 6)
+#define SM5508_DEV_TYPE3_LO_TA_CHG			(1 << 5)
+#define SM5508_DEV_TYPE3_AV_WITH_VBUS		(1 << 4)
+#define SM5508_DEV_TYPE3_DCD_OUT_SDP_CHG	(1 << 2)
+#define SM5508_DEV_TYPE3_QC20_TA_CHG		(1 << 1)
+#define SM5508_DEV_TYPE3_MHL				(1 << 0)
+
+/* ADC VALUE */
+#define SM5508_ADC_OTG				0x00
+#define SM5508_ADC_MHL				0x20
+#define SM5508_ADC_VZW_DOCK			0x0E
+#define SM5508_ADC_VZW_INCOMPATIBLE	0x0F
+#define SM5508_ADC_SMART_DOCK		0x10
+#define SM5508_ADC_HMT				0x11
+#define SM5508_ADC_AUDIO_DOCK		0x12
+#define SM5508_ADC_LANHUB			0x13
+#define SM5508_ADC_CHARGING_CABLE	0x14
+#define SM5508_ADC_MPOS				0x15
+#define SM5508_ADC_UART				0x16
+#define SM5508_ADC_LCABLE			0x17
+#define SM5508_ADC_JIG_USB_OFF		0x18
+#define SM5508_ADC_JIG_USB_ON		0x19
+#define SM5508_ADC_DESKDOCK			0x1A
+#define SM5508_ADC_CEA2				0x1B
+#define SM5508_ADC_JIG_UART_OFF		0x1C
+#define SM5508_ADC_JIG_UART_ON		0x1d
+#define SM5508_ADC_OPEN				0x1F
+
+#define SM5508_MUIC_AFC_5V			0x08
+#define SM5508_MUIC_AFC_9V			0x46
+#define SM5508_MUIC_AFC_12V			0x79
+#define SM5508_MUIC_QC20_5V			0x0
+#define SM5508_MUIC_QC20_9V			0x1
+
+#define SM5508_CONTROL_VALUE		0x1E
+#define SM5508_INT_MASK1_VALUE		0x1C
+#define SM5508_INT_MASK2_VALUE		0x00
+#define SM5508_INT_MASK3_VALUE		0x00
+
+/* vbusin valid */
+#define SM5508_DEV_VBUSIN_VALID		(1 << 1)
+/* vbusout valid */
+#define SM5508_DEV_VBUSOUT_VALID	(1 << 0)
+
+/*
+ * Manual Switch
+ * D- [7:5] / D+ [4:2]
+ * 000: Open
+ * 001: DM_CON_U connected to DM_CON_A
+ * 011: DM_CON_U connected to TxD
+  */
+#define SM5508_SW_TO_USB		((1 << 5) | (1 << 2))
+#define SM5508_SW_TO_UART		((3 << 5) | (3 << 2))
+#define SM5508_SW_ALL_OPEN		(0)
+
+enum sm5508_reg_manual_sw1_value {
+	SM5508_MANSW1_OPEN			= SM5508_SW_ALL_OPEN,
+	SM5508_MANSW1_TO_USB		= SM5508_SW_TO_USB,
+	SM5508_MANSW1_TO_UART		= SM5508_SW_TO_UART,
+};
+
+struct sm5508_muic_platform_data {
+	int gpio_irq;
+};
+
+struct sm5508_muic_usbsw {
+	struct i2c_client *client;
+	struct mutex muic_mutex;
+	struct sm5508_muic_platform_data *pdata;
+	struct muic_platform_data *muic_pdata;
+	/* muic current attached device */
+	muic_attached_dev_t attached_dev;
+	bool is_hv_disabled;
+	int intr1;
+	int intr2;
+	int intr3;
+	int dev1;
+	int dev2;
+	int dev3;
+	int adc;
+	int mansw;
+	int vbus;
+	int afc_txd;
+	int afc_retry_count;
+
+	struct delayed_work		init_work;
+};
+
+extern struct muic_platform_data muic_pdata2;
+
+#endif /* _SM5508_MUIC_H_ */

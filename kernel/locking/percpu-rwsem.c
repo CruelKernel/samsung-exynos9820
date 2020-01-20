@@ -54,6 +54,7 @@ int __percpu_down_read(struct percpu_rw_semaphore *sem, int try)
 	 * decrement their sem->read_count, so that it doesn't matter that the
 	 * writer missed them.
 	 */
+	sec_debug_pcprwsem_log_print(__func__, 5, sem);
 
 	smp_mb(); /* A matches D */
 
@@ -87,12 +88,14 @@ int __percpu_down_read(struct percpu_rw_semaphore *sem, int try)
 	__up_read(&sem->rw_sem);
 
 	preempt_disable();
+	sec_debug_pcprwsem_log_print(__func__, 7, sem);
 	return 1;
 }
 EXPORT_SYMBOL_GPL(__percpu_down_read);
 
 void __percpu_up_read(struct percpu_rw_semaphore *sem)
 {
+	sec_debug_pcprwsem_log_print(__func__, 5, sem);
 	smp_mb(); /* B matches C */
 	/*
 	 * In other words, if they see our decrement (presumably to aggregate
@@ -103,6 +106,7 @@ void __percpu_up_read(struct percpu_rw_semaphore *sem)
 
 	/* Prod writer to recheck readers_active */
 	rcuwait_wake_up(&sem->writer);
+	sec_debug_pcprwsem_log_print(__func__, 7, sem);
 }
 EXPORT_SYMBOL_GPL(__percpu_up_read);
 
@@ -124,6 +128,7 @@ EXPORT_SYMBOL_GPL(__percpu_up_read);
  */
 static bool readers_active_check(struct percpu_rw_semaphore *sem)
 {
+	sec_debug_pcprwsem_log_print(__func__, 6, sem);
 	if (per_cpu_sum(*sem->read_count) != 0)
 		return false;
 
@@ -134,11 +139,13 @@ static bool readers_active_check(struct percpu_rw_semaphore *sem)
 
 	smp_mb(); /* C matches B */
 
+	sec_debug_pcprwsem_log_print(__func__, 8, sem);
 	return true;
 }
 
 void percpu_down_write(struct percpu_rw_semaphore *sem)
 {
+	sec_debug_pcprwsem_log_print(__func__, 2, sem);
 	/* Notify readers to take the slow path. */
 	rcu_sync_enter(&sem->rss);
 
@@ -160,11 +167,13 @@ void percpu_down_write(struct percpu_rw_semaphore *sem)
 
 	/* Wait for all now active readers to complete. */
 	rcuwait_wait_event(&sem->writer, readers_active_check(sem));
+	sec_debug_pcprwsem_log_print(__func__, 4, sem);
 }
 EXPORT_SYMBOL_GPL(percpu_down_write);
 
 void percpu_up_write(struct percpu_rw_semaphore *sem)
 {
+	sec_debug_pcprwsem_log_print(__func__, 2, sem);
 	/*
 	 * Signal the writer is done, no fast path yet.
 	 *
@@ -188,5 +197,6 @@ void percpu_up_write(struct percpu_rw_semaphore *sem)
 	 * exclusive write lock because its counting.
 	 */
 	rcu_sync_exit(&sem->rss);
+	sec_debug_pcprwsem_log_print(__func__, 4, sem);
 }
 EXPORT_SYMBOL_GPL(percpu_up_write);

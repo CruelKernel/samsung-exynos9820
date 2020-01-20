@@ -405,6 +405,51 @@ static int psci_suspend_finisher(unsigned long index)
 				    __pa_symbol(cpu_resume));
 }
 
+/**
+ * Pack PSCI power state to integer
+ *
+ * @id : indicates system power mode. 0 means non system power mode.
+ * @type : not used.
+ * @affinity_level : indicates power down scope.
+ */
+static u32 psci_power_state_pack(u32 id, u32 type, u32 affinity_level)
+{
+	return ((id << PSCI_0_2_POWER_STATE_ID_SHIFT)
+			& PSCI_0_2_POWER_STATE_ID_MASK) |
+		((type << PSCI_0_2_POWER_STATE_TYPE_SHIFT)
+		 & PSCI_0_2_POWER_STATE_TYPE_MASK) |
+		((affinity_level << PSCI_0_2_POWER_STATE_AFFL_SHIFT)
+		 & PSCI_0_2_POWER_STATE_AFFL_MASK);
+}
+
+/**
+ * We hope that PSCI framework cover the all platform specific power
+ * states, unfortunately PSCI can support only state managed by cpuidle.
+ * psci_suspend_customized_finisher supports extra power state which
+ * cpuidle does not handle. This function is only for Exynos.
+ */
+static int psci_suspend_customized_finisher(unsigned long index)
+{
+	u32 state;
+	u32 id = 0, type = 0, affinity_level = 0;
+
+	if (index & PSCI_SYSTEM_IDLE)
+		id = 1;
+
+	if (index & PSCI_CLUSTER_SLEEP)
+		affinity_level = 1;
+
+	if (index & PSCI_CP_CALL)
+		affinity_level = 2;
+
+	if (index & PSCI_SYSTEM_SLEEP)
+		affinity_level = 3;
+
+	state = psci_power_state_pack(id, type, affinity_level);
+
+	return psci_ops.cpu_suspend(state, __pa_symbol(cpu_resume));
+}
+
 int psci_cpu_suspend_enter(unsigned long index)
 {
 	int ret;
@@ -415,6 +460,9 @@ int psci_cpu_suspend_enter(unsigned long index)
 	 */
 	if (WARN_ON_ONCE(!index))
 		return -EINVAL;
+
+	if (unlikely(index >= PSCI_CUSTOMIZED_INDEX))
+		return cpu_suspend(index, psci_suspend_customized_finisher);
 
 	if (!psci_power_state_loses_context(state[index - 1]))
 		ret = psci_ops.cpu_suspend(state[index - 1], 0);

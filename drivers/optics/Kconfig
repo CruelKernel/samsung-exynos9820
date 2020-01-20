@@ -1,0 +1,42 @@
+#
+# optics drivers configuration
+#
+
+config SENSORS_HRMSENSOR
+	tristate "HRM Sensor Driver Common"
+	default n
+	depends on I2C
+	help
+	  If you say yes here you get support for the HRM sensor.
+	  This feature is common feature for supporting HRM sensor.
+	  This driver can also be built as a module.  If so, the module
+	  will be called hrmsensor.
+
+config SENSORS_HRM_MAX86915
+	tristate "HRM Sensor Driver MAX86915"
+	default n
+	depends on SENSORS_HRMSENSOR
+	help
+	  If you say yes here you get support for the HRM sensor.
+	  This driver should be set with SENSORS_HRMSENSOR.
+	  This driver can also be built as a module.  If so, the module
+	  will be called max86915.
+
+config SENSORS_MAX86915
+	tristate "HRM Sensor Driver MAX86915"
+	default n
+	depends on I2C
+	help
+	  If you say yes here you get support for the HRM sensor.
+	  This driver can also be built as a module.  If so, the module
+	  will be called max86915.
+
+config SENSORS_TCS3407
+	tristate "AMS TCS3407 MoBeam, RemCon, ALS, Proximity, Color, Flicker sensor"
+	depends on I2C && SYSFS
+	help
+	  If you say yes here you get support for the AMS TCS3407
+	  mobeam, ambient light, proximity, color, and flicker sensors.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called TCS3407.

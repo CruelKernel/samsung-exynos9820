@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/kernel_stat.h>
+#include <linux/debug-snapshot.h>
 
 #include <trace/events/irq.h>
 

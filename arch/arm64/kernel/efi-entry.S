@@ -77,6 +77,8 @@ ENTRY(entry)
 	 */
 	bl	__flush_dcache_area
 	ic	ialluis
+	dsb	ish
+	isb
 
 	/*
 	 * Ensure that the rest of this function (in the original Image) is

@@ -2,8 +2,133 @@
 # Near Field Communication (NFC) devices
 #
 
+config SAMSUNG_NFC
+	bool "Samsung NFC driver"
+	default n
+	help
+	  SAMSUNG NFC Driver.
+	  This driver provides support for SAMSUNG NFC products.
+	  You should select your NFC product and interface.
+
+	  Say Y here to compile support for SAMSUNG NFC driver into the
+	  kernel.
+
 menu "Near Field Communication (NFC) devices"
-	depends on NFC
+	depends on SAMSUNG_NFC
+
+config SEC_NFC
+	bool "Samsung NFC driver"
+	default n
+	help
+	  SAMSUNG NFC Driver.
+	  This driver provides support for SAMSUNG NFC products.
+	  You should select your NFC product and interface.
+
+	  Say Y here to compile support for SAMSUNG NFC driver into the
+	  kernel.
+
+config ESE_P3_LSI
+	bool "eSE driver"
+	depends on SPI
+	default n
+	help
+	  Oberthur Driver.
+	  This driver provides support for LSI NXP combined ESE products.
+	  You should select your NFC product and interface.
+
+	  Say Y here to compile support for eSE driver into the kernel.
+
+config ESE_FACTORY_ONLY
+	bool "eSE driver factory"
+	depends on SPI
+	default n
+	help
+	  Oberthur Driver.
+	  This driver provides support for LSI NXP combined ESE products.
+	  You should select your NFC product and interface.
+
+config NFC_PN547
+	bool "NXP PN547 NFC Controller Driver"
+	depends on I2C
+	default n
+	help
+	  NXP PN547 Near Field Communication controller support.
+	  This option enables device driver support for the NFC.
+	  It is used by many services. NFC is fully controlled using I2C
+	  to communication.
+
+config NFC_PN547_CLK_BBCLK2
+	bool "NXP PN547 NFC CLOCK Controller"
+	depends on NFC_PN547
+	default n
+	help
+	  NXP PN547 Near Field Communication controller support.
+	  This option enables device driver support for the NFC.
+	  It is used by many services. NFC is fully controlled using I2C
+	  to communicate the AP chip.
+
+config NFC_P61
+	bool "NXP PN547 NFC Controller Driver"
+	depends on SPI
+	default n
+	help
+	  NXP PN547 Near Field Communication controller support.
+	  This option enables device driver support for the NFC.
+	  It is used by many services. NFC is fully controlled using I2C
+	  to communication
+
+config ESE_SECURE
+	bool "ESE Secure Controller Driver"
+	depends on !SEC_FACTORY
+	default n
+	help
+	  Common eSE Secure controller support.
+	  This option enables device driver support for the eSE with NFC.
+	  It is used by many services. eSE is fully controlled using SPI
+	  to communication
+
+config ESE_SECURE_SPI_PORT
+	int "ese spi port number"
+	default	99
+
+config ESE_SECURE_USI_MODE
+	int "ese spi port number"
+	default	99
+
+config ESE_SECURE_GPIO
+	string "gpio group for ese"
+
+config ESE_COFFEE
+	bool "ESE Secure Controller Driver"
+	depends on SPI
+	default n
+	help
+	  Common eSE Secure controller support.
+	  This option enables device driver support for the eSE with NFC.
+	  It is used by many services. eSE is fully controlled using SPI
+	  to communication
+
+config NFC_PN547_ESE_SUPPORT
+	bool "NXP PN547 ESE SUPPORT"
+	depends on NFC_PN547
+	default n
+	help
+	  NXP PN547 Near Field Communication controller support.
+	  This option enables device driver support for the NFC.
+	  It is used by many services. NFC is fully controlled using I2C
+	  to communication
+
+config NFC_PN547_LDO_CONTROL
+	bool "PN547 NFC LDO CONTROL"
+	depends on NFC_PN547
+	default n
+	help
+	  SAMSUNG PN547 NFC LDO CONTROL feature.
+	  This feature provides support for NXP PN547 products.
+	  You should select this feature if your NFC product uses ldo control of i2c.
+
+	  Say Y here to compile support for NXP PN547 LDO CONTROL feature into the
+	  kernel.
 
 config NFC_TRF7970A
 	tristate "Texas Instruments TRF7970a NFC driver"
@@ -58,4 +183,5 @@ source "drivers/nfc/st-nci/Kconfig"
 source "drivers/nfc/nxp-nci/Kconfig"
 source "drivers/nfc/s3fwrn5/Kconfig"
 source "drivers/nfc/st95hf/Kconfig"
+source "drivers/nfc/nfc_logger/Kconfig"
 endmenu

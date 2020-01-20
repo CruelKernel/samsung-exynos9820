@@ -1,0 +1,17 @@
+config FIMC_IS_V5_2_0
+	bool "Use fimc-is v5.2.0"
+	depends on SOC_EXYNOS8895
+	select EXYNOS_DEVICE_MIPI_CSIS_VER2 if !USE_SENSOR_GROUP
+	select EXYNOS_DEVICE_MIPI_CSIS_VER3 if USE_SENSOR_GROUP
+	select CSIS_V5_0
+	select EXYNOS_FIMC_BNS
+	select FIMC_BNS_V4_20_0
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_MC_SCALER_VER2_USE
+	select MC_SCALER_V3_0
+	select USE_HW_API_COMMON
+	help
+	  fimc-is version 5.2.0

@@ -10,6 +10,20 @@ menuconfig ION
 	  If you're not using Android its probably safe to
 	  say N here.
 
+config ION_EXYNOS
+	bool "Exynos Extension to ION"
+	depends on ION
+	help
+	  Choose this option for Exynos SoCs. Initialization of cma heap is
+	  changed.
+
+config ION_TEST
+	tristate "Ion Test Device"
+	depends on ION
+	help
+	  Choose this option to create a device that can be used to test the
+	  kernel and device side ION functions.
+
 config ION_SYSTEM_HEAP
 	bool "Ion system heap"
 	depends on ION
@@ -42,3 +56,25 @@ config ION_CMA_HEAP
 	  Choose this option to enable CMA heaps with Ion. This heap is backed
 	  by the Contiguous Memory Allocator (CMA). If your system has these
 	  regions, you should say Y here.
+
+config ION_HPA_HEAP
+	bool "Ion HPA heap support"
+	depends on ION && HPA
+	help
+	  Choose this option to enable HPA heaps with Ion. This heap is backed
+	  by the High-order Pages Allocator (HPA). If your system needs HPA for
+	  some reason, you should say Y here.
+
+config ION_DEBUG_EVENT_RECORD
+	bool "Ion event debug support"
+	default y
+	depends on ION_EXYNOS
+
+config ION_RBIN_HEAP
+	bool "ION RBIN Heap"
+	default y
+	depends on ION && RBIN && ION_EXYNOS
+	help
+	  Provides ION RBIN heap which utilizes RBIN memory.
+	  While RBIN heap is similar with CMA heap, it assumes that an ION buffer
+	  can be composed of multiple free chunks.

@@ -38,6 +38,9 @@
 #include <linux/atomic.h>
 #include <linux/prefetch.h>
 
+#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_FS_ENCRYPTION)
+#include <linux/fscrypt.h>
+
 /*
  * How many user pages to map in one call to get_user_pages().  This determines
  * the size of a structure in the slab cache
@@ -448,6 +451,14 @@ static inline void dio_bio_submit(struct dio *dio, struct dio_submit *sdio)
 	dio->refcount++;
 	spin_unlock_irqrestore(&dio->bio_lock, flags);
 
+#if defined(CONFIG_FS_INLINE_ENCRYPTION)
+	if (fscrypt_inline_encrypted(dio->inode)) {
+		fscrypt_set_bio_cryptd(dio->inode, bio);
+#if defined(CONFIG_CRYPTO_DISKCIPHER_DEBUG)
+		crypto_diskcipher_debug(FS_DIO, bio->bi_opf);
+#endif
+	}
+#endif
 	if (dio->is_async && dio->op == REQ_OP_READ && dio->should_dirty)
 		bio_set_pages_dirty(bio);
 

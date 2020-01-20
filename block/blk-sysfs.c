@@ -512,7 +512,7 @@ static struct queue_sysfs_entry queue_requests_entry = {
 };
 
 static struct queue_sysfs_entry queue_ra_entry = {
-	.attr = {.name = "read_ahead_kb", .mode = S_IRUGO | S_IWUSR },
+	.attr = {.name = "read_ahead_kb", .mode = S_IRUGO },
 	.show = queue_ra_show,
 	.store = queue_ra_store,
 };

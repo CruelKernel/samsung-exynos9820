@@ -1,0 +1,13 @@
+config FIMC_IS_V3_1_1
+	bool "Use fimc-is v3.1.1"
+	depends on SOC_EXYNOS3475
+	select EXYNOS_DEVICE_MIPI_CSIS_VER1
+	select CSIS_V3_4
+	select CAMERA_CIS_SELECT
+	select CAMERA_ACT_SELECT
+	select CAMERA_FLASH_SELECT
+	select USE_DIRECT_IS_CONTROL
+	select CAMERA_FIMC_SCALER_USE
+	select USE_HW_API_COMMON
+	help
+	  fimc-is version 3.1.1

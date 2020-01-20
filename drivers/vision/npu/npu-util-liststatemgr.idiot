@@ -1,0 +1,85 @@
+/*
+ * Samsung Exynos SoC series NPU driver
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *              http://www.samsung.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifdef IDIOT_DECL_SECTION
+#include <linux/time.h>
+
+/* basic */
+struct basic_data {
+	int seq;
+	void* data;
+};
+
+LSM_DECLARE(lsm_basic_2, struct basic_data, 2, "LSM-Basic-2");
+LSM_DECLARE(lsm_basic_512, struct basic_data, 512, "LSM-Basic-512");
+
+int noop_do_task(struct auto_sleep_thread_param* data) {
+	return 0;
+}
+int noop_check_work(struct auto_sleep_thread_param* data) {
+	return 0;
+}
+
+#define LSM_basic_setup(INSTANCE) \
+do { INSTANCE.lsm_init(noop_do_task, noop_check_work, NULL ); } while (0)
+
+#define LSM_basic_teardown(INSTANCE) \
+do { INSTANCE.lsm_destroy(); } while (0)
+
+
+
+#endif
+
+
+TESTDEF(LSM_04_basic_init_03,
+
+	const int REPEAT = 2;
+	int i;
+	struct basic_data* entry;
+	
+	LSM_basic_setup(lsm_basic_2);
+	
+	for(i = 0; i < REPEAT; ++i) {
+		entry = lsm_basic_2.lsm_get_entry(FREE);
+		IDIOT_ASSERT_NEQ(entry, NULL, %p);
+	}
+	
+	while(entry) {
+		entry = lsm_basic_2.lsm_get_entry(FREE);
+		printk("Entry : %p\n", entry);
+	}
+	
+	LSM_basic_teardown(lsm_basic_2);
+)
+
+TESTDEF(LSM_05_basic_init_04,
+
+	const int REPEAT = 512;
+	int i;
+	struct basic_data* entry;
+	
+	LSM_basic_setup(lsm_basic_512);
+	
+	for(i = 0; i < REPEAT; ++i) {
+		entry = lsm_basic_512.lsm_get_entry(FREE);
+		IDIOT_ASSERT_NEQ(entry, NULL, %p);
+	}
+	
+	IDIOT_ASSERT_DONE_IN_US(10000, 
+		while(entry) {
+			entry = lsm_basic_512.lsm_get_entry(FREE);
+			printk("Entry : %p\n", entry);
+		}
+	)
+		
+	LSM_basic_teardown(lsm_basic_512);
+)

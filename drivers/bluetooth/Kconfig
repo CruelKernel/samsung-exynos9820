@@ -365,6 +365,13 @@ config BT_WILINK
 	  Say Y here to compile support for Texas Instrument's WiLink7 driver
 	  into the kernel or say M to compile it as module (btwilink).
 
+config BT_BCM43XX
+	bool "Enable BCM43XX driver"
+	default n
+	help
+	  Adds BCM43XX RFKILL driver for Broadcom BCM4359 chipset for exynos.
+	  default is n.
+
 config BT_QCOMSMD
 	tristate "Qualcomm SMD based HCI support"
 	depends on RPMSG || (COMPILE_TEST && RPMSG=n)

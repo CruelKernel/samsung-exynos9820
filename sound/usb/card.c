@@ -46,6 +46,7 @@
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
 
+#include <linux/usb/exynos_usb_audio.h>
 #include <sound/control.h>
 #include <sound/core.h>
 #include <sound/info.h>
@@ -208,6 +209,7 @@ static int snd_usb_create_stream(struct snd_usb_audio *chip, int ctrlif, int int
 		usb_driver_claim_interface(&usb_audio_driver, iface, (void *)-1L);
 	}
 
+	dev_info(&dev->dev, "usb_host : %s %u:%d \n", __func__);
 	return 0;
 }
 
@@ -316,6 +318,7 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 	}
 	}
 
+	dev_info(&dev->dev, "usb_host : %s done: UAC VERSION %x \n", __func__, protocol);
 	return 0;
 }
 
@@ -547,7 +550,11 @@ static int usb_audio_probe(struct usb_interface *intf,
 	struct usb_host_interface *alts;
 	int ifnum;
 	u32 id;
-
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	struct usb_interface_descriptor *altsd;
+#endif
+	
+	dev_info(&dev->dev, "usb_host : %s \n", __func__);
 	alts = &intf->altsetting[0];
 	ifnum = get_iface_desc(alts)->bInterfaceNumber;
 	id = USB_ID(le16_to_cpu(dev->descriptor.idVendor),
@@ -560,6 +567,27 @@ static int usb_audio_probe(struct usb_interface *intf,
 	err = snd_usb_apply_boot_quirk(dev, intf, quirk, id);
 	if (err < 0)
 		return err;
+
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	dev_info(&dev->dev, "usb_host : %s abox set start \n", __func__);
+	altsd = get_iface_desc(alts);
+	if ((altsd->bInterfaceClass == USB_CLASS_AUDIO ||
+		altsd->bInterfaceClass == USB_CLASS_VENDOR_SPEC) &&
+		altsd->bInterfaceSubClass == USB_SUBCLASS_MIDISTREAMING) {
+			pr_info("USB_AUDIO_IPC : %s - MIDI device detected!\n", __func__);
+	} else {
+		pr_info("USB_AUDIO_IPC : %s - No MIDI device detected!\n", __func__);
+		if (!usb_audio->is_audio) {
+			pr_info("USB_AUDIO_IPC : %s - USB Audio set!\n", __func__);
+			exynos_usb_audio_set_device(dev);
+			exynos_usb_audio_conn(1);
+			exynos_usb_audio_hcd(dev);
+			exynos_usb_audio_desc(dev);
+			exynos_usb_audio_map_buf(dev);
+		}
+	}
+		dev_info(&dev->dev, "usb_host : %s abox set done\n", __func__);
+#endif
 
 	/*
 	 * found a config.  now register to ALSA
@@ -640,6 +668,11 @@ static int usb_audio_probe(struct usb_interface *intf,
 	usb_set_intfdata(intf, chip);
 	atomic_dec(&chip->active);
 	mutex_unlock(&register_mutex);
+
+	if (dev->do_remote_wakeup)
+		usb_enable_autosuspend(dev);
+	dev_info(&dev->dev, "usb_host : %s done \n", __func__);
+
 	return 0;
 
  __error:
@@ -666,6 +699,10 @@ static void usb_audio_disconnect(struct usb_interface *intf)
 		return;
 
 	card = chip->card;
+
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+	exynos_usb_audio_conn(0);
+#endif
 
 	mutex_lock(&register_mutex);
 	if (atomic_inc_return(&chip->shutdown) == 1) {

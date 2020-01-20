@@ -1,0 +1,148 @@
+config EXYNOS_DECON_LCD
+	depends on EXYNOS_DECON_8895 || EXYNOS_DECON_9810 || CONFIG_EXYNOS_DPU20
+	bool "Select LCD panel driver"
+
+config EXYNOS_DECON_MDNIE_LITE
+	depends on EXYNOS_DECON_LCD
+	tristate "Support MDNIE LITE"
+	default n
+
+config SUPPORT_AFC
+	depends on EXYNOS_DECON_LCD && EXYNOS_DECON_MDNIE_LITE
+	tristate "Support AFC"
+	default n
+
+config SUPPORT_ISC_TUNE_TEST
+	depends on EXYNOS_DECON_LCD
+	tristate "Support ISC TUNE TEST"
+	default n
+
+config EXYNOS_DECON_LCD_SYSFS
+	depends on EXYNOS_DECON_LCD
+	tristate "Support LCD SYSFS"
+	default y
+
+config EXYNOS_DECON_LCD_SPI
+	depends on EXYNOS_DECON_LCD
+	tristate "Support LCD SPI"
+	default n
+
+config EXYNOS_DECON_LCD_COPR
+	depends on EXYNOS_DECON_LCD
+	tristate "Support COPR"
+	default n
+
+config EXYNOS_DECON_LCD_TUNING
+	depends on EXYNOS_DECON_LCD
+	tristate "Support LCD TUNING"
+	default n
+
+config PANEL_AID_DIMMING
+	depends on EXYNOS_DECON_LCD
+	tristate "Support AID Dimming"
+	default y
+
+config PANEL_AID_DIMMING_DEBUG
+	depends on PANEL_AID_DIMMING
+	depends on !SAMSUNG_PRODUCT_SHIP
+	tristate "Support AID Dimming Debug"
+	default y
+
+config SUPPORT_DSU
+	tristate "Support DSU(Multi Resolution)"
+	depends on EXYNOS_DECON_LCD
+	default n
+
+config SUPPORT_HMD
+	tristate "Support HMD(Head Mount Display - VR)"
+	depends on EXYNOS_DECON_LCD
+	default n
+
+config EXTEND_LIVE_CLOCK
+	tristate "Support Extend Live Clock Functions(For Always On Display)"
+	depends on EXYNOS_DECON_LCD
+	default n
+
+config SUPPORT_AOD_BL
+	depends on EXYNOS_DECON_LCD && SUPPORT_DOZE
+	tristate "Support AOD(Active On Display) BL(BackLight) Driver"
+	default n
+
+config EXYNOS_DECON_LCD_S6E3HF3
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HF3 AMOLED LCD DRIVER"
+
+config EXYNOS_DECON_LCD_S6E3HF4
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HF4 AMOLED WQHD LCD driver(1440 x 2560)"
+
+config EXYNOS_DECON_LCD_S6E3HA6
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA6 AMOLED LCD DRIVER"
+
+config EXYNOS_DECON_LCD_S6E3HA8
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA8 AMOLED LCD DRIVER"
+
+config EXYNOS_DECON_LCD_S6E3HA9
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3HA9 AMOLED LCD DRIVER"
+
+config EXYNOS_DECON_LCD_S6E3FA7
+	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
+	tristate "S6E3FA7 AMOLED LCD DRIVER"
+
+config ACTIVE_CLOCK
+	depends on EXYNOS_DECON_LCD && SUPPORT_DOZE
+	tristate "Support DDI Active Clock Feature"
+	default n
+
+config SUPPORT_DDI_FLASH
+	depends on EXYNOS_DECON_LCD
+	tristate "Support display ddi flash"
+	default n
+
+config SUPPORT_POC_FLASH
+	depends on EXYNOS_DECON_LCD && SUPPORT_DDI_FLASH
+	tristate "Support display poc flash"
+	default n
+
+config SUPPORT_DIM_FLASH
+	depends on EXYNOS_DECON_LCD && SUPPORT_DDI_FLASH
+	tristate "Support display dimming flash"
+	default n
+
+config SUPPORT_GRAM_CHECKSUM
+	depends on EXYNOS_DECON_LCD
+	tristate "Support GRAM Checksum"
+	default n
+
+config SUPPORT_CCD_TEST
+	depends on EXYNOS_DECON_LCD
+	tristate "Support CCD TEST"
+	default n
+
+config SUPPORT_DYNAMIC_HLPM
+	depends on EXYNOS_DECON_LCD && SUPPORT_DOZE
+	tristate "Support Dynamic HLPM TEST"
+	default n
+
+config SUPPORT_TDMB_TUNE
+	depends on EXYNOS_DECON_LCD && TDMB_NOTIFIER
+	tristate "Support TDMB Tuning"
+	default y
+
+config PANEL_BACKLIGHT_PAC_3_0
+	depends on EXYNOS_DECON_LCD
+	tristate "Support baclight PAC 3.0"
+	default n
+
+config DISPLAY_USE_INFO
+	depends on EXYNOS_DECON_LCD
+	tristate "Support display use info logging"
+	default n
+
+config PANEL_NOTIFY
+	depends on EXYNOS_DECON_LCD
+	tristate "Support panel notifier"
+	default y

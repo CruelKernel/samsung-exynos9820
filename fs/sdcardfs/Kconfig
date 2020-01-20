@@ -1,7 +1,7 @@
 config SDCARD_FS
 	tristate "sdcard file system"
 	depends on CONFIGFS_FS
-	default n
+	default y
 	help
 	  Sdcardfs is based on Wrapfs file system.
 
