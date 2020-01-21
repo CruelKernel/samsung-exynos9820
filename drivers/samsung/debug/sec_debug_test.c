@@ -758,7 +758,7 @@ static void simulate_WRITE_RO(char *arg)
 #ifdef CONFIG_RKP_CFP_JOPP
 	ptr = (unsigned long *)__start_rodata;
 #else
-	ptr = (unsigned long *)simulate_WRITE_RO;
+	ptr = NULL;
 #endif
 	*ptr ^= 0x12345678;
 }
