@@ -24,7 +24,8 @@ config INITRAMFS_SOURCE
 
 config INITRAMFS_FORCE
 	bool "Ignore the initramfs passed by the bootloader"
-	depends on CMDLINE_EXTEND || CMDLINE_FORCE
+	depends on BLK_DEV_INITRD
+	default n
 	help
 	  This option causes the kernel to ignore the initramfs image
 	  (or initrd image) passed to it by the bootloader. This is
