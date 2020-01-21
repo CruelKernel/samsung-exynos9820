@@ -22,6 +22,14 @@ config INITRAMFS_SOURCE
 
 	  If you are not sure, leave it blank.
 
+config INITRAMFS_SKIP
+	bool "Boot without initramfs if skip_initramfs in cmdline"
+	depends on BLK_DEV_INITRD
+	default y
+	help
+	  Adds handling of "skip_initramfs" cmdline. Allows bootloader to
+	  force booting from root partition.
+
 config INITRAMFS_FORCE
 	bool "Ignore the initramfs passed by the bootloader"
 	depends on BLK_DEV_INITRD
