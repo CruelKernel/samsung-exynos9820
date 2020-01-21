@@ -354,6 +354,7 @@ endmenu
 config ASSISTED_SUPERUSER
 	bool "Kernel-assisted superuser"
 	select SECURITY_SELINUX_DEVELOP if SECURITY_SELINUX
+	default n
 	---help---
 	  This driver gives trivial root access by typing `su` in a
 	  shell. It is a security disaster, and nobody should enable
