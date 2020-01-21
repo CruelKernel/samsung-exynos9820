@@ -8,6 +8,23 @@ config SECURITY_SELINUX
 	  You will also need a policy configuration and a labeled filesystem.
 	  If you are unsure how to answer this question, answer N.
 
+choice
+	prompt "NSA SELinux mode"
+	default ALWAYS_ENFORCE
+	depends on SECURITY_SELINUX
+
+config SECURITY_SELINUX_SWITCH
+	bool "Dynamically switch between permissive and enforcing"
+	help
+	  Allow to switch dynamically between permissive and enforcing modes.
+
+config ALWAYS_ENFORCE
+	bool "Always Enforce mode"
+	help
+	  Pin enforcing mode.
+
+endchoice
+
 config SECURITY_SELINUX_BOOTPARAM
 	bool "NSA SELinux boot parameter"
 	depends on SECURITY_SELINUX
