@@ -731,12 +731,6 @@ config LEDS_S2MPB02
 	help
 	  This option enables support for the LEDs on the S2MPB02.
 
-config LEDS_KTD2692
-	bool "LED support for the KTD2692"
-	help
-	  If you say yes here you will get support for
-	  for the KTD2692 FLASH led chip.
-
 config LEDS_S2MPB02_MULTI_TORCH_REAR2
 	bool "LED support for second multi flash"
 	help
