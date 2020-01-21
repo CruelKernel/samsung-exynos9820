@@ -107,7 +107,7 @@ config SEC_NAD_C
 	  Samsung TN NAD Feature, Enable NAD C
 
 config SEC_NAD_BPS_CLASSIFIER
-	bool " Samsung TN NAD BPS Classifier Feature"
+	bool "Samsung TN NAD BPS Classifier Feature"
 	depends on SEC_NAD
 	default n
 	help
