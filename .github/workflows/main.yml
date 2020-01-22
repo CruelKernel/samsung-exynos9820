@@ -1,0 +1,137 @@
+name: Build
+
+on: [push]
+
+env:
+  TOOLCHAIN: cruel
+  INSTALLER: yes
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -y -qq libtinfo5 ccache
+
+
+      - name: Disable compression in ccache and set ccache path
+        run: ccache -o compression=false -o cache_dir=$HOME/.ccache
+
+      - name: Prepare ccache timestamp
+        id: ccache_timestamp
+        run: |
+          echo "::set-output name=FULL_DATE::$(date +'%Y-%m-%d')"
+          echo "::set-output name=MONTH_DATE::$(date +'%Y-%m')"
+
+      - name: Create cache key from ${{ matrix.model }}
+        id: ccache_model_key
+        run: echo "::set-output name=KEY::$( echo ${{ matrix.model }} | tr ',' '_' )"
+
+      - name: Cache ccache files
+        uses: actions/cache@v3
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.TOOLCHAIN }}-${{ steps.ccache_model_key.outputs.KEY }}-${{ steps.ccache_timestamp.outputs.FULL_DATE }}
+          restore-keys: |
+            ccache-${{ env.TOOLCHAIN }}-${{ steps.ccache_model_key.outputs.KEY }}-${{ steps.ccache_timestamp.outputs.MONTH_DATE }}
+            ccache-${{ env.TOOLCHAIN }}-${{ steps.ccache_model_key.outputs.KEY }}-
+            ccache-${{ env.TOOLCHAIN }}-
+
+      - name: Kernel Configure
+        run: |
+          set -e -o pipefail
+          ./cruelbuild config                    \
+                       model=${{ matrix.model }} \
+                       name="Cruel-devel"        \
+                       toolchain=$TOOLCHAIN      \
+                       +magisk                   \
+                       +nohardening              \
+                       +ttl                      \
+                       +wireguard                \
+                       +cifs                     \
+                       +sdfat                    \
+                       +ntfs                     \
+                       +force_dex_wqhd           \
+                       +morosound                \
+                       +boeffla_wl_blocker       \
+          2>&1 | tee config.info
+
+      - name: Install gcc-aarch64-linux-gnu
+        if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -y -qq gcc-aarch64-linux-gnu
+      - name: Install clang
+        if: env.TOOLCHAIN == 'system-clang'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -y -qq llvm lld clang
+      - name: Deploy Toolchain
+        if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
+        run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
+
+      - name: Kernel Build
+        run: ./cruelbuild :build
+
+      - name: Install mkbootimg
+        run: |
+          wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py gki
+          chmod +x mkbootimg.py
+          sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+          sudo mv gki $(python -c 'import site; print(site.getsitepackages()[0])')
+      - name: Install mkdtboimg
+        run: |
+          wget -q https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master.tar.gz -O - | tar --strip-components 2 -xzf - utils/src/mkdtboimg.py
+          chmod +x mkdtboimg.py
+          sudo mv mkdtboimg.py /usr/local/bin/mkdtboimg
+      - name: Install avbtool
+        run: |
+          wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/master.tar.gz -O - | tar xzf - avbtool.py
+          chmod +x avbtool.py
+          sudo mv avbtool.py /usr/local/bin/avbtool
+
+      - name: Create CruelKernel images for ${{ matrix.model }}
+        run: ./cruelbuild :mkimg
+      - name: Create CruelKernel installer for ${{ matrix.model }}
+        if: env.INSTALLER == 'yes'
+        run: ./cruelbuild :pack
+
+      - name: Avoid Double Zipping in Installer
+        if: env.INSTALLER == 'yes'
+        run: |
+          mkdir -p installer && cd installer
+          unzip ../CruelKernel.zip
+      - name: Upload Kernel Zip
+        if: env.INSTALLER == 'yes'
+        uses: actions/upload-artifact@v2
+        with:
+          name: CruelKernel-${{ matrix.model }}
+          path: installer/*
+          if-no-files-found: error
+      - name: Upload Kernel Images
+        if: env.INSTALLER != 'yes'
+        uses: actions/upload-artifact@v2
+        with:
+          name: CruelKernel-${{ matrix.model }}
+          path: '*.img'
+          if-no-files-found: error
+
+      - name: Upload Kernel Info
+        uses: actions/upload-artifact@v2
+        with:
+          name: ConfigurationInfo-${{ matrix.model }}
+          path: config.*
+          if-no-files-found: error
