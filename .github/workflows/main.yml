@@ -1,0 +1,59 @@
+name: Build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        model: [ "G973F" ]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install mkbootimg (osm0sis)
+      run: |
+        wget https://github.com/osm0sis/mkbootimg/archive/master.zip
+        unzip master.zip
+        cd mkbootimg-master
+        sed -i -e 's/-Werror//g' Makefile
+        make
+        sudo mv mkbootimg /usr/local/bin/mkbootimg
+    - name: Install avbtool
+      run: |
+        wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/android10-dev.tar.gz -O - | tar xzf - avbtool
+        chmod +x avbtool
+        sudo mv avbtool /usr/local/bin/avbtool
+    - name: Clone Submodules
+      run: git submodule update --init --recursive
+    - name: Kernel Configure
+      run: |
+        ./build config                   \
+                model=${{ matrix.model}} \
+                name=CRUEL-V3.3          \
+                +magisk                  \
+                +nohardening             \
+                +ttl                     \
+                +wireguard               \
+                +cifs                    \
+                +sdfat                   \
+                +ntfs                    \
+                +morosound               \
+                +boeffla_wl_blocker
+    - name: Show information about build
+      run: cat build.info
+    - name: Kernel Build
+      run: ./build :build
+    - name: Create boot.img
+      run: ./build :mkimg
+    - name: Upload Kernel
+      uses: actions/upload-artifact@v1
+      with:
+        name: CruelKernel-${{ matrix.model }}
+        path: boot.img
+    - name: Upload Kernel Info
+      uses: actions/upload-artifact@v1
+      with:
+        name: ConfigurationInfo-${{ matrix.model }}
+        path: build.info
