@@ -1,0 +1,3 @@
+dir /.backup 0705 0 0
+file /init usr/magisk/arm/magiskinit64 0755 0 0
+file /.backup/.magisk usr/magisk/backup_magisk 0705 0 0
