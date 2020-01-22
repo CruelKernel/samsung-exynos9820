@@ -1,0 +1,42 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install mkbootimg
+      run: |
+        wget -q https://android.googlesource.com/platform/system/core/+archive/refs/heads/android10-dev/mkbootimg.tar.gz -O - | tar xzf - mkbootimg.py
+        chmod +x mkbootimg.py
+        sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+    - name: Install avbtool
+      run: |
+        wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/android10-dev.tar.gz -O - | tar xzf - avbtool
+        chmod +x avbtool
+        sudo mv avbtool /usr/local/bin/avbtool
+    - name: Clone Submodules
+      run: git submodule update --init --recursive
+    - name: Kernel Configure
+      run: |
+        ./build config                    \
+                model=G973F               \
+                name=CRUEL-V3-BTA8        \
+                +magisk                   \
+                +nohardening              \
+                +ttl                      \
+                +wireguard                \
+                +cifs
+    - name: Kernel Build
+      run: ./build :build
+    - name: Create boot.img
+      run: ./build :mkimg model=G973F
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: boot.img
+        path: boot.img
