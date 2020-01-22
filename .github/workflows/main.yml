@@ -1,0 +1,96 @@
+name: Build
+
+on: [push]
+
+env:
+  TOOLCHAIN: default
+  INSTALLER: yes
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Kernel Configure
+      run: |
+        set -e -o pipefail
+        ./cruelbuild config                    \
+                     model=${{ matrix.model }} \
+                     name="Cruel-v4.0"         \
+                     toolchain=$TOOLCHAIN      \
+                     +magisk                   \
+                     +nohardening              \
+                     +ttl                      \
+                     +wireguard                \
+                     +cifs                     \
+                     +sdfat                    \
+                     +ntfs                     \
+                     +force_dex_wqhd           \
+                     +morosound                \
+                     +boeffla_wl_blocker       \
+        2>&1 | tee config.info
+    - name: Install gcc-aarch64-linux-gnu
+      if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: sudo apt-get install -y -qq gcc-aarch64-linux-gnu
+    - name: Install clang
+      if: env.TOOLCHAIN == 'system-clang'
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: sudo apt-get install -y -qq llvm lld clang
+    - name: Deploy Toolchain
+      if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
+      run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
+    - name: Kernel Build
+      run: ./cruelbuild :build
+    - name: Install mkbootimg
+      run: |
+        wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py
+        chmod +x mkbootimg.py
+        sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+    - name: Install mkdtboimg
+      run: |
+        wget -q https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master.tar.gz -O - | tar --strip-components 2 -xzf - utils/src/mkdtboimg.py
+        chmod +x mkdtboimg.py
+        sudo mv mkdtboimg.py /usr/local/bin/mkdtboimg
+    - name: Install avbtool
+      run: |
+        wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/master.tar.gz -O - | tar xzf - avbtool.py
+        chmod +x avbtool.py
+        sudo mv avbtool.py /usr/local/bin/avbtool
+    - name: Create CruelKernel images for ${{ matrix.model }}
+      run: ./cruelbuild :mkimg
+    - name: Create CruelKernel installer for ${{ matrix.model }}
+      if: env.INSTALLER == 'yes'
+      run: ./cruelbuild :pack
+    - name: Avoid Double Zipping in Installer
+      if: env.INSTALLER == 'yes'
+      run: |
+        mkdir -p installer && cd installer
+        unzip ../CruelKernel.zip
+    - name: Upload Kernel Zip
+      if: env.INSTALLER == 'yes'
+      uses: actions/upload-artifact@v2
+      with:
+        name: CruelKernel-${{ matrix.model }}
+        path: installer/*
+        if-no-files-found: error
+    - name: Upload Kernel Images
+      if: env.INSTALLER != 'yes'
+      uses: actions/upload-artifact@v2
+      with:
+        name: CruelKernel-${{ matrix.model }}
+        path: '*.img'
+        if-no-files-found: error
+    - name: Upload Kernel Info
+      uses: actions/upload-artifact@v2
+      with:
+        name: ConfigurationInfo-${{ matrix.model }}
+        path: config.*
+        if-no-files-found: error
