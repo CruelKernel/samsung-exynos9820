@@ -277,7 +277,7 @@ struct tcf_block {
 
 static inline void qdisc_cb_private_validate(const struct sk_buff *skb, int sz)
 {
-	struct qdisc_skb_cb *qcb;
+	struct qdisc_skb_cb *qcb __maybe_unused;
 
 	BUILD_BUG_ON(sizeof(skb->cb) < offsetof(struct qdisc_skb_cb, data) + sz);
 	BUILD_BUG_ON(sizeof(qcb->data) < sz);
