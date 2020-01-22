@@ -1,0 +1,71 @@
+name: Build
+
+on: [push]
+
+env:
+  TOOLCHAIN: default
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        model: [ "G973F" ]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install mkbootimg
+      run: |
+        wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py
+        chmod +x mkbootimg.py
+        sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+    - name: Install mkdtboimg
+      run: |
+        wget -q https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master.tar.gz -O - | tar --strip-components 2 -xzf - utils/src/mkdtboimg.py
+        chmod +x mkdtboimg.py
+        sudo mv mkdtboimg.py /usr/local/bin/mkdtboimg
+    - name: Install avbtool
+      if: false
+      run: |
+        wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/android10-dev.tar.gz -O - | tar xzf - avbtool
+        chmod +x avbtool
+        sudo mv avbtool /usr/local/bin/avbtool
+    - name: Install gcc-aarch64-linux-gnu
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      if: env.TOOLCHAIN == 'system'
+      run: sudo apt-get install -y -qq gcc-aarch64-linux-gnu
+    - name: Deploy Toolchain
+      if: env.TOOLCHAIN != 'system'
+      run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
+    - name: Kernel Configure
+      run: |
+        ./cruelbuild config                    \
+                     model=${{ matrix.model }} \
+                     name="CRUEL-v3.8"         \
+                     toolchain=$TOOLCHAIN      \
+                     +magisk                   \
+                     +nohardening              \
+                     +ttl                      \
+                     +wireguard                \
+                     +cifs                     \
+                     +sdfat                    \
+                     +ntfs                     \
+                     +morosound                \
+                     +boeffla_wl_blocker       \
+        2>&1 | tee config.info
+    - name: Kernel Build
+      run: ./cruelbuild :build
+    - name: Create CruelKernel-${{ matrix.model }}.img
+      run: ./cruelbuild :mkimg
+    - name: Upload Kernel
+      uses: actions/upload-artifact@v2
+      with:
+        name: CruelKernel-${{ matrix.model }}
+        path: CruelKernel-*.img
+    - name: Upload Kernel Info
+      uses: actions/upload-artifact@v2
+      with:
+        name: ConfigurationInfo-${{ matrix.model }}
+        path: config.*
