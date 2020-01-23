@@ -1,0 +1,39 @@
+exynos9820-beyond2lte_eur_open_04.dtbo
+	custom0 = 0x4000000
+	custom1 = 0xf000000
+
+exynos9820-beyond2lte_eur_open_16.dtbo
+	custom0 = 0x10000000
+	custom1 = 0x10000000
+
+exynos9820-beyond2lte_eur_open_17.dtbo
+	custom0 = 0x11000000
+	custom1 = 0x11000000
+
+exynos9820-beyond2lte_eur_open_18.dtbo
+	custom0 = 0x12000000
+	custom1 = 0x12000000
+
+exynos9820-beyond2lte_eur_open_19.dtbo
+	custom0 = 0x13000000
+	custom1 = 0x13000000
+
+exynos9820-beyond2lte_eur_open_20.dtbo
+	custom0 = 0x14000000
+	custom1 = 0x16000000
+
+exynos9820-beyond2lte_eur_open_23.dtbo
+	custom0 = 0x17000000
+	custom1 = 0x17000000
+
+exynos9820-beyond2lte_eur_open_24.dtbo
+	custom0 = 0x18000000
+	custom1 = 0x18000000
+
+exynos9820-beyond2lte_eur_open_25.dtbo
+	custom0 = 0x19000000
+	custom1 = 0x19000000
+
+exynos9820-beyond2lte_eur_open_26.dtbo
+	custom0 = 0x1a000000
+	custom1 = 0xff000000
