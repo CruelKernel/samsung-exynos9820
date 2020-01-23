@@ -1,0 +1,27 @@
+exynos9820-beyond2lte_kor_17.dtbo
+	custom0 = 0x11000000
+	custom1 = 0x11000000
+
+exynos9820-beyond2lte_kor_18.dtbo
+	custom0 = 0x12000000
+	custom1 = 0x12000000
+
+exynos9820-beyond2lte_kor_19.dtbo
+	custom0 = 0x13000000
+	custom1 = 0x13000000
+
+exynos9820-beyond2lte_kor_20.dtbo
+	custom0 = 0x14000000
+	custom1 = 0x17000000
+
+exynos9820-beyond2lte_kor_24.dtbo
+	custom0 = 0x18000000
+	custom1 = 0x18000000
+
+exynos9820-beyond2lte_kor_25.dtbo
+	custom0 = 0x19000000
+	custom1 = 0x19000000
+
+exynos9820-beyond2lte_kor_26.dtbo
+	custom0 = 0x1a000000
+	custom1 = 0xff000000
