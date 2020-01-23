@@ -39,6 +39,7 @@
 *.symtypes
 *.tar
 *.xz
+*.zip
 Module.symvers
 modules.builtin
 
@@ -131,3 +132,9 @@ kernel/configs/android-*.cfg
 *.reverse.dts
 __pycache__/
 *.pyc
+
+/*.img
+/config.json
+/config.info
+/config.G*
+/config.N*
