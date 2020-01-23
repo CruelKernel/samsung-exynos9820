@@ -1,0 +1,19 @@
+exynos9820-d1_eur_open_18.dtbo
+	custom0 = 0x12000000
+	custom1 = 0x12000000
+
+exynos9820-d1_eur_open_19.dtbo
+	custom0 = 0x13000000
+	custom1 = 0x14000000
+
+exynos9820-d1_eur_open_21.dtbo
+	custom0 = 0x15000000
+	custom1 = 0x15000000
+
+exynos9820-d1_eur_open_22.dtbo
+	custom0 = 0x16000000
+	custom1 = 0x16000000
+
+exynos9820-d1_eur_open_23.dtbo
+	custom0 = 0x17000000
+	custom1 = 0xff000000

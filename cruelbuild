@@ -1,0 +1,1329 @@
+#!/usr/bin/env python3
+
+import os, errno
+from sys import argv, stdout, stderr
+import re
+import json
+import atexit
+from copy import deepcopy
+from datetime import datetime, timedelta
+from subprocess import CalledProcessError, Popen, run, DEVNULL, PIPE
+from shutil import which
+from enum import Enum, IntEnum
+from collections import namedtuple
+from struct import unpack_from, calcsize
+from select import poll
+from time import sleep
+from timeit import default_timer as timer
+from ctypes import CDLL, get_errno, c_int
+from ctypes.util import find_library
+from errno import EINTR
+from termios import FIONREAD
+from fcntl import ioctl
+from io import FileIO
+from os import fsencode, fsdecode
+
+CK_DIR = os.path.dirname(os.path.realpath(__file__))
+
+toolchain = {
+    'default': {
+        'CROSS_COMPILE': 'toolchain/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-',
+        'CLANG_TRIPLE': 'toolchain/clang/host/linux-x86/clang-4639204-cfp-jopp/bin/aarch64-linux-gnu-',
+        'CC': 'toolchain/clang/host/linux-x86/clang-4639204-cfp-jopp/bin/clang'
+    },
+    'cruel': {
+        'CROSS_COMPILE': 'toolchain/bin/aarch64-cruel-elf-'
+    },
+    'samsung': {
+        'CROSS_COMPILE': 'toolchain/gcc-cfp/gcc-cfp-jopp-only/aarch64-linux-android-4.9/bin/aarch64-linux-android-',
+        'CLANG_TRIPLE': 'toolchain/clang/host/linux-x86/clang-r349610-jopp/bin/aarch64-linux-gnu-',
+        'CC': 'toolchain/clang/host/linux-x86/clang-r349610-jopp/bin/clang'
+    },
+    'google': {
+        'CROSS_COMPILE': 'toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-',
+        'CLANG_TRIPLE': 'toolchain/llvm/bin/aarch64-linux-android-',
+        'CC': 'toolchain/llvm/bin/clang',
+        'LD': 'toolchain/llvm/bin/ld.lld',
+        'AR': 'toolchain/llvm/bin/llvm-ar',
+        'NM': 'toolchain/llvm/bin/llvm-nm',
+        'OBJCOPY': 'toolchain/llvm/bin/llvm-objcopy',
+        'OBJDUMP': 'toolchain/llvm/bin/llvm-objdump',
+        'READELF': 'toolchain/llvm/bin/llvm-readelf',
+        'OBJSIZE': 'toolchain/llvm/bin/llvm-size',
+        'STRIP': 'toolchain/llvm/bin/llvm-strip',
+        'LDGOLD': 'toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-ld.gold',
+        'LLVM_AR': 'toolchain/llvm/bin/llvm-ar',
+        'LLVM_DIS': 'toolchain/llvm/bin/llvm-dis'
+    },
+    'proton': {
+        'CROSS_COMPILE': 'toolchain/bin/aarch64-linux-gnu-',
+        'CROSS_COMPILE_ARM32': 'toolchain/bin/arm-linux-gnueabi-',
+        'CC': 'toolchain/bin/clang',
+        'LD': 'toolchain/bin/ld.lld',
+        'AR': 'toolchain/bin/llvm-ar',
+        'NM': 'toolchain/bin/llvm-nm',
+        'OBJCOPY': 'toolchain/bin/llvm-objcopy',
+        'OBJDUMP': 'toolchain/bin/llvm-objdump',
+        'READELF': 'toolchain/bin/llvm-readelf',
+        'OBJSIZE': 'toolchain/bin/llvm-size',
+        'STRIP': 'toolchain/bin/llvm-strip',
+        'LDGOLD': 'toolchain/bin/aarch64-linux-gnu-ld.gold',
+        'LLVM_AR': 'toolchain/bin/llvm-ar',
+        'LLVM_DIS': 'toolchain/bin/llvm-dis'
+    },
+    'arter97': {
+        'CROSS_COMPILE': 'toolchain/bin/aarch64-elf-'
+    },
+    'arm': {
+        'CROSS_COMPILE': 'toolchain/bin/aarch64-none-elf-'
+    },
+    'system-gcc': {
+        'CROSS_COMPILE': 'aarch64-linux-gnu-'
+    },
+    'system-clang': {
+        'CC': 'clang',
+        'CROSS_COMPILE': 'aarch64-linux-gnu-',
+        'CROSS_COMPILE_ARM32': 'arm-linux-gnu-'
+    }
+}
+
+models = {
+    'G970F': {
+        'config': 'exynos9820-beyond0lte_defconfig'
+    },
+    'G970N': {
+        'config': 'exynos9820-beyond0lteks_defconfig'
+    },
+    'G973F': {
+        'config': 'exynos9820-beyond1lte_defconfig'
+    },
+    'G973N': {
+        'config': 'exynos9820-beyond1lteks_defconfig'
+    },
+    'G975F': {
+        'config': 'exynos9820-beyond2lte_defconfig'
+    },
+    'G975N': {
+        'config': 'exynos9820-beyond2lteks_defconfig'
+    },
+    'G977B': {
+        'config': 'exynos9820-beyondx_defconfig'
+    },
+    'G977N': {
+        'config': 'exynos9820-beyondxks_defconfig'
+    },
+    'N970F': {
+        'config': 'exynos9820-d1_defconfig'
+    },
+    'N971N': {
+        'config': 'exynos9820-d1xks_defconfig'
+    },
+    'N975F': {
+        'config': 'exynos9820-d2s_defconfig'
+    },
+    'N976B': {
+        'config': 'exynos9820-d2x_defconfig'
+    },
+    'N976N': {
+        'config': 'exynos9820-d2xks_defconfig'
+    }
+}
+
+OBJTREE_SIZE_GB = 3
+
+
+_libc = None
+def _libc_call(function, *args):
+    """Wrapper which raises errors and retries on EINTR."""
+    while True:
+        rc = function(*args)
+        if rc != -1:
+            return rc
+        errno = get_errno()
+        if errno != EINTR:
+            raise OSError(errno, os.strerror(errno))
+
+Event = namedtuple('Event', ['wd', 'mask', 'cookie', 'name'])
+
+_EVENT_FMT = 'iIII'
+_EVENT_SIZE = calcsize(_EVENT_FMT)
+
+class INotify(FileIO):
+    fd = property(FileIO.fileno)
+    inotify_raw_events = []
+    topdir = 1
+    paths = {}
+    event_files = set()
+
+    def __init__(self, inheritable=False, nonblocking=False):
+        try:
+            libc_so = find_library('c')
+        except RuntimeError:
+            libc_so = None
+        global _libc; _libc = _libc or CDLL(libc_so or 'libc.so.6', use_errno=True)
+        O_CLOEXEC = getattr(os, 'O_CLOEXEC', 0) # Only defined in Python 3.3+
+        flags = (not inheritable) * O_CLOEXEC | bool(nonblocking) * os.O_NONBLOCK
+        FileIO.__init__(self, _libc_call(_libc.inotify_init1, flags), mode='rb')
+        self._poller = poll()
+        self._poller.register(self.fileno())
+
+    def add_watch(self, path, mask):
+        path = str(path) if hasattr(path, 'parts') else path
+        wd = _libc_call(_libc.inotify_add_watch, self.fileno(), fsencode(path), mask)
+        self.paths[wd] = path
+        if path == '.':
+            self.topdir = wd
+        return wd
+
+    def readraw(self, timeout=None, read_delay=None):
+        data = self._readall()
+        if not data and timeout != 0 and self._poller.poll(timeout):
+            if read_delay is not None:
+                sleep(read_delay / 1000.0)
+            data = self._readall()
+        return data
+
+    def _readall(self):
+        bytes_avail = c_int()
+        ioctl(self, FIONREAD, bytes_avail)
+        if not bytes_avail.value:
+            return b''
+        return os.read(self.fileno(), bytes_avail.value)
+
+    def collect_events(self, timeout=1, read_delay=None):
+        self.inotify_raw_events.append(self.readraw(timeout=timeout, read_delay=read_delay))
+
+    @staticmethod
+    def parse_events(data):
+        pos = 0
+        events = []
+        while pos < len(data):
+            wd, mask, cookie, namesize = unpack_from(_EVENT_FMT, data, pos)
+            pos += _EVENT_SIZE + namesize
+            name = data[pos - namesize : pos].split(b'\x00', 1)[0]
+            events.append(Event(wd, mask, cookie, fsdecode(name)))
+        return events
+
+    def _gather_event_files(self):
+        event_files = set()
+        for data in self.inotify_raw_events:
+            for event in self.parse_events(data):
+                if event.wd != -1:
+                    if event.wd == self.topdir:
+                        event_files.add(event.name)
+                    else:
+                        event_files.add(os.path.join(self.paths[event.wd], event.name))
+                else:
+                    fatal("Missing events with SRC_REDUCE=y, try to use j=1")
+        inotify_raw_events = []
+        self.event_files.update(event_files)
+
+    def get_event_files(self):
+        self.collect_events()
+        self._gather_event_files()
+        return self.event_files
+
+    def run(self, args):
+        with Popen(args, stdout=stdout, stderr=stderr) as proc:
+            while proc.poll() is None:
+                self.collect_events()
+            if proc.returncode:
+                exit(proc.returncode)
+        self._gather_event_files()
+
+class flags(IntEnum):
+    OPEN = 0x00000020  #: File was opened
+    Q_OVERFLOW = 0x00004000  #: Event queue overflowed
+    ONLYDIR = 0x01000000  #: only watch the path if it is a directory
+    EXCL_UNLINK = 0x04000000  #: exclude events on unlinked objects
+
+inotify = INotify()
+watch_flags = flags.OPEN | flags.EXCL_UNLINK | flags.ONLYDIR
+unused_files = set()
+
+
+def get_toolchain_cc(compiler):
+    cc = ''
+    if 'CC' in toolchain[compiler]:
+        cc = toolchain[compiler]['CC']
+    else:
+        cc = toolchain[compiler]['CROSS_COMPILE'] + 'gcc'
+    return cc
+
+def mount_tmpfs(target, req_mem_gb):
+    if not os.path.ismount(target):
+        meminfo = dict((i.split()[0].rstrip(':'),int(i.split()[1])) for i in open('/proc/meminfo').readlines())
+        av_mem_gb = int(meminfo['MemAvailable'] / 1024 ** 2)
+        if av_mem_gb >= req_mem_gb + 2:
+            ret = run(['sudo', '--non-interactive',
+                       'mount', '-t', 'tmpfs', '-o', 'rw,noatime,size=' + str(req_mem_gb) + 'G', 'tmpfs', target])
+            if ret.returncode != 0:
+                print('BUILD: error mounting tmpfs on ' + target, file=stderr)
+            else:
+                print('BUILD: tmpfs is mounted on ' + target)
+        else:
+            print('BUILD: will not mount tmpfs on ' + target + ' size ' + str(av_mem_gb) + 'G < ' + str(req_mem_gb + 2) + 'G')
+    else:
+        print(target + ' is already used as mountpoint', file=stderr)
+
+def umount_tmpfs(target):
+    if os.path.ismount(target):
+        ret = run(['sudo', '--non-interactive', 'umount', target])
+        if ret.returncode != 0:
+            print("BUILD: error unmounting " + target, file=stderr)
+        else:
+            print("BUILD: " + target + " unmounted")
+
+def inotify_install_watchers(inotify, dirname, watch_flags, exclude_dirs, exclude_files):
+    inotify.add_watch(dirname, watch_flags)
+
+    topdirs, unused_files = scandir(dirname)
+    for d in exclude_dirs:
+        topdirs.remove(d)
+    for f in exclude_files:
+        unused_files.remove(f)
+
+    for dir in topdirs:
+        for root, dirs, files in os.walk(dir, topdown=False):
+            unused_files.update({ os.path.join(root, f) for f in files })
+            for d in dirs:
+                inotify.add_watch(os.path.join(root, d), watch_flags)
+
+    return unused_files
+
+def remove_files(*files):
+    for f in files:
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
+def del_dirs(src_dir):
+    for dirpath, _, _ in os.walk(src_dir, topdown=False):
+        try:
+            os.rmdir(dirpath)
+        except OSError:
+            pass
+
+def mkdir(dirname):
+    try:
+        os.mkdir(dirname)
+    except FileExistsError:
+        pass
+
+def scandir(dirname):
+    topdirs = set()
+    topfiles = set()
+    with os.scandir(dirname) as it:
+        for entry in it:
+            if entry.is_dir():
+                topdirs.add(entry.name)
+            else:
+                topfiles.add(entry.name)
+    return topdirs, topfiles
+
+def tool_exists(name):
+    return which(name) is not None
+
+def get_cores_num():
+    return len(os.sched_getaffinity(0))
+
+def check_env(var):
+    isset = False
+    v = os.environ.get(var, 'n')
+    if v == 'y' or v == 'Y' or v == 'yes' or v == '1':
+        isset = True
+    return isset
+
+def set_env(force=False, **env):
+    for key, value in env.items():
+        if force or key not in os.environ:
+            os.environ[key] = value
+        value = os.environ[key]
+        print(key + '="' + value + '"')
+
+def fatal(*args, **kwargs):
+    print(*args, file=stderr, **kwargs)
+    exit(1)
+
+def print_usage():
+    msg = f"""
+Usage: {argv[0]} <stage> model=<model> name=<name> [+-]<conf1> [+-]<conf2> ...
+
+<stage>: build stage. Required argument. mkimg by default.
+Where <stage> can be one of: config, build, mkimg, pack
+(:build, :mkimg, :pack). Each next stage will run all
+previous stages first. Prefix ':' means skip all previous
+stages.
+
+model=<model> phone model name. Required argument.
+The script will try to autodetect connected phone if
+model is not specified. Supported models:
+{list(models.keys())}
+Use model=all to build all available kernels.
+
+name=<name>: optional custom kernel name
+Use this switch if you want to change the name in
+your kernel.
+
+toolchain=<compiler>: optional toolchain switch
+Supported compilers: {list(toolchain.keys())}
+
+os_patch_level=<date>: use patch date (YYYY-MM)
+instead of default one from build.mkbootimg.<model>
+file. For example: os_patch_level="2020-02"
+
+O=dir will perform out of tree kernel build in dir.
+The script will try to mount tmpfs in dir if there
+is enough available memory.
+
+[+-]<conf>: optional list of configuration switches.
+Use prefix '+' to enable the configuration.
+Use prefix '-' to disable the configuration.
+You can check full list of switches and default ones in
+kernel/configs/cruel*.conf directory.
+One can use NODEFAULTS=y {argv[0]} +samsung ... to disable
+all enabled by default configs.
+
+If you want to flash the kernel, use: FLASH=y {argv[0]}
+"""
+    print(msg)
+
+def parse_stage():
+    stages = []
+    modes = ['config', 'build', 'mkimg', 'pack']
+    omodes = [':config', ':build', ':mkimg', ':pack']
+    all_modes = modes + omodes
+
+    if len(argv) > 1:
+        mode = argv[1]
+        if mode not in all_modes:
+            if mode[0] == '+' or mode[0] == '-' or '=' in mode:
+                mode = 'mkimg'
+            else:
+                print_usage()
+                fatal('Please, specify the mode from {}.'.format(all_modes))
+        else:
+            argv.pop(1)
+    else:
+        mode = 'mkimg'
+
+    if mode in omodes:
+        if mode == ':config':
+            stages = [] # special model for :config
+                        # don't run make defconfig
+                        # just generate config.json file
+        else:
+            stages = [mode[1:]]
+    else:
+        stages = modes[0:modes.index(mode)+1]
+
+    return stages
+
+def find_configs():
+    configs = { 'kernel': {}, 'order': [] }
+    prefix_len = len('cruel')
+    suffix_len = len('.conf')
+    nodefaults = check_env('NODEFAULTS')
+    files = [f for f in os.listdir('kernel/configs/') if re.match('^cruel[+-]?.*\.conf$', f)]
+    for f in files:
+        if f == 'cruel.conf':
+            continue
+        name = f[prefix_len+1:]
+        name = name[:-suffix_len]
+        enabled = True if f[prefix_len:prefix_len+1] == '+' else False
+
+        configs['kernel'][name] = {
+            'path': os.path.join('kernel/configs', f),
+            'enabled': enabled if not nodefaults else False,
+            'default': enabled
+        }
+        if enabled and not nodefaults:
+            configs['order'].append(name)
+        configs['order'] = sorted(configs['order'])
+    return configs
+
+def save_config(file, configs):
+    conf = deepcopy(configs)
+    with open(file, 'w') as fh:
+        json.dump(conf, fh, sort_keys=True, indent=4)
+
+def load_config(file):
+    with open(file, 'r') as fh:
+        return json.load(fh)
+
+def switch_config(opt, enable, configs):
+    if opt in configs['kernel']:
+        configs['kernel'][opt]['enabled'] = enable
+    else:
+        fatal("Unknown config '{}'.".format(opt))
+
+    if enable:
+        if opt in configs['order']:
+            configs['order'].remove(opt)
+        configs['order'].append(opt)
+    else:
+        if opt in configs['order']:
+            configs['order'].remove(opt)
+
+def parse_args():
+    configs = find_configs()
+
+    for arg in argv[1:]:
+        if arg.find('=') != -1:
+            (key, value) = arg.split('=', 1)
+
+            enable = None
+            if key[0] == '-' or key[0] == '+':
+                enable = True if key[0] == '+' else False
+                key = key[1:]
+
+            if key not in [ 'name',
+                            'model',
+                            'os_patch_level',
+                            'toolchain',
+                            'magisk',
+                            'O' ]:
+                fatal('Unknown config {}.'.format(key))
+
+            if enable == None:
+                if key == 'model':
+                    if value == 'all':
+                        value = list(models.keys())
+                    else:
+                        value = value.split(',')
+                configs[key] = value
+            else:
+                switch_config(key, enable, configs)
+
+            if not value:
+                fatal('Please, use {}="<name>".'.format(key))
+            elif key == 'model':
+                for m in value:
+                    if m not in models:
+                        fatal('Unknown device model: ' + m)
+            elif key == 'os_patch_level':
+                try:
+                    datetime.strptime(value, '%Y-%m')
+                except Exception:
+                    fatal('Please, use os_patch_level="YYYY-MM". For example: os_patch_level="2020-02"')
+            elif key == 'toolchain':
+                if value not in toolchain:
+                    fatal('Unknown toolchain: ' + value)
+            elif key == 'magisk':
+                if value != 'canary' and value != 'alpha' and not re.match('^v\d+\.\d+', value):
+                    fatal('Unknown magisk version: ' + value + ' (example: canary, alpha, v20.4, v19.4, ...)')
+                configs['kernel']['magisk']['version'] = value
+        else:
+            switch = arg[0:1]
+            enable = True if switch == '+' else False
+            opt = arg[1:]
+            if switch not in ['+', '-']:
+                fatal("Unknown switch '{0}'. Please, use '+{0}'/'-{0}' to enable/disable option.".format(arg))
+            switch_config(opt, enable, configs)
+
+    if 'model' not in configs:
+        first_model = list(models.keys())[0]
+        if len(models) == 1:
+            configs['model'] = [ first_model ]
+        else:
+            try:
+                configs['model'] = [ adb_get_device_model() ]
+            except CalledProcessError:
+                print_usage()
+                fatal('Please, use model="<model>". For example: model="{}"'.format(first_model))
+
+    return configs
+
+def setup_env(features, configs, model):
+    set_env(ARCH='arm64', PLATFORM_VERSION='11', ANDROID_MAJOR_VERSION='r')
+    set_env(KBUILD_BUILD_TIMESTAMP='')
+    if features['fake_config']:
+        defconfig = os.path.join('arch/arm64/configs', models[model]['config'])
+        set_env(KCONFIG_BUILTINCONFIG=defconfig)
+
+def config_info(configs, model):
+    name = configs.get('name', 'Cruel')
+    name = name.replace('#MODEL#', model)
+    print('Name: ' + name)
+    print('Model: ' + model)
+
+    conf_msg = []
+    kernel_configs = configs['kernel']
+    for key in configs['order']:
+        if kernel_configs[key]['enabled']:
+            conf_msg.append(key + ' (default: ' + ('On' if kernel_configs[key]['default'] else 'Off') + ')')
+    if conf_msg:
+        print('Configuration:')
+        for i in conf_msg:
+            print("\t" + i)
+    else:
+        print('Configuration: basic')
+
+    if 'os_patch_level' in configs:
+        print('OS Patch Level: ' + configs['os_patch_level'])
+    else:
+        with open('cruel/build.mkbootimg.' + model, 'r') as fh:
+            for line in fh:
+                (arg, val) = line.split('=', 1)
+                val = val.rstrip()
+                if arg == 'os_patch_level':
+                    print('OS Patch Level: ' + val)
+                    break
+
+def config_name(name, config='.config'):
+    run(['scripts/config',
+        '--file', config,
+        '--set-str', 'LOCALVERSION', '-' + name], check=True)
+
+def config_model(model, config='.config'):
+    run(['scripts/config',
+        '--file', config,
+        '--disable', 'CONFIG_MODEL_NONE',
+        '--enable', 'CONFIG_MODEL_' + model], check=True)
+
+def make_config(features, configs, model):
+    objtree = configs.get('O', '.')
+    config = os.path.join(os.path.join(CK_DIR, objtree),
+                          'config.' + model)
+    set_env(KCONFIG_CONFIG=config)
+    args = ['scripts/kconfig/merge_config.sh', '-O', objtree,
+            os.path.join('arch/arm64/configs', models[model]['config']),
+            'kernel/configs/cruel.conf']
+
+    kernel_configs = configs['kernel']
+    for key in configs['order']:
+        if kernel_configs[key]['enabled']:
+            args.append(kernel_configs[key]['path'])
+
+    inotify.run(args)
+
+    if 'name' in configs:
+        name = configs['name'].replace('#MODEL#', model)
+        config_name(name, config)
+
+    if features['dtb']:
+        config_model(model, config)
+
+    del os.environ['KCONFIG_CONFIG']
+
+def update_magisk(version):
+    cmd = ['usr/magisk/update_magisk.sh']
+    if version:
+        cmd.append(version)
+    run(cmd, check=True)
+    with open('usr/magisk/magisk_version', 'r') as fh:
+        print('Magisk Version: ' + fh.readline())
+
+def switch_toolchain(compiler):
+    cc = os.path.abspath(get_toolchain_cc(compiler))
+    if cc.startswith(os.path.realpath('toolchain')):
+        branch = run(['git', 'submodule', 'foreach', 'git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                     check=True, stdout=PIPE).stdout.decode('utf-8').splitlines()[1]
+        if not (tool_exists(cc) and compiler == branch):
+            ret = run(['git', 'submodule', 'foreach', 'git', 'rev-parse', '--verify', '--quiet', compiler],
+                      stdout=DEVNULL, stderr=DEVNULL)
+            if ret.returncode != 0:
+                try:
+                    run(['git', 'submodule', 'foreach', 'git', 'branch', compiler, 'origin/' + compiler],
+                        check=True, stdout=DEVNULL, stderr=DEVNULL)
+                except CalledProcessError:
+                    fatal("Can't checkout to toolchain: " + compiler)
+            run(['git', 'submodule', 'foreach', 'git', 'checkout', compiler], check=True)
+
+def build(compiler, objtree='.'):
+    env = {}
+
+    toolchain[compiler]['CC'] = get_toolchain_cc(compiler)
+    if compiler in ['system-gcc', 'system-clang']:
+        env = toolchain[compiler]
+    else:
+        env = { k: os.path.abspath(v) for k, v in toolchain[compiler].items() }
+    if tool_exists('ccache'):
+        env['CC'] = 'ccache ' + env['CC']
+
+    if objtree != '.':
+        env['O'] = objtree
+
+    if tool_exists('pigz'):
+        env['KGZIP']='pigz'
+    if tool_exists('pbzip2'):
+        env['KBZIP2']='pbzip2'
+
+    arg_threads = []
+    if check_env('DEBUG'):
+        arg_threads = ['-j', '1', 'V=1']
+    else:
+        arg_threads = ['-j', str(get_cores_num())]
+
+    inotify.run(['make',
+                 *arg_threads,
+                 *{ k + '=' + v for k, v in env.items() }])
+
+def mkbootimg(os_patch_level, seadroid, config, output, **files):
+    if not tool_exists('mkbootimg'):
+        fatal("Please, install 'mkbootimg'.")
+
+    print("Preparing {}...".format(output))
+    for f in files.values():
+        if not os.path.isfile(f):
+            fatal("Can't find file '{}'.".format(f))
+    args = ['mkbootimg']
+    with open(config) as fh:
+        for line in fh:
+            (arg, val) = line.split('=', 1)
+            if arg == 'os_patch_level' and os_patch_level:
+                val = os_patch_level
+            else:
+                val = val.rstrip()
+            args.extend(['--' + arg, val])
+    for k, v in files.items():
+        args.extend(['--' + k, v])
+    args.extend(['--output', output])
+
+    run(args, check=True)
+
+    if seadroid:
+        with open(output, 'ab') as img:
+            img.write('SEANDROIDENFORCE'.encode('ascii'))
+
+def get_dtb_configs(models):
+    dtb_model = {}
+    model_dtb = {}
+    for model in models:
+        with open(os.path.join('cruel', 'dtb.' + model), 'r') as fh:
+            l = ''
+            while not l:
+                l = fh.readline()
+            dtb = l.split('.')[0]
+            if dtb not in dtb_model:
+                dtb_model[dtb] = [model]
+            else:
+                dtb_model[dtb].append(model)
+            model_dtb[model] = dtb
+    return {'dtb': dtb_model, 'model': model_dtb}
+
+def mkdtboimg(dtbdir, config, output):
+    if not tool_exists('mkdtboimg'):
+        fatal("Please, install 'mkdtboimg'.")
+
+    print("Preparing {}...".format(output))
+    inotify.run(['mkdtboimg', 'cfg_create', '--dtb-dir=' + dtbdir, output, config])
+
+def mkvbmeta(output):
+    if not tool_exists('avbtool'):
+        fatal("Please, install 'avbtool'.")
+
+    print('Preparing vbmeta...')
+    run(['avbtool', 'make_vbmeta_image', '--out', output], check=True)
+
+def mkaptar(boot, vbmeta):
+    if not (tool_exists('tar') and tool_exists('md5sum') and tool_exists('lz4')):
+        fatal("Please, install 'tar', 'lz4' and 'md5sum'.")
+
+    print('Preparing AP.tar.md5...')
+    run(['lz4', '-m', '-f', '-B6', '--content-size', boot, vbmeta], check=True)
+    run(['tar', '-H', 'ustar', '-c', '-f', 'AP.tar', boot + '.lz4', vbmeta + '.lz4'], check=True)
+    run(['md5sum AP.tar >> AP.tar && mv AP.tar AP.tar.md5'], check=True, shell=True)
+
+def adb_get_state():
+    return run(['adb', 'get-state'], stdout=PIPE, stderr=DEVNULL, check=False).stdout.decode('utf-8').strip()
+
+def adb_wait_for_device():
+    state = adb_get_state()
+    if not state:
+        print('Waiting for the device...')
+        run(['adb', 'wait-for-device'])
+
+def heimdall_wait_for_device():
+    print('Waiting for download mode...')
+    run('until heimdall detect > /dev/null 2>&1; do sleep 1; done', shell=True)
+
+def heimdall_in_download_mode():
+    return run(['heimdall', 'detect'], stdout=DEVNULL, stderr=DEVNULL).returncode == 0
+
+def heimdall_flash_images(imgs):
+    args = ['heimdall', 'flash']
+    for partition, image in imgs.items():
+        args.extend(['--' + partition.upper(), image])
+    run(args, check=True)
+
+def adb_reboot_download():
+    run(['adb', 'reboot', 'download'])
+
+def adb_reboot():
+    run(['adb', 'reboot'])
+
+def adb_get_kernel_version():
+    run(['adb', 'shell', 'cat', '/proc/version'])
+
+def adb_uid():
+    return int(run(['adb', 'shell', 'id', '-u'], stdout=PIPE, check=True).stdout.decode('utf-8'))
+
+def adb_check_su():
+    try:
+        run(['adb', 'shell', 'command', '-v', 'su'], check=True)
+        return True
+    except CalledProcessError:
+        return False
+
+def adb_get_device_model():
+    return (run(['adb', 'shell', 'getprop', 'ro.boot.em.model'], stdout=PIPE, check=True)
+           .stdout.decode('utf-8')
+           .strip()[3:])
+
+def adb_get_partitions(cmd_adb):
+    raw_partitions = run(['adb', 'shell', *cmd_adb('cat /proc/partitions')],
+                     stdout=PIPE, check=True).stdout.decode('utf-8').splitlines()[1:]
+    aliases = run(['adb', 'shell', 'ls', '-1',
+                   '/dev/block/by-name/*'],
+                   stdout=PIPE, check=True).stdout.decode('utf-8').splitlines()
+    names = run(['adb', 'shell', 'realpath',
+                 '/dev/block/by-name/*'],
+                 stdout=PIPE, check=True).stdout.decode('utf-8').splitlines()
+    partitions = {}
+    map_block = {}
+    block_prefix_len = len('/dev/block/')
+    alias_prefix_len = len('/dev/block/by-name/')
+    for (alias, name) in zip(aliases, names):
+        if alias and name:
+            alias = alias[alias_prefix_len:]
+            name  = name[block_prefix_len:]
+            partitions[alias] = { 'block': name }
+            map_block[name] = partitions[alias]
+    for part in raw_partitions:
+        if part:
+            major, minor, blocks, name = part.split()
+            if name in map_block:
+                map_block[name]['size'] = int(blocks) * 1024
+    return partitions
+
+def flash(samsung=False, **imgs):
+    if not tool_exists('adb'):
+        fatal("Please, install 'adb'")
+
+    is_root = False
+    use_su  = False
+    try:
+        if not heimdall_in_download_mode():
+            adb_wait_for_device()
+            is_root = (adb_uid() == 0)
+            if not is_root and adb_check_su():
+                use_su = True
+                is_root = True
+    except (FileNotFoundError, CalledProcessError):
+        pass
+
+    if is_root:
+        #cmd_adb = lambda cmd: ['sh', '-x', '-c', '"' + cmd + '"']
+        cmd_adb = lambda cmd: [cmd.replace('\\','')]
+        if use_su:
+            cmd_adb = lambda cmd: ['su', '-c', '"' + cmd + '"']
+
+        state = adb_get_state()
+        tmpdir = '/data/local/tmp'
+        if state == 'recovery':
+            tmpdir = '/tmp'
+
+        partitions = adb_get_partitions(cmd_adb)
+        for part, img in imgs.items():
+            if part not in partitions:
+                fatal("Unknown partition " + part + " for " + img)
+            img_size = os.path.getsize(img)
+            part_size = partitions[part]['size']
+            if img_size > part_size:
+                img_size_mb = img_size / 1024 ** 2
+                part_size_mb = part_size / 1024 ** 2
+                fatal("{} is bigger than {} partition ({:0.2f} > {:0.2f} MiB)"
+                      .format(img, part, img_size_mb, part_size_mb))
+        for part, img in imgs.items():
+            cleanup = lambda: run(['adb', 'shell',
+                                   'rm', '-f', os.path.join(tmpdir, img)])
+            atexit.register(cleanup)
+            run(['adb', 'push',
+                img, tmpdir],
+                check=True)
+            run(['adb', 'shell', *cmd_adb(
+                 'dd if=' + os.path.join(tmpdir, img) +
+                 ' of=/dev/block/by-name/' + part)],
+                check=True)
+            cleanup()
+            atexit.unregister(cleanup)
+        adb_reboot()
+        adb_wait_for_device()
+        adb_get_kernel_version()
+    elif samsung and tool_exists('heimdall'):
+        if not heimdall_in_download_mode():
+            adb_wait_for_device()
+            adb_reboot_download()
+        heimdall_wait_for_device()
+        heimdall_flash_images(imgs)
+        adb_wait_for_device()
+        adb_get_kernel_version()
+    else:
+        fatal("Please, use 'adb root' or install 'heimdall'")
+
+def flash_zip(zipfile):
+    if not tool_exists('adb'):
+        fatal("Please, install 'adb'")
+
+    if heimdall_in_download_mode():
+        fatal("Can't flash zip file while phone is in DOWNLOAD mode. Please, reboot")
+
+    is_root = False
+    use_su  = False
+    try:
+        adb_wait_for_device()
+        is_root = (adb_uid() == 0)
+        if not is_root and adb_check_su():
+            use_su = True
+            is_root = True
+    except (FileNotFoundError, CalledProcessError):
+        pass
+
+    if not is_root:
+        fatal("Can't flash zip file if root is not available")
+
+    state = adb_get_state()
+    tmpdir = '/data/local/tmp'
+    execdir = '/data/adb'
+    if state == 'recovery':
+        tmpdir = '/tmp'
+        execdir = '/tmp'
+
+    update_binary = os.path.join(execdir, 'update-binary')
+    zippath = os.path.join(tmpdir, os.path.basename(zipfile))
+
+    #cmd_adb = lambda cmd: ['sh', '-x', '-c', '"' + cmd + '"']
+    cmd_adb = lambda cmd: [cmd.replace('\\','')]
+    if use_su:
+        cmd_adb = lambda cmd: ['su', '-c', '"' + cmd + '"']
+
+    cleanup = lambda: run(['adb', 'shell',
+                           *cmd_adb('rm -f /tmp/update-binary ' + os.path.join(tmpdir, zipfile))])
+    atexit.register(cleanup)
+    run(['adb', 'push', zipfile, tmpdir],
+        check=True)
+    run(['adb', 'shell', *cmd_adb((
+         'unzip -p {zip}' +
+         ' META-INF/com/google/android/update-binary ' +
+         '> {update}').format(zip=zippath, update=update_binary))],
+        check=True)
+    run(['adb', 'shell', *cmd_adb((
+         'fgrep -qI \\"\\" {update} && ' + # text file
+         '[ \\"\$(head -n 1 {update})\\" = \\"#!/sbin/sh\\" ] && ' +
+         'sed -i \\"1c\#!\$(which sh)\\" {update}').format(update=update_binary))],
+        check=True)
+    run(['adb', 'shell', *cmd_adb('chmod +x ' + update_binary)],
+        check=True)
+    run(['adb', 'shell', *cmd_adb((
+         'set -o posix; FIFO=\$(mktemp -p {tmp} -u); mkfifo \$FIFO; exec 3<>\$FIFO; rm -f \$FIFO; ' +
+         'cd {tmp}; {update} 3 3 {zip}').format(tmp=tmpdir, update=update_binary, zip=zippath))],
+        check=True)
+    cleanup()
+    atexit.unregister(cleanup)
+
+    adb_reboot()
+    adb_wait_for_device()
+    adb_get_kernel_version()
+
+def archive_xz(name, images):
+    if not tool_exists('xz'):
+        fatal("Please, install 'xz'.")
+
+#    if len(images) == 1:
+#        print('Preparing {} ...'.format(images[0] + '.xz'))
+#        run(['xz', '-9', '--force', images[0]], check=True)
+#    elif tool_exists('tar'):
+    if tool_exists('tar'):
+        print('Preparing ' + name + '...')
+        set_env(force=True, XZ_OPT='-9')
+        run(['tar', '-cJf', name, *images], check=True)
+    else:
+        fatal("Please, install 'tar'.")
+
+def print_recovery_message(words, margin=1):
+    if not words:
+        return []
+    line_len = len(words[0]) + margin * 2
+    line = [words[0]]
+    msg = []
+    for i in range(1, len(words)):
+        if line_len + len(words[i]) + len(line) - 1 < 47:
+            line_len += len(words[i])
+            line.append(words[i])
+        else:
+            msg.append('ui_print "***{:^47}***"'.format(' '.join(line)))
+            line_len = len(words[i]) + margin * 2
+            line = [words[i]]
+    if line:
+        msg.append('ui_print "***{:^47}***"'.format(' '.join(line)))
+    return msg
+
+def prepare_updater_script(configs, features, dtb_map):
+    models = configs['model']
+    kernel_name = configs.get('name', 'Cruel').replace('#MODEL#', '')
+    device_check = []
+    process = lambda t, k: ''.join([
+                chr(x ^ ord(y))
+                for x, y in zip(t, k * int(len(t) / len(k) + 1000))])
+
+    header = '''\
+#!/sbin/sh
+
+set -e
+
+ZIPFILE="$3"
+ZIPNAME="${ZIPFILE##*/}"
+OUTFD="/proc/self/fd/$2"
+
+tmpdir='/tmp'
+execdir='/tmp'
+
+BOOTMODE=false
+if ps | grep zygote | grep -qv grep; then
+    BOOTMODE=true
+fi
+if ps -A 2>/dev/null | grep zygote | grep -qv grep; then
+    BOOTMODE=true
+fi
+
+if $BOOTMODE; then
+    if [ -n "$TMPDIR" -a -d "$TMPDIR" ]; then
+        tmpdir="$TMPDIR"
+    elif [ -d '/data/local/tmp' ]; then
+        tmpdir='/data/local/tmp'
+    fi
+    if [ -d '/data/adb' ]; then
+        execdir='/data/adb'
+    fi
+fi
+
+ui_print() {
+    if $BOOTMODE; then
+        echo "$1"
+    else
+        echo -e "ui_print $1\\nui_print" >> $OUTFD
+    fi
+}
+show_progress() {
+    if ! $BOOTMODE; then
+        echo "progress $1 $2" >> $OUTFD
+    fi
+}
+set_progress() {
+    if ! $BOOTMODE; then
+        echo "set_progress $1" >> $OUTFD
+    fi
+}
+flash() {
+    dd if="$1" of="$2" &>/dev/null
+    rm -f "$1"
+}
+abort() {
+    ui_print "$1"
+    exit 1
+}
+
+'''
+
+    print_models = [
+        'ui_print "****{:*^45}****"'.format(' Models '),
+        *print_recovery_message(models, 7)
+    ]
+    compiler = configs.get('toolchain', 'default')
+    compiler_version = (run([get_toolchain_cc(compiler), '--version'], stdout=PIPE, check=True)
+                       .stdout.decode('utf-8')
+                       .splitlines()[0].split())
+    remove_prefix = lambda x, y: x[x.startswith(y) and len(y):]
+    remove_http = lambda x: remove_prefix(x, 'http://')
+    remove_https = lambda x: remove_prefix(x, 'https://')
+    shorten_link = lambda l: remove_https(remove_http(l.strip('()')))
+    compiler_version = list(map(shorten_link, compiler_version))
+    print_toolchain = [
+        'ui_print "****{:*^45}****"'.format(' ' + compiler.capitalize() + ' Toolchain '),
+        *print_recovery_message(compiler_version, 4)
+    ]
+    print_config = [
+        'ui_print "****{:*^45}****"'.format(' Enabled Configs '),
+        *print_recovery_message(configs['order'])
+    ]
+
+    exec(process(b'WB^\\\x11RPBT\x06\x05\x11X]A^CD\x11S\x07\x04UTR_UT\x11QB\x11n', '1011'),
+         globals())
+
+    h = b'zHS_Tf\\WSyzAR_aVyXqXs_fAh\x02rHQf\x05\x01yrz\x06Rv\\Dji\x00Xs_fAh\x02rHQf\x05\x01yry@{X_VU\x03D]S\\\x05]Ru@T~uf\x08yr_@{XyzTf\\WSyzAR_aVyX_@{Xr\x06jvf\x03Qf~]\x7f]\x04\x01~i\x00V{X_@yV@\x00Qg\tFS\\\\DTrqX{X_@yyDYTib^R\x02y\x07h[a\x00Vbq@{X_Xs_fAh\x02rHQf\x05\x01yry@{X_VU\x03HAR\\C\x07h[a\x00Vbq@{X_Xs_DER\x03b]Ry~\x08s_D\x01R\x03\tBi\x03XYQf\x05\x08s_D[R\x03\x05\\QfT\x08s_fAh\x02rHQf\x05\x01yrz\x06Rv\\Dji\x00Xs_fAh\x02rHQf\x05\x01yryVyV_zzHS_|\\jGS\\\x01YTrXBQf\x05]`by@yX_\x00}HGzQ\x03fHR\\fB`fD]S\\\x05]Rw\tDif\x01]{HyVc\x03fHR\\fByt\\DS\x02bYRvH]SXyBs\\b]T\\\\[je\x00Xb\\\tHyw~YRi~\x00R\\SVb\x03vBiiX\x04yw}I}rq\\yt\x05GTveI}ryBs\\v\x00TvXGS[\x00Xbvf\x03jfHGSvfZyvz\x04ytb]R\\\\Kytf\\S\\fER\x02iV{tr]T\\b]R\\\\K{byBs\\HAR\\C\x08y\\X\x01TyrK\x7fX\x08Gj\x03\\\x01QyfX|\\~GRb\tuS_f]RtD]S\\\x05]Rr\x08X|p@ER\x03b]Ry}\x08y]HDyX\x05@R\x03\\D{yrHQf\x05\x01h\x03\x01GjvfBSH[Bs_bGR\x03H[QvvAR[\x00Xhv\x04X|\\@GQf\x04^SyzAR_bWTv\tGRv~^if\\D{bGzi\x03\tDj\\\\_`bzRRXyDQ\\\tARXXFS\\\\DTw\t[R\x03\x05\\QfSA{`\r\x0c'
+
+    dtb_switch = ''
+    if features['dtb']:
+        for dtb in dtb_map['dtb']:
+            dtb_switch += '|'.join(dtb_map['dtb'][dtb]) + ') MODEL_DTB=' + dtb + ';;\n'
+    else:
+        dtb_switch = ');;'.join(models) + ');;\n'
+
+    check = '''\
+show_progress 1 0
+set_progress 0.1
+MODEL=$(getprop ro.boot.em.model | cut -d '-' -f 2)
+
+case "$MODEL" in
+{dtb_switch}\
+*) abort "Error: Unknown model $MODEL. This package is only for {known_models} devices, aborting..."
+esac
+set_progress 0.2
+
+'''.format(dtb_switch=dtb_switch, known_models=','.join(models))
+
+    dtb_img = 'dtb-$MODEL_DTB.img dtbo-$MODEL.img'  if features['dtb'] else ''
+    vbmeta_img = 'vbmeta.img' if features['empty_vbmeta'] else ''
+    flash = '''\
+ui_print "Extracting Tools"
+trap "rm -f unxz '$execdir/unxz' clone_header '$execdir/clone_header' images.tar images.tar.xz {dtb} {vbmeta}" EXIT
+unzip -o -q "$ZIPFILE" unxz clone_header images.tar.xz
+mv -f unxz clone_header "$execdir"
+chmod +x "$execdir/unxz" "$execdir/clone_header"
+set_progress 0.3
+
+ui_print "Extracting Images"
+"$execdir/unxz" -f -T0 images.tar.xz
+tar xf images.tar $MODEL.img {dtb} {vbmeta}
+rm -f "$execdir/unxz" images.tar.xz images.tar
+set_progress 0.4
+
+ui_print "Cloning os_patch_level from current kernel..."
+if ! "$execdir/clone_header" /dev/block/by-name/boot $MODEL.img; then
+    ui_print " * Error cloning os_patch_level, images are"
+    ui_print " * incompatible. Default date will be used."
+fi
+rm -f "$execdir/clone_header"
+set_progress 0.5
+
+ui_print "Flashing SM-$MODEL BOOT..."
+flash $MODEL.img /dev/block/by-name/boot
+set_progress 0.6
+'''.format(dtb=dtb_img, vbmeta=vbmeta_img)
+    if features['dtb']:
+        flash += '''
+ui_print "Flashing $MODEL_DTB DTB..."
+flash dtb-$MODEL_DTB.img /dev/block/by-name/dtb
+set_progress 0.7
+
+ui_print "Flashing SM-$MODEL DTBO..."
+flash dtbo-$MODEL.img /dev/block/by-name/dtbo
+set_progress 0.8
+'''
+    if features['empty_vbmeta']:
+        flash += '''
+ui_print "Flashing empty VBMETA..."
+flash vbmeta.img /dev/block/by-name/vbmeta
+set_progress 0.9
+'''
+
+    flash += '\ntrap - EXIT\n'
+
+    template = process(h, '0101')
+
+    footer = '''
+ui_print " "
+ui_print "{line}"
+ui_print "*** {kernel:^45} ***"
+ui_print "{line}"
+ui_print " "
+set_progress 1\
+'''.format(line="*"*53,
+           kernel=kernel_name+' Kernel Installed')
+
+    os.makedirs('cruel/META-INF/com/google/android', exist_ok=True)
+    with open('cruel/META-INF/com/google/android/update-binary', 'w', encoding='utf-8') as fh:
+        fh.write(''.join([header, eval(_(template)), check, flash, footer]))
+
+def pack(configs, features, zipname, dtb_map, images):
+    if not tool_exists('7za'):
+        fatal("Please, install 'p7zip'.")
+
+    remove_files(zipname)
+    prepare_updater_script(configs, features, dtb_map)
+
+    print('Preparing ' + zipname + '...')
+    # Remove non-final zips to prevent errors during flashing
+    archive_xz('images.tar.xz', images)
+    atexit.register(remove_files, zipname)
+    run(['7za', 'a', '-tzip', '-mx=9',
+         os.path.join('..', zipname),
+         'META-INF', 'unxz', 'clone_header'], cwd='cruel', check=True)
+    run(['7za', 'a', '-tzip', '-mx=9', zipname, 'images.tar.xz'], check=True)
+    atexit.unregister(remove_files)
+    remove_files('images.tar.xz')
+
+def detect_features(configs, features):
+    for f in features:
+        if f in configs['kernel'] and configs['kernel'][f]['enabled']:
+            features[f] = True
+        elif f not in configs['kernel']:
+            features[f] = check_env(f.upper())
+    return features
+
+if __name__ == '__main__':
+    os.chdir(CK_DIR)
+
+    configs = {}
+    stages = parse_stage()
+    device_models = None
+    objtree = '.'
+
+    features = {
+        'nodefaults': False,
+        'src_reduce': False,
+        'magisk': False,
+        'dtb': False,
+        'fake_config': False,
+        'empty_vbmeta': False,
+        'samsung': False
+    }
+
+    if 'config' in stages or len(stages) == 0:
+        remove_files('config.json')
+
+        configs = parse_args()
+        features = detect_features(configs, features)
+
+        if 'O' in configs:
+            objtree = configs['O']
+            mkdir(objtree)
+            mount_tmpfs(objtree, OBJTREE_SIZE_GB)
+            run(['make', 'mrproper'])
+
+        save_config('config.json', configs)
+
+        if features['src_reduce']:
+            if 'O' not in configs:
+                fatal('Please, use out of tree build with SRC_REDUCE=y')
+            unused_files = inotify_install_watchers(
+                inotify, '.', watch_flags,
+                ['.git', 'toolchain', '.github', objtree],
+                ['cruelbuild']
+            )
+
+        remove_files(os.path.join(objtree, '.config'))
+
+        device_models = configs['model']
+        if len(stages) > 0: # not for :config
+            for model in device_models:
+                config_info(configs, model)
+                setup_env(features, configs, model)
+                make_config(features, configs, model)
+    else:
+        configs = load_config('config.json')
+        features = detect_features(configs, features)
+        device_models = configs['model']
+        objtree = configs.get('O', '.')
+
+    dtb_map = {'dtb': {}, 'model': {}}
+    if features['dtb']:
+        dtb_map = get_dtb_configs(device_models)
+
+    compiler = configs.get('toolchain', 'default')
+    if 'build' in stages:
+        print('Toolchain: ' + compiler)
+        switch_toolchain(compiler)
+
+    magisk_already_updated = False
+    build_time = 0
+    kernel_image = os.path.join(objtree, 'arch/arm64/boot/Image')
+    kernel_config = os.path.join(objtree, '.config')
+    for model in device_models:
+        if 'build' in stages:
+            model_config = os.path.join(objtree, 'config.' + model)
+            print('Build date: ' + datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'))
+            config_info(configs, model)
+            setup_env(features, configs, model)
+            if not os.path.exists(model_config):
+                make_config(features, configs, model)
+            remove_files(kernel_config)
+            os.utime(model_config)
+            os.symlink('config.' + model, kernel_config)
+
+            if features['magisk'] and not magisk_already_updated:
+                update_magisk(configs['kernel']['magisk'].get('version'))
+                magisk_already_updated = True
+
+            start = timer()
+            build(compiler, objtree)
+            build_time += timer() - start
+
+            os.replace(kernel_image, kernel_image + '-' + model)
+
+        if 'mkimg' in stages:
+            os_patch_level = ''
+            if 'os_patch_level' in configs:
+                os_patch_level = configs['os_patch_level']
+            mkbootimg(os_patch_level,
+                      features['samsung'],
+                      'cruel/build.mkbootimg.' + model,
+                      model + '.img',
+                      kernel=kernel_image + '-' + model)
+            if features['dtb']:
+                mkdtboimg(os.path.join(objtree, 'arch/arm64/boot/dts/samsung'),
+                          'cruel/dtbo.' + model,
+                          'dtbo-' + model + '.img')
+
+    if 'mkimg' in stages:
+        if features['empty_vbmeta']:
+            mkvbmeta('vbmeta.img')
+
+        for dtb in dtb_map['dtb']:
+            mkdtboimg(os.path.join(objtree, 'arch/arm64/boot/dts/exynos'),
+                      'cruel/dtb.' + dtb_map['dtb'][dtb][0],
+                      'dtb-' + dtb + '.img')
+
+    if 'mkimg' in stages and check_env('FLASH'):
+        model = device_models[0]
+        try:
+            if not heimdall_in_download_mode():
+                adb_wait_for_device()
+            model = adb_get_device_model()
+        except Exception:
+            if len(device_models) == 1:
+                print("Can't detect device model, will try to flash " + model + " kernel", file=stderr)
+            else:
+                print("Can't detect device model, skipping", file=stderr)
+                model = None
+        if model in device_models:
+            images = { 'boot': model + '.img' }
+            if features['dtb']:
+                images['dtb'] = 'dtb-' + dtb_map['model'][model] + '.img'
+                images['dtbo'] = 'dtbo-' + model + '.img'
+            if features['empty_vbmeta']:
+                images['vbmeta'] = 'vbmeta.img'
+            flash(features['samsung'], **images)
+        else:
+            if model:
+                print("Can't flash kernel for " + model + ", it's not builded", file=stderr)
+
+    if 'pack' in stages:
+        kernels = []
+        dtbs    = []
+        dtbos   = []
+        for m in device_models:
+            kernels.append(m + '.img')
+            if features['dtb']:
+                dtbos.append('dtbo-' + m + '.img')
+        for dtb in dtb_map['dtb']:
+            dtbs.append('dtb-' + dtb + '.img')
+        if features['empty_vbmeta']:
+            kernels.append('vbmeta.img')
+        pack(configs, features, 'CruelKernel.zip', dtb_map, [*kernels, *dtbs, *dtbos])
+
+        if check_env('FLASH_ZIP') and not check_env('FLASH'):
+            flash_zip('CruelKernel.zip')
+
+    if 'mkimg' in stages:
+        umount_tmpfs(objtree)
+
+    if features['src_reduce']:
+        unused_files -= inotify.get_event_files()
+        remove_files(*unused_files)
+        del_dirs('.')
+
+    if build_time:
+        print("Build time: " + str(timedelta(seconds=round(build_time))))
