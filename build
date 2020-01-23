@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+
+import os, errno
+from sys import argv, stderr
+import re
+from datetime import datetime
+from subprocess import run, DEVNULL
+
+models = {
+    'G970F': {
+        'config': 'exynos9820-beyond0lte_defconfig',
+    },
+    'G973F': {
+        'config': 'exynos9820-beyond1lte_defconfig',
+    },
+    'G975F': {
+        'config': 'exynos9820-beyond2lte_defconfig'
+    },
+    'G977B': {
+        'config': 'exynos9820-beyondx_defconfig'
+    },
+    'N970F': {
+        'config': 'exynos9820-d1_defconfig'
+    },
+    'N975F': {
+        'config': 'exynos9820-d2s_defconfig'
+    },
+    'N976B': {
+        'config': 'exynos9820-d2x_defconfig'
+    }
+}
+
+
+def print_info(*args, **kwargs):
+    print(*args, **kwargs)
+    with open('build.info','a') as fh:
+        print(*args, **kwargs, file=fh)
+
+def symlink_force(target, link_name):
+    try:
+        os.symlink(target, link_name)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            os.remove(link_name)
+            os.symlink(target, link_name)
+        else:
+            raise e
+
+def tool_exists(name):
+    """Check whether `name` is on PATH and marked as executable."""
+
+    from shutil import which
+    return which(name) is not None
+
+def get_cores_num():
+    return len(os.sched_getaffinity(0))
+
+def setup_environ(**env):
+    for key, value in env.items():
+        if key not in os.environ:
+            os.environ[key] = value
+        value = os.environ[key]
+        print(key + ' = ' + value)
+
+def fatal(*args, **kwargs):
+    print(*args, file=stderr, **kwargs)
+    exit(1)
+
+def print_usage(name, modes, configs):
+    msg = f"""
+Usage: {name} <stage> model=<model> name=<name> [+-]<conf1> [+-]<conf2> ...
+
+<stage>: required argument
+Where <stage> can be one of: {modes}
+Each next stage will run all previous stages first.
+Prefix ':' means skip all previous stages.
+
+model=<model> required phone model name
+Supported models: {list(models.keys())}
+
+name=<name>: optional custom kernel name
+Use this switch if you want to change the name in
+your kernel. Meaningless with ':'<stage>.
+
+os_patch_level=<date>: use patch date (YYYY-MM)
+instead of default one from build.mkbootimg.<model>
+file. For example: os_patch_level="2020-02"
+
+[+-]<conf>: optional list of configuration switches
+Where <conf> can be: {list(configs.keys())}
+Use prefix '+' to enable the configuration.
+Use prefix '-' to disable the configuration.
+If configuration switch is not specified, the default
+switches will be used. You could see them in the
+kernel/configs/ directory.
+These configuration modes are meaningless with ':'<stage>.
+"""
+    print(msg)
+
+def parse_args(configs):
+    stages = []
+    name = argv.pop(0)
+    modes = ['config', 'build', 'mkimg', 'flash']
+    omodes = [':build', ':mkimg', ':flash']
+    all_modes = modes + omodes
+
+    try:
+        mode = argv.pop(0)
+        if mode not in all_modes:
+            raise Exception
+
+        if mode in omodes:
+            stages = [mode[1:]]
+        else:
+            stages = modes[0:modes.index(mode)+1]
+    except Exception:
+        print_usage(name, all_modes, configs)
+        fatal('Please, specify the mode from {}.'.format(all_modes))
+
+    if mode in modes or mode == ':mkimg':
+        for arg in argv:
+            if arg.find('=') != -1:
+                (key, value) = arg.split('=', 1)
+
+                if key not in ['name', 'model', 'os_patch_level']:
+                    print_usage(name, all_modes, configs)
+                    fatal('Unknown config {}.'.format(key))
+
+                configs[key] = value
+                if not value:
+                    print_usage(name, all_modes, configs)
+                    fatal('Please, use {}="<name>".'.format(key))
+                if key == 'model':
+                    if value not in models:
+                        fatal('Unknown device model: ' + configs['model'])
+                    else:
+                        symlink_force('build.mkbootimg.' + configs['model'], 'build.mkbootimg')
+                if key == 'os_patch_level':
+                    try:
+                        datetime.strptime(value, '%Y-%m')
+                    except Exception:
+                        print_usage(name, all_modes, configs)
+                        fatal('Please, use os_patch_level="YYYY-MM". For example: os_patch_level="2020-02"')
+            else:
+                switch = arg[0:1]
+                enable = True if switch == '+' else False
+                opt = arg[1:]
+                if switch not in ['+', '-']:
+                    print_usage(name, all_modes, configs)
+                    fatal("Unknown switch '{0}'. Please, use '+{0}'/'-{0}' to enable/disable option.".format(i))
+
+                if opt == 'magisk+canary':
+                    opt = 'magisk'
+                    configs['kernel'][opt]['enabled'] = enable
+                    configs['kernel'][opt]['canary'] = True
+                elif opt == 'magisk-canary':
+                    opt = 'magisk'
+                    configs['kernel'][opt]['enabled'] = enable
+                    configs['kernel'][opt]['canary'] = False
+                elif opt == 'magisk':
+                    configs['kernel'][opt]['enabled'] = enable
+                    configs['kernel'][opt]['canary'] = False
+                elif opt in configs['kernel']:
+                    configs['kernel'][opt]['enabled'] = enable
+                else:
+                    print_usage(name, all_modes, configs)
+                    fatal("Unknown config '{}'.".format(opt))
+
+                if enable:
+                    if not opt in configs['order']:
+                        configs['order'].append(opt)
+                else:
+                    if opt in configs['order']:
+                        configs['order'].remove(opt)
+        if 'model' not in configs:
+            if os.path.exists('build.mkbootimg') and os.path.islink('build.mkbootimg'):
+                link = os.readlink('build.mkbootimg')
+                configs['model'] = link[link.rindex('.')+1:]
+            else:
+                print_usage(name, all_modes, configs)
+                fatal('Please, use model="<model>". For example: model="G973F"')
+    return stages
+
+def find_configs():
+    configs = { 'kernel': {}, 'order': [] }
+    prefix_len = len('cruel')
+    suffix_len = len('.conf')
+    files = [f for f in os.listdir('kernel/configs/') if re.match('^cruel[+-]?.*\.conf$', f)]
+    for f in files:
+        if f == 'cruel.conf':
+            continue
+        name = f[prefix_len+1:]
+        name = name[:-suffix_len]
+        enabled = True if f[prefix_len:prefix_len+1] == '+' else False
+        configs['kernel'][name] = { 'path':  'kernel/configs/' + f, 'enabled': enabled, 'default': enabled }
+        if name == 'magisk':
+            configs['kernel'][name]['canary'] = False
+        if enabled:
+            configs['order'].append(name)
+    return configs
+
+def config_name(name):
+    run(['scripts/config', '--set-str', 'LOCALVERSION', '-' + name])
+
+def config_model(model):
+    run(['scripts/config',
+        '--disable', 'CONFIG_MODEL_NONE',
+        '--enable', 'CONFIG_MODEL_' + model])
+
+def make_config(configs):
+    list = ['scripts/kconfig/merge_config.sh',
+        'arch/arm64/configs/' + models[configs['model']]['config'],
+        'kernel/configs/cruel.conf']
+    conf_msg = []
+    kernel_configs = configs['kernel']
+    for key in configs['order']:
+        if kernel_configs[key]['enabled']:
+            conf_msg.append(key + " (default: " + ("On" if kernel_configs[key]['default'] else "Off") + ")")
+            list.append(kernel_configs[key]['path'])
+    if conf_msg:
+        print_info('Configuration:')
+        for i in conf_msg:
+            print_info("\t" + i)
+    else:
+        print_info('Configuration: basic only')
+
+    run(list)
+
+    if 'name' in configs:
+        print("Setting kernel name to: " + configs['name'])
+        config_name(configs['name'])
+
+    if 'model' in configs:
+        print("Setting kernel model to: " + configs['model'])
+        config_model(configs['model'])
+
+    if 'os_patch_level' in configs:
+        print_info("OS Patch Level: " + configs['os_patch_level'])
+    else:
+        with open('build.mkbootimg.' + configs['model'], 'r') as fh:
+            for line in fh:
+                (arg, val) = line.split('=', 1)
+                val = val.rstrip()
+                if arg == 'os_patch_level':
+                    print_info("OS Patch Level: " + val)
+                    break
+
+def update_magisk(canary):
+    cmd = ['usr/magisk/update_magisk.sh']
+    if canary:
+        cmd.append('--canary')
+    run(cmd, check=True)
+    with open('usr/magisk/magisk_version', 'r') as fh:
+        print_info("Magisk Version: " + fh.readline())
+
+def build():
+    run(['make', '-j', str(get_cores_num())], check=True)
+
+def mkbootimg(os_patch_level, config, output, **files):
+    if tool_exists('mkbootimg'):
+        print("Preparing {}...".format(output))
+        for f in files.values():
+            if not os.path.isfile(f):
+                fatal("Can't find file '{}'.".format(f))
+        args = ['mkbootimg']
+        with open(config) as fh:
+            for line in fh:
+                (arg, val) = line.split('=', 1)
+                if arg == 'os_patch_level' and os_patch_level:
+                    val = os_patch_level
+                else:
+                    val = val.rstrip()
+                args.extend(['--' + arg, val])
+        for k, v in files.items():
+            args.extend(['--' + k, v])
+        args.extend(['--output', output])
+
+        run(args, check=True)
+    else:
+        fatal("Please, install 'mkbootimg'.")
+
+def mkvbmeta(output):
+    if tool_exists('avbtool'):
+        print("Preparing vbmeta...")
+        run(['avbtool', 'make_vbmeta_image', '--out', output], check=True)
+    else:
+        fatal("Please, install 'avbtool'.")
+
+def mkaptar(boot, vbmeta):
+    if tool_exists('tar') and tool_exists('md5sum') and tool_exists('lz4'):
+        print("Preparing AP.tar.md5...")
+        run(['lz4', '-m', '-f', '-B6', '--content-size', boot, vbmeta], check=True)
+        run(['tar', '-H', 'ustar', '-c', '-f', 'AP.tar', boot + '.lz4', vbmeta + '.lz4'], check=True)
+        run(['md5sum AP.tar >> AP.tar && mv AP.tar AP.tar.md5'], check=True, shell=True)
+    else:
+        fatal("Please, install 'tar', 'lz4' and 'md5sum'.")
+
+def adb_wait_for_device():
+    print('Waiting for the device...')
+    run(['adb', 'wait-for-device'])
+
+def heimdall_wait_for_device():
+    print('Waiting for download mode...')
+    run('until heimdall detect > /dev/null 2>&1; do sleep 1; done', shell=True)
+
+def heimdall_in_download_mode():
+    return run(['heimdall', 'detect'], stdout=DEVNULL, stderr=DEVNULL).returncode == 0
+
+def heimdall_flash_boot(boot):
+    run(['heimdall', 'flash', '--BOOT', boot], check=True)
+
+def enter_download_mode():
+    run(['adb', 'reboot', 'download'])
+
+def adb_get_kernel_version():
+    run(['adb', 'shell', 'cat', '/proc/version'])
+
+def flash(boot):
+    if tool_exists('adb') and tool_exists('heimdall'):
+        if not heimdall_in_download_mode():
+            adb_wait_for_device()
+            enter_download_mode()
+        heimdall_wait_for_device()
+        heimdall_flash_boot(boot)
+        adb_wait_for_device()
+        adb_get_kernel_version()
+    else:
+        fatal("Please, install 'adb' and 'heimdall'")
+
+if __name__ == "__main__":
+    configs = find_configs()
+    setup_environ(ARCH='arm64', ANDROID_MAJOR_VERSION='q')
+    stages = parse_args(configs)
+
+    if configs['kernel']['fake_config']['enabled']:
+        defconfig = 'arch/arm64/configs/' + models[configs['model']]['config']
+        setup_environ(KCONFIG_BUILTINCONFIG=defconfig)
+
+    if 'config' in stages:
+        if os.path.exists('build.info'):
+            os.remove('build.info')
+        print_info("Build date: " + datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"))
+        if 'name' in configs:
+            print_info('Name: ' + configs['name'])
+        else:
+            print_info('Name: CRUEL')
+        print_info('Model: ' + configs['model'])
+        if configs['kernel']['magisk']['enabled']:
+            update_magisk(configs['kernel']['magisk']['canary'])
+        make_config(configs)
+    if 'build' in stages:
+        build()
+    if 'mkimg' in stages:
+        os_patch_level = ""
+        if 'os_patch_level' in configs:
+            os_patch_level = configs['os_patch_level']
+        mkbootimg(os_patch_level, 'build.mkbootimg.' + configs['model'], 'boot.img', kernel='arch/arm64/boot/Image')
+        #mkvbmeta('vbmeta.img')
+        #mkaptar('boot.img', 'vbmeta.img')
+    if 'flash' in stages:
+        flash('boot.img')
