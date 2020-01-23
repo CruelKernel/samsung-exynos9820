@@ -1,0 +1,12 @@
+header_version=1
+os_version=10.0.0
+os_patch_level=2020-04
+board=SRPRI28A004KU
+pagesize=2048
+cmdline=androidboot.selinux=permissive androidboot.selinux=permissive
+base=0x10000000
+kernel_offset=0x00008000
+ramdisk_offset=0x01000000
+second_offset=0x00f00000
+tags_offset=0x00000100
+hash=sha1
