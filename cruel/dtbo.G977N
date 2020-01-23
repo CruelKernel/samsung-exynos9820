@@ -1,0 +1,33 @@
+exynos9820-beyondx_kor_00.dtbo
+
+exynos9820-beyondx_kor_01.dtbo
+	custom0 = 0x1000000
+	custom1 = 0x1000000
+
+exynos9820-beyondx_kor_02.dtbo
+	custom0 = 0x2000000
+	custom1 = 0x2000000
+
+exynos9820-beyondx_kor_03.dtbo
+	custom0 = 0x3000000
+	custom1 = 0x3000000
+
+exynos9820-beyondx_kor_04.dtbo
+	custom0 = 0x4000000
+	custom1 = 0x4000000
+
+exynos9820-beyondx_kor_05.dtbo
+	custom0 = 0x5000000
+	custom1 = 0x5000000
+
+exynos9820-beyondx_kor_06.dtbo
+	custom0 = 0x6000000
+	custom1 = 0x6000000
+
+exynos9820-beyondx_kor_07.dtbo
+	custom0 = 0x7000000
+	custom1 = 0x7000000
+
+exynos9820-beyondx_kor_08.dtbo
+	custom0 = 0x8000000
+	custom1 = 0xff000000
