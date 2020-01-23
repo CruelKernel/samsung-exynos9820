@@ -1,0 +1,35 @@
+exynos9820-d2x_kor_02.dtbo
+	custom0 = 0x2000000
+	custom1 = 0xf000000
+
+exynos9820-d2x_kor_16.dtbo
+	custom0 = 0x10000000
+	custom1 = 0x10000000
+
+exynos9820-d2x_kor_17.dtbo
+	custom0 = 0x11000000
+	custom1 = 0x11000000
+
+exynos9820-d2x_kor_18.dtbo
+	custom0 = 0x12000000
+	custom1 = 0x12000000
+
+exynos9820-d2x_kor_19.dtbo
+	custom0 = 0x13000000
+	custom1 = 0x14000000
+
+exynos9820-d2x_kor_21.dtbo
+	custom0 = 0x15000000
+	custom1 = 0x15000000
+
+exynos9820-d2x_kor_22.dtbo
+	custom0 = 0x16000000
+	custom1 = 0x16000000
+
+exynos9820-d2x_kor_23.dtbo
+	custom0 = 0x17000000
+	custom1 = 0x17000000
+
+exynos9820-d2x_kor_24.dtbo
+	custom0 = 0x18000000
+	custom1 = 0xff000000
