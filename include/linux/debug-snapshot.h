@@ -206,6 +206,7 @@ extern void dbg_snapshot_get_softlockup_info(unsigned int cpu, void *info);
 #define dbg_snapshot_printk(...)		do { } while(0)
 #define dbg_snapshot_printkl(a,b)		do { } while(0)
 #define dbg_snapshot_save_context(a)	do { } while(0)
+#define dbg_snapshot_print_notifier_call(a,b,c) do { } while(0)
 #define dbg_snapshot_try_enable(a,b)	do { } while(0)
 #define dbg_snapshot_set_enable(a,b)	do { } while(0)
 #define dbg_snapshot_get_enable(a)		do { } while(0)
@@ -255,10 +256,14 @@ static inline bool dbg_snapshot_dumper_one(void *v_dumper,
 {
 	return false;
 }
-static int dbg_snapshot_add_bl_item_info(const char *name,
+static inline int dbg_snapshot_add_bl_item_info(const char *name,
 				unsigned int paddr, unsigned int size)
 {
 	return 0;
+}
+
+static inline void dbg_snapshot_save_log(int cpu, unsigned long where)
+{
 }
 
 #endif /* CONFIG_DEBUG_SNAPSHOT */
