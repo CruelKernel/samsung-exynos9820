@@ -658,7 +658,7 @@ void register_hook_logbuf(void (*func)(const char *buf, size_t size))
 EXPORT_SYMBOL(register_hook_logbuf);
 #endif
 
-#if CONFIG_SEC_DEBUG_FIRST_KMSG
+#ifdef CONFIG_SEC_DEBUG_FIRST_KMSG
 static void (*func_hook_first_kmsg)(const char *buf, size_t size);
 void register_first_kmsg_hook_func(void (*func)(const char *buf, size_t size))
 {
@@ -801,7 +801,7 @@ static int log_store(int facility, int level,
 		}
 #endif
 
-#if CONFIG_SEC_DEBUG_FIRST_KMSG
+#ifdef CONFIG_SEC_DEBUG_FIRST_KMSG
 		if (func_hook_first_kmsg)
 			func_hook_first_kmsg(hook_text, hook_size);
 #endif
