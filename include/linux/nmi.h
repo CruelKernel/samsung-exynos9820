@@ -123,7 +123,7 @@ extern void sl_softirq_entry(const char *, void *);
 extern void sl_softirq_exit(void);
 unsigned long long get_dss_softlockup_thresh(void);
 #else
-static inline void void sl_softirq_entry(const char *, void *) { }
+static inline void sl_softirq_entry(const char *softirq_type, void *fn) { }
 static inline void sl_softirq_exit(void) { }
 #endif
 
