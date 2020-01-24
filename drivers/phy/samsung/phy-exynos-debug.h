@@ -17,9 +17,9 @@ extern int exynos_usbdrd_debugfs_init(struct exynos_usbdrd_phy *phy_drd);
 extern int exynos_usbdrd_dp_debugfs_init(struct exynos_usbdrd_phy *phy_drd);
 extern void exynos_usbdrd_debugfs_exit(struct exynos_usbdrd_phy *phy_drd);
 #else
-static inline int exynos_usbdrd_debugfs_init(struct exynos_usbdrd_phy *)
+static inline int exynos_usbdrd_debugfs_init(struct exynos_usbdrd_phy *phy_drd)
 {  return 0;  }
-static inline void exynos_usbdrd_debugfs_exit(struct exynos_usbdrd_phy *)
+static inline void exynos_usbdrd_debugfs_exit(struct exynos_usbdrd_phy *phy_drd)
 {  }
 #endif
 
