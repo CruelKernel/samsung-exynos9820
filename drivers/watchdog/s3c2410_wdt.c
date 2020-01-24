@@ -429,7 +429,6 @@ static int s3c2410wdt_keepalive(struct watchdog_device *wdd)
 {
 	struct s3c2410_wdt *wdt = watchdog_get_drvdata(wdd);
 	unsigned long flags, wtcnt = 0;
-	time64_t sec;
 
 	s3c2410wdt_multistage_wdt_keepalive();
 
@@ -442,6 +441,8 @@ static int s3c2410wdt_keepalive(struct watchdog_device *wdd)
 
 #ifdef SEC_WATCHDOGD_FOOTPRINT
 	if (wdt->cluster == 0) {
+		time64_t sec;
+
 		wdd_info->last_ping_cpu = raw_smp_processor_id();
 		wdd_info->last_ping_time = sched_clock();
 
