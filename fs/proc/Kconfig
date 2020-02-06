@@ -62,6 +62,15 @@ config PROC_SYSCTL
 	  building a kernel for install/rescue disks or your system is very
 	  limited in memory.
 
+config PROC_REMOVE_SAFETYNET_FLAGS
+	bool "Hide SafetyNet flags in cmdline" if EXPERT
+	depends on PROC_FS
+	default n
+	---help---
+	  Remove "androidboot.enable_dm_verity", "androidboot.secboot",
+	  "androidboot.verifiedbootstate", "androidboot.veritymode" from
+	  cmdline. This will help to bypass SafetyNet checks.
+
 config PROC_PAGE_MONITOR
  	default y
 	depends on PROC_FS && MMU
