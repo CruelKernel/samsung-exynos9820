@@ -1,0 +1,103 @@
+/* SAMSUNG UNIVERSAL9810 board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+&pinctrl_0 {
+	max77705_irq: max77705-irq {
+		samsung,pins = "gpa1-6";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&pinctrl_2 {
+	uart_ctrl: uart-ctrl {
+		samsung,pins = "gpm26-0";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&pinctrl_5 {
+		vib_pwm: vib-pwm {
+		samsung,pins = "gpp3-1";
+		samsung,pin-function = <2>;
+		samsung,pin-pud = <1>;
+		samsung,pin-drv = <0>;
+	};
+	motor_boost_en: motor-boost-en {
+		samsung,pins = "gpg1-7";
+		samsung,pin-function = <1>;
+		samsung,pin-val = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <0>;
+		samsung,pin-pud-pdn = <0>;
+	};
+	motor_boost_en_sleep: motor-boost-en-sleep {
+		samsung,pins = "gpg1-7";
+		samsung,pin-con-pdn = <0>;
+		samsung,pin-pud-pdn = <0>;
+	};
+};
+
+/ {
+	fragment@muic {
+		target-path = "/";
+		__overlay__ {
+			muic {
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&uart_ctrl>;
+				muic,support-list = "TA","USB","CDP","JIG UART OFF","JIG UART OFF/VB",
+					"JIG UART ON","JIG UART ON/VB","JIG USB OFF",
+					"JIG USB ON","OTG","Unofficial TA","DCD Timeout",
+					"AFC Charger";
+				uart_ctrl = <&gpm26 0 0>;
+			};
+		};
+	};
+};
+
+&hsi2c_45 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	max77705@66 {
+		compatible = "maxim,max77705";
+		pinctrl-names = "default";
+		pinctrl-0 = <&max77705_irq &vib_pwm &motor_boost_en>;
+		pinctrl-1 = <&motor_boost_en_sleep>;
+		reg = <0x66>;
+		max77705,irq-gpio = <&gpa1 6 1>;
+		max77705,wakeup;
+		max77705,fw_product_id = <0x02>;
+		support_pd_role_swap;
+		max77705,support-audio;
+
+		regulators {
+			ESAFEOUT1 {
+				regulator-compatible = "safeout1";
+				regulator-name = "safeout1_range";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <4900000>;
+				regulator-boot-on;
+			};
+
+			ESAFEOUT2 {
+				regulator-compatible = "safeout2";
+				regulator-name = "safeout2_range";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <4900000>;
+			};
+		};
+	};
+};
+
