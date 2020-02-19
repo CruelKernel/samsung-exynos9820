@@ -864,6 +864,7 @@
 		reg = <0x10>; /* 1 bit right shift */
 		id = <0>; /* matching fimc_is_sensor id */
 		setfile = "default";
+		rev_reg = <0x0002 2 0xA002 0xA102>;
 	};
 };
 
@@ -886,6 +887,9 @@
 		id = <0>;
 		gpio_mcu_reset = <&gpg0 6 0x1>; /* ois reset */
 		gpio_mcu_boot0 = <&gpm29 0 0x1>; /* mcu boot0 */
+		/* wx_pole, wy_pole, gyro_orientation, tx_pole, ty_pole */
+		ois_gyro_list = <0x01 0x00 0x21>;
+		aperture_control_delay = <15 20>;
 	};
 };
 
@@ -910,6 +914,7 @@
 		id = <4>; /* matching fimc_is_sensor id */
 		setfile = "setA";
 		status = "okay";
+		rev_reg = <0x0002 2 0xA101>;
 	};
 
 	rear2_eeprom@51 { /* Ultra wide eeprom */
@@ -968,6 +973,7 @@
 		reg = <0x10>; /* 1 bit right shift */
 		id = <1>; /* matching fimc_is_sensor id */
 		setfile = "default";
+		rev_reg = <0x0002 2 0xA101>;
 	};
 };
 
