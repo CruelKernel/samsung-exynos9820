@@ -509,6 +509,18 @@
 			front_preview_high_speed_fps_int = <DVFS_INT_L4>;
 			front_preview_high_speed_fps_hpg = <1>;
 
+			front_video_high_speed_120fps_int_cam = <DVFS_INT_CAM_L3>;
+			front_video_high_speed_120fps_cam = <DVFS_CAM_L1>;
+			front_video_high_speed_120fps_mif = <DVFS_MIF_L3>;
+			front_video_high_speed_120fps_int = <DVFS_INT_L4>;
+			front_video_high_speed_120fps_hpg = <1>;
+
+			front_video_high_speed_240fps_int_cam = <DVFS_INT_CAM_L3>;
+			front_video_high_speed_240fps_cam = <DVFS_CAM_L1>;
+			front_video_high_speed_240fps_mif = <DVFS_MIF_L3>;
+			front_video_high_speed_240fps_int = <DVFS_INT_L4>;
+			front_video_high_speed_240fps_hpg = <1>;
+
 			rear3_preview_fhd_int_cam = <DVFS_INT_CAM_L5>;
 			rear3_preview_fhd_cam = <DVFS_CAM_L1>;
 			rear3_preview_fhd_mif = <DVFS_MIF_L4>;
