@@ -139,7 +139,7 @@
 				battery,wpc_store_lcd_on_high_temp_rec = <300>;
 				battery,wpc_store_lcd_on_charging_limit_current = <400>;
 
-				battery,sleep_mode_limit_current = <500>;
+				battery,sleep_mode_limit_current = <800>;
 				battery,wc_full_input_limit_current = <100>;
 
 				battery,mix_high_temp = <420>;
@@ -222,6 +222,13 @@
 						400 4310 4240 4210 91 35
 						700 4290 4220 4190 90 35
 						1000 4240 4170 4140 89 35>;
+
+				battery,health_condition = <
+						/* CYCLE ASOC */
+						900 75	/* GOOD */
+						1200 65 /* NORMAL */
+						1500 55 /* AGED */
+						>;
 
 				/* step charging option */
 				battery,step_charging_type = <0x3E>;
@@ -497,8 +504,34 @@
 				};
 				current_group_13 {
 					cable_number = <34>;
-					input_current = <1200>;
+					input_current = <500>;
 					charging_current = <2250>;
+				};
+			};
+			wireless-power-info {
+				current_group_0 {
+					wireless_power_class = <1>;
+					vout = <5500>;
+					input_current_limit = <800>;
+					fast_charging_current = <2250>;
+					ttf_charge_current = <2250>;
+					rx_power = <4500>;
+				};
+				current_group_1 {
+					wireless_power_class = <2>;
+					vout = <10000>;
+					input_current_limit = <650>;
+					fast_charging_current = <2250>;
+					ttf_charge_current = <2250>;
+					rx_power = <6500>;
+				};
+				current_group_2 {
+					wireless_power_class = <2>;
+					vout = <10000>;
+					input_current_limit = <1200>;
+					fast_charging_current = <2250>;
+					ttf_charge_current = <2250>;
+					rx_power = <12000>;
 				};
 			};
 		}; /* end of __overlay__ */
@@ -556,6 +589,10 @@
 		battery,fod_data_cv = <150 88 142 78 150 62 150 57 155 39 156 37>;
 		battery,fod_hero_5v_data = <150 2 142 (-6) 150 (-20) 150 (-28) 165 185 156 (-39)>;
 		battery,wc_cover_rpp = <0x44>;
+		battery,oc_fod1 = <1100>;
+		battery,wireless20_vout_list = <8>; /* WIRELESS_VOUT_10V*/
+		battery,wireless20_vrect_list = <10>; /* MFC_AFC_CONF_12V_TX*/
+		battery,wireless20_max_power_list = <2>; /* SEC_WIRELESS_RX_POWER_12W*/
 	};
 };
 

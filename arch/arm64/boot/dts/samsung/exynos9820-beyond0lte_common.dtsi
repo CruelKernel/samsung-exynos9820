@@ -11,6 +11,7 @@
 #include "exynos9820-beyond2lte_mst.dtsi"
 #include "exynos9820-beyond0lte_motor.dtsi"
 #include "exynos9820-beyond0lte_input_common.dtsi"
+#include "exynos9820-inputbooster.dtsi"
 #include "modem-s5000ap-sipc-pdata.dtsi"
 
 / {
@@ -1290,7 +1291,7 @@
 	snps,ux_exit_in_px_quirk;
 	/* elastic_buf_mode_quirk should be defined in MK */
 	snps,elastic_buf_mode_quirk;
-	usb3-lpm-capable;
+	/* usb3-lpm-capable;*/
 	snps,usb3_lpm_capable;
 	snps,has-lpm-erratum;
 	snps,lpm-nyet-threshold = <0>;
@@ -1341,7 +1342,7 @@
 		smpl_warn_vth = <0xA0>;
 		/* LowBat_Hys[4:3] 00(100mV), 01(200mV), 10(300mV), 11(400mV) */
 		smpl_warn_hys = <0x00>;
-		ocp_warn1_en = <0>; /* 1 : enable, 0 : disable */
+		ocp_warn1_en = <1>; /* 1 : enable, 0 : disable */
 		ocp_warn1_cnt = <0>; /* ocp warn reset timing control, 0 : 2 clock, 1 : 32 clock */
 		ocp_warn1_dvs_mask = <0>; /* ocp warn mask when dvs, 0 : not masked, 1 : masked  */
 		ocp_warn1_lv = <0x0>; /* step : -250mA */
@@ -2324,21 +2325,62 @@ expander_reset_active: expander_reset_active {
     status = "okay";
 
 	ddi_info = <&s6e3fa7_beyond0>;
-	gpio,lcd-reset = <&gpa3 4 0x1>;
-	gpio,disp-det = <&gpg2 2 0x0>;
-	gpio,ub-con-det = <&gpm23 0 0>;
-
-	regulator,3p0 = "vdd5";
-	regulator,1p8 = "vdd2";
-	regulator,1p6 = "vdd1";
 
 	#address-cells = <2>;
 	#size-cells = <1>;
 	ranges;
 
-	pend,disp-det {
-		reg = <0x0 0x10430A08 0x4>;
-		pend-bit = <0x2>;
+	gpios {
+		disp-reset {
+			name = "disp-reset";
+			gpios = <&gpa3 4 1>;	/* ACTIVE_LOW */
+			dir = <0>;  /* OUT */
+			irq-type = <0x0>;   /* NONE */
+		};
+
+		disp-det {
+			name = "disp-det";
+			gpios = <&gpg2 2 1>;  /* 0:OK, 1:NOK(active) */
+			dir = <1>;  /* IN */
+			irq-type = <0x2>;   /* FALLING EDGE */
+			irq-pend {
+				reg = <0x0 0x10430A18 0x4>;
+				bit = <0x2>;
+			};
+		};
+
+		conn-det {
+			name = "conn-det";
+			gpios = <&gpm23 0 0>; /* 0:NOK(active) 1:OK */
+			dir = <1>;  /* IN */
+			irq-type = <0x3>;   /* BOTH EDGE */
+		};
+	};
+
+	regulators {
+		ddi-3p0 {
+			regulator = <&dp_ldo4>;
+			def-voltage = <3000000>;
+			lpm-voltage = <3000000>;
+		};
+
+		ddi-1p8 {
+			regulator = <&dp_ldo1>;
+			def-voltage = <1800000>;
+			lpm-voltage = <1800000>;
+		};
+
+		ddr-1p6 {
+			regulator = <&dp_buck>;
+			def-voltage = <1600000>;
+			lpm-voltage = <1500000>;
+		};
+
+		short-detect {
+			regulator = <&dp_elvss>;
+			def-current = <2000>;
+			lpm-current = <8000>;
+		};
 	};
 
 	panel-lookup {
