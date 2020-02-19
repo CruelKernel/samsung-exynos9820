@@ -1,0 +1,55 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+&pinctrl_5 {
+	als_irq: als_irq-irq {
+		samsung,pins = "gpp3-0";
+		samsung,pin-function = <0>;
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <0>;
+	};
+
+	als_irqsleep: als_irqsleep {
+		samsung,pins = "gpp3-0";
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <0>;
+	};
+
+	als_irqidle: als_irqidle {
+		samsung,pins = "gpp3-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <3>;
+	};
+};
+
+&hsi2c_20 {
+	gpios = <&gpp5 0 0 &gpp5 1 0>;
+	status = "okay";
+	clock-frequency = <400000>;
+
+	als_rear@29 {
+		compatible = "ams,tcs3407";
+		reg = <0x29>;
+		interrupt-parent = <&gpp3>;
+		interrupts = <0 0 0>;
+		pinctrl-names = "default", "sleep", "idle";
+		pinctrl-0 = <&als_irq>;
+		pinctrl-1 = <&als_irqsleep>;
+		pinctrl-2 = <&als_irqidle>;
+		als_rear,int-gpio = <&gpp3 0 0>;
+		als_rear,led_en-gpio = <&gpg2 4 0>;
+		als_rear,vdd_1p8 = "S2MPB02_LDO9";
+		als_rear,i2c_1p8 = "VDD_NFC_1P8";
+		als_rear,ir_spec = <20000 75000 0 500000>;
+		als_rear,clear_spec = <0 85000 0 500000>;
+	};
+};
