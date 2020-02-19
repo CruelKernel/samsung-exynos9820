@@ -247,6 +247,8 @@
 				battery,cisd_max_voltage_thr = <4400>; /* battery ovp detection voltage */
 
 				battery,cisd_alg_index = <8>;
+				battery,ignore_cisd_index = <0 640>; /* Do not use AFC_FAIL to DROP_VALUE */
+				battery,ignore_cisd_index_d = <0 80>; /* Do not use AFC_FAIL_PER_DAY to DROP_VALUE_PER_DAY */
 
 				battery,tx_stop_capacity = <30>;
 				battery,tx_minduty_default = <20>;
