@@ -1148,6 +1148,7 @@ static void modem_shutdown(struct platform_device *pdev)
 static int modem_suspend(struct device *pdev)
 {
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
+	int ret = 0;
 
 #if !defined(CONFIG_LINK_DEVICE_HSIC)
 	if (mc->gpio_pda_active)
@@ -1160,17 +1161,18 @@ static int modem_suspend(struct device *pdev)
 #endif
 
 	if (mc->ops.modem_suspend)
-		mc->ops.modem_suspend(mc);
+		ret = mc->ops.modem_suspend(mc);
 
 	mif_err("%s\n", mc->name);
 	set_wakeup_packet_log(true);
 
-	return 0;
+	return ret;
 }
 
 static int modem_resume(struct device *pdev)
 {
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
+	int ret = 0;
 
 	set_wakeup_packet_log(false);
 
@@ -1192,11 +1194,11 @@ static int modem_resume(struct device *pdev)
 #endif
 
 	if (mc->ops.modem_resume)
-		mc->ops.modem_resume(mc);
+		ret = mc->ops.modem_resume(mc);
 
 	mif_err("%s\n", mc->name);
 
-	return 0;
+	return ret;
 }
 
 #if defined(CONFIG_PM) && defined(CONFIG_LINK_DEVICE_PCIE)

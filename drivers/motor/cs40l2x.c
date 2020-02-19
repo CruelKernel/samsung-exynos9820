@@ -4794,8 +4794,7 @@ static int cs40l2x_pbq_pair_launch(struct cs40l2x_private *cs40l2x)
 #if defined(CONFIG_VIB_NOTIFIER)
 			vib_notifier_notify();
 #endif
-			cp_dig_scale = cs40l2x->pbq_cp_dig_scale
-					+ cs40l2x_pbq_dig_scale[mag];
+			cp_dig_scale = cs40l2x_pbq_dig_scale[mag];
 			if (cp_dig_scale > CS40L2X_DIG_SCALE_MAX)
 				cp_dig_scale = CS40L2X_DIG_SCALE_MAX;
 

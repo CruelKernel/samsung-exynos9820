@@ -268,7 +268,11 @@ static void pcie_dislink_work(struct work_struct *ws)
 		cp_runtime_dislink(mc, LINK_CP, 0);
 	else {
 		mif_info("phone_state is not ONLINE:%d\n", mc->phone_state);
-		cp_runtime_dislink_no_autosuspend(mc, LINK_CP, 0);
+		if (usage_cnt > 0) 
+		{
+			mif_info("Enter RPM suspend - no autosuspend\n");
+			cp_runtime_dislink_no_autosuspend(mc, LINK_CP, 0);
+		}
 	}
 
 	runtime_link_cnt(mc);

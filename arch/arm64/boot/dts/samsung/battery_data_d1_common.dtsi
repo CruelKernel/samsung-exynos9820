@@ -136,7 +136,7 @@
 				battery,tx_high_recovery = <400>;
 				battery,tx_low_threshold = <0>;
 				battery,tx_low_recovery = <50>;
-				battery,full_check_type = <7>; /* SEC_BATTERY_FULLCHARGED_CHGPSY */
+				battery,full_check_type = <2>; /* SEC_BATTERY_FULLCHARGED_FG_CURRENT */
 				battery,full_check_type_2nd = <7>; /* SEC_BATTERY_FULLCHARGED_CHGPSY */
 				battery,full_check_count = <1>;
 				battery,chg_gpio_full_check = <0>;
@@ -182,7 +182,7 @@
 				/* SEC_BATTERY_FULL_CONDITION_NOTIMEFULL | SEC_BATTERY_FULL_CONDITION_VCELL */
 				battery,full_condition_type = <9>;
 				battery,full_condition_soc = <93>;
-				battery,full_condition_vcell = <4250>;
+				battery,full_condition_vcell = <4300>;
 
 				battery,recharge_check_count = <1>;
 				battery,recharge_condition_type = <4>; /* SEC_BATTERY_RECHARGE_CONDITION_VCELL */
@@ -249,7 +249,7 @@
 				battery,ttf_hv_charge_current = <2700>;
 				battery,ttf_hv_wireless_charge_current = <1375>;
 				battery,ttf_wireless_charge_current = <910>;
-				battery,ttf_dc25_charge_current = <2900>;
+				battery,ttf_dc25_charge_current = <3200>;
 
 				battery,rp_current_rp1 = <500>;
 				battery,rp_current_rp2 = <1500>;
@@ -263,16 +263,16 @@
 				battery,battery_full_capacity = <3500>;
 
 				/* cycle, chg_float_voltage, recharge_condition_vcell, full_condition_vcell, full_condition_soc, step charging condition */
-				battery,age_data = <0 4350 4280 4250 93 45
-						300 4330 4260 4230 92 45
-						400 4310 4240 4210 91 45
-						700 4290 4220 4190 90 45
-						1000 4240 4170 4140 89 45>;
+				battery,age_data = <0 4350 4280 4300 93 45
+						300 4330 4260 4280 92 45
+						400 4310 4240 4260 91 45
+						700 4290 4220 4240 90 45
+						1000 4240 4170 4190 89 45>;
 
 				/* step charging option */
 				battery,step_charging_type = <0x3E>;
 				battery,step_charging_charge_power = <12000>;
-				battery,step_charging_condition = <25 60 100>;
+				battery,step_charging_condition = <15 55 100>;
 				battery,step_charging_condition_curr = <3050 2400 2400>;
 				battery,step_charging_current = <3150 3050 2400>;
 				battery,step_charging_float_voltage = <4130 4220 4350>;
@@ -284,7 +284,7 @@
 				battery,dc_step_chg_cond_vol = <4130 4220 4350>; /* STEP_CHARGING_CONDITION_VOLTAGE */ 
 				battery,dc_step_chg_cond_iin = <1530 1220 0>; /* STEP_CHARGING_CONDITION_INPUT_CURRENT */
 				battery,dc_step_chg_iin_check_cnt = <3>;
-				battery,dc_step_chg_cond_soc = <35 60 100>; /* STEP_CHARGING_CONDITION_SOC */
+				battery,dc_step_chg_cond_soc = <25 55 100>; /* STEP_CHARGING_CONDITION_SOC */
 				battery,dc_step_chg_val_vfloat = <4130 4220 4350>; /* STEP_CHARGING_CONDITION_FLOAT_VOLTAGE */
 				battery,dc_step_chg_val_iout = <3960 3060 2440>;
 
@@ -347,99 +347,99 @@
 				/*fuelgauge,auto_discharge_en;*/
 				fuelgauge,discharge_temp_threshold = <600>;
 				fuelgauge,discharge_volt_threshold = <4200>;
-				fuelgauge,ttf_capacity = <3450>;
+				fuelgauge,ttf_capacity = <3325>;
 				fuelgauge,cv_data = <
-					2488	829	1809
-					2409	832	1796
-					2327	837	1769
-					2272	840	1743
-					2182	846	1721
-					2104	850	1690
-					2038	854	1670
-					1950	859	1640
-					1904	861	1622
-					1838	865	1594
-					1797	867	1576
-					1749	870	1560
-					1703	873	1531
-					1683	873	1525
-					1667	875	1515
-					1660	875	1512
-					1653	876	1509
-					1615	878	1502
-					1580	880	1483
-					1553	881	1463
-					1544	882	1458
-					1520	883	1451
-					1477	886	1424
-					1431	888	1409
-					1396	891	1383
-					1347	894	1361
-					1299	896	1332
-					1267	898	1315
-					1231	902	1288
-					1202	904	1263
-					1148	906	1243
-					1109	909	1213
-					1067	911	1185
-					1031	914	1156
-					1013	915	1140
-					975	917	1111
-					961	919	1084
-					921	921	1064
-					892	923	1038
-					887	923	1019
-					863	925	1004
-					833	927	976
-					808	929	946
-					787	930	918
-					780	931	904
-					764	932	895
-					744	934	864
-					730	935	846
-					715	936	828
-					693	937	800
-					681	938	783
-					666	940	752
-					651	941	735
-					640	942	712
-					628	945	697
-					622	946	679
-					618	947	664
-					600	950	646
-					596	951	627
-					589	953	614
-					584	953	601
-					576	956	572
-					577	957	553
-					562	958	535
-					511	968	506
-					505	969	487
-					493	971	464
-					492	972	435
-					484	973	417
-					480	975	398
-					474	976	380
-					470	977	364
-					462	977	355
-					456	978	336
-					452	979	329
-					446	981	303
-					437	982	282
-					429	984	255
-					423	985	242
-					422	986	229
-					414	987	211
-					411	988	199
-					405	989	191
-					397	990	171
-					391	991	140
-					387	992	126
-					384	993	107
-					372	995	84
-					364	997	54
-					356	998	26
-					356	998	13
+					2488	809	1809
+					2409	812	1796
+					2327	817	1769
+					2272	820	1743
+					2182	826	1721
+					2104	830	1690
+					2038	834	1670
+					1950	839	1640
+					1904	841	1622
+					1838	845	1594
+					1797	847	1576
+					1749	850	1560
+					1683	853	1531
+					1660	855	1525
+					1653	856	1515
+					1615	858	1512
+					1580	860	1509
+					1553	861	1502
+					1544	862	1483
+					1520	863	1463
+					1477	866	1458
+					1431	868	1451
+					1396	871	1424
+					1347	874	1409
+					1299	876	1383
+					1267	878	1361
+					1231	882	1332
+					1202	884	1315
+					1148	886	1288
+					1109	889	1263
+					1067	891	1243
+					1031	894	1213
+					1013	895	1185
+					975	897	1156
+					961	899	1140
+					921	901	1111
+					892	903	1084
+					887	903	1064
+					863	905	1038
+					833	907	1019
+					808	909	1004
+					787	910	976
+					764	912	946
+					744	914	918
+					730	915	904
+					715	916	895
+					693	917	864
+					681	918	846
+					666	920	828
+					651	921	800
+					640	922	783
+					628	925	752
+					622	926	735
+					618	927	712
+					600	930	697
+					596	931	679
+					584	933	664
+					576	936	646
+					577	937	627
+					562	938	614
+					511	948	601
+					505	949	572
+					493	951	553
+					492	952	535
+					484	953	506
+					480	955	487
+					474	956	464
+					462	957	435
+					456	958	417
+					452	959	398
+					446	961	380
+					437	962	364
+					429	964	355
+					423	965	336
+					422	966	329
+					414	967	303
+					411	968	282
+					405	969	255
+					397	970	242
+					391	971	229
+					387	972	211
+					384	973	199
+					372	975	191
+					364	977	171
+					356	978	140
+					350	981	126
+					340	985	107
+					335	988	84
+					327	991	54
+					320	995	26
+					313	998	13
 					0	1000	0
 					>;
 			};
@@ -490,7 +490,7 @@
 			cable-info {
 				default_input_current = <1800>;
 				default_charging_current = <2100>;
-				full_check_current_1st = <350>;
+				full_check_current_1st = <550>;
 				full_check_current_2nd = <200>;
 
 				current_group_1 {
