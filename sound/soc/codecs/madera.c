@@ -2578,8 +2578,10 @@ int madera_in_ev(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol,
 		priv->in_pending--;
 		if (!madera->pdata.accdet[0].enabled ||
 		    madera->pdata.accdet[0].hs_mic != (w->shift ^ 1) + 1 ||
-		    !madera->hs_mic_muted)
+		    !madera->hs_mic_muted) {
+			usleep_range(1000, 2000);
 			snd_soc_update_bits(codec, reg, MADERA_IN1L_MUTE, 0);
+		}
 
 		/* If this is the last input pending then allow VU */
 		if (priv->in_pending == 0) {
@@ -2622,6 +2624,16 @@ int madera_dre_put(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(madera_dre_put);
+
+static void madera_sleep(unsigned int delay)
+{
+	if (delay < 20) {
+		delay *= 1000;
+		usleep_range(delay, delay + 500);
+	} else {
+		msleep(delay);
+	}
+}
 
 int madera_out_ev(struct snd_soc_dapm_widget *w,
 		  struct snd_kcontrol *kcontrol, int event)
@@ -2670,7 +2682,7 @@ int madera_out_ev(struct snd_soc_dapm_widget *w,
 		case MADERA_OUT3R_ENA_SHIFT:
 			priv->out_up_pending--;
 			if (!priv->out_up_pending) {
-				msleep(priv->out_up_delay);
+				madera_sleep(priv->out_up_delay);
 				priv->out_up_delay = 0;
 			}
 			break;
@@ -2706,7 +2718,7 @@ int madera_out_ev(struct snd_soc_dapm_widget *w,
 		case MADERA_OUT3R_ENA_SHIFT:
 			priv->out_down_pending--;
 			if (!priv->out_down_pending) {
-				msleep(priv->out_down_delay);
+				madera_sleep(priv->out_down_delay);
 				priv->out_down_delay = 0;
 			}
 			break;
@@ -4956,16 +4968,16 @@ int madera_fllhj_set_refclk(struct madera_fll *fll, int source,
 {
 	int ret = 0;
 
-	if (fll->ref_src == source && fll->ref_freq == fin &&
-	    fll->fout == fout)
-		return 0;
-
 	/* To remain consistent with previous FLLs, we expect fout to be
 	 * provided in the form of the required sysclk rate, which is
 	 * 2x the calculated fll out.
 	 */
 	if (fout)
 		fout /= 2;
+
+	if (fll->ref_src == source && fll->ref_freq == fin &&
+	    fll->fout == fout)
+		return 0;
 
 	if (fin && fout && madera_fllhj_validate(fll, fin, fout))
 		return -EINVAL;

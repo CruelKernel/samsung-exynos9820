@@ -32,6 +32,8 @@ typedef struct _sdp_ess_material {
     struct fscrypt_key key;
 } sdp_ess_material;
 
+void dump_file_key_hex(const char* tag, uint8_t *data, size_t data_len);
+int fscrypt_sdp_dump_file_key(struct inode *inode);
 int fscrypt_sdp_set_sdp_policy(struct inode *inode, int engine_id);
 int fscrypt_sdp_set_sensitive(struct inode *inode, int engine_id, struct fscrypt_key *key);
 int fscrypt_sdp_set_protected(struct inode *inode, int engine_id);

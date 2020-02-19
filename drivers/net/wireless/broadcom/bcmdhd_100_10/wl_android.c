@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.c 798833 2019-01-10 12:59:14Z $
+ * $Id: wl_android.c 806003 2019-02-21 02:30:10Z $
  */
 
 #include <linux/module.h>
@@ -490,6 +490,16 @@ struct io_cfg {
 	struct list_head list;
 };
 
+typedef enum {
+	HEAD_SAR_BACKOFF_DISABLE = -1,
+	HEAD_SAR_BACKOFF_ENABLE = 0,
+	GRIP_SAR_BACKOFF_DISABLE,
+	GRIP_SAR_BACKOFF_ENABLE,
+	NR_SAR_BACKOFF_DISABLE,
+	NR_SAR_BACKOFF_ENABLE,
+	SAR_BACKOFF_DISABLE_ALL
+} sar_modes;
+
 #if defined(BCMFW_ROAM_ENABLE)
 #define CMD_SET_ROAMPREF	"SET_ROAMPREF"
 
@@ -782,6 +792,117 @@ extern char iface_name[IFNAMSIZ];
 #ifdef DHD_PM_CONTROL_FROM_FILE
 extern bool g_pm_control;
 #endif	/* DHD_PM_CONTROL_FROM_FILE */
+
+/* private command support for restoring roam/scan parameters */
+#ifdef SUPPORT_RESTORE_SCAN_PARAMS
+#define CMD_RESTORE_SCAN_PARAMS "RESTORE_SCAN_PARAMS"
+
+typedef int (*PRIV_CMD_HANDLER) (struct net_device *dev, char *command);
+typedef int (*PRIV_CMD_HANDLER_WITH_LEN) (struct net_device *dev, char *command, int total_len);
+
+enum {
+	RESTORE_TYPE_UNSPECIFIED = 0,
+	RESTORE_TYPE_PRIV_CMD = 1,
+	RESTORE_TYPE_PRIV_CMD_WITH_LEN = 2
+};
+
+typedef struct android_restore_scan_params {
+	char command[64];
+	int parameter;
+	int cmd_type;
+	union {
+		PRIV_CMD_HANDLER cmd_handler;
+		PRIV_CMD_HANDLER_WITH_LEN cmd_handler_w_len;
+	};
+} android_restore_scan_params_t;
+
+/* function prototypes of private command handler */
+static int wl_android_set_roam_trigger(struct net_device *dev, char* command);
+int wl_android_set_roam_delta(struct net_device *dev, char* command);
+int wl_android_set_roam_scan_period(struct net_device *dev, char* command);
+int wl_android_set_full_roam_scan_period(struct net_device *dev, char* command, int total_len);
+int wl_android_set_roam_scan_control(struct net_device *dev, char *command);
+int wl_android_set_scan_channel_time(struct net_device *dev, char *command);
+int wl_android_set_scan_home_time(struct net_device *dev, char *command);
+int wl_android_set_scan_home_away_time(struct net_device *dev, char *command);
+int wl_android_set_scan_nprobes(struct net_device *dev, char *command);
+static int wl_android_set_band(struct net_device *dev, char *command);
+int wl_android_set_scan_dfs_channel_mode(struct net_device *dev, char *command);
+int wl_android_set_wes_mode(struct net_device *dev, char *command);
+int wl_android_set_okc_mode(struct net_device *dev, char *command);
+
+/* default values */
+#ifdef ROAM_API
+#define DEFAULT_ROAM_TIRGGER -75
+#define DEFAULT_ROAM_DELTA 10
+#define DEFAULT_ROAMSCANPERIOD 10
+#define DEFAULT_FULLROAMSCANPERIOD_SET 120
+#endif /* ROAM_API */
+#ifdef WES_SUPPORT
+#define DEFAULT_ROAMSCANCONTROL 0
+#define DEFAULT_SCANCHANNELTIME 40
+#ifdef BCM4361_CHIP
+#define DEFAULT_SCANHOMETIME 60
+#else
+#define DEFAULT_SCANHOMETIME 45
+#endif /* BCM4361_CHIP */
+#define DEFAULT_SCANHOMEAWAYTIME 100
+#define DEFAULT_SCANPROBES 2
+#define DEFAULT_DFSSCANMODE 1
+#define DEFAULT_WESMODE 0
+#define DEFAULT_OKCMODE 1
+#endif /* WES_SUPPORT */
+#define DEFAULT_BAND 0
+#ifdef WBTEXT
+#define DEFAULT_WBTEXT_ENABLE 1
+#endif /* WBTEXT */
+
+/* restoring parameter list, please don't change order */
+static android_restore_scan_params_t restore_params[] =
+{
+/* wbtext need to be disabled while updating roam/scan parameters */
+#ifdef WBTEXT
+	{ CMD_WBTEXT_ENABLE, 0, RESTORE_TYPE_PRIV_CMD_WITH_LEN,
+		.cmd_handler_w_len = wl_android_wbtext},
+#endif /* WBTEXT */
+#ifdef ROAM_API
+	{ CMD_ROAMTRIGGER_SET, DEFAULT_ROAM_TIRGGER,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_roam_trigger},
+	{ CMD_ROAMDELTA_SET, DEFAULT_ROAM_DELTA,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_roam_delta},
+	{ CMD_ROAMSCANPERIOD_SET, DEFAULT_ROAMSCANPERIOD,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_roam_scan_period},
+	{ CMD_FULLROAMSCANPERIOD_SET, DEFAULT_FULLROAMSCANPERIOD_SET,
+		RESTORE_TYPE_PRIV_CMD_WITH_LEN,
+		.cmd_handler_w_len = wl_android_set_full_roam_scan_period},
+#endif /* ROAM_API */
+#ifdef WES_SUPPORT
+	{ CMD_SETROAMSCANCONTROL, DEFAULT_ROAMSCANCONTROL,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_roam_scan_control},
+	{ CMD_SETSCANCHANNELTIME, DEFAULT_SCANCHANNELTIME,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_scan_channel_time},
+	{ CMD_SETSCANHOMETIME, DEFAULT_SCANHOMETIME,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_scan_home_time},
+	{ CMD_GETSCANHOMEAWAYTIME, DEFAULT_SCANHOMEAWAYTIME,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_scan_home_away_time},
+	{ CMD_SETSCANNPROBES, DEFAULT_SCANPROBES,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_scan_nprobes},
+	{ CMD_SETDFSSCANMODE, DEFAULT_DFSSCANMODE,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_scan_dfs_channel_mode},
+	{ CMD_SETWESMODE, DEFAULT_WESMODE,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_wes_mode},
+	{ CMD_SETOKCMODE, DEFAULT_OKCMODE,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_okc_mode},
+#endif /* WES_SUPPORT */
+	{ CMD_SETBAND, DEFAULT_BAND,
+		RESTORE_TYPE_PRIV_CMD, .cmd_handler = wl_android_set_band},
+#ifdef WBTEXT
+	{ CMD_WBTEXT_ENABLE, DEFAULT_WBTEXT_ENABLE,
+		RESTORE_TYPE_PRIV_CMD_WITH_LEN, .cmd_handler_w_len = wl_android_wbtext},
+#endif /* WBTEXT */
+	{ "\0", 0, RESTORE_TYPE_UNSPECIFIED, .cmd_handler = NULL}
+};
+#endif /* SUPPORT_RESTORE_SCAN_PARAMS */
 
 /**
  * Local (static) functions and variables
@@ -1249,6 +1370,35 @@ static int wl_android_get_band(struct net_device *dev, char *command, int total_
 		return -1;
 	bytes_written = snprintf(command, total_len, "Band %d", band);
 	return bytes_written;
+}
+
+static int
+wl_android_set_band(struct net_device *dev, char *command)
+{
+	int error = 0;
+	uint band = *(command + strlen(CMD_SETBAND) + 1) - '0';
+#ifdef WL_HOST_BAND_MGMT
+	int ret = 0;
+	if ((ret = wl_cfg80211_set_band(dev, band)) < 0) {
+		if (ret == BCME_UNSUPPORTED) {
+			/* If roam_var is unsupported, fallback to the original method */
+			WL_ERR(("WL_HOST_BAND_MGMT defined, "
+				"but roam_band iovar unsupported in the firmware\n"));
+		} else {
+			error = -1;
+		}
+	}
+	if (((ret == 0) && (band == WLC_BAND_AUTO)) || (ret == BCME_UNSUPPORTED)) {
+		/* Apply if roam_band iovar is not supported or band setting is AUTO */
+		error = wldev_set_band(dev, band);
+	}
+#else
+	error = wl_cfg80211_set_if_band(dev, band);
+#endif /* WL_HOST_BAND_MGMT */
+#ifdef ROAM_CHANNEL_CACHE
+	wl_update_roamscan_cache_by_band(dev, band);
+#endif /* ROAM_CHANNEL_CACHE */
+	return error;
 }
 
 #ifdef CUSTOMER_HW4_PRIVATE_CMD
@@ -2258,6 +2408,46 @@ wl_android_okc_enable(struct net_device *dev, char *command)
 	return error;
 }
 #endif /* WES_SUPPORT */
+
+#ifdef SUPPORT_RESTORE_SCAN_PARAMS
+static int
+wl_android_restore_scan_params(struct net_device *dev, char *command, int total_len)
+{
+	int error = 0;
+	uint error_cnt = 0;
+	int cnt = 0;
+	char restore_command[WLC_IOCTL_SMLEN];
+
+	while (strlen(restore_params[cnt].command) > 0 && restore_params[cnt].cmd_handler) {
+		sprintf(restore_command, "%s %d", restore_params[cnt].command,
+			restore_params[cnt].parameter);
+		printk("CNT : %d\n", cnt);
+		printk("COMMAND : %s\n", restore_command);
+		if (restore_params[cnt].cmd_type == RESTORE_TYPE_PRIV_CMD) {
+		error = restore_params[cnt].cmd_handler(dev, restore_command);
+		}  else if (restore_params[cnt].cmd_type == RESTORE_TYPE_PRIV_CMD_WITH_LEN) {
+			error = restore_params[cnt].cmd_handler_w_len(dev,
+				restore_command, total_len);
+		} else {
+			DHD_ERROR(("Unknown restore command handler\n"));
+			error = -1;
+		}
+		if (error) {
+			DHD_ERROR(("Failed to restore scan parameters %s, error : %d\n",
+				restore_command, error));
+			error_cnt++;
+		}
+		cnt++;
+	}
+	if (error_cnt > 0) {
+		DHD_ERROR(("Got %d error(s) while restoring scan parameters\n",
+			error_cnt));
+		error = -1;
+	}
+	return error;
+}
+#endif /* SUPPORT_RESTORE_SCAN_PARAMS */
+
 #ifdef WLTDLS
 int wl_android_tdls_reset(struct net_device *dev)
 {
@@ -3383,6 +3573,9 @@ int wl_android_wifi_on(struct net_device *dev)
 		} while (retry-- > 0);
 		if (ret != 0) {
 			DHD_ERROR(("\nfailed to power up wifi chip, max retry reached **\n\n"));
+#ifdef BCM_DETECT_TURN_ON_FAILURE
+			BUG_ON(1);
+#endif /* BCM_DETECT_TURN_ON_FAILURE */
 			goto exit;
 		}
 #ifdef BCMSDIO
@@ -4714,6 +4907,13 @@ wl_android_set_ampdu_mpdu(struct net_device *dev, const char* string_num)
 #endif /* SUPPORT_AMPDU_MPDU_CMD */
 #endif /* CUSTOMER_HW4_PRIVATE_CMD */
 
+#if defined(CONFIG_WLAN_BEYONDX) || defined(CONFIG_SEC_5GMODEL)
+extern int wl_cfg80211_send_msg_to_ril(void);
+extern void wl_cfg80211_register_dev_ril_bridge_event_notifier(void);
+extern void wl_cfg80211_unregister_dev_ril_bridge_event_notifier(void);
+extern int g_mhs_chan_for_cpcoex;
+#endif /* CONFIG_WLAN_BEYONDX || defined(CONFIG_SEC_5GMODEL) */
+
 #if defined(WL_SUPPORT_AUTO_CHANNEL)
 /* SoftAP feature */
 #define APCS_BAND_2G_LEGACY1	20
@@ -4767,6 +4967,20 @@ wl_android_set_auto_channel(struct net_device *dev, const char* cmd_str,
 		band = WLC_BAND_2G;
 	}
 	WL_INFORM(("HAPD_AUTO_CHANNEL = %d, band=%d \n", channel, band));
+
+#if defined(CONFIG_WLAN_BEYONDX) || defined(CONFIG_SEC_5GMODEL)
+	wl_cfg80211_register_dev_ril_bridge_event_notifier();
+	if (band == WLC_BAND_2G) {
+		wl_cfg80211_send_msg_to_ril();
+
+		if (g_mhs_chan_for_cpcoex) {
+			channel = g_mhs_chan_for_cpcoex;
+			g_mhs_chan_for_cpcoex = 0;
+			goto done2;
+		}
+	}
+	wl_cfg80211_unregister_dev_ril_bridge_event_notifier();
+#endif /* CONFIG_WLAN_BEYONDX || defined(CONFIG_SEC_5GMODEL) */
 
 	/* If STA is connected, return is STA channel, else ACS can be issued,
 	 * set spect to 0 and proceed with ACS
@@ -5243,29 +5457,60 @@ wl_android_get_tx_power(struct net_device *dev, char *command, int total_len)
 static int
 wl_android_set_sarlimit_txctrl(struct net_device *dev, const char* string_num)
 {
-	int err = 0;
+	int err = BCME_ERROR;
 	int setval = 0;
 	s32 mode = bcm_atoi(string_num);
+	s32 mode_bit = 0;
+	int enab = 0;
 
-	/* As Samsung specific and their requirement, '0' means activate sarlimit
-	 * and '-1' means back to normal state (deactivate sarlimit)
+	/* As Samsung specific and their requirement,
+	 * the mode set as the following form.
+	 * -1 : HEAD SAR disabled
+	 *  0 : HEAD SAR enabled
+	 *  1 : GRIP SAR disabled
+	 *  2 : GRIP SAR enabled
+	 *  3 : NR SAR disabled
+	 *  4 : NR SAR enabled
+	 *  5 : SAR BACKOFF disabled all
+	 * The 'SAR BACKOFF disabled all' index should be the end of the mode.
 	 */
-	if (mode >= 0 && mode < 3) {
-		DHD_INFO(("%s: SAR limit control activated mode = %d\n", __FUNCTION__, mode));
-		setval = mode + 1;
-	} else if (mode == -1) {
-		DHD_INFO(("%s: SAR limit control deactivated\n", __FUNCTION__));
+	if ((mode < HEAD_SAR_BACKOFF_DISABLE) || (mode > SAR_BACKOFF_DISABLE_ALL)) {
+		DHD_ERROR(("%s: Request for Unsupported:%d\n", __FUNCTION__, bcm_atoi(string_num)));
+		err = BCME_RANGE;
+		goto error;
+	}
+
+	mode_bit = mode + 1;
+	enab = mode_bit % 2;
+	mode_bit = mode_bit / 2;
+
+	err = wldev_iovar_getint(dev, "sar_enable", &setval);
+	if (unlikely(err)) {
+		DHD_ERROR(("%s: Failed to get sar_enable - error (%d)\n", __FUNCTION__, err));
+		goto error;
+	}
+
+	if (mode == SAR_BACKOFF_DISABLE_ALL) {
+		DHD_ERROR(("%s: SAR limit control all mode disable!\n", __FUNCTION__));
 		setval = 0;
 	} else {
-		return -EINVAL;
+		DHD_ERROR(("%s: SAR limit control mode %d enab %d\n",
+			__FUNCTION__, mode_bit, enab));
+		if (enab) {
+			setval |= (1 << mode_bit);
+		} else {
+			setval &= ~(1 << mode_bit);
+		}
 	}
 
 	err = wldev_iovar_setint(dev, "sar_enable", setval);
 	if (unlikely(err)) {
-		DHD_ERROR(("%s: error (%d)\n", __FUNCTION__, err));
-		return err;
+		DHD_ERROR(("%s: Failed to set sar_enable - error (%d)\n", __FUNCTION__, err));
+		goto error;
 	}
-	return 1;
+
+error:
+	return err;
 }
 
 #ifdef SUPPORT_SET_TID
@@ -8315,28 +8560,7 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 		bytes_written = wl_android_set_max_dtim(net, command);
 	}
 	else if (strnicmp(command, CMD_SETBAND, strlen(CMD_SETBAND)) == 0) {
-		uint band = *(command + strlen(CMD_SETBAND) + 1) - '0';
-#ifdef WL_HOST_BAND_MGMT
-		s32 ret = 0;
-		if ((ret = wl_cfg80211_set_band(net, band)) < 0) {
-			if (ret == BCME_UNSUPPORTED) {
-				/* If roam_var is unsupported, fallback to the original method */
-				WL_ERR(("WL_HOST_BAND_MGMT defined, "
-					"but roam_band iovar unsupported in the firmware\n"));
-			} else {
-				bytes_written = -1;
-			}
-		}
-		if (((ret == 0) && (band == WLC_BAND_AUTO)) || (ret == BCME_UNSUPPORTED)) {
-			/* Apply if roam_band iovar is not supported or band setting is AUTO */
-			bytes_written = wldev_set_band(net, band);
-		}
-#else
-		bytes_written = wl_cfg80211_set_if_band(net, band);
-#endif /* WL_HOST_BAND_MGMT */
-#ifdef ROAM_CHANNEL_CACHE
-		wl_update_roamscan_cache_by_band(net, band);
-#endif /* ROAM_CHANNEL_CACHE */
+		bytes_written = wl_android_set_band(net, command);
 	}
 	else if (strnicmp(command, CMD_GETBAND, strlen(CMD_GETBAND)) == 0) {
 		bytes_written = wl_android_get_band(net, command, priv_cmd.total_len);
@@ -8524,6 +8748,11 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 		bytes_written = wl_android_okc_enable(net, command);
 	}
 #endif /* WES_SUPPORT */
+#ifdef SUPPORT_RESTORE_SCAN_PARAMS
+	else if (strnicmp(command, CMD_RESTORE_SCAN_PARAMS, strlen(CMD_RESTORE_SCAN_PARAMS)) == 0) {
+		bytes_written = wl_android_restore_scan_params(net, command, priv_cmd.total_len);
+	}
+#endif /* SUPPORT_RESTORE_SCAN_PARAMS */
 #ifdef WLTDLS
 	else if (strnicmp(command, CMD_TDLS_RESET, strlen(CMD_TDLS_RESET)) == 0) {
 		bytes_written = wl_android_tdls_reset(net);
@@ -8755,7 +8984,7 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 	else if (strnicmp(command, CMD_SARLIMIT_TX_CONTROL,
 		strlen(CMD_SARLIMIT_TX_CONTROL)) == 0) {
 		int skip = strlen(CMD_SARLIMIT_TX_CONTROL) + 1;
-		wl_android_set_sarlimit_txctrl(net, (const char*)command+skip);
+		bytes_written = wl_android_set_sarlimit_txctrl(net, (const char*)command+skip);
 	}
 #ifdef SUPPORT_SET_TID
 	else if (strnicmp(command, CMD_SET_TID, strlen(CMD_SET_TID)) == 0) {

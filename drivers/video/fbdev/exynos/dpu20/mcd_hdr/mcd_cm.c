@@ -131,10 +131,12 @@ void mcd_cm_sfr(struct mcd_hdr_device *hdr, struct mcd_cm_params_info *params, s
 
     i_type      = (ds->src_gamma == INDEX_GAMMA_ST2084) ? INDEX_TYPE_PQ :
                   (ds->src_gamma == INDEX_GAMMA_HLG   ) ? INDEX_TYPE_HLG : INDEX_TYPE_SDR;
-    act_ds.src_gamma = ((legacy_mode == 1) && (i_type == INDEX_TYPE_SDR)) ? INDEX_GAMMA_GAMMA2_2 : ds->src_gamma;
+    
     act_ds.src_gamut = ((legacy_mode == 1) && (i_type == INDEX_TYPE_SDR)) ? INDEX_GAMUT_DCI_P3   : ds->src_gamut;
-    act_ds.tgt_gamma = ((legacy_mode == 1)                              ) ? INDEX_GAMMA_GAMMA2_2 : ds->tgt_gamma;
     act_ds.tgt_gamut = ((legacy_mode == 1)                              ) ? INDEX_GAMUT_DCI_P3   : ds->tgt_gamut;
+   	act_ds.src_gamma = ((legacy_mode == 1) && (i_type == INDEX_TYPE_SDR)) ? INDEX_GAMMA_SRGB : ds->src_gamma;
+    act_ds.tgt_gamma = (legacy_mode == 1) ? ((i_type == INDEX_TYPE_SDR) ? INDEX_GAMMA_SRGB : INDEX_GAMMA_GAMMA2_2) : ds->tgt_gamma;
+    
 
     if ((act_ds.src_gamma == INDEX_GAMMA_UNSPECIFIED) ||
         (act_ds.tgt_gamma == INDEX_GAMMA_UNSPECIFIED) ||

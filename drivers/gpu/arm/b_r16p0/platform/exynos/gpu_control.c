@@ -443,7 +443,7 @@ int gpu_control_enable_customization(struct kbase_device *kbdev)
 		return -ENODEV;
 
 #ifdef CONFIG_REGULATOR
-#if defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP)
+#if (defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP) || defined(CONFIG_SCHED_HMP))
 	mutex_lock(&platform->gpu_sched_hmp_lock);
 
 	if (platform->inter_frame_pm_feature == false)

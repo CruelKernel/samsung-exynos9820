@@ -21,8 +21,8 @@
 #define MAX86915_CHIP_NAME	"MAX86915"
 #define MAX86917_CHIP_NAME	"MAX86917"
 
-#define VERSION				"2"
-#define SUB_VERSION			"17"
+#define VERSION				"3"
+#define SUB_VERSION			"0"
 #define VENDOR_VERSION		"m"
 
 #define MODULE_NAME_HRM		"hrm_sensor"
@@ -4376,6 +4376,20 @@ static int max86915_set_reg_sdk(struct max86915_device_data *data)
 	return err;
 }
 
+static int max86915_set_reg_svc(struct max86915_device_data *data)
+{
+	int err = 0;
+
+	err = max86915_init_status(data);
+	err = max86915_init_sdk_reg(data);
+
+	data->agc_mode = M_NONE;
+	err = max86915_write_reg(data, MAX86915_INTERRUPT_ENABLE, 0);
+	err = max86915_write_reg(data, MAX86915_MODE_CONFIGURATION_2, 0x44);
+
+	return err;
+}
+
 static int max86915_set_reg_ambient(struct max86915_device_data *data)
 {
 	int err = 0;
@@ -4486,6 +4500,8 @@ static int max86915_enable(struct max86915_device_data *data, enum op_mode mode)
 		err = max86915_set_reg_prox(max86915_data);
 	else if (mode == MODE_SDK_IR)
 		err = max86915_set_reg_sdk(max86915_data);
+	else if (mode == MODE_SVC_IR)
+		err = max86915_set_reg_svc(max86915_data);
 	else
 		HRM_err("%s - MODE_UNKNOWN\n", __func__);
 
@@ -4858,6 +4874,7 @@ static void max86915_set_mode(struct max86915_device_data *data,
 
 		data->enabled_mode = 0;
 		data->mode_sdk_enabled = 0;
+		data->mode_svc_enabled = 0;
 
 		err = max86915_led_power_ctrl(data, PWR_OFF);
 		if (err)
@@ -4931,6 +4948,31 @@ static ssize_t max86915_enable_store(struct device *dev,
 	} else if (sysfs_streq(buf, "-13")) {
 		on_off = PWR_OFF;
 		mode = MODE_SDK_BLUE;
+	} else if (sysfs_streq(buf, "14")) {
+		on_off = PWR_ON;
+		mode = MODE_SVC_IR;
+		data->mode_cnt.unkn_cnt++;
+	} else if (sysfs_streq(buf, "15")) {
+		on_off = PWR_ON;
+		mode = MODE_SVC_RED;
+	} else if (sysfs_streq(buf, "16")) {
+		on_off = PWR_ON;
+		mode = MODE_SVC_GREEN;
+	} else if (sysfs_streq(buf, "17")) {
+		on_off = PWR_ON;
+		mode = MODE_SVC_BLUE;
+	} else if (sysfs_streq(buf, "-14")) {
+		on_off = PWR_OFF;
+		mode = MODE_SVC_IR;
+	} else if (sysfs_streq(buf, "-15")) {
+		on_off = PWR_OFF;
+		mode = MODE_SVC_RED;
+	} else if (sysfs_streq(buf, "-16")) {
+		on_off = PWR_OFF;
+		mode = MODE_SVC_GREEN;
+	} else if (sysfs_streq(buf, "-17")) {
+		on_off = PWR_OFF;
+		mode = MODE_SVC_BLUE;
 	} else {
 		HRM_err("%s - invalid value %d\n", __func__, *buf);
 		data->mode_cnt.unkn_cnt++;
@@ -4969,6 +5011,42 @@ static ssize_t max86915_enable_store(struct device *dev,
 			max86915_reset_sdk_agc_var(mode - MODE_SDK_IR);
 
 			if (data->mode_sdk_enabled == 0) {
+				mode = MODE_NONE;
+			} else {
+				mutex_unlock(&data->activelock);
+				return count;
+			}
+		}
+	} else if (mode == MODE_SVC_IR || mode == MODE_SVC_RED
+		|| mode == MODE_SVC_GREEN || mode == MODE_SVC_BLUE) {
+		HRM_dbg("%s - SVC en : %d m : %d c : %d\n", __func__, on_off, mode, data->mode_svc_enabled);
+		if (on_off == PWR_ON) {
+			if (data->mode_svc_enabled & (1<<(mode - MODE_SVC_IR))) { /* already enabled */
+				/* Do Nothing */
+				HRM_dbg("%s - SVC %d mode already enabled\n", __func__, mode);
+				mutex_unlock(&data->activelock);
+				return count;
+			}
+			if (data->mode_svc_enabled == 0) {
+				data->mode_svc_enabled |= (1<<(mode - MODE_SVC_IR));
+				mode = MODE_SVC_IR;
+				data->mode_cnt.unkn_cnt++;
+			} else {
+				data->mode_svc_enabled |= (1<<(mode - MODE_SVC_IR));
+				mutex_unlock(&data->activelock);
+				return count;
+			}
+		} else {
+			if ((data->mode_svc_enabled & (1<<(mode - MODE_SVC_IR))) == 0) { /* Not Enabled */
+				/* Do Nothing */
+				HRM_dbg("%s - SVC %d mode not enabled\n", __func__, mode);
+				mutex_unlock(&data->activelock);
+				return count;
+			}
+			/* Oring disable mode */
+			data->mode_svc_enabled &= ~(1<<(mode - MODE_SVC_IR));
+
+			if (data->mode_svc_enabled == 0) {
 				mode = MODE_NONE;
 			} else {
 				mutex_unlock(&data->activelock);
@@ -5908,9 +5986,9 @@ irqreturn_t max86915_irq_handler(int dev_irq, void *device)
 
 	memset(&read_data, 0, sizeof(struct output_data));
 
-	if (data->regulator_state == 0 || data->enabled_mode == 0) {
-		HRM_dbg("%s - stop irq handler (reg_state : %d, enabled_mode : %d)\n",
-				__func__, data->regulator_state, data->enabled_mode);
+	if (data->regulator_state == 0 || data->enabled_mode == 0 || data->mode_svc_enabled != 0) {
+		HRM_dbg("%s - stop irq handler (reg_state : %d, enabled_mode : %d, rear_led : 0x%x)\n",
+				__func__, data->regulator_state, data->enabled_mode, data->mode_svc_enabled);
 		return IRQ_HANDLED;
 	}
 
@@ -6004,6 +6082,7 @@ static void max86915_init_var1(struct max86915_device_data *data)
 	data->enabled_mode = 0;
 	data->sampling_period_ns = 0;
 	data->mode_sdk_enabled = 0;
+	data->mode_svc_enabled = 0;
 	data->regulator_state = 0;
 	data->irq_state = 0;
 	data->hrm_threshold = DEFAULT_THRESHOLD;
@@ -6554,6 +6633,10 @@ static int max86915_pm_suspend(struct device *dev)
 
 	HRM_dbg("%s - %d\n", __func__, data->enabled_mode);
 
+	if (data->enabled_mode == MODE_SVC_IR) {
+		return err;
+	}
+
 	if (data->enabled_mode != 0 || data->regulator_state != 0) {
 		mutex_lock(&data->activelock);
 
@@ -6590,6 +6673,10 @@ static int max86915_pm_resume(struct device *dev)
 	int err = 0;
 
 	HRM_dbg("%s - %d\n", __func__, data->enabled_mode);
+
+	if (data->enabled_mode == MODE_SVC_IR) {
+		return err;
+	}
 
 	mutex_lock(&data->suspendlock);
 

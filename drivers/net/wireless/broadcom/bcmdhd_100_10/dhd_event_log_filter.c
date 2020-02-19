@@ -23,7 +23,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_event_log_filter.c 795857 2018-12-20 07:11:57Z $
+ * $Id: dhd_event_log_filter.c 808027 2019-03-05 10:43:30Z $
  */
 
 /*
@@ -98,6 +98,9 @@
 #define EWPF_REPORT_MIN_MUL		100
 #define EWPF_REPORT_MINUTES		60
 #define EWPF_REPORT_YEAR_BASE	1900
+
+#define EWPF_NO_ABS		FALSE
+#define EWPF_NEED_ABS		TRUE
 
 #define EWPF_MAX_INFO_TYPE	5
 #define EWPF_INFO_VER		0
@@ -844,7 +847,7 @@ evt_xtlv_copy_cb(void *ctx, const uint8 *data, uint16 type, uint16 len)
 	}
 
 #ifdef EWPF_DEBUG
-	DHD_FILTER_ERR(("idx:%d write_:%p %d %d\n",
+	DHD_FILTER_ERR(("idx:%d write_:%p %u %u\n",
 		filter->xtlv_idx, target, *armcycle, filter->tmp_armcycle));
 #endif // endif
 
@@ -1151,6 +1154,7 @@ typedef struct {
 					 * 0 or 1 : no conversion, put data as is
 					 * greater than 1, divide value by unit_convert
 					 */
+	bool need_abs;			/* need absolute function for negative value */
 #endif /* DHD_EWPR_VER2 */
 } ewpr_serial_info_t;
 
@@ -1332,34 +1336,34 @@ typedef struct {
 	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_IOVAR_BIT(a, b) {\
 	#a, 0, 0, .offset = 0, \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_IOVAR, b, 1, EWPR_SINGLE_DEFAULT}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_IOVAR, b, 1, EWPR_SINGLE_DEFAULT}
 #define EWPR_SERIAL_VERSION_BIT(a, b) {\
 	#a, 0, 0, .offset = 0, \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_VER, b, 1, EWPR_SINGLE_DEFAULT}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_VER, b, 1, EWPR_SINGLE_DEFAULT}
 #define EWPR_SERIAL_TYPE_BIT(a, b) {\
 	#a, 0, 0, .offset = 0, \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_TYPE, b, 1, EWPR_SINGLE_DEFAULT}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_TYPE, b, 1, EWPR_SINGLE_DEFAULT}
 #define EWPR_SERIAL_CPLOG_BIT(a, b, c) {\
 	#a, 0, 0, .offset = 0, \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_CPLOG, b, c, EWPR_SINGLE_DEFAULT}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_CPLOG, b, c, EWPR_SINGLE_DEFAULT}
 #define EWPR_SERIAL_DHDSTAT_BIT(a, b, c, d) {\
 	#a, 0, 0, .offset = 0, \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_DHDSTAT, b, c, d}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_DHDSTAT, b, c, d}
 #define EWPR_SERIAL_TX_TOSS_HIST_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_SLICE, FALSE, .offset = EWPR_TX_TOSS_HIST_OFFSET(a), \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_RX_TOSS_HIST_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_SLICE, FALSE, .offset = EWPR_RX_TOSS_HIST_OFFSET(a), \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_BTC_STAT_16_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_SLICE, FALSE, .offset = EWPR_BTC_STAT_OFFSET(a), \
-	EWP_INT16, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+	EWP_UINT16, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_BTC_STAT_32_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_SLICE, FALSE, .offset = EWPR_BTC_STAT_OFFSET(a), \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 #define EWPR_SERIAL_COMPACT_HE_CNT_BIT(a, b, c, d) {\
 	#a, EWPF_IDX_TYPE_SLICE, FALSE, .offset = EWPR_COMPACT_HE_CNT_OFFSET(a), \
-	EWP_INT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
+	EWP_UINT32, EWP_BIN, EWP_BIT, EWPF_INFO_ECNT, b, c, d}
 
 #define EWPR_SERIAL_NONE_BIT {"", EWPF_INVALID, FALSE, {0, }, 0, 0, 0, 0, 0, 0, 0}
 
@@ -2285,7 +2289,7 @@ ewpr_set_period_lock(ewpr_lock_param_t *param)
 	}
 
 	if (last_armcycle != param->max_armcycle) {
-		DHD_FILTER_TRACE(("MAX ARMCYCLE IS CHANGEd new:%d prev:%d\n",
+		DHD_FILTER_TRACE(("MAX ARMCYCLE IS CHANGEd new:%u prev:%u\n",
 			last_armcycle, param->max_armcycle));
 		param->max_armcycle = last_armcycle;
 	}
@@ -2304,17 +2308,17 @@ ewpr_set_period_lock(ewpr_lock_param_t *param)
 		}
 		cur_armcycle = *(uint32 *)cur;
 		if (cur_armcycle >= first_armcycle) {
-			DHD_FILTER_TRACE(("case 1: %d %d\n", first_armcycle, cur_armcycle));
+			DHD_FILTER_TRACE(("case 1: %u %u\n", first_armcycle, cur_armcycle));
 			/* dongle is rebooted */
 			break;
 		}
 		if (cur_armcycle + EWPF_EPOCH < param->min_armcycle) {
-			DHD_FILTER_TRACE(("case 2: %d %d\n", param->min_armcycle, cur_armcycle));
+			DHD_FILTER_TRACE(("case 2: %u %u\n", param->min_armcycle, cur_armcycle));
 			/* Reach Limitation */
 			break;
 		}
 		if (cur_armcycle + param->max_period + EWPF_EPOCH < last_armcycle) {
-			DHD_FILTER_TRACE(("case 3: %d %d\n", param->max_period, cur_armcycle));
+			DHD_FILTER_TRACE(("case 3: %u %u\n", param->max_period, cur_armcycle));
 			/* exceed max period */
 			break;
 		}
@@ -2323,12 +2327,12 @@ ewpr_set_period_lock(ewpr_lock_param_t *param)
 	}
 
 	if (first_armcycle != param->min_armcycle) {
-		DHD_FILTER_TRACE(("MIN ARMCYCLE IS CHANGEd new:%d prev:%d %d\n",
+		DHD_FILTER_TRACE(("MIN ARMCYCLE IS CHANGEd new:%u prev:%u %u\n",
 			first_armcycle, param->min_armcycle, cur_armcycle));
 		param->min_armcycle = first_armcycle;
 	}
 
-	DHD_FILTER_TRACE(("ARM CYCLE of first(%d), last(%d)\n", first_armcycle, last_armcycle));
+	DHD_FILTER_TRACE(("ARM CYCLE of first(%u), last(%u)\n", first_armcycle, last_armcycle));
 
 	dhd_ring_lock(ring, first, last);
 
@@ -2378,6 +2382,7 @@ ewpr_single_bit_pack(ewpr_serial_info_t * info, char * buf, int buf_len,
 	char *ptr = (char *)_ptr;
 	uint32 offset = EWPF_INVALID;
 	uint16	version;
+	bool is_signed = FALSE;
 
 	if (info->is_multi_version == TRUE) {
 		version = *(uint16 *)((char *)_ptr + info->v_info.version_offset);
@@ -2396,18 +2401,21 @@ ewpr_single_bit_pack(ewpr_serial_info_t * info, char * buf, int buf_len,
 	switch (info->data_type) {
 		case EWP_INT8:
 			sval = *(int8 *)ptr;
+			is_signed = TRUE;
 			break;
 		case EWP_UINT8:
 			sval = *(uint8 *)ptr;
 			break;
 		case EWP_INT16:
 			sval = *(int16 *)ptr;
+			is_signed = TRUE;
 			break;
 		case EWP_UINT16:
 			sval = *(uint16 *)ptr;
 			break;
 		case EWP_INT32:
 			sval = *(int32 *)ptr;
+			is_signed = TRUE;
 			break;
 		case EWP_UINT32:
 			sval = *(uint32 *)ptr;
@@ -2422,17 +2430,26 @@ ewpr_single_bit_pack(ewpr_serial_info_t * info, char * buf, int buf_len,
 			return 0;
 	}
 
-	if (sval < 0) {
-		DHD_FILTER_TRACE(("convert to positive value %d\n", sval));
-		sval = ABS(sval);
+	/* convert negative value to positive before bit packing */
+	if (is_signed) {
+		if (sval < 0) {
+			DHD_FILTER_TRACE(("convert to positive value %d\n", sval));
+			sval = ABS(sval);
+		}
 	}
+
 	if (info->unit_convert > 1) {
 		DHD_FILTER_TRACE(("convert unit %d / %d\n", sval, info->unit_convert));
 		sval = sval / info->unit_convert;
 	}
 
-	DHD_FILTER_TRACE(("%s : value : %d, bit length: %d",
-		info->name, sval, info->display_bit_length));
+	if (is_signed) {
+		DHD_FILTER_TRACE(("%s : signed value : %d, bit length: %d",
+			info->name, sval, info->display_bit_length));
+	} else {
+		DHD_FILTER_TRACE(("%s : unsigned value : %u, bit length: %d",
+			info->name, sval, info->display_bit_length));
+	}
 
 	return ewpr_bit_pack_basic(buf, buf_len, sval, info->display_format,
 			info->display_type, info->display_bit_length, bit_offset);
@@ -2483,10 +2500,12 @@ ewpr_diff_bit_pack(ewpr_serial_info_t *info, char *buf, int buf_len,
 			DHD_FILTER_ERR(("INVALID TYPE to DIFF:%d", info->data_type));
 			return 0;
 	}
+
 	if (diff < 0) {
 		DHD_FILTER_TRACE(("convert to positive value %d\n", diff));
 		diff = ABS(diff);
 	}
+
 	if (info->unit_convert > 1) {
 		DHD_FILTER_TRACE(("convert unit %d / %d\n", diff, info->unit_convert));
 		diff = diff / info->unit_convert;

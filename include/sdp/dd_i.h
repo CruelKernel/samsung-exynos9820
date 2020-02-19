@@ -147,6 +147,7 @@ struct dd_mmap_layout {
 #define DD_IOCTL_SET_XATTR				_IO('M', 0x02)
 #define DD_IOCTL_ADD_KEY				_IO('K', 0x01)
 #define DD_IOCTL_EVICT_KEY				_IO('K', 0x02)
+#define DD_IOCTL_DUMP_KEY				_IO('K', 0x03)
 #define DD_IOCTL_SEND_LOG				_IO('D', 0x01)
 
 //#define EXT4_IOC_GET_DD_POLICY			_IO('P', 0x00)
@@ -198,6 +199,10 @@ struct dd_ioc {
 		struct {
 			unsigned short userid;
 		}evict_key;
+		struct {
+			unsigned short userid;
+			int fileDescriptor;
+		}dump_key;
 		struct {
 			unsigned short userid;
 			unsigned short mask;

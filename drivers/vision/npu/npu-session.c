@@ -80,6 +80,14 @@ void npu_session_queue_done(struct npu_queue *queue, struct vb_container_list *i
 	return;
 }
 
+static save_result_func get_notify_func(const nw_cmd_e nw_cmd)
+{
+	if (NPU_NW_CMD_UNLOAD == nw_cmd || NPU_NW_CMD_CLEAR_CB == nw_cmd)
+		return NULL;
+	else
+		return npu_session_save_result;
+}
+
 static int npu_session_put_nw_req(struct npu_session *session, nw_cmd_e nw_cmd)
 {
 	int ret = 0;
@@ -95,10 +103,7 @@ static int npu_session_put_nw_req(struct npu_session *session, nw_cmd_e nw_cmd)
 
 	BUG_ON(!session);
 
-	if (NPU_NW_CMD_UNLOAD == nw_cmd)
-		req.notify_func = NULL;
-	else
-		req.notify_func = npu_session_save_result;
+	req.notify_func = get_notify_func(nw_cmd);
 
 	ret = npu_ncp_mgmt_put(&req);
 	if (!ret) {
@@ -1119,6 +1124,9 @@ int npu_session_NW_CMD_STREAMOFF(struct npu_session *session)
 		profile_point1(PROBE_ID_DD_NW_NOTIFIED, session->uid, 0, nw_cmd);
 	} else {
 		npu_udbg("NPU DEVICE IS EMERGENCY ERROR !\n", session);
+		npu_udbg("sending CLEAR_CB command.\n", session);
+		npu_session_put_nw_req(session, NPU_NW_CMD_CLEAR_CB);
+		/* Clear CB has no notify function */
 	}
 
 	return ret;

@@ -146,14 +146,17 @@ int gpu_set_target_clk_vol(int clk, bool pending_is_allowed)
 #endif
 	ret = gpu_update_cur_level(platform);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+/* W/A for BS_G3D_PERFORMANCE misspelling on kernel version 4.4 */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
+#define BS_G3D_PERFORMANCE BS_G3D_PEFORMANCE
+#endif
+
 	if (platform->gpu_bts_support) {
 		if (target_clk >= platform->mo_min_clock)
 			bts_update_scen(BS_G3D_PERFORMANCE, 1);	/* GPU IDQ : 0 (max token) */
 		else
 			bts_update_scen(BS_G3D_PERFORMANCE, 0);	/* GPU IDQ : 0x3 (default 12ea) */
 	}
-#endif
 
 	mutex_unlock(&platform->gpu_clock_lock);
 
@@ -586,7 +589,14 @@ int gpu_dvfs_get_cur_clock(void)
 	int clock = 0;
 
 	DVFS_ASSERT(platform);
-
+#ifdef CONFIG_MALI_RT_PM
+	if (platform->exynos_pm_domain) {
+		mutex_lock(&platform->exynos_pm_domain->access_lock);
+		if (!platform->dvs_is_enabled && gpu_is_power_on())
+			clock = gpu_get_cur_clock(platform);
+		mutex_unlock(&platform->exynos_pm_domain->access_lock);
+	}
+#else
 	if (gpu_control_is_power_on(pkbdev) == 1) {
 		mutex_lock(&platform->gpu_clock_lock);
 
@@ -599,6 +609,7 @@ int gpu_dvfs_get_cur_clock(void)
 		clock = gpu_get_cur_clock(platform);
 		mutex_unlock(&platform->gpu_clock_lock);
 	}
+#endif
 
 	return clock;
 }

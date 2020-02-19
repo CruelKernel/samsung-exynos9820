@@ -298,6 +298,14 @@ int sec_ts_i2c_write(struct sec_ts_data *ts, u8 reg, u8 *data, int len)
 		return -ENOMEM;
 	}
 
+	if (!ts->resume_done.done) {
+		ret = wait_for_completion_interruptible_timeout(&ts->resume_done, msecs_to_jiffies(500));
+		if (ret <= 0) {
+			input_err(true, &ts->client->dev, "%s: LPM: pm resume is not handled:%d\n", __func__, ret);
+			return -EIO;
+		}
+	}
+
 #ifdef CONFIG_INPUT_SEC_SECURE_TOUCH
 	if (atomic_read(&ts->secure_enabled) == SECURE_TOUCH_ENABLE) {
 		input_err(true, &ts->client->dev,
@@ -388,6 +396,14 @@ int sec_ts_i2c_read(struct sec_ts_data *ts, u8 reg, u8 *data, int len)
 	int remain = len;
 	int i;
 	u8 *buff;
+
+	if (!ts->resume_done.done) {
+		ret = wait_for_completion_interruptible_timeout(&ts->resume_done, msecs_to_jiffies(500));
+		if (ret <= 0) {
+			input_err(true, &ts->client->dev, "%s: LPM: pm resume is not handled:%d\n", __func__, ret);
+			return -EIO;
+		}
+	}
 
 #ifdef CONFIG_INPUT_SEC_SECURE_TOUCH
 	if (atomic_read(&ts->secure_enabled) == SECURE_TOUCH_ENABLE) {
@@ -545,6 +561,14 @@ static int sec_ts_i2c_write_burst(struct sec_ts_data *ts, u8 *data, int len)
 		return -ENOMEM;
 	}
 
+	if (!ts->resume_done.done) {
+		ret = wait_for_completion_interruptible_timeout(&ts->resume_done, msecs_to_jiffies(500));
+		if (ret <= 0) {
+			input_err(true, &ts->client->dev, "%s: LPM: pm resume is not handled:%d\n", __func__, ret);
+			return -EIO;
+		}
+	}
+
 #ifdef CONFIG_INPUT_SEC_SECURE_TOUCH
 	if (atomic_read(&ts->secure_enabled) == SECURE_TOUCH_ENABLE) {
 		input_err(true, &ts->client->dev,
@@ -594,6 +618,14 @@ static int sec_ts_i2c_read_bulk(struct sec_ts_data *ts, u8 *data, int len)
 	int remain = len;
 	struct i2c_msg msg;
 	u8 *buff;
+
+	if (!ts->resume_done.done) {
+		ret = wait_for_completion_interruptible_timeout(&ts->resume_done, msecs_to_jiffies(500));
+		if (ret <= 0) {
+			input_err(true, &ts->client->dev, "%s: LPM: pm resume is not handled:%d\n", __func__, ret);
+			return -EIO;
+		}
+	}
 
 #ifdef CONFIG_INPUT_SEC_SECURE_TOUCH
 	if (atomic_read(&ts->secure_enabled) == SECURE_TOUCH_ENABLE) {

@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 798826 2019-01-10 12:45:43Z $
+ * $Id: dhd_common.c 808476 2019-03-07 07:57:57Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -53,6 +53,7 @@
 #endif // endif
 
 #include <dhd_bus.h>
+#include <bcmdevs.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
 #include <802.1d.h>
@@ -471,13 +472,17 @@ dhd_query_bus_erros(dhd_pub_t *dhdp)
 	}
 #endif /* DNGL_AXI_ERROR_LOGGING */
 
-#ifdef BCMPCIE
 	if (dhd_bus_get_linkdown(dhdp)) {
 		DHD_ERROR_RLMT(("%s : PCIE Link down occurred, cannot proceed\n",
 			__FUNCTION__));
 		ret = TRUE;
 	}
-#endif /* BCMPCIE */
+
+	if (dhd_bus_get_cto(dhdp)) {
+		DHD_ERROR_RLMT(("%s : CTO Recovery reported, cannot proceed\n",
+			__FUNCTION__));
+		ret = TRUE;
+	}
 
 	return ret;
 }
@@ -7294,3 +7299,67 @@ dhd_control_he_enab(dhd_pub_t * dhd, uint8 he_enab)
 	return ret;
 }
 #endif /* DISABLE_HE_ENAB || CUSTOM_CONTROL_HE_ENAB */
+
+bool
+dhd_validate_chipid(dhd_pub_t *dhdp)
+{
+	uint chipid = dhd_bus_chip_id(dhdp);
+	uint config_chipid;
+
+#ifdef BCM4375_CHIP
+	config_chipid = BCM4375_CHIP_ID;
+#elif defined(BCM4361_CHIP)
+	config_chipid = BCM4361_CHIP_ID;
+#elif defined(BCM4359_CHIP)
+	config_chipid = BCM4359_CHIP_ID;
+#elif defined(BCM4358_CHIP)
+	config_chipid = BCM4358_CHIP_ID;
+#elif defined(BCM4354_CHIP)
+	config_chipid = BCM4354_CHIP_ID;
+#elif defined(BCM4339_CHIP)
+	config_chipid = BCM4339_CHIP_ID;
+#elif defined(BCM4335_CHIP)
+	config_chipid = BCM4335_CHIP_ID;
+#elif defined(BCM43430_CHIP)
+	config_chipid = BCM43430_CHIP_ID;
+#elif defined(BCM43018_CHIP)
+	config_chipid = BCM43018_CHIP_ID;
+#elif defined(BCM43455_CHIP)
+	config_chipid = BCM4345_CHIP_ID;
+#elif defined(BCM43454_CHIP)
+	config_chipid = BCM43454_CHIP_ID;
+#elif defined(BCM43012_CHIP_)
+	config_chipid = BCM43012_CHIP_ID;
+#else
+	DHD_ERROR(("%s: Unknown chip id, if you use new chipset,"
+		" please add CONFIG_BCMXXXX into the Kernel and"
+		" BCMXXXX_CHIP definition into the DHD driver\n",
+		__FUNCTION__));
+	config_chipid = 0;
+
+	return FALSE;
+#endif /* BCM4354_CHIP */
+
+#if defined(BCM4354_CHIP) && defined(SUPPORT_MULTIPLE_REVISION)
+	if (chipid == BCM4350_CHIP_ID && config_chipid == BCM4354_CHIP_ID) {
+		return TRUE;
+	}
+#endif /* BCM4354_CHIP && SUPPORT_MULTIPLE_REVISION */
+#if defined(BCM4358_CHIP) && defined(SUPPORT_MULTIPLE_REVISION)
+	if (chipid == BCM43569_CHIP_ID && config_chipid == BCM4358_CHIP_ID) {
+		return TRUE;
+	}
+#endif /* BCM4358_CHIP && SUPPORT_MULTIPLE_REVISION */
+#if defined(BCM4359_CHIP)
+	if (chipid == BCM4355_CHIP_ID && config_chipid == BCM4359_CHIP_ID) {
+		return TRUE;
+	}
+#endif /* BCM4359_CHIP */
+#if defined(BCM4361_CHIP)
+	if (chipid == BCM4347_CHIP_ID && config_chipid == BCM4361_CHIP_ID) {
+		return TRUE;
+	}
+#endif /* BCM4361_CHIP */
+
+	return config_chipid == chipid;
+}

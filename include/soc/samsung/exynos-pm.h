@@ -100,9 +100,12 @@ static inline u32 otg_is_connect(void)
 enum ids_info {
 	tg,
 	lg,
+	mg,
 	bg,
 	g3dg,
 	mifg,
+	lids,
+	mids,
 	bids,
 	gids,
 };

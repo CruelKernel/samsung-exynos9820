@@ -161,7 +161,48 @@ static unsigned int __colorspace_to_gamut(unsigned int color_mode)
 	return gamut;
 }
 
-static unsigned int __colorspace_to_gamma(unsigned int color_mode)
+static unsigned int __colorspace_to_gamma_wcg(unsigned int color_mode)
+{
+	int gamma = INDEX_GAMMA_UNSPECIFIED;
+	
+	switch(color_mode) {
+
+		case HAL_COLOR_MODE_NATIVE:
+			gamma = INDEX_GAMMA_UNSPECIFIED;
+			break;
+		case HAL_COLOR_MODE_STANDARD_BT601_625:
+			gamma = INDEX_GAMMA_SMPTE_170M;
+			break;
+		case HAL_COLOR_MODE_STANDARD_BT601_625_UNADJUSTED:
+			gamma = INDEX_GAMMA_SMPTE_170M;
+			break;
+		case HAL_COLOR_MODE_STANDARD_BT601_525:
+			gamma = INDEX_GAMMA_SMPTE_170M;
+			break;
+		case HAL_COLOR_MODE_STANDARD_BT601_525_UNADJUSTED:
+			gamma = INDEX_GAMMA_SMPTE_170M;
+			break;
+		case HAL_COLOR_MODE_STANDARD_BT709:
+			gamma = INDEX_GAMMA_SMPTE_170M;
+			break;
+		case HAL_COLOR_MODE_DCI_P3:
+			gamma = INDEX_GAMMA_GAMMA2_6;
+			break;
+		case HAL_COLOR_MODE_SRGB:
+			gamma = INDEX_GAMMA_SRGB;
+			break;
+		case HAL_COLOR_MODE_ADOBE_RGB:
+			gamma = INDEX_GAMMA_GAMMA2_2;
+			break;
+		case HAL_COLOR_MODE_DISPLAY_P3:
+			gamma = INDEX_GAMMA_SRGB;
+			break;
+	}
+
+	return gamma;
+}
+
+static unsigned int __colorspace_to_gamma_hdr(unsigned int color_mode)
 {
 	int gamma = INDEX_GAMMA_UNSPECIFIED;
 	
@@ -202,7 +243,6 @@ static unsigned int __colorspace_to_gamma(unsigned int color_mode)
 	return gamma;
 }
 
-
 static int mcd_config_wcg(struct mcd_hdr_device *hdr, struct wcg_config *config)
 {
 	int ret = 0;
@@ -213,9 +253,9 @@ static int mcd_config_wcg(struct mcd_hdr_device *hdr, struct wcg_config *config)
 	params.src_gamma = __hdr_to_gamma(config->hdr_mode);
 	params.src_gamut = __eq_to_gammut(config->eq_mode);
 
-	params.dst_gamma = __colorspace_to_gamma(config->color_mode);
+	params.dst_gamma = __colorspace_to_gamma_wcg(config->color_mode);
 	params.dst_gamut = __colorspace_to_gamut(config->color_mode);
-
+    
 	mcd_cm_reg_set_params(hdr, &params);
 
 	return ret;
@@ -233,7 +273,7 @@ static int mcd_config_hdr(struct mcd_hdr_device *hdr, struct hdr10_config *confi
 	params.src_gamma = __hdr_to_gamma(config->hdr_mode);
 	params.src_gamut = __eq_to_gammut(config->eq_mode);
 
-	params.dst_gamma = __colorspace_to_gamma(config->color_mode);
+	params.dst_gamma = __colorspace_to_gamma_hdr(config->color_mode);
 	params.dst_gamut = __colorspace_to_gamut(config->color_mode);
 
 	params.src_max_luminance = config->src_max_luminance;

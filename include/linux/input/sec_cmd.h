@@ -73,8 +73,9 @@ struct sec_cmd_data {
 	int			cmd_param[SEC_CMD_PARAM_NUM];
 	char			cmd_result[SEC_CMD_RESULT_STR_LEN];
 	int			cmd_buffer_size;
-	bool			cmd_is_running;
+	volatile bool		cmd_is_running;
 	struct mutex		cmd_lock;
+	struct mutex		fs_lock;
 #ifdef USE_SEC_CMD_QUEUE
 	struct kfifo		cmd_queue;
 	struct mutex		fifo_lock;

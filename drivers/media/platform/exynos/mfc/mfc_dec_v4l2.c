@@ -273,6 +273,7 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 {
 	struct mfc_ctx *ctx = fh_to_mfc_ctx(file->private_data);
 	struct mfc_dec *dec = ctx->dec_priv;
+	struct mfc_dev *dev = ctx->dev;	
 	struct v4l2_pix_format_mplane *pix_fmt_mp = &f->fmt.pix_mp;
 	struct mfc_raw_info *raw;
 	int i;
@@ -280,8 +281,11 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 	mfc_debug_enter();
 
 	mfc_debug(2, "dec dst g_fmt, state: %d\n", ctx->state);
+	MFC_TRACE_CTX("** DEC g_fmt(state:%d wait_state:%d)\n",
+			ctx->state, ctx->wait_state);	
 
 	if (ctx->state == MFCINST_GOT_INST ||
+	    ctx->state == MFCINST_RES_CHANGE_INIT ||		
 	    ctx->state == MFCINST_RES_CHANGE_FLUSH ||
 	    ctx->state == MFCINST_RES_CHANGE_END) {
 		/* If there is no source buffer to parsing, we can't SEQ_START */
@@ -360,6 +364,7 @@ static int mfc_dec_g_fmt_vid_cap_mplane(struct file *file, void *priv,
 	if ((ctx->wait_state & WAIT_G_FMT) != 0) {
 		ctx->wait_state &= ~(WAIT_G_FMT);
 		mfc_debug(2, "clear WAIT_G_FMT %d\n", ctx->wait_state);
+		MFC_TRACE_CTX("** DEC clear WAIT_G_FMT(wait_state %d)\n", ctx->wait_state);		
 	}
 
 	mfc_debug_leave();

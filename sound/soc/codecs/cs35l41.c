@@ -68,6 +68,8 @@ struct cs35l41_private {
 	int amp_mute;
 	int pcm_vol;
 	int dsprx2_src;
+	int pcm_source_last;
+	int pll_freq_last;
 	unsigned int spk_3_trim;
 	unsigned int spk_4_trim;
 	bool tdm_mode;
@@ -155,37 +157,39 @@ static const struct cs35l41_pll_sysclk_config cs35l41_pll_sysclk[] = {
 	{ 27000000,	0x3F },
 };
 
-static void cs35l41_log_status(struct cs35l41_private *cs35l41)
+static void cs35l41_log_status(struct cs35l41_private *cs35l41, int mute)
 {
 	unsigned int status;
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_PWR_CTRL1, &status);
-	dev_info(cs35l41->dev, "PWR_CTRL1 = 0x%x\n", status);
+	if (!mute) {
+		regmap_read(cs35l41->regmap,
+			CS35L41_PWR_CTRL1, &status);
+		dev_info(cs35l41->dev, "PWR_CTRL1 = 0x%x\n", status);
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_PWR_CTRL2, &status);
-	dev_info(cs35l41->dev, "PWR_CTRL2 = 0x%x\n", status);
+		regmap_read(cs35l41->regmap,
+			CS35L41_PWR_CTRL2, &status);
+		dev_info(cs35l41->dev, "PWR_CTRL2 = 0x%x\n", status);
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_AMP_DIG_VOL_CTRL, &status);
-	dev_info(cs35l41->dev, "DIG_VOL_CTRL = 0x%x\n", status);
+		regmap_read(cs35l41->regmap,
+			CS35L41_AMP_DIG_VOL_CTRL, &status);
+		dev_info(cs35l41->dev, "DIG_VOL_CTRL = 0x%x\n", status);
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_AMP_GAIN_CTRL, &status);
-	dev_info(cs35l41->dev, "GAIN_CTRL = 0x%x\n", status);
+		regmap_read(cs35l41->regmap,
+			CS35L41_AMP_GAIN_CTRL, &status);
+		dev_info(cs35l41->dev, "GAIN_CTRL = 0x%x\n", status);
+	} else {
+		regmap_read(cs35l41->regmap,
+			CS35L41_IRQ1_STATUS1, &status);
+		dev_info(cs35l41->dev, "IRQ1_STATUS1 = 0x%x\n", status);
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_IRQ1_STATUS1, &status);
-	dev_info(cs35l41->dev, "IRQ1_STATUS1 = 0x%x\n", status);
+		regmap_read(cs35l41->regmap,
+			CS35L41_CSPL_MBOX_STS, &status);
+		dev_info(cs35l41->dev, "MBOX status = 0x%x\n", status);
 
-	regmap_read(cs35l41->regmap,
-		CS35L41_CSPL_MBOX_STS, &status);
-	dev_info(cs35l41->dev, "MBOX status = 0x%x\n", status);
-
-	regmap_read(cs35l41->regmap,
-		CS35L41_HALO_STATE, &status);
-	dev_info(cs35l41->dev, "HALO status = 0x%x\n", status);
+		regmap_read(cs35l41->regmap,
+			CS35L41_HALO_STATE, &status);
+		dev_info(cs35l41->dev, "HALO status = 0x%x\n", status);
+	}
 }
 
 static int cs35l41_dsp_power_ev(struct snd_soc_dapm_widget *w,
@@ -202,28 +206,13 @@ static int cs35l41_dsp_power_ev(struct snd_soc_dapm_widget *w,
 			cs35l41->dsp.booted = true;
 
 		return 0;
-	case SND_SOC_DAPM_PRE_PMD:
-		if (cs35l41->halo_booted == false) {
-			wm_halo_early_event(w, kcontrol, event);
-			wm_halo_event(w, kcontrol, event);
-		}
-	default:
-		return 0;
-	}
-}
 
-static int cs35l41_dsp_load_ev(struct snd_soc_dapm_widget *w,
-		       struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
-
-	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
+
 		if (cs35l41->halo_booted == false) {
 			wm_halo_event(w, kcontrol, event);
+			dev_info(cs35l41->dev, "%s: loaded\n", __func__);
 			cs35l41->halo_booted = true;
-			cs35l41_dbg(cs35l41->dev, "%s: loaded\n", __func__);
 		}
 
 		if (cs35l41->pdata.right_channel)
@@ -231,10 +220,12 @@ static int cs35l41_dsp_load_ev(struct snd_soc_dapm_widget *w,
 		else
 			cirrus_cal_apply_left();
 
-
-
 		return 0;
 	case SND_SOC_DAPM_PRE_PMD:
+		if (cs35l41->halo_booted == false) {
+			wm_halo_early_event(w, kcontrol, event);
+			wm_halo_event(w, kcontrol, event);
+		}
 	default:
 		return 0;
 	}
@@ -916,7 +907,12 @@ static int cs35l41_pcm_source_event(struct snd_soc_dapm_widget *w,
 	else if (source == CS35L41_INPUT_DSP_TX1)
 		cs35l41->halo_routed = true;
 
-	cs35l41_cap_trim(cs35l41, source == CS35L41_INPUT_SRC_ASPRX1);
+	if (source != cs35l41->pcm_source_last) {
+		cs35l41_dbg(cs35l41->dev, "PCM Source changed\n");
+		cs35l41_cap_trim(cs35l41, source == CS35L41_INPUT_SRC_ASPRX1);
+	}
+
+	cs35l41->pcm_source_last = source;
 
 	cs35l41_dbg(cs35l41->dev, "PCM Source: %s\n",
 			(source == CS35L41_INPUT_SRC_ASPRX1) ?
@@ -945,7 +941,6 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
-	unsigned int reg;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -957,15 +952,11 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 				CS35L41_GLOBAL_EN_MASK,
 				1 << CS35L41_GLOBAL_EN_SHIFT);
 
-		usleep_range(1000, 1100);
-
-		regmap_read(cs35l41->regmap, CS35L41_IRQ1_RAW_STATUS3, &reg);
-		if (reg & CS35L41_PLL_UNLOCK)
-			cs35l41_dbg(cs35l41->dev, "PLL Unlocked\n");
-
 		if (cs35l41->halo_booted && cs35l41->halo_routed)
 			cs35l41_set_csplmboxcmd(cs35l41,
 						CSPL_MBOX_CMD_RESUME);
+		else
+			usleep_range(1000, 1100);
 
 		cirrus_pwr_start(cs35l41->pdata.right_channel);
 		dev_info(cs35l41->dev, "%s PMU\n", __func__);
@@ -999,11 +990,10 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("DSP1 Preload", NULL),
 	{	.id = snd_soc_dapm_supply, .name = "DSP1 Preloader",
 		.reg = SND_SOC_NOPM, .shift = 0, .event = cs35l41_dsp_power_ev,
-		.event_flags = SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD,
+		.event_flags = SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD,
 		.subseq = 100,},
-	{	.id = snd_soc_dapm_out_drv, .name = "DSP1",
-		.reg = SND_SOC_NOPM, .shift = 0, .event = cs35l41_dsp_load_ev,
-		.event_flags = SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD },
+	{       .id = snd_soc_dapm_out_drv, .name = "DSP1",
+		.reg = SND_SOC_NOPM, .shift = 0},
 
 	SND_SOC_DAPM_OUTPUT("AMP SPK"),
 
@@ -1046,7 +1036,6 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 
 	{ "DSP1", NULL, "ASPRX1" },
-	{ "DSP1", NULL, "DSP1 Preloader" },
 	{ "DSP1 Preload", NULL, "DSP1 Preloader" },
 
 	{"DSP RX2 Source", "VMON", "VMON ADC"},
@@ -1304,11 +1293,9 @@ static int cs35l41_pcm_mute(struct snd_soc_dai *dai, int mute)
 					CS35L41_AMP_VOL_PCM_SHIFT,
 					vol << CS35L41_AMP_VOL_PCM_SHIFT);
 		}
-
-		cs35l41_log_status(cs35l41);
-
 	}
 
+	cs35l41_log_status(cs35l41, mute);
 	cs35l41_dbg(cs35l41->dev, "%s exit\n", __func__);
 
 	return 0;
@@ -1465,27 +1452,34 @@ static int cs35l41_codec_set_sysclk(struct snd_soc_codec *codec,
 		return -EINVAL;
 	}
 
-	if (cs35l41->clksrc == CS35L41_PLLSRC_SCLK)
-		regmap_update_bits(cs35l41->regmap, CS35L41_SP_RATE_CTRL,
-					0x3F, cs35l41->extclk_cfg);
+	if (freq != cs35l41->pll_freq_last) {
+		cs35l41_dbg(cs35l41->dev, "PLL freq changed\n");
 
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_PLL_OPENLOOP_MASK,
-			1 << CS35L41_PLL_OPENLOOP_SHIFT);
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_REFCLK_FREQ_MASK,
-			cs35l41->extclk_cfg << CS35L41_REFCLK_FREQ_SHIFT);
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_PLL_CLK_EN_MASK,
-			0 << CS35L41_PLL_CLK_EN_SHIFT);
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_PLL_CLK_SEL_MASK, cs35l41->clksrc);
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_PLL_OPENLOOP_MASK,
-			0 << CS35L41_PLL_OPENLOOP_SHIFT);
-	regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
-			CS35L41_PLL_CLK_EN_MASK,
-			1 << CS35L41_PLL_CLK_EN_SHIFT);
+		if (cs35l41->clksrc == CS35L41_PLLSRC_SCLK)
+			regmap_update_bits(cs35l41->regmap,
+						CS35L41_SP_RATE_CTRL,
+						0x3F, cs35l41->extclk_cfg);
+
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_PLL_OPENLOOP_MASK,
+				1 << CS35L41_PLL_OPENLOOP_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_REFCLK_FREQ_MASK,
+				cs35l41->extclk_cfg << CS35L41_REFCLK_FREQ_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_PLL_CLK_EN_MASK,
+				0 << CS35L41_PLL_CLK_EN_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_PLL_CLK_SEL_MASK, cs35l41->clksrc);
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_PLL_OPENLOOP_MASK,
+				0 << CS35L41_PLL_OPENLOOP_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_PLL_CLK_CTRL,
+				CS35L41_PLL_CLK_EN_MASK,
+				1 << CS35L41_PLL_CLK_EN_SHIFT);
+	}
+
+	cs35l41->pll_freq_last = freq;
 
 	return 0;
 }

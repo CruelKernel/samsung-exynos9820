@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 799967 2019-01-18 07:01:18Z $
+ * $Id: dhd_msgbuf.c 806742 2019-02-25 11:40:46Z $
  */
 
 #include <typedefs.h>
@@ -7485,11 +7485,6 @@ dhd_msgbuf_iovar_timeout_dump(dhd_pub_t *dhd)
 		}
 #endif /* DHD_KERNEL_SCHED_DEBUG && DHD_FW_COREDUMP */
 
-#ifdef DNGL_AXI_ERROR_LOGGING
-	if (dhd->axierror_logbuf_addr && !dhd->axi_error) {
-		dhd_axi_error(dhd);
-	}
-#endif /* DNGL_AXI_ERROR_LOGGING */
 	if (prot->curr_ioctl_cmd == WLC_SET_VAR ||
 			prot->curr_ioctl_cmd == WLC_GET_VAR) {
 		char iovbuf[32];

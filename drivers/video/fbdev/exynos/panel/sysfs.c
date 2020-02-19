@@ -1767,6 +1767,9 @@ static int set_alpm_mode(struct panel_device *panel, int mode)
 		mutex_unlock(&panel->op_lock);
 		mutex_unlock(&panel_bl->lock);
 		panel_update_brightness(panel);
+#ifdef CONFIG_SEC_FACTORY
+		msleep(34);
+#endif
 		break;
 	case ALPM_LOW_BR:
 	case HLPM_LOW_BR:

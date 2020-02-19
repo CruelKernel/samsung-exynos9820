@@ -219,7 +219,7 @@ int max77705_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 	if (o_notify && ret < 0)
 		inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
 #endif
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(max77705_bulk_write);
 

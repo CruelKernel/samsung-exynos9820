@@ -45,6 +45,7 @@ struct dek_arg_sdp_info {
 #define FS_IOC_SET_PROTECTED    _IOW('l', 0x16, dek_arg_set_protected_t)
 #define FS_IOC_ADD_CHAMBER      _IOW('l', 0x17, dek_arg_add_chamber_t)
 #define FS_IOC_REMOVE_CHAMBER   _IOW('l', 0x18, __u32)
+#define FS_IOC_DUMP_FILE_KEY    _IO('l', 0x19)
 
 int fscrypt_sdp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 #endif

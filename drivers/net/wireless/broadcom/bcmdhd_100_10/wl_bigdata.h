@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_bigdata.h 724046 2017-09-28 06:30:52Z $
+ * $Id: wl_bigdata.h 803887 2019-02-11 03:35:42Z $
  */
 #ifndef __WL_BIGDATA_H_
 #define __WL_BIGDATA_H_
@@ -45,6 +45,7 @@ enum {
 	BIGDATA_DOT11_11N_MODE = 2,
 	BIGDATA_DOT11_11A_MODE = 3,
 	BIGDATA_DOT11_11AC_MODE = 4,
+	BIGDATA_DOT11_11AX_MODE = 5,
 	BIGDATA_DOT11_MODE_MAX
 };
 

@@ -457,7 +457,7 @@ static int __panel_seq_exit_alpm(struct panel_device *panel)
 	mutex_unlock(&panel->op_lock);
 	mutex_unlock(&panel_bl->lock);
 	panel_update_brightness(panel);
-
+	msleep(34);
 	return ret;
 }
 

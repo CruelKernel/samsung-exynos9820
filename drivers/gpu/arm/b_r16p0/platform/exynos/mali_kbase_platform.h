@@ -172,7 +172,7 @@ struct exynos_context {
 	struct mutex gpu_clock_lock;
 	struct mutex gpu_dvfs_handler_lock;
 	spinlock_t gpu_dvfs_spinlock;
-#if defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP)
+#if (defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP) || defined(CONFIG_SCHED_HMP))
 	struct mutex gpu_sched_hmp_lock;
 #endif
 	/* clock & voltage related variables */
@@ -291,7 +291,7 @@ struct exynos_context {
 	bool gpu_auto_cali_status;
 #endif
 
-#if defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP)
+#if (defined(CONFIG_SCHED_EMS) || defined(CONFIG_SCHED_EHMP) || defined(CONFIG_SCHED_HMP))
 	bool ctx_need_qos;
 #endif
 

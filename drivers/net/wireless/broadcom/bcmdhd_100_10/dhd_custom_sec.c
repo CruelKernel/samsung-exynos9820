@@ -859,8 +859,10 @@ early_param("androidboot.hw_rev", get_hw_rev);
 #ifdef GEN_SOFTAP_INFO_FILE
 #define SOFTAP_INFO_FILE_FIRST_LINE    "#.softap.info"
 /*
- * # Whether both wifi and hotspot can be turned on at the same time?
+ * # Does RSDB Wifi sharing support?
  * DualBandConcurrency
+ * # Both wifi and hotspot can be turned on at the same time?
+ * DualInterface
  * # 5Ghz band support?
  * 5G
  * # How many clients can be connected?

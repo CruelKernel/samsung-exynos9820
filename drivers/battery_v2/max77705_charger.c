@@ -1178,7 +1178,7 @@ static void max77705_set_uno(struct max77705_charger_data *charger, int en)
 
 	if (charger->otg_on) {
 		pr_info("%s: OTG ON, then skip UNO Control\n", __func__);
-		if (en == 1) {
+		if (en) {
 			value.intval = BATT_TX_EVENT_WIRELESS_TX_ETC;
 			psy_do_property("wireless", set, POWER_SUPPLY_EXT_PROP_WIRELESS_TX_ERR, value);
 		}

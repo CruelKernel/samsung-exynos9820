@@ -465,10 +465,6 @@ void tcp_v4_err(struct sk_buff *icmp_skb, u32 info)
 		err = EPROTO;
 		break;
 	case ICMP_DEST_UNREACH:
-		/* Don't retransmit packets when socket was already closed */
-		if (sock_flag(sk, SOCK_DEAD))
-			goto out;
-
 		if (code > NR_ICMP_UNREACH)
 			goto out;
 
@@ -520,7 +516,8 @@ void tcp_v4_err(struct sk_buff *icmp_skb, u32 info)
 		icsk->icsk_rto = inet_csk_rto_backoff(icsk, TCP_RTO_MAX);
 
 		skb = tcp_write_queue_head(sk);
-		BUG_ON(!skb);
+		if (WARN_ON_ONCE(!skb))
+			break;
 
 		tcp_mstamp_refresh(tp);
 		delta_us = (u32)(tp->tcp_mstamp - skb->skb_mstamp);

@@ -185,6 +185,7 @@ static const char* NW_CMD_NAMES[NPU_NW_CMD_END - NPU_NW_CMD_BASE] = {
 	"PROFILE_START",
 	"PROFILE_STOP",
 	"FW_TC_EXECUTE",
+	"CLEAR_CB",
 };
 /* Convinient function to get stringfy name of command */
 static const char* __cmd_name(const u32 cmd)
@@ -616,6 +617,55 @@ found_match:
 #endif /* UNLINK_CHECK_OWNERSHIP */
 	list_del_init(&req_nw->sess_ref_list);
 	npu_uinfo("NW unlinked from ref@%p.\n", nw, sess_entry);
+	return 0;
+}
+
+/*
+ * Nullify src_queue(for frame) and notify_func(for nw)
+ * for all requests linked with session reference for specified nw
+ * (But do not clear notify_func for req_nw itself)
+ * to make no more notificatin sent for this session.
+ */
+static int force_clear_cb(struct proto_req_nw *req_nw)
+{
+	struct session_ref_entry	*sess_entry = NULL;
+	struct proto_req_nw		*iter_nw;
+	struct proto_req_frame		*iter_frame;
+	struct npu_nw			*nw;
+	int				cnt;
+
+	BUG_ON(!req_nw);
+
+	nw = &req_nw->nw;
+
+	sess_entry = find_session_ref_nw(req_nw);
+	if (sess_entry == NULL) {
+		npu_uerr("cannot found session ref.\n", nw);
+		return -ENOENT;
+	}
+
+	/* Clear callback from associated frame list */
+	cnt = 0;
+	list_for_each_entry(iter_frame, &sess_entry->frame_list, sess_ref_list) {
+		npu_ufinfo("Reset src_queue for frame in state [%d]\n",
+			&iter_frame->frame, iter_frame->state);
+		iter_frame->frame.src_queue = NULL;
+		cnt++;
+	}
+	npu_uinfo("Clear src_queue for frame: %d entries\n", nw, cnt);
+
+	cnt = 0;
+	list_for_each_entry(iter_nw, &sess_entry->nw_list, sess_ref_list) {
+		/* Do not clear CB for req_nw itself */
+		if (iter_nw != req_nw)	{
+			npu_uinfo("Reset notify_func for nw in state [%d]\n",
+				&iter_nw->nw, iter_nw->state);
+			iter_nw->nw.notify_func = NULL;
+			cnt++;
+		}
+	}
+	npu_uinfo("Clear notify_func for nw: %d entries\n", nw, cnt);
+
 	return 0;
 }
 
@@ -1304,6 +1354,13 @@ static int npu_protodrv_handler_nw_free(void)
 					goto error_req;
 				}
 				break;
+
+			case NPU_NW_CMD_CLEAR_CB:
+				/* Clear all callbacks associated with referred session */
+				ret = force_clear_cb(entry);
+				if (ret)
+					npu_uwarn("force_clear_cb error (%d).\n", &entry->nw, ret);
+
 			default:
 				/* No additional checking for other commands */
 				break;
@@ -1392,6 +1449,22 @@ break_entry_iter:
 	return handle_cnt;
 }
 
+/* Error handler helper function */
+static int __mbox_frame_ops_put(struct proto_req_frame *entry)
+{
+	/*
+	 * No further request is pumping into hardware
+	 * on emergency recovery mode
+	 */
+	if (npu_device_is_emergency_err(npu_proto_drv.npu_device)) {
+		/* Print log message only if the list is not empty */
+		npu_ufwarn("EMERGENCY - do not send request to hardware.\n", &entry->frame);
+		return 0;
+	}
+
+	return frame_mbox_ops_put(entry);
+}
+
 static int npu_protodrv_handler_frame_requested(void)
 {
 	int proc_handle_cnt = 0;
@@ -1416,7 +1489,7 @@ static int npu_protodrv_handler_frame_requested(void)
 			if (q_full)	{
 				break;
 			}
-			if (frame_mbox_ops_put(entry) > 0) {
+			if (__mbox_frame_ops_put(entry) > 0) {
 				/* Success */
 				proto_frame_lsm.lsm_move_entry(PROCESSING, entry);
 				proc_handle_cnt++;
@@ -1454,6 +1527,17 @@ static int npu_protodrv_handler_frame_requested(void)
 static int __mbox_nw_ops_put(struct proto_req_nw *entry)
 {
 	int ret;
+
+	/*
+	 * No further request is pumping into hardware
+	 * on emergency recovery mode
+	 */
+	if (npu_device_is_emergency_err(npu_proto_drv.npu_device)) {
+		/* Print log message only if the list is not empty */
+		npu_uwarn("EMERGENCY - do not send request [%d:%s] to hardware.\n",
+			&entry->nw, entry->nw.cmd, __cmd_name(entry->nw.cmd));
+		return 0;
+	}
 
 	ret = nw_mbox_ops_put(entry);
 	if (ret <= 0)
@@ -1515,6 +1599,11 @@ static int  npu_protodrv_handler_nw_requested(void)
 					proc_handle_cnt++;
 				}
 			}
+			break;
+		case NPU_NW_CMD_CLEAR_CB:
+			/* Move to completed state */
+			proto_nw_lsm.lsm_move_entry(COMPLETED, entry);
+			compl_handle_cnt++;
 			break;
 		default:
 			npu_utrace("Conventional command cmd:(%u)(%s)\n",
@@ -1753,6 +1842,20 @@ static int npu_protodrv_handler_nw_completed(void)
 						transition = 0;
 					}
 					break;
+
+				case NPU_NW_CMD_CLEAR_CB:
+					/* Always success */
+					entry->nw.result_code == NPU_ERR_NO_ERROR;
+					npu_udbg("complete CLEAR_CB\n", &entry->nw);
+
+					/* Leave assertion if this message is request other than emergency mode */
+					if (!npu_device_is_emergency_err(npu_proto_drv.npu_device)) {
+						npu_uwarn("NPU_NW_CMD_CLEAR_CB posted on non-emergency situation.\n",
+							&entry->nw);
+					}
+					transition = 1;
+					break;
+
 				case NPU_NW_CMD_POWER_DOWN:
 				case NPU_NW_CMD_PROFILE_START:
 				case NPU_NW_CMD_PROFILE_STOP:

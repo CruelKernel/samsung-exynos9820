@@ -294,9 +294,14 @@ void s6e3fa7_copy_analog_clock_ctrl(struct maptbl *tbl, u8 *dst)
 
 	en_reg |= (SC_TIME_EN | SC_A_CLK_EN);
 
-	if (props->analog.en)
+	if (props->analog.en) {
+		if (props->prev_rotate != props->analog.rotate) {
+			panel_info("AOD:INFO:%s:analog rotate mismatch: %d->%d\n",
+				__func__,props->prev_rotate, props->analog.rotate);
+			msleep(1000);
+		}
 		en_reg |= SC_DISP_ON;
-
+	}
 	if (props->cur_time.disp_24h)
 		en_reg |= SC_24H_EN;
 

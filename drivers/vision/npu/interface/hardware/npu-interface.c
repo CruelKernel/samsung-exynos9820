@@ -547,14 +547,19 @@ int npu_check_unposted_mbox(int nCtrl)
 	char *base;
 	u32 nSize, wptr, rptr, sgmt_len;
 	u32 *buf, *strOut;
-
 	volatile struct mailbox_ctrl *ctrl;
 
 	if (interface.mbox_hdr == NULL)
 		return -1;
-	strOut = kzalloc((LENGTHOFEVIDENCE), GFP_ATOMIC);
-	buf = kzalloc((LENGTHOFEVIDENCE), GFP_ATOMIC);
-	if ((!strOut) || (!buf)) {
+
+	strOut = kzalloc(LENGTHOFEVIDENCE, GFP_ATOMIC);
+	if (!strOut) {
+		ret = -ENOMEM;
+		goto err_exit;
+	}
+	buf = kzalloc(LENGTHOFEVIDENCE, GFP_ATOMIC);
+	if (!buf) {
+		kfree(strOut);
 		ret = -ENOMEM;
 		goto err_exit;
 	}
@@ -601,9 +606,9 @@ int npu_check_unposted_mbox(int nCtrl)
 	if (wptr > 0)
 		npu_debug_memdump32_by_memcpy((u32 *)(base + LINE_TO_SGMT(sgmt_len, rptr)), (u32 *)(base + LINE_TO_SGMT(sgmt_len, rptr) + nSize));
 	mutex_unlock(&interface.lock);
-	kfree(strOut);
+	ret = TRUE;
 	kfree(buf);
-	ret = 1;
+	kfree(strOut);
 err_exit:
 	return ret;
 }

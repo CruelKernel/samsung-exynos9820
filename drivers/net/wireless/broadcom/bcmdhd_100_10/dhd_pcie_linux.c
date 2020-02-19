@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie_linux.c 797239 2018-12-31 00:59:21Z $
+ * $Id: dhd_pcie_linux.c 804258 2019-02-12 12:08:12Z $
  */
 
 /* include files */
@@ -1960,6 +1960,7 @@ int dhdpcie_init(struct pci_dev *pdev)
 		dhdpcie_info->bus = bus;
 		bus->is_linkdown = 0;
 		bus->no_bus_init = FALSE;
+		bus->cto_triggered = 0;
 
 		bus->rc_dev = NULL;
 

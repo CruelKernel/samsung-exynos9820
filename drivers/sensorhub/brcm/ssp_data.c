@@ -434,7 +434,18 @@ static void get_ucal_accel_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
 	*iDataIdx += 12;
 }
-
+static void get_pocket_mode_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 14);
+	*iDataIdx += 14;
+}
+static void get_led_cover_event_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 1);
+	*iDataIdx += 1;
+}
 #ifdef CONFIG_SENSORS_SSP_HIFI_BATCHING // HIFI batch
 
 /*
@@ -859,9 +870,9 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 			pr_info("[SSP]: %s - Gyro caldata received from MCU\n",  __func__);
 			memcpy(caldata, pchRcvDataFrame + iDataIdx, sizeof(caldata));
 			if(data->IsAPsuspend) {
-            	iDataIdx += sizeof(caldata);
+            			iDataIdx += sizeof(caldata);
 			    break;
-            }
+		        }
 			wake_lock(&data->ssp_wake_lock);
 			save_gyro_caldata(data, caldata);
 			wake_unlock(&data->ssp_wake_lock);
@@ -959,6 +970,8 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[WAKE_UP_MOTION] = get_wakeup_motion_sensordata;
 	data->get_sensor_data[CALL_GESTURE] = get_call_gesture_sensordata;
     data->get_sensor_data[MOVE_DETECTOR] = get_move_detector_sensordata;
+	data->get_sensor_data[POCKET_MODE_SENSOR] = get_pocket_mode_sensordata;
+	data->get_sensor_data[LED_COVER_EVENT_SENSOR] = get_led_cover_event_sensordata;
 	data->get_sensor_data[BULK_SENSOR] = NULL;
 	data->get_sensor_data[GPS_SENSOR] = NULL;
 
@@ -1011,6 +1024,8 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->report_sensor_data[WAKE_UP_MOTION] = report_wakeup_motion_data;
 	data->report_sensor_data[CALL_GESTURE] = report_call_gesture_data;
     data->report_sensor_data[MOVE_DETECTOR] = report_move_detector_data;
+	data->report_sensor_data[POCKET_MODE_SENSOR] = report_pocket_mode_data;
+	data->report_sensor_data[LED_COVER_EVENT_SENSOR] = report_led_cover_event_data;
 
 	data->ssp_big_task[BIG_TYPE_DUMP] = ssp_dump_task;
 	data->ssp_big_task[BIG_TYPE_READ_LIB] = ssp_read_big_library_task;

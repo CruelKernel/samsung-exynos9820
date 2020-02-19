@@ -107,7 +107,7 @@
 			samsung,pins = "gpq0-3", "gpq0-2", "gpq0-1", "gpq0-0";
 			samsung,pin-function = <2>;
 			samsung,pin-drv = <0>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart1_rxd_pull: uart1-bus-rxd {

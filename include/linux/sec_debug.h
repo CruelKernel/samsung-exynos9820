@@ -453,6 +453,7 @@ extern void sec_debug_set_extra_info_bug(const char *file, unsigned int line);
 extern void sec_debug_set_extra_info_panic(char *str);
 extern void sec_debug_set_extra_info_backtrace(struct pt_regs *regs);
 extern void sec_debug_set_extra_info_backtrace_cpu(struct pt_regs *regs, int cpu);
+extern void sec_debug_set_extra_info_backtrace_task(struct task_struct *tsk);
 extern void sec_debug_set_extra_info_evt_version(void);
 extern void sec_debug_set_extra_info_sysmmu(char *str);
 extern void sec_debug_set_extra_info_busmon(char *str);
@@ -467,6 +468,7 @@ extern void sec_debug_set_extra_info_ufs_error(char *str);
 extern void sec_debug_set_extra_info_zswap(char *str);
 extern void sec_debug_set_extra_info_mfc_error(char *str);
 extern void sec_debug_set_extra_info_aud(char *str);
+extern void sec_debug_set_extra_info_rvd1(char *tmp);
 
 #else
 

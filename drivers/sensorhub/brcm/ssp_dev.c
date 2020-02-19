@@ -375,6 +375,7 @@ int initialize_mcu(struct ssp_data *data)
 	send_panel_information(&data->panel_event_data);
 #endif
 
+	send_hall_ic_status(data->hall_ic_status);
 
 /* hoi: il dan mak a */
 #ifndef CONFIG_SENSORS_SSP_BBD
@@ -744,6 +745,32 @@ int send_panel_information(struct panel_bl_event_data *evdata){
 	return iRet;
 }
 
+int send_hall_ic_status(bool enable) {
+	struct ssp_msg *msg;
+	int iRet = 0;
+
+	msg = kzalloc(sizeof(*msg), GFP_KERNEL);
+
+	msg->cmd = MSG2SSP_HALL_IC_ON_OFF;
+	msg->length = 1;
+	msg->options = AP2HUB_WRITE;
+	msg->buffer = kzalloc(1, GFP_KERNEL);
+
+	msg->free_buffer = 1;
+	msg->buffer[0] = enable;
+	iRet = ssp_spi_async(ssp_data_info, msg);
+
+	if (iRet != SUCCESS) {
+	pr_err("[SSP]: %s - hall ic command, failed %d\n", __func__, iRet);
+		return iRet;
+	}
+
+	pr_info("[SSP] %s HALL IC ON/OFF, %d enabled %d\n",
+		__func__, iRet, enable);
+
+	return iRet;
+}
+
 static int panel_notifier_callback(struct notifier_block *self, unsigned long event, void *data){
 	struct panel_bl_event_data *evdata = data;
 
@@ -768,7 +795,7 @@ static int copr_fb_notifier_callback(struct notifier_block *self, unsigned long 
 	if (event == FB_EARLY_EVENT_BLANK) {
 		early_blank = 1;
 	} else if (event != FB_EVENT_BLANK) {
-		pr_info("[SSP] %s : early_blank event error!\n", __func__);
+		pr_debug("[SSP] %s : early_blank event error!\n", __func__);
 		return 0;
 	}
 

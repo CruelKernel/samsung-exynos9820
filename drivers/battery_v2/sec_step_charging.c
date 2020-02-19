@@ -175,6 +175,12 @@ bool sec_bat_check_dc_step_charging(struct sec_battery_info *battery)
 			return false;
 	}
 
+	if (battery->current_event & SEC_BAT_CURRENT_EVENT_SWELLING_MODE) {
+		if (battery->step_charging_status >= 0)
+			sec_bat_reset_step_charging(battery);
+		return false;
+	}
+
 	if (battery->step_charging_status < 0)
 		i = 0;
 	else

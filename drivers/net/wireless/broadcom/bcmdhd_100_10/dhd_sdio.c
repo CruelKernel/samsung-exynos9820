@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_sdio.c 799966 2019-01-18 06:58:31Z $
+ * $Id: dhd_sdio.c 800978 2019-01-24 09:10:30Z $
  */
 
 #include <typedefs.h>
@@ -3694,18 +3694,12 @@ static int
 dhdsdio_get_mem_dump(dhd_bus_t *bus)
 {
 	int ret = BCME_ERROR;
-	int size;				/* Full mem size */
+	int size = bus->ramsize;		/* Full mem size */
 	uint32 start = bus->dongle_ram_base;	/* Start address */
 	uint read_size = 0;			/* Read size of each iteration */
 	uint8 *p_buf = NULL, *databuf = NULL;
 
-	if (!bus) {
-		DHD_ERROR(("%s: bus is NULL\n", __FUNCTION__));
-		return BCME_ERROR;
-	}
-
 	/* Get full mem size */
-	size = bus->ramsize;
 	p_buf = dhd_get_fwdump_buf(bus->dhd, size);
 	if (!p_buf) {
 		DHD_ERROR(("%s: Out of memory (%d bytes)\n",

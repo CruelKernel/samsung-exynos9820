@@ -184,7 +184,8 @@ void get_bk_item_val_as_string(const char *key, char *buf)
 static int is_key_in_blacklist(const char *key)
 {
 	char blkey[][MAX_ITEM_KEY_LEN] = {
-		"KTIME", "BAT", "FTYPE", "ODR",
+		"KTIME", "BAT", "FTYPE", "ODR", "DDRID",
+		"PSTIE", "ASB",
 	};
 
 	int nr_blkey, keylen, i;
@@ -977,6 +978,78 @@ void sec_debug_set_extra_info_backtrace_cpu(struct pt_regs *regs, int cpu)
 	set_item_val(key, fbuf);
 }
 
+void sec_debug_set_extra_info_backtrace_task(struct task_struct *tsk)
+{
+	char fbuf[MAX_ITEM_VAL_LEN];
+	char buf[64];
+	struct stackframe frame;
+	int offset = 0;
+	int sym_name_len;
+	char *v;
+	int cnt = 0;
+
+	if (!tsk) {
+		pr_crit("%s: no TASK, quit\n", __func__);
+
+		return;
+	}
+
+	if (!try_get_task_stack(tsk)) {
+		pr_crit("%s: fail to get task stack, quit\n", __func__);
+
+		return;
+	}
+
+	v = get_item_val("STACK");
+	if (!v) {
+		pr_crit("%s: no STACK in items\n", __func__);
+
+		goto out;
+	}
+
+	if (get_val_len(v)) {
+		pr_crit("%s: already %s in STACK\n", __func__, v);
+
+		goto out;
+	}
+
+	memset(fbuf, 0, MAX_ITEM_VAL_LEN);
+
+	pr_crit("sec_debug_store_backtrace_task\n");
+
+	frame.fp = thread_saved_fp(tsk);
+	frame.pc = thread_saved_pc(tsk);
+
+	while (1) {
+		unsigned long where = frame.pc;
+		int ret;
+
+		ret = unwind_frame(tsk, &frame);
+		if (ret < 0)
+			break;
+
+		snprintf(buf, sizeof(buf), "%pf", (void *)where);
+		sym_name_len = strlen(buf);
+
+		if (offset + sym_name_len > MAX_ITEM_VAL_LEN)
+			break;
+
+		if (offset)
+			offset += sprintf(fbuf + offset, ":");
+
+		snprintf(fbuf + offset, MAX_ITEM_VAL_LEN - offset, "%s", buf);
+		offset += sym_name_len;
+
+		cnt++;
+	}
+
+	set_item_val("STACK", fbuf);
+
+out:
+	put_task_stack(tsk);
+}
+
+
 void sec_debug_set_extra_info_sysmmu(char *str)
 {
 	set_item_val("SMU", "%s", str);
@@ -1051,6 +1124,58 @@ void sec_debug_set_extra_info_batt(int cap, int volt, int temp, int curr)
 void sec_debug_finish_extra_info(void)
 {
 	sec_debug_set_extra_info_ktime();
+}
+
+#define MAX_RVD1_VAL_LEN (240)
+
+void sec_debug_set_extra_info_rvd1(char *comm)
+{
+	void *p;
+	char *v;
+	char tmp[MAX_RVD1_VAL_LEN] = {0, };
+	int max = MAX_RVD1_VAL_LEN;
+	int len_prev, len_remain, len_this;
+
+	p = get_item("RVD1");
+	if (!p) {
+		pr_crit("%s: fail to find %s\n", __func__, comm);
+
+		return;
+	}
+
+	max = get_max_len(p);
+	if (!max) {
+		pr_crit("%s: fail to get max len %s\n", __func__, comm);
+
+		return;
+	}
+
+	v = get_item_val(p);
+
+	/* keep previous value */
+	len_prev = get_val_len(v);
+	if ((!len_prev) || (MAX_RVD1_VAL_LEN <= len_prev))
+		len_prev = MAX_RVD1_VAL_LEN - 1;
+
+	snprintf(tmp, len_prev + 1, "%s", v);
+
+	/* calculate the remained size */
+	len_remain = max;
+
+	/* get_item_val returned address without key */
+	len_remain -= MAX_ITEM_KEY_LEN;
+
+	/* need comma */
+	len_this = strlen(comm) + 1;
+	len_remain -= len_this;
+
+	/* put last key at the first of ODR */
+	/* +1 to add NULL (by snprintf) */
+	snprintf(v, len_this + 1, "%s,", comm);
+
+	/* -1 to remove NULL between KEYS */
+	/* +1 to add NULL (by snprintf) */
+	snprintf((char *)(v + len_this), len_remain + 1, tmp);
 }
 
 /*********** TEST V3 **************************************/

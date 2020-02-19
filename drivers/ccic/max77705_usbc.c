@@ -99,6 +99,8 @@ static enum dual_role_property fusb_drp_properties[] = {
 
 #define DRIVER_VER		"1.2VER"
 
+#define MAX77705_MAX_APDCMD_TIME (10*HZ)
+
 #define MAX77705_PMIC_REG_INTSRC_MASK 0x23
 #define MAX77705_PMIC_REG_INTSRC 0x22
 
@@ -1533,6 +1535,9 @@ int max77705_i2c_opcode_write(struct max77705_usbc_platform_data *usbc_data,
 
 	if (opcode == OPCODE_SET_ALTERNATEMODE)
 		usbc_data->set_altmode_error = ret;
+
+	if (ret == 0)
+		usbc_data->opcode_stamp = jiffies;
 	
 	return ret;
 }
@@ -1827,7 +1832,7 @@ void max77705_usbc_clear_queue(struct max77705_usbc_platform_data *usbc_data)
 		init_usbc_cmd_data(&cmd_data);
 		dequeue_usbc_cmd(cmd_queue, &cmd_data);
 	}
-
+	usbc_data->opcode_stamp = 0;
 	msg_maxim("OUT");
 	mutex_unlock(&usbc_data->op_lock);
 }
@@ -1837,6 +1842,7 @@ static void max77705_usbc_cmd_run(struct max77705_usbc_platform_data *usbc_data)
 	usbc_cmd_queue_t *cmd_queue = NULL;
 	usbc_cmd_node *run_node;
 	usbc_cmd_data cmd_data;
+	int ret = 0;
 
 	cmd_queue = &(usbc_data->usbc_cmd_queue);
 
@@ -1865,11 +1871,17 @@ static void max77705_usbc_cmd_run(struct max77705_usbc_platform_data *usbc_data)
 	} else if (cmd_data.opcode == OPCODE_NONE) {/* Apcmdres isr */
 		msg_maxim("Apcmdres ISR !!!");
 		max77705_irq_execute(usbc_data, &cmd_data);
+		usbc_data->opcode_stamp = 0;
 		max77705_usbc_cmd_run(usbc_data);
 	} else { /* No ISR */
 		msg_maxim("No ISR");
 		copy_usbc_cmd_data(&cmd_data, &(usbc_data->last_opcode));
-		max77705_i2c_opcode_write(usbc_data, cmd_data.opcode, cmd_data.write_length, cmd_data.write_data);
+		ret = max77705_i2c_opcode_write(usbc_data, cmd_data.opcode,
+				cmd_data.write_length, cmd_data.write_data);
+		if (ret < 0) {
+			msg_maxim("i2c write fail. dequeue opcode");
+			max77705_usbc_dequeue_queue(usbc_data);
+		}
 	}
 	kfree(run_node);
 }
@@ -1907,10 +1919,19 @@ void max77705_usbc_opcode_write(struct max77705_usbc_platform_data *usbc_data,
 	front_usbc_cmd(cmd_queue, &current_cmd);
 	if (current_cmd.opcode == write_op->opcode)
 		max77705_usbc_cmd_run(usbc_data);
-	else
-		msg_maxim("!!! current_cmd.opcode [0x%02x], read_op->opcode[0x%02x]",
-			current_cmd.opcode, write_op->opcode);
-
+	else {
+		msg_maxim("!!!current_cmd.opcode [0x%02x][0x%02x], read_op->opcode[0x%02x]",
+			current_cmd.opcode, current_cmd.response, write_op->opcode);
+		if (usbc_data->opcode_stamp != 0 && current_cmd.opcode == OPCODE_NONE) {
+			if (time_after(jiffies,
+					usbc_data->opcode_stamp + MAX77705_MAX_APDCMD_TIME)) {
+				usbc_data->opcode_stamp = 0;
+				msg_maxim("error. we will dequeue response data");
+				max77705_usbc_dequeue_queue(usbc_data);
+				max77705_usbc_cmd_run(usbc_data);
+			}
+		}
+	}
 	mutex_unlock(&usbc_data->op_lock);
 }
 
@@ -1947,9 +1968,19 @@ void max77705_usbc_opcode_read(struct max77705_usbc_platform_data *usbc_data,
 	front_usbc_cmd(cmd_queue, &current_cmd);
 	if (current_cmd.opcode == read_op->opcode)
 		max77705_usbc_cmd_run(usbc_data);
-	else
-		msg_maxim("!!! current_cmd.opcode [0x%02x], read_op->opcode[0x%02x]",
-			current_cmd.opcode, read_op->opcode);
+	else {
+		msg_maxim("!!!current_cmd.opcode [0x%02x][0x%02x], read_op->opcode[0x%02x]",
+			current_cmd.opcode, current_cmd.response, read_op->opcode);
+		if (usbc_data->opcode_stamp != 0 && current_cmd.opcode == OPCODE_NONE) {
+			if (time_after(jiffies,
+					usbc_data->opcode_stamp + MAX77705_MAX_APDCMD_TIME)) {
+				usbc_data->opcode_stamp = 0;
+				msg_maxim("error. we will dequeue response data");
+				max77705_usbc_dequeue_queue(usbc_data);
+				max77705_usbc_cmd_run(usbc_data);
+			}
+		}
+	}
 
 	mutex_unlock(&usbc_data->op_lock);
 }
@@ -2008,9 +2039,19 @@ void max77705_usbc_opcode_update(struct max77705_usbc_platform_data *usbc_data,
 	front_usbc_cmd(cmd_queue, &current_cmd);
 	if (current_cmd.opcode == update_op->opcode)
 		max77705_usbc_cmd_run(usbc_data);
-	else
+	else {
 		msg_maxim("!!! current_cmd.opcode [0x%02x], update_op->opcode[0x%02x]",
 			current_cmd.opcode, update_op->opcode);
+		if (usbc_data->opcode_stamp != 0 && current_cmd.opcode == OPCODE_NONE) {
+			if (time_after(jiffies,
+					usbc_data->opcode_stamp + MAX77705_MAX_APDCMD_TIME)) {
+				usbc_data->opcode_stamp = 0;
+				msg_maxim("error. we will dequeue response data");
+				max77705_usbc_dequeue_queue(usbc_data);
+				max77705_usbc_cmd_run(usbc_data);
+			}
+		}
+	}
 
 	mutex_unlock(&usbc_data->op_lock);
 }
@@ -2097,9 +2138,19 @@ void max77705_usbc_opcode_rw(struct max77705_usbc_platform_data *usbc_data,
 	front_usbc_cmd(cmd_queue, &current_cmd);
 	if (current_cmd.opcode == read_op->opcode)
 		max77705_usbc_cmd_run(usbc_data);
-	else
+	else {
 		msg_maxim("!!! current_cmd.opcode [0x%02x], read_op->opcode[0x%02x]",
 			current_cmd.opcode, read_op->opcode);
+		if (usbc_data->opcode_stamp != 0 && current_cmd.opcode == OPCODE_NONE) {
+			if (time_after(jiffies,
+					usbc_data->opcode_stamp + MAX77705_MAX_APDCMD_TIME)) {
+				usbc_data->opcode_stamp = 0;
+				msg_maxim("error. we will dequeue response data");
+				max77705_usbc_dequeue_queue(usbc_data);
+				max77705_usbc_cmd_run(usbc_data);
+			}
+		}
+	}
 
 	mutex_unlock(&usbc_data->op_lock);
 }
@@ -2193,6 +2244,7 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 	int event;
 #endif
+	int ret = 0;
 
 	if (usbc_data->shut_down) {
 		msg_maxim("IGNORE SYSTEM_MSG IN SHUTDOWN MODE!!");
@@ -2281,17 +2333,22 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 			copy_usbc_cmd_data(&(usbc_data->last_opcode), &cmd_data);
 
 			if (cmd_data.opcode == OPCODE_GRL_COMMAND || next_opcode == OPCODE_VDM_DISCOVER_SET_VDM_REQ) {
+				usbc_data->opcode_stamp = 0;
 				max77705_usbc_dequeue_queue(usbc_data);
 				cmd_data.opcode = OPCODE_NONE;
 			}
 
 			if ((cmd_data.opcode != OPCODE_NONE) && (cmd_data.opcode == next_opcode)) {
 				if (next_opcode != OPCODE_VDM_DISCOVER_SET_VDM_REQ) {
-					max77705_i2c_opcode_write(usbc_data,
+					ret = max77705_i2c_opcode_write(usbc_data,
 						cmd_data.opcode,
 						cmd_data.write_length,
 						cmd_data.write_data);
-					msg_maxim("RETRY SUCCESS : %x, %x", cmd_data.opcode, next_opcode);
+					if (ret) {
+						msg_maxim("i2c write fail. dequeue opcode");
+						max77705_usbc_dequeue_queue(usbc_data);
+					} else
+						msg_maxim("RETRY SUCCESS : %x, %x", cmd_data.opcode, next_opcode);
 				} else
 					msg_maxim("IGNORE COMMAND : %x, %x", cmd_data.opcode, next_opcode);
 			} else {
@@ -2886,6 +2943,7 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	usbc_data->prev_connstat = 0xFF;
 	usbc_data->usbc_cmd_queue.front = NULL;
 	usbc_data->usbc_cmd_queue.rear = NULL;
+	usbc_data->opcode_stamp = 0;
 	mutex_init(&usbc_data->op_lock);
 #if defined(CONFIG_CCIC_NOTIFIER)
 	pccic_data = devm_kzalloc(usbc_data->dev, sizeof(ccic_data_t), GFP_KERNEL);

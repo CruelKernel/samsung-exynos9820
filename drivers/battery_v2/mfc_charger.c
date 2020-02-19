@@ -3291,7 +3291,7 @@ static int mfc_chg_set_property(struct power_supply *psy,
 			break;
 		case POWER_SUPPLY_EXT_PROP_WIRELESS_SEND_FSK:
 			/* send fsk packet for rx device aicl reset */
-			if (val->intval) {
+			if (val->intval && (charger->wc_rx_type != SS_GEAR)) {
 				pr_info("@Tx_mode %s: Send FSK packet for Rx device aicl reset\n", __func__);
 				mfc_send_fsk(charger, WPC_TX_COM_WPS, WPS_AICL_RESET);
 			}
@@ -4193,7 +4193,8 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 
 	if (irq_src[0] & MFC_INTA_L_STAT_VRECT_MASK) {
 		pr_info("%s: Vrect IRQ !\n", __func__);
-		if(charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE) {
+		if(charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE ||
+			charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE) {
 			charger->pdata->cable_type = value.intval = SEC_WIRELESS_PAD_FAKE;
 			if (delayed_work_pending(&charger->wpc_vrect_check_work)) {
 				wake_unlock(&charger->wpc_vrect_check_lock);

@@ -207,9 +207,11 @@ void sec_bat_set_tx_event(struct sec_battery_info *battery,
 	pr_info("@Tx_Mode %s: tx event before(0x%x), after(0x%x)\n",
 		__func__, temp, battery->tx_event);
 
-	if (temp != battery->tx_event)
+	if (temp != battery->tx_event) {
+		/* Assure receiving tx_event to App for sleep case */
+		wake_lock_timeout(&battery->tx_event_wake_lock, HZ * 2);
 		power_supply_changed(battery->psy_bat);
-
+	}
 	mutex_unlock(&battery->txeventlock);
 }
 
@@ -998,7 +1000,7 @@ int sec_bat_set_charging_current(struct sec_battery_info *battery)
 
 	/* In wireless charging, must be set charging current before input current. */
 	if (is_wireless_type(battery->cable_type) &&
-		battery->charging_current != charging_current) {
+		battery->charging_current < charging_current) {
 		value.intval = charging_current;
 		psy_do_property(battery->pdata->charger_name, set,
 			POWER_SUPPLY_PROP_CURRENT_AVG, value);
@@ -1680,7 +1682,11 @@ static void sec_bat_swelling_check(struct sec_battery_info *battery)
 			pr_info("%s: swelling mode start. stop charging\n", __func__);
 			battery->swelling_mode = SWELLING_MODE_CHARGING;
 			battery->swelling_full_check_cnt = 0;
-			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_BUCK_OFF);
+
+			if(battery->wc_tx_enable && is_hv_wire_type(battery->cable_type))
+				sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
+			else
+				sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_BUCK_OFF);
 
 			if (battery->temperature >= battery->pdata->swelling_high_temp_block) {
 #if defined(CONFIG_BATTERY_CISD)
@@ -3284,10 +3290,12 @@ static void sec_bat_wireless_iout_cntl(struct sec_battery_info *battery, int uno
 		pr_info("@Tx_Mode %s : Already set Uno Iout(%d == %d)\n", __func__, battery->tx_uno_iout, uno_iout);
 	}
 
+#if !defined(CONFIG_SEC_FACTORY)
 	if (battery->lcd_status && (mfc_iout == battery->pdata->tx_mfc_iout_phone)) {
 		pr_info("@Tx_Mode %s Reduce Tx MFC Iout. LCD ON\n", __func__);
 		mfc_iout = battery->pdata->tx_mfc_iout_lcd_on;
 	}
+#endif
 
 	if (battery->tx_mfc_iout != mfc_iout) {
 		pr_info("@Tx_Mode %s : set mfc iout(%d) -> (%d)\n", __func__, battery->tx_mfc_iout, mfc_iout);
@@ -4020,14 +4028,7 @@ static void sec_bat_monitor_work(
 #endif
 
 #if defined(CONFIG_STEP_CHARGING)
-#if defined(CONFIG_DIRECT_CHARGING)
-	if (is_pd_apdo_wire_type(battery->cable_type))
-		sec_bat_check_dc_step_charging(battery);
-	else
-		sec_bat_check_step_charging(battery);
-#else
 	sec_bat_check_step_charging(battery);
-#endif
 #endif
 #if defined(CONFIG_CALC_TIME_TO_FULL)
 	/* time to full check */
@@ -4112,6 +4113,13 @@ static void sec_bat_monitor_work(
 		(!battery->wc_cv_mode) &&
 		(battery->charging_passed_time > 10))
 		sec_bat_wc_cv_mode_check(battery);
+
+#if defined(CONFIG_STEP_CHARGING)
+#if defined(CONFIG_DIRECT_CHARGING)
+	if (is_pd_apdo_wire_type(battery->cable_type))
+		sec_bat_check_dc_step_charging(battery);
+#endif
+#endif
 
 continue_monitor:
 	/* clear HEATING_CONTROL*/
@@ -4543,7 +4551,10 @@ static void sec_bat_cable_work(struct work_struct *work)
 					current_cable_type = battery->wire_status;
 					pr_info("%s : switch charging path to cable\n", __func__);
 
-					if(temp_current_type == SEC_BATTERY_CABLE_HV_WIRELESS_20) {
+					/* set limited charging current before switching cable charging from wireless charging, 
+					   this step for wireless 2.0 -> HV cable charging */
+					if((battery->cable_type == SEC_BATTERY_CABLE_HV_WIRELESS_20) &&
+						(temp_current_type == SEC_BATTERY_CABLE_HV_WIRELESS_20)) {
 						val.intval = battery->pdata->wpc_charging_limit_current;
 						pr_info("%s : set TA charging current %dmA for a moment in case of TA OCP\n", __func__, val.intval);
 						psy_do_property(battery->pdata->charger_name, set,
@@ -5758,6 +5769,7 @@ static int sec_wireless_set_property(struct power_supply *psy,
 					if (is_hv_wire_type(battery->wire_status)) {
 						pr_info("@Tx_Mode %s : charging voltage change(9V -> 5V).\n", __func__);
 						muic_afc_set_voltage(SEC_INPUT_VOLTAGE_5V);
+						break; /* do not set buck off/uno off untill vbus level get real 5V */
 					}
 
 					if (!battery->buck_cntl_by_tx) {
@@ -5775,7 +5787,7 @@ static int sec_wireless_set_property(struct power_supply *psy,
 			battery->wc_rx_type = val->intval;
 #if defined(CONFIG_BATTERY_CISD)
 			if (battery->wc_rx_type)
-				battery->cisd.tx_data[++battery->wc_rx_type]++;
+				battery->cisd.tx_data[battery->wc_rx_type+1]++;
 #endif
 			cancel_delayed_work(&battery->wpc_tx_work);
 			wake_lock(&battery->wpc_tx_wake_lock);

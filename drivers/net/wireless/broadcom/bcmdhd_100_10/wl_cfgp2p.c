@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgp2p.c 794103 2018-12-12 04:37:28Z $
+ * $Id: wl_cfgp2p.c 801829 2019-01-30 01:29:44Z $
  *
  */
 #include <typedefs.h>
@@ -2573,6 +2573,10 @@ wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	if (!cfg->p2p)
 		return;
+
+#ifdef P2P_LISTEN_OFFLOADING
+	wl_cfg80211_p2plo_deinit(cfg);
+#endif /* P2P_LISTEN_OFFLOADING */
 
 	/* Cancel any on-going listen */
 	wl_cfgp2p_cancel_listen(cfg, bcmcfg_to_prmry_ndev(cfg), wdev, TRUE);

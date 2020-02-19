@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie.c 799969 2019-01-18 07:05:22Z $
+ * $Id: dhd_pcie.c 808929 2019-03-11 11:48:05Z $
  */
 
 /* include files */
@@ -971,12 +971,16 @@ dhdpcie_cto_recovery_handler(dhd_pub_t *dhd)
 #endif /* DHD_FW_COREDUMP */
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+#ifdef SUPPORT_LINKDOWN_RECOVERY
+#ifdef CONFIG_ARCH_MSM
+	bus->no_cfg_restore = 1;
+#endif /* CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERY */
 	bus->is_linkdown = TRUE;
 	bus->dhd->hang_reason = HANG_REASON_PCIE_CTO_DETECT;
 	/* Send HANG event */
 	dhd_os_send_hang_message(bus->dhd);
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27) */
-	return;
 }
 
 /**
@@ -1028,6 +1032,7 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 				DHD_ERROR(("%s: ##### CTO RECOVERY REPORTED BY DONGLE "
 					"intstat=0x%x enab=%d\n", __FUNCTION__,
 					intstatus, bus->cto_enable));
+				bus->cto_triggered = 1;
 				/*
 				 * DAR still accessible
 				 */
@@ -3636,8 +3641,8 @@ static int
 dhdpcie_get_mem_dump(dhd_bus_t *bus)
 {
 	int ret = BCME_OK;
-	int size; /* Full mem size */
-	int start = bus->dongle_ram_base; /* Start address */
+	int size = 0;
+	int start = 0;
 	int read_size = 0; /* Read size of each iteration */
 	uint8 *p_buf = NULL, *databuf = NULL;
 
@@ -3651,8 +3656,10 @@ dhdpcie_get_mem_dump(dhd_bus_t *bus)
 		return BCME_ERROR;
 	}
 
+	size = bus->ramsize; /* Full mem size */
+	start = bus->dongle_ram_base; /* Start address */
+
 	/* Get full mem size */
-	size = bus->ramsize;
 	p_buf = dhd_get_fwdump_buf(bus->dhd, size);
 	if (!p_buf) {
 		DHD_ERROR(("%s: Out of memory (%d bytes)\n",
@@ -5238,6 +5245,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 #endif /* DHD_CONTROL_PCIE_ASPM_WIFI_TURNON */
 #endif /* CONFIG_ARCH_MSM */
 			bus->is_linkdown = 0;
+			bus->cto_triggered = 0;
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 			bus->read_shm_fail = FALSE;
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
@@ -6071,13 +6079,20 @@ dhd_bus_dump_dar_registers(struct dhd_bus *bus)
 {
 	uint32 dar_clk_ctrl_val, dar_pwr_ctrl_val, dar_intstat_val,
 		dar_errlog_val, dar_erraddr_val, dar_pcie_mbint_val;
+	uint32 dar_clk_ctrl_reg, dar_pwr_ctrl_reg, dar_intstat_reg,
+		dar_errlog_reg, dar_erraddr_reg, dar_pcie_mbint_reg;
 
-	uint32 dar_clk_ctrl_reg = (uint32)DAR_CLK_CTRL(bus->sih->buscorerev);
-	uint32 dar_pwr_ctrl_reg = (uint32)DAR_PCIE_PWR_CTRL(bus->sih->buscorerev);
-	uint32 dar_intstat_reg = (uint32)DAR_INTSTAT(bus->sih->buscorerev);
-	uint32 dar_errlog_reg = (uint32)DAR_ERRLOG(bus->sih->buscorerev);
-	uint32 dar_erraddr_reg = (uint32)DAR_ERRADDR(bus->sih->buscorerev);
-	uint32 dar_pcie_mbint_reg = (uint32)DAR_PCIMailBoxInt(bus->sih->buscorerev);
+	if (bus->is_linkdown && !bus->cto_triggered) {
+		DHD_ERROR(("%s: link is down\n", __FUNCTION__));
+		return;
+	}
+
+	dar_clk_ctrl_reg = (uint32)DAR_CLK_CTRL(bus->sih->buscorerev);
+	dar_pwr_ctrl_reg = (uint32)DAR_PCIE_PWR_CTRL(bus->sih->buscorerev);
+	dar_intstat_reg = (uint32)DAR_INTSTAT(bus->sih->buscorerev);
+	dar_errlog_reg = (uint32)DAR_ERRLOG(bus->sih->buscorerev);
+	dar_erraddr_reg = (uint32)DAR_ERRADDR(bus->sih->buscorerev);
+	dar_pcie_mbint_reg = (uint32)DAR_PCIMailBoxInt(bus->sih->buscorerev);
 
 	if (bus->sih->buscorerev < 24) {
 		DHD_ERROR(("%s: DAR not supported for corerev(%d) < 24\n",
@@ -6425,11 +6440,6 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 				ASSERT(0);
 			}
 #endif /* DHD_KERNEL_SCHED_DEBUG && DHD_FW_COREDUMP */
-#ifdef DNGL_AXI_ERROR_LOGGING
-			if (bus->dhd->axierror_logbuf_addr && !bus->dhd->axi_error) {
-				dhd_axi_error(bus->dhd);
-			}
-#endif /* DNGL_AXI_ERROR_LOGGING */
 			DHD_BUS_LOCK(bus->bus_lock, flags_bus);
 			bus->bus_low_power_state = DHD_BUS_NO_LOW_POWER_STATE;
 			DHD_BUS_UNLOCK(bus->bus_lock, flags_bus);
@@ -6439,7 +6449,8 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 			dhd_bus_start_queue(bus);
 			DHD_GENERAL_UNLOCK(bus->dhd, flags);
 			if (!bus->dhd->dongle_trap_occured &&
-				!bus->is_linkdown) {
+				!bus->is_linkdown &&
+				!bus->cto_triggered) {
 				uint32 intstatus = 0;
 
 				/* Check if PCIe bus status is valid */
@@ -9636,6 +9647,12 @@ dhd_bus_get_linkdown(dhd_pub_t *dhdp)
 	return dhdp->bus->is_linkdown;
 }
 
+int
+dhd_bus_get_cto(dhd_pub_t *dhdp)
+{
+	return dhdp->bus->cto_triggered;
+}
+
 #ifdef IDLE_TX_FLOW_MGMT
 /* resume request */
 int
@@ -11458,6 +11475,12 @@ dhd_pcie_debug_info_dump(dhd_pub_t *dhd)
 
 	DHD_ERROR(("RootPort PCIe linkcap=0x%08x\n",
 		dhd_debug_get_rc_linkcap(dhd->bus)));
+
+	if (dhd->bus->is_linkdown && !dhd->bus->cto_triggered) {
+		DHD_ERROR(("Skip dumping the PCIe Config and Core registers. "
+			"link may be DOWN\n"));
+		return 0;
+	}
 
 	DHD_ERROR(("\n ------- DUMPING PCIE EP config space Registers ------- \r\n"));
 	DHD_ERROR(("Status Command(0x%x)=0x%x, BaseAddress0(0x%x)=0x%x BaseAddress1(0x%x)=0x%x "

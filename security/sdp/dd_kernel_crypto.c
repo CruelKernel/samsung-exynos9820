@@ -13,6 +13,7 @@
 #include <crypto/sha.h>
 #include <crypto/skcipher.h>
 #include <linux/bio.h>
+#include <linux/file.h>
 
 #include "dd_common.h"
 
@@ -23,6 +24,14 @@
 #define DD_AES_256_GCM_TAG_SIZE 16
 #define DD_AES_256_GCM_IV_SIZE  12
 #define DD_AES_256_GCM_AAD      "DDAR_ADDITIONAL_AUTHENTICATION_DATA"
+
+static int get_dd_file_key(struct dd_crypt_context *crypt_context,
+		struct fscrypt_key *dd_master_key, unsigned char *raw_key);
+
+extern int fscrypt_get_encryption_kek(struct inode *inode,
+								struct fscrypt_info *crypt_info,
+								struct fscrypt_key *kek);
+extern int fscrypt_get_encryption_key(struct inode *inode, struct fscrypt_key *key);
 
 int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy) {
 	struct dd_crypt_context crypt_context;
@@ -269,6 +278,92 @@ int get_dd_master_key(int userid, void *key) {
 
 	return rc;
 }
+
+#ifdef CONFIG_SDP_KEY_DUMP
+int dd_dump_key(int userid, int fd)
+{
+	struct fscrypt_key dd_inner_master_key;
+	struct fscrypt_key dd_outer_master_key;
+	struct fscrypt_key dd_outer_file_encryption_key;
+	struct dd_crypt_context crypt_context;
+	struct fd f = {NULL, 0};
+	struct inode *inode;
+	unsigned char *dd_inner_file_encryption_key;
+	int rc = 0;
+
+	dd_error("########## DUALDAR_DUMP - START ##########\n");
+	f = fdget(fd);
+	if (unlikely(f.file == NULL)) {
+		dd_error("[DUALDAR_DUMP] invalid fd : %d\n", fd);
+		rc = -EINVAL;
+		goto out;
+	}
+	inode = f.file->f_path.dentry->d_inode;
+	if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
+		dd_error("[DUALDAR_DUMP] failed to read dd crypt context ino:%ld\n", inode->i_ino);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	/**
+	 * DUMP KEY FOR INNER LAYER
+	 */
+	if (dd_policy_kernel_crypto(crypt_context.policy.flags) && S_ISREG(inode->i_mode)) {
+		dd_error("[DUALDAR_DUMP] DUMP KEYS FOR KERNEL CRYPTO\n");
+
+		dd_inner_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+		if (!dd_inner_file_encryption_key) {
+			rc = -ENOMEM;
+			goto out;
+		}
+
+		rc = get_dd_master_key(userid, &dd_inner_master_key);
+		if (rc) {
+			dd_error("[DUALDAR_DUMP] failed to retrieve dualdar master key, rc:%d\n", rc);
+			rc = -ENOKEY;
+			goto out;
+		}
+		dd_hex_key_dump("[DUALDAR_DUMP] INNER LAYER MASTER KEY", dd_inner_master_key.raw, dd_inner_master_key.size);
+
+		rc = get_dd_file_key(&crypt_context, &dd_inner_master_key, dd_inner_file_encryption_key);
+		if (rc) {
+			dd_error("[DUALDAR_DUMP] failed to retrieve inner fek, rc:%d\n", rc);
+			goto out;
+		}
+		dd_hex_key_dump("[DUALDAR_DUMP] INNER LAYER FILE ENCRYPTION KEY", dd_inner_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+
+	} else {
+		dd_error("[DUALDAR_DUMP] DUMP KEYS FOR THIRD-PARTY CRYPTO\n");
+		dd_error("[DUALDAR_DUMP] INNER LAYER MASTER KEY : SKIP FOR THRID-PARTY CRYPTO\n");
+		dd_error("[DUALDAR_DUMP] INNER LAYER FILE ENCRYPTION KEY : SKIP FOR THRID-PARTY CRYPTO\n");
+	}
+
+	/**
+	 * DUMPM KEY FOR OUTER LAYER
+	 */
+	rc = fscrypt_get_encryption_kek(inode, inode->i_crypt_info, &dd_outer_master_key);
+	if (rc) {
+		dd_error("[DUALDAR_DUMP] failed to retrieve outer master key, rc : %d\n", rc);
+		goto out;
+	}
+	dd_hex_key_dump("[DUALDAR_DUMP] OUTER LAYER MASTER KEY", dd_outer_master_key.raw, dd_outer_master_key.size);
+
+	memset(&dd_outer_file_encryption_key, 0, sizeof(dd_outer_file_encryption_key));
+	rc = fscrypt_get_encryption_key(inode, &dd_outer_file_encryption_key);
+	if (rc) {
+		dd_error("[DUALDAR_DUMP] failed to retrieve outer fek, rc:%d\n", rc);
+		goto out;
+	}
+	dd_hex_key_dump("[DUALDAR_DUMP] OUTER LAYER FILE ENCRYPTION KEY", dd_outer_file_encryption_key.raw, dd_outer_file_encryption_key.size);
+
+out:
+	if (f.file)
+		fdput(f);
+	dd_error("########## DUALDAR_DUMP - END ##########\n");
+
+	return rc;
+}
+#endif
 #endif
 
 static int get_dd_file_key(struct dd_crypt_context *crypt_context,
@@ -490,4 +585,32 @@ int dd_sec_crypt_bio_pages(struct dd_info *info, struct bio *orig,
         memcpy(&clone->bi_iter, &iter_backup, sizeof(struct bvec_iter));
 
 	return 0;
+}
+
+void dd_hex_key_dump(const char* tag, uint8_t *data, size_t data_len)
+{
+	static const char *hex = "0123456789ABCDEF";
+	static const char delimiter = ' ';
+	int i;
+	char *buf;
+	size_t buf_len;
+
+	if (tag == NULL || data == NULL || data_len <= 0) {
+		return;
+	}
+
+	buf_len = data_len * 3;
+	buf = (char *)kmalloc(buf_len, GFP_ATOMIC);
+	if (buf == NULL) {
+		return;
+	}
+	for (i= 0 ; i < data_len ; i++) {
+		buf[i*3 + 0] = hex[(data[i] >> 4) & 0x0F];
+		buf[i*3 + 1] = hex[(data[i]) & 0x0F];
+		buf[i*3 + 2] = delimiter;
+	}
+	buf[buf_len - 1] = '\0';
+	printk(KERN_ERR
+		"[%s] %s(len=%d) : %s\n", "DEK_DBG", tag, data_len, buf);
+	kfree(buf);
 }

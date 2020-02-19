@@ -50,7 +50,7 @@
 #include <linux/of_gpio.h>
 #endif
 
-#define HEADER_VERSION		"13"
+#define HEADER_VERSION		"14"
 
 /* MAX86915 Register Map */
 #define MAX86915_INTERRUPT_STATUS		0x00
@@ -292,7 +292,11 @@ enum op_mode {
 	MODE_SDK_RED		= 11,
 	MODE_SDK_GREEN		= 12,
 	MODE_SDK_BLUE		= 13,
-	MODE_UNKNOWN		= 14,
+	MODE_SVC_IR			= 14,
+	MODE_SVC_RED		= 15,
+	MODE_SVC_GREEN		= 16,
+	MODE_SVC_BLUE		= 17,
+	MODE_UNKNOWN
 };
 
 /* to protect the system performance issue. */
@@ -461,6 +465,7 @@ struct max86915_device_data {
 	u32 sampling_period_ns;
 	u8 mode_sdk_enabled;
 	u8 mode_sdk_prev;
+	u8 mode_svc_enabled;
 	u8 regulator_state;
 	s32 pin_hrm_int;
 	s32 pin_hrm_en;

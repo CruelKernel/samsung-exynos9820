@@ -3855,8 +3855,18 @@ int abox_cmpnt_hw_params_fixup_helper(struct snd_soc_pcm_runtime *rtd,
 	snd_soc_dapm_mutex_lock(snd_soc_component_get_dapm(cmpnt));
 
 	list_for_each_entry(dpcm, &rtd->dpcm[stream].fe_clients, list_fe) {
-		if (dpcm->fe && snd_soc_dpcm_fe_can_update(dpcm->fe, stream))
-			fe = dpcm->fe;
+		if (dpcm->fe && snd_soc_dpcm_fe_can_update(dpcm->fe, stream)) {
+			switch (dpcm->fe->dpcm[stream].state) {
+			case SND_SOC_DPCM_STATE_OPEN:
+			case SND_SOC_DPCM_STATE_HW_PARAMS:
+			case SND_SOC_DPCM_STATE_HW_FREE:
+				fe = dpcm->fe;
+				break;
+			default:
+				/* nothing */
+				break;
+			}
+		}
 	}
 
 	/*

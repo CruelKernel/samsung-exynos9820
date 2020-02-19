@@ -1209,10 +1209,8 @@ static int abox_component_control_get(struct snd_kcontrol *kcontrol,
 
 	dev_dbg(dev, "%s\n", __func__);
 
-	if (value->cache_only) {
-		abox_component_control_get_cache(kcontrol, ucontrol);
-		return 0;
-	}
+	if (value->cache_only || !value->control->is_volatile)
+		return abox_component_control_get_cache(kcontrol, ucontrol);
 
 	msg->ipcid = IPC_SYSTEM;
 	system_msg->msgtype = ABOX_REQUEST_COMPONENT_CONTROL;

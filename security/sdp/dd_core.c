@@ -1550,6 +1550,15 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		dd_info("DD_IOCTL_EVICT_KEY");
 		dd_evict_master_key(ioc.u.evict_key.userid);
 		return 0;
+	case DD_IOCTL_DUMP_KEY:
+		dd_info("DD_IOCTL_DUMP_KEY");
+#ifdef CONFIG_SDP_KEY_DUMP
+		err = dd_dump_key(ioc.u.dump_key.userid,
+				ioc.u.dump_key.fileDescriptor);
+		return err;
+#else
+		return 0;
+#endif
 #endif
 	case DD_IOCTL_DUMP_REQ_LIST:
 	{
@@ -1877,6 +1886,9 @@ void dd_info_try_free(struct dd_info *info) {
 		dd_verbose("freeing dd info ino:%ld\n", info->ino);
 		if (info->mdpage)
 			__free_page(info->mdpage);
+
+		if (info->ctfm)
+			crypto_free_skcipher(info->ctfm);
 
 		kmem_cache_free(ext4_dd_info_cachep, info);
 	}

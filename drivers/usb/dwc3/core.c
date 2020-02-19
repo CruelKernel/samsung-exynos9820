@@ -278,7 +278,7 @@ void dwc3_core_config(struct dwc3 *dwc)
 	if (dwc->adj_sof_accuracy) {
 		reg &= ~DWC3_GUCTL_REFCLKPER_MASK;
 		/* fix ITP interval time to 125us */
-		reg |= DWC3_GUCTL_REFCLKPER(0x14);
+		reg |= DWC3_GUCTL_REFCLKPER(0xF);
 	}
 	if (dwc->dis_u2_freeclk_exists_quirk) {
 		reg &= ~DWC3_GUCTL_REFCLKPER_MASK;
@@ -894,14 +894,14 @@ int dwc3_phy_setup(struct dwc3 *dwc)
 
 	if (dwc->dis_enblslpm_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
+	else
+		reg |= DWC3_GUSB2PHYCFG_ENBLSLPM;
 
 	if (dwc->dis_u2_freeclk_exists_quirk)
 		reg &= ~DWC3_GUSB2PHYCFG_U2_FREECLK_EXISTS;
 
 	if (dwc->adj_sof_accuracy)
 		reg &= ~DWC3_GUSB2PHYCFG_U2_FREECLK_EXISTS;
-
-	reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
 
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 
@@ -1017,11 +1017,13 @@ static void dwc3_core_setup_global_control(struct dwc3 *dwc)
 	if (dwc->revision < DWC3_REVISION_190A)
 		reg |= DWC3_GCTL_U2RSTECN;
 
-	if (dwc->adj_sof_accuracy) {
-		reg |= DWC3_GCTL_SOFITPSYNC;
-	}
 	if (dwc->dis_u2_freeclk_exists_quirk)
 		reg |= DWC3_GCTL_SOFITPSYNC;
+	else
+		reg &= ~DWC3_GCTL_SOFITPSYNC;
+
+	if (dwc->adj_sof_accuracy)
+		reg &= ~DWC3_GCTL_SOFITPSYNC;
 
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 }
@@ -1378,6 +1380,7 @@ static int dwc3_get_option(struct dwc3 *dwc)
 
 	if (!of_property_read_u32(node, "adj-sof-accuracy", &value)) {
 		dwc->adj_sof_accuracy = value ? true : false;
+		dev_info(dev, "adj-sof-accuracy set from %s node", node->name);
 	} else {
 		dev_err(dev, "can't get adj-sof-accuracy from %s node", node->name);
 		return -EINVAL;

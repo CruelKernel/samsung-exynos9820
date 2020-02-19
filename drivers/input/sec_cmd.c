@@ -230,6 +230,9 @@ static void sec_cmd_store_function(struct sec_cmd_data *data)
 	} else {
 		pr_err("%s %s: left cmd is nothing\n", SECLOG, __func__);
 		mutex_unlock(&data->fifo_lock);
+		mutex_lock(&data->cmd_lock);
+		data->cmd_is_running = false;
+		mutex_unlock(&data->cmd_lock);
 		return;
 	}
 	mutex_unlock(&data->fifo_lock);
@@ -403,6 +406,7 @@ static ssize_t sec_cmd_store(struct device *dev, struct device_attribute *devatt
 	}
 	mutex_unlock(&data->fifo_lock);
 
+	mutex_lock(&data->fs_lock);
 	/* check lock   */
 	mutex_lock(&data->cmd_lock);
 	data->cmd_is_running = true;
@@ -411,6 +415,7 @@ static ssize_t sec_cmd_store(struct device *dev, struct device_attribute *devatt
 	data->cmd_state = SEC_CMD_STATUS_RUNNING;
 	sec_cmd_store_function(data);
 
+	mutex_unlock(&data->fs_lock);
 	return count;
 }
 #endif
@@ -578,6 +583,7 @@ int sec_cmd_init(struct sec_cmd_data *data, struct sec_cmd *cmds,
 	}
 
 	mutex_init(&data->cmd_lock);
+	mutex_init(&data->fs_lock);
 
 	mutex_lock(&data->cmd_lock);
 	data->cmd_is_running = false;

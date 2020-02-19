@@ -132,6 +132,7 @@ struct max77705_usbc_platform_data {
 	int op_code;
 	int is_first_booting;
 	usbc_cmd_data last_opcode;
+	unsigned long opcode_stamp;
 	struct mutex op_lock;
 
 	/* F/W opcode command data */

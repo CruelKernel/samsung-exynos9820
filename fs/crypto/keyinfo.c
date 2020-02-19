@@ -760,6 +760,70 @@ out:
 }
 EXPORT_SYMBOL(fscrypt_get_encryption_key);
 
+int fscrypt_get_encryption_key_classified(struct inode *inode, struct fscrypt_key *key)
+{
+	struct fscrypt_info *crypt_info;
+	struct fscrypt_context ctx;
+	struct fscrypt_mode *mode;
+	u8 *raw_key = NULL;
+	int res;
+
+	// fscrypt_info in inode is not initialized yet. It should be called after
+	// getting fscrypt_info.
+	if (!inode->i_crypt_info) {
+		return -EINVAL;
+	}
+	crypt_info = inode->i_crypt_info;
+
+//	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
+//	if (res)
+//		return res;
+
+	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+	if (res < 0) {
+		return res;
+	} else if (res != sizeof(ctx)) {
+		return -EINVAL;
+	}
+
+	if (ctx.format != FS_ENCRYPTION_CONTEXT_FORMAT_V1)
+		return -EINVAL;
+
+	if (ctx.flags & ~FS_POLICY_FLAGS_VALID)
+		return -EINVAL;
+
+	mode = select_encryption_mode(crypt_info, inode);
+	if (IS_ERR(mode)) {
+		res = PTR_ERR(mode);
+		goto out;
+	}
+
+	if (FS_MAX_KEY_SIZE < mode->keysize) {
+		return -EPERM;
+	}
+
+	/*
+	 * This cannot be a stack buffer because it is passed to the scatterlist
+	 * crypto API as part of key derivation.
+	 */
+	res = -ENOMEM;
+	raw_key = kmalloc(mode->keysize, GFP_NOFS);
+	if (!raw_key)
+		goto out;
+
+	res = derive_fek(inode, &ctx, crypt_info, raw_key, mode->keysize);
+	if (res)
+		goto out;
+
+	memcpy(key->raw, raw_key, mode->keysize);
+	key->size = mode->keysize;
+
+out:
+	kzfree(raw_key);
+	return res;
+}
+EXPORT_SYMBOL(fscrypt_get_encryption_key_classified);
+
 int fscrypt_get_encryption_kek(struct inode *inode,
 							struct fscrypt_info *crypt_info,
 							struct fscrypt_key *kek)

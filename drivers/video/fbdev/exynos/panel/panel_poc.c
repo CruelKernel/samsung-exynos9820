@@ -243,7 +243,7 @@ int poc_read_data(struct panel_device *panel,
 	pr_info("%s poc read addr 0x%06X, %d(0x%X) bytes +++\n",
 			__func__, addr, len, len);
 
-	ret = poc_get_poc_chksum(panel);	
+	ret = poc_get_poc_chksum(panel);
 	if (unlikely(ret < 0)) {
 		pr_err("%s, failed to read poc cheksum seq\n", __func__);
 		goto exit;
@@ -355,7 +355,7 @@ int poc_write_data(struct panel_device *panel, u8 *data, u32 addr, u32 size)
 				goto out_poc_write;
 			}
 		}
-		
+
 		memset(poc_info->wdata, 0x00, poc_info->wdata_len);
 		copy_len = size - i;
 		if (copy_len > poc_info->wdata_len)
@@ -404,10 +404,10 @@ cancel_poc_write:
 
 out_poc_write:
 	mutex_unlock(&panel->op_lock);
-	
+
 	if (poc_info->wdata)
 		devm_kfree(panel->dev, poc_info->wdata);
-	
+
 	return ret;
 }
 
@@ -731,9 +731,11 @@ int set_panel_poc(struct panel_poc_device *poc_dev, u32 cmd, const char *cmd_ext
 				pr_err("%s, invalid poc erase params\n", __func__);
 				return -EINVAL;
 			}
+			poc_info->erase_trycount++;
 			ret = poc_erase(panel, addr, len);
 			if (unlikely(ret < 0)) {
 				pr_err("%s, failed to write poc-erase-seq\n", __func__);
+				poc_info->erase_failcount++;
 				return ret;
 			}
 			poc_info->erased = true;
@@ -981,27 +983,35 @@ static ssize_t panel_poc_read(struct file *file, char __user *buf, size_t count,
 	int partition_size;
 
 	panel_info("%s : size : %d, ppos %d\n", __func__, (int)count, (int)*ppos);
+	poc_info->read_trycount++;
 
 	if (unlikely(!poc_dev->opened)) {
 		panel_err("POC:ERR:%s: poc device not opened\n", __func__);
+		poc_info->read_failcount++;
 		return -EIO;
 	}
 
-	if (!IS_PANEL_ACTIVE(panel))
+	if (!IS_PANEL_ACTIVE(panel)) {
+		poc_info->read_failcount++;
 		return -EAGAIN;
+	}
 
 	if (unlikely(!buf)) {
 		panel_err("POC:ERR:%s: invalid read buffer\n", __func__);
+		poc_info->read_failcount++;
 		return -EINVAL;
 	}
 
 	partition_size = get_poc_partition_size(poc_dev, POC_IMG_PARTITION);
-	if (partition_size < 0)
+	if (partition_size < 0) {
+		poc_info->read_failcount++;
 		return -EINVAL;
-	
+	}
+
 	if (unlikely(*ppos < 0 || *ppos >= partition_size)) {
 		panel_err("POC:ERR:%s: invalid read pos %d\n",
 				__func__, (int)*ppos);
+		poc_info->read_failcount++;
 		return -EINVAL;
 	}
 
@@ -1025,9 +1035,12 @@ static ssize_t panel_poc_read(struct file *file, char __user *buf, size_t count,
 		goto err_read;
 
 	panel_info("%s read %ld bytes (count %ld)\n", __func__, res, count);
+	mutex_unlock(&panel->io_lock);
+	return res;
 
 err_read:
 	mutex_unlock(&panel->io_lock);
+	poc_info->read_failcount++;
 	return res;
 }
 
@@ -1041,32 +1054,39 @@ static ssize_t panel_poc_write(struct file *file, const char __user *buf,
 	int partition_size;
 
 	panel_info("%s : size : %d, ppos %d\n", __func__, (int)count, (int)*ppos);
+	poc_info->write_trycount++;
 
 	if (unlikely(!poc_dev->opened)) {
 		panel_err("POC:ERR:%s: poc device not opened\n", __func__);
+		poc_info->write_failcount++;
 		return -EIO;
 	}
 
-	if (!IS_PANEL_ACTIVE(panel))
+	if (!IS_PANEL_ACTIVE(panel)) {
+		poc_info->write_failcount++;
 		return -EAGAIN;
+	}
 
 	if (unlikely(!buf)) {
 		panel_err("POC:ERR:%s: invalid write buffer\n", __func__);
+		poc_info->write_failcount++;
 		return -EINVAL;
 	}
 
 	partition_size = get_poc_partition_size(poc_dev, POC_IMG_PARTITION);
-	if (partition_size < 0)
+	if (partition_size < 0) {
+		poc_info->write_failcount++;
 		return -EINVAL;
+	}
 
 	if (unlikely(*ppos < 0 || *ppos >= partition_size)) {
 		panel_err("POC:ERR:%s: invalid write size pos %d, size %d\n",
 				__func__, (int)*ppos, (int)count);
+		poc_info->write_failcount++;
 		return -EINVAL;
 	}
 
 	mutex_lock(&panel->io_lock);
-
 	poc_info->wbuf = poc_wr_img;
 	poc_info->wpos = *ppos;
 	if (count > partition_size - *ppos) {
@@ -1091,6 +1111,7 @@ static ssize_t panel_poc_write(struct file *file, const char __user *buf,
 	return count;
 
 err_write:
+	poc_info->write_failcount++;
 	mutex_unlock(&panel->io_lock);
 	return res;
 }
@@ -1128,6 +1149,7 @@ enum {
 	MAX_EPOCEFS,
 };
 
+#if 0
 static int poc_get_efs_s32(char *filename, int *value)
 {
 	mm_segment_t old_fs;
@@ -1172,6 +1194,72 @@ static int poc_get_efs_s32(char *filename, int *value)
 	}
 
 	pr_info("%s %s(size %d) : %d\n", __func__, filename, fsize, *value);
+
+exit:
+	filp_close(filp, current->files);
+	set_fs(old_fs);
+
+	return ret;
+}
+#endif
+
+static int poc_get_efs_count(char *filename, int *value)
+{
+	mm_segment_t old_fs;
+	struct file *filp = NULL;
+	int fsize = 0, nread, rc, ret = 0;
+	int count;
+	u8 buf[128];
+
+	if (!filename || !value) {
+		pr_err("%s invalid parameter\n", __func__);
+		return -EINVAL;
+	}
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(filename, O_RDONLY, 0440);
+	if (IS_ERR(filp)) {
+		ret = PTR_ERR(filp);
+		if (ret == -ENOENT)
+			pr_err("%s file(%s) not exist\n", __func__, filename);
+		else
+			pr_info("%s file(%s) open error(ret %d)\n",
+					__func__, filename, ret);
+		set_fs(old_fs);
+		return -EPOCEFS_NOENT;
+	}
+
+	if (filp->f_path.dentry && filp->f_path.dentry->d_inode)
+		fsize = filp->f_path.dentry->d_inode->i_size;
+
+	if (fsize == 0 || fsize > ARRAY_SIZE(buf)) {
+		pr_err("%s invalid file(%s) size %d\n",
+				__func__, filename, fsize);
+		ret = -EPOCEFS_EMPTY;
+		goto exit;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	nread = vfs_read(filp, (char __user *)buf, fsize, &filp->f_pos);
+	if (nread != fsize) {
+		pr_err("%s failed to read (ret %d)\n", __func__, nread);
+		ret = -EPOCEFS_READ;
+		goto exit;
+	}
+
+	rc = sscanf(buf, "%d", &count);
+	if (rc != 1) {
+		pr_err("%s failed to sscanf %d\n", __func__, rc);
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	pr_info("%s %s(size %d) : %d\n",
+			__func__, filename, fsize, count);
+
+	*value = count;
 
 exit:
 	filp_close(filp, current->files);
@@ -1319,13 +1407,13 @@ static int poc_dpui_callback(struct panel_poc_device *poc_dev)
 
 	poc_info = &poc_dev->poc_info;
 
-	ret = poc_get_efs_s32(POC_TOTAL_TRY_COUNT_FILE_PATH, &poc_info->total_trycount);
+	ret = poc_get_efs_count(POC_TOTAL_TRY_COUNT_FILE_PATH, &poc_info->total_trycount);
 	if (ret < 0)
 		poc_info->total_trycount = (ret > -MAX_EPOCEFS) ? ret : -1;
 	size = snprintf(tbuf, MAX_DPUI_VAL_LEN, "%d", poc_info->total_trycount);
 	set_dpui_field(DPUI_KEY_PNPOCT, tbuf, size);
 
-	ret = poc_get_efs_s32(POC_TOTAL_FAIL_COUNT_FILE_PATH, &poc_info->total_failcount);
+	ret = poc_get_efs_count(POC_TOTAL_FAIL_COUNT_FILE_PATH, &poc_info->total_failcount);
 	if (ret < 0)
 		poc_info->total_failcount = (ret > -MAX_EPOCEFS) ? ret : -1;
 	size = snprintf(tbuf, MAX_DPUI_VAL_LEN, "%d", poc_info->total_failcount);
@@ -1342,6 +1430,21 @@ static int poc_dpui_callback(struct panel_poc_device *poc_dev)
 		poci = -EPOCEFS_IMGIDX + ret;
 	size = snprintf(tbuf, MAX_DPUI_VAL_LEN, "%d", poci);
 	set_dpui_field(DPUI_KEY_PNPOCI, tbuf, size);
+
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_ER_TRY, poc_info->erase_trycount);
+	poc_info->erase_trycount = 0;
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_ER_FAIL, poc_info->erase_failcount);
+	poc_info->erase_failcount = 0;
+
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_WR_TRY, poc_info->write_trycount);
+	poc_info->write_trycount = 0;
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_WR_FAIL, poc_info->write_failcount);
+	poc_info->write_failcount = 0;
+
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_RD_TRY, poc_info->read_trycount);
+	poc_info->read_trycount = 0;
+	inc_dpui_u32_field(DPUI_KEY_PNPOC_RD_FAIL, poc_info->read_failcount);
+	poc_info->read_failcount = 0;
 
 	return 0;
 }

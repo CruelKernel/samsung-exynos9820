@@ -768,8 +768,8 @@ static int __force_streamoff(struct file *file)
 			npu_warn("%s() : NPU DEVICE IS EMERGENCY ERROR\n", __func__);
 	} else {
 		npu_info("EMERGENCY_RECOVERY - %ums delay insearted instead of STREAMOFF.\n",
-			POWER_DOWN_DELAY_ON_EMERGENCY);
-		msleep(POWER_DOWN_DELAY_ON_EMERGENCY);
+			STREAMOFF_DELAY_ON_EMERGENCY);
+		msleep(STREAMOFF_DELAY_ON_EMERGENCY);
 	}
 
 	ret = npu_queue_stop(queue, 1);

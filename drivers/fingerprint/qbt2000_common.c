@@ -1137,13 +1137,12 @@ static int fps_qbt2000_probe(struct platform_device *pdev)
 	drvdata->spi_speed = SPI_CLOCK_MAX;
 #ifdef ENABLE_SENSORS_FPRINT_SECURE
 	drvdata->enabled_clk = false;
-	drvdata->sensortype = SENSOR_UNKNOWN;
 	drvdata->tz_mode = true;
 #else
 	drvdata->enabled_clk = true;
-	drvdata->sensortype = SENSOR_QBT2000;
 	drvdata->tz_mode = false;
 #endif
+	drvdata->sensortype = SENSOR_QBT2000;
 	drvdata->cbge_count = 0;
 	drvdata->wuhb_test_flag = 0;
 	drvdata->wuhb_test_result = 0;

@@ -25,7 +25,7 @@
 #endif /* CONFIG_CPU_THERMAL_IPA */
 
 #ifdef CONFIG_MALI_DVFS
-typedef void (*GET_NEXT_LEVEL)(struct exynos_context *platform, int utilization);
+typedef int (*GET_NEXT_LEVEL)(struct exynos_context *platform, int utilization);
 GET_NEXT_LEVEL gpu_dvfs_get_next_level;
 
 static int gpu_dvfs_governor_default(struct exynos_context *platform, int utilization);

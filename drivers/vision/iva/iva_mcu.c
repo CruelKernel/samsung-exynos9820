@@ -39,6 +39,7 @@
 
 #define MCU_SRAM_VIA_MEMCPY
 #define MCU_RAMDUMP_REUSE_BOOT_MEM
+#define MCU_IVA_QACTIVE_HOLD
 
 #define PRINT_CHARS_ALIGN_SIZE		(sizeof(uint32_t))
 #define PRINT_CHARS_ALIGN_MASK		(PRINT_CHARS_ALIGN_SIZE - 1)
@@ -502,7 +503,11 @@ void iva_mcu_prepare_mcu_reset(struct iva_dev_data *iva,
 
 void iva_mcu_reset_mcu(struct iva_dev_data *iva)
 {
+#if defined(CONFIG_SOC_EXYNOS9820)
+#ifndef MCU_IVA_QACTIVE_HOLD
 	iva_pmu_ctrl(iva, pmu_ctrl_qactive, false);
+#endif
+#endif
         iva_mcu_ctrl(iva, mcu_boothold, false);
 }
 #endif
@@ -690,6 +695,11 @@ int32_t iva_mcu_exit(struct iva_dev_data *iva)
 	iva_mcu_ctrl(iva, mcu_boothold, true);
 #endif
 
+#if defined(CONFIG_SOC_EXYNOS9820)
+#ifdef MCU_IVA_QACTIVE_HOLD
+	iva_pmu_ctrl(iva, pmu_ctrl_qactive, false);
+#endif
+#endif
 	dev_dbg(iva->dev, "%s() mcu exited(0x%lx) successfully\n",
 			__func__, iva->state);
 

@@ -208,7 +208,8 @@ static int abox_dsif_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	abox_cmpnt_reset_cnt_val(dev, data->cmpnt, dai->id);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		abox_cmpnt_reset_cnt_val(dev, data->cmpnt, dai->id);
 
 	return 0;
 }
@@ -409,7 +410,8 @@ static int abox_uaif_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		dev_err(dev, "sfr access failed: %d\n", ret);
 
-	abox_cmpnt_reset_cnt_val(dev, data->cmpnt, dai->id);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		abox_cmpnt_reset_cnt_val(dev, data->cmpnt, dai->id);
 
 	return 0;
 }

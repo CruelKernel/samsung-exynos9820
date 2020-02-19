@@ -939,22 +939,49 @@ process_error:
 void max77705_receive_alternate_message(struct max77705_usbc_platform_data *data, MAX77705_VDM_MSG_IRQ_STATUS_Type *VDM_MSG_IRQ_State)
 {
 	struct max77705_usbc_platform_data *usbpd_data = data;
+	static int last_alternate = 0;
 
+DISCOVER_ID:
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_ID) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[1][0]);
 		usbpd_data->alternate_state |= VDM_DISCOVER_ID;
+		last_alternate = VDM_DISCOVER_ID;
 	}
+
+DISCOVER_SVIDS:
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_SVIDs) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[2][0]);
+		if (last_alternate != VDM_DISCOVER_ID) {
+			msg_maxim("%s vdm miss\n", __func__);
+			VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_ID = 1;
+			goto DISCOVER_ID;
+		}
 		usbpd_data->alternate_state |= VDM_DISCOVER_SVIDS;
+		last_alternate = VDM_DISCOVER_SVIDS;
 	}
+
+DISCOVER_MODES:
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_MODEs) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[3][0]);
+		if (last_alternate != VDM_DISCOVER_SVIDS &&
+				last_alternate != VDM_DP_CONFIGURE) {
+			msg_maxim("%s vdm miss\n", __func__);
+			VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_SVIDs = 1;
+			goto DISCOVER_SVIDS;
+		}
 		usbpd_data->alternate_state |= VDM_DISCOVER_MODES;
+		last_alternate = VDM_DISCOVER_MODES;
 	}
+
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_Enter_Mode) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[4][0]);
+		if (last_alternate != VDM_DISCOVER_MODES) {
+			msg_maxim("%s vdm miss\n", __func__);
+			VDM_MSG_IRQ_State->BITS.Vdm_Flag_Discover_MODEs = 1;
+			goto DISCOVER_MODES;
+		}
 		usbpd_data->alternate_state |= VDM_ENTER_MODE;
+		last_alternate = VDM_ENTER_MODE;
 	}
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_Exit_Mode) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[5][0]);
@@ -967,10 +994,12 @@ void max77705_receive_alternate_message(struct max77705_usbc_platform_data *data
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_DP_Status_Update) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[7][0]);
 		usbpd_data->alternate_state |= VDM_DP_STATUS_UPDATE;
+		last_alternate = VDM_DP_STATUS_UPDATE;
 	}
 	if (VDM_MSG_IRQ_State->BITS.Vdm_Flag_DP_Configure) {
 		msg_maxim(": %s", &VDM_MSG_IRQ_State_Print[8][0]);
 		usbpd_data->alternate_state |= VDM_DP_CONFIGURE;
+		last_alternate = VDM_DP_CONFIGURE;
 	}
 
 	max77705_process_alternate_mode(usbpd_data);

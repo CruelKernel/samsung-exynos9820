@@ -33,7 +33,7 @@ char key64[][MAX_ITEM_KEY_LEN] = {
 char key256[][MAX_ITEM_KEY_LEN] = {
 	"KLG", "BUS", "PANIC", "PC", "LR",
 	"BUG", "ESR", "SMU", "FRQL0", "ODR",
-	"AUD",
+	"AUD", "RVD1",
 };
 
 char key1024[][MAX_ITEM_KEY_LEN] = {
@@ -57,7 +57,7 @@ char bkeys[][MAX_ITEM_KEY_LEN] = {
 	"ID", "RR", "ASB", "PSITE", "DDRID",
 	"RST", "INFO2", "INFO3", "RBASE", "MAGIC",
 	"PWR", "PWROFF", "PINT1", "PINT2", "PINT5",
-	"PINT6", "PSTS1", "PSTS2", "FRQL0",
+	"PINT6", "PSTS1", "PSTS2", "FRQL0", "RVD1",
 };
 
 char ckeys[][MAX_ITEM_KEY_LEN] = {

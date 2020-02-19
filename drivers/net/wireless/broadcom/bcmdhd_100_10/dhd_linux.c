@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 799969 2019-01-18 07:05:22Z $
+ * $Id: dhd_linux.c 799965 2019-01-18 06:55:56Z $
  */
 
 #include <typedefs.h>
@@ -10516,71 +10516,6 @@ extern bool dhd_update_btfw_path(dhd_info_t *dhdinfo, char* btfw_path)
 	return TRUE;
 }
 #endif /* defined (BT_OVER_SDIO) */
-
-#ifdef CUSTOMER_HW4_DEBUG
-bool dhd_validate_chipid(dhd_pub_t *dhdp)
-{
-	uint chipid = dhd_bus_chip_id(dhdp);
-	uint config_chipid;
-
-#ifdef BCM4375_CHIP
-	config_chipid = BCM4375_CHIP_ID;
-#elif defined(BCM4361_CHIP)
-	config_chipid = BCM4361_CHIP_ID;
-#elif defined(BCM4359_CHIP)
-	config_chipid = BCM4359_CHIP_ID;
-#elif defined(BCM4358_CHIP)
-	config_chipid = BCM4358_CHIP_ID;
-#elif defined(BCM4354_CHIP)
-	config_chipid = BCM4354_CHIP_ID;
-#elif defined(BCM4339_CHIP)
-	config_chipid = BCM4339_CHIP_ID;
-#elif defined(BCM4335_CHIP)
-	config_chipid = BCM4335_CHIP_ID;
-#elif defined(BCM43430_CHIP)
-	config_chipid = BCM43430_CHIP_ID;
-#elif defined(BCM43018_CHIP)
-	config_chipid = BCM43018_CHIP_ID;
-#elif defined(BCM43455_CHIP)
-	config_chipid = BCM4345_CHIP_ID;
-#elif defined(BCM43454_CHIP)
-	config_chipid = BCM43454_CHIP_ID;
-#elif defined(BCM43012_CHIP_)
-	config_chipid = BCM43012_CHIP_ID;
-#else
-	DHD_ERROR(("%s: Unknown chip id, if you use new chipset,"
-		" please add CONFIG_BCMXXXX into the Kernel and"
-		" BCMXXXX_CHIP definition into the DHD driver\n",
-		__FUNCTION__));
-	config_chipid = 0;
-
-	return FALSE;
-#endif /* BCM4354_CHIP */
-
-#if defined(BCM4354_CHIP) && defined(SUPPORT_MULTIPLE_REVISION)
-	if (chipid == BCM4350_CHIP_ID && config_chipid == BCM4354_CHIP_ID) {
-		return TRUE;
-	}
-#endif /* BCM4354_CHIP && SUPPORT_MULTIPLE_REVISION */
-#if defined(BCM4358_CHIP) && defined(SUPPORT_MULTIPLE_REVISION)
-	if (chipid == BCM43569_CHIP_ID && config_chipid == BCM4358_CHIP_ID) {
-		return TRUE;
-	}
-#endif /* BCM4358_CHIP && SUPPORT_MULTIPLE_REVISION */
-#if defined(BCM4359_CHIP)
-	if (chipid == BCM4355_CHIP_ID && config_chipid == BCM4359_CHIP_ID) {
-		return TRUE;
-	}
-#endif /* BCM4359_CHIP */
-#if defined(BCM4361_CHIP)
-	if (chipid == BCM4347_CHIP_ID && config_chipid == BCM4361_CHIP_ID) {
-		return TRUE;
-	}
-#endif /* BCM4361_CHIP */
-
-	return config_chipid == chipid;
-}
-#endif /* CUSTOMER_HW4_DEBUG */
 
 #if defined(BT_OVER_SDIO)
 wlan_bt_handle_t dhd_bt_get_pub_hndl(void)

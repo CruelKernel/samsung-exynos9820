@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 799969 2019-01-18 07:05:22Z $
+ * $Id: dhd.h 799965 2019-01-18 06:55:56Z $
  */
 
 /****************
@@ -3376,4 +3376,7 @@ extern void dhd_set_tid_based_on_uid(dhd_pub_t *dhdp, void *pkt);
 extern int dhd_control_he_enab(dhd_pub_t * dhd, uint8 he_enab);
 extern uint8 control_he_enab;
 #endif /* DISABLE_HE_ENAB  || CUSTOM_CONTROL_HE_ENAB */
+
+extern bool dhd_validate_chipid(dhd_pub_t *dhdp);
+
 #endif /* _dhd_h_ */

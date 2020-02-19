@@ -114,7 +114,7 @@ int32_t abox_msg_send(struct abox_msg_cmd *cmd,
 	}
 	q_cmd->elem[q_cmd->idx_e] = *cmd;
 	/* complete memcpy before increasing queue index */
-	wmb();
+	mb();
 	q_cmd->idx_e = (q_cmd->idx_e + 1) % cmd_len;
 unlock:
 	tx_unlock();

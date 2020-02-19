@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_wq.h 799969 2019-01-18 07:05:22Z $
+ * $Id: dhd_linux_wq.h 799739 2019-01-17 07:31:48Z $
  */
 #ifndef _dhd_linux_wq_h_
 #define _dhd_linux_wq_h_

@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_exportfs.c 798826 2019-01-10 12:45:43Z $
+ * $Id: dhd_linux_exportfs.c 808906 2019-03-11 10:39:38Z $
  */
 #include <linux/kobject.h>
 #include <linux/proc_fs.h>
@@ -704,7 +704,7 @@ get_assert_val_from_file(void)
 		filp_close(fp, NULL);
 	}
 
-#ifdef CUSTOERM_HW4_DEBUG
+#ifdef CUSTOMER_HW4_DEBUG
 	mem_val = (mem_val >= 0) ? mem_val : 1;
 #else
 	mem_val = (mem_val >= 0) ? mem_val : 0;

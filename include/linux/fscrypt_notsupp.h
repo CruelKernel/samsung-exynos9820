@@ -110,6 +110,12 @@ static inline int fscrypt_get_encryption_key(struct inode *inode,
 	return -EOPNOTSUPP;
 }
 
+static inline int fscrypt_get_encryption_key_classified(struct inode *inode,
+						struct fscrypt_key *key)
+{
+	return -EOPNOTSUPP;
+}
+
 static inline int fscrypt_get_encryption_kek(struct inode *inode,
 						struct fscrypt_info *crypt_info,
 						struct fscrypt_key *kek)

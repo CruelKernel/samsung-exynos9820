@@ -486,6 +486,16 @@ static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
 			data->buf[uSensor].wakeup_move_event[1],
 			get_msdelay(data->adDelayBuf[uSensor]));
                 break;
+	case POCKET_MODE_SENSOR:
+		ssp_dbg("[SSP] %u : %d (%ums)\n", uSensor,
+			data->buf[uSensor].pocket_mode,
+			get_msdelay(data->adDelayBuf[uSensor]));
+                break;
+	case LED_COVER_EVENT_SENSOR:
+		ssp_dbg("[SSP] %u : %d (%ums)\n", uSensor,
+			data->buf[uSensor].led_cover_event,
+			get_msdelay(data->adDelayBuf[uSensor]));
+                break;
 	case BULK_SENSOR:
 	case GPS_SENSOR:
 		break;

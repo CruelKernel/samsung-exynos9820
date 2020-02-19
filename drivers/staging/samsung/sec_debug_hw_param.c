@@ -387,13 +387,28 @@ static ssize_t sec_hw_param_ap_info_show(struct kobject *kobj,
 				"\"ASV_BIG\":\"%d\",", asv_ids_information(bg));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
+				"\"ASV_MID\":\"%d\",", asv_ids_information(mg));
+	info_size +=
+		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
 				"\"ASV_LIT\":\"%d\",", asv_ids_information(lg));
+	info_size +=
+		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
+				"\"ASV_G3D\":\"%d\",", asv_ids_information(g3dg));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
 				"\"ASV_MIF\":\"%d\",", asv_ids_information(mifg));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
 				"\"IDS_BIG\":\"%d\"", asv_ids_information(bids));
+	info_size +=
+		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
+				"\"IDS_MID\":\"%d\"", asv_ids_information(mids));
+	info_size +=
+		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
+				"\"IDS_LIT\":\"%d\"", asv_ids_information(lids));
+	info_size +=
+		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
+				"\"IDS_G3D\":\"%d\"", asv_ids_information(gids));
 
 	return info_size;
 }

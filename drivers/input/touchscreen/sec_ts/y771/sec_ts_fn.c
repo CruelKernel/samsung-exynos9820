@@ -51,6 +51,7 @@ static void run_self_raw_p2p_avg_read_all(void *device_data);
 static void run_self_raw_p2p_diff_read_all(void *device_data);
 static void run_rawdata_read_all(void *device_data);
 static void run_force_calibration(void *device_data);
+static void run_miscalibration(void *device_data);
 static void get_force_calibration(void *device_data);
 static void get_gap_data_x_all(void *device_data);
 static void get_gap_data_y_all(void *device_data);
@@ -145,6 +146,7 @@ static struct sec_cmd sec_cmds[] = {
 	{SEC_CMD("run_self_raw_p2p_avg_read_all", run_self_raw_p2p_avg_read_all),},
 	{SEC_CMD("run_self_raw_p2p_diff_read_all", run_self_raw_p2p_diff_read_all),},
 	{SEC_CMD("run_rawdata_read_all_for_ghost", run_rawdata_read_all),},
+	{SEC_CMD("run_miscalibration", run_miscalibration),},
 	{SEC_CMD("run_force_calibration", run_force_calibration),},
 	{SEC_CMD("get_force_calibration", get_force_calibration),},
 	{SEC_CMD("get_gap_data_x_all", get_gap_data_x_all),},
@@ -5110,6 +5112,84 @@ int sec_tclm_execute_force_calibration(struct i2c_client *client, int cal_mode)
 	rc = sec_ts_execute_force_calibration(ts, cal_mode);
 
 	return rc;
+}
+
+static void run_miscalibration(void *device_data)
+{
+	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
+	struct sec_ts_data *ts = container_of(sec, struct sec_ts_data, sec);
+	char buff[SEC_CMD_STR_LEN] = {0};
+	int rc;
+	u8 mBuff[3] = { 0x32, 0x00, 0x00 };
+	u8 result[2] = { 0, 0 };
+
+	sec_cmd_set_default_result(sec);
+
+	disable_irq(ts->client->irq);
+
+	if (ts->power_status == SEC_TS_STATE_POWER_OFF)
+		goto err;
+
+	rc = sec_ts_fix_tmode(ts, TOUCH_SYSTEM_MODE_TOUCH, TOUCH_MODE_STATE_TOUCH);
+
+	if (rc < 0) {
+		input_err(true, &ts->client->dev, "%s: sec_ts_fix_tmode failed\n", __func__);
+		goto err;
+	}
+
+	sec_ts_delay(10);
+
+	rc = ts->sec_ts_i2c_write(ts, SEC_TS_CMD_SET_MISCAL_THD, mBuff, sizeof(mBuff));
+	if (rc < 0) {
+		input_err(true, &ts->client->dev, "%s: SEC_TS_CMD_SET_MISCALIBRATIONTEST failed\n", __func__);
+		goto err;
+	}
+
+	sec_ts_delay(10);
+
+	rc = ts->sec_ts_i2c_write(ts, SEC_TS_CMD_RUN_MISCAL, NULL, 0);
+	if (rc < 0) {
+		input_err(true, &ts->client->dev, "%s: SEC_TS_CMD_MISALIBRATIONTEST failed\n", __func__);
+		goto err;
+	}
+
+	sec_ts_delay(200);
+
+	rc = ts->sec_ts_i2c_read(ts, SEC_TS_CMD_GET_MISCAL_RESULT, result, sizeof(result));
+	if (rc < 0) {
+		input_err(true, &ts->client->dev, "%s: SEC_TS_CMD_GET_MISCALBRATION failed\n", __func__);
+		goto err;
+	}
+
+	sec_ts_delay(10);
+
+	rc = sec_ts_release_tmode(ts);
+	if (rc < 0) {
+		input_err(true, &ts->client->dev, "%s: SEC_TS_CMD_STATEMANAGE_ON failed\n", __func__);
+		goto err;
+	}
+
+	if (result[0]) {
+		enable_irq(ts->client->irq);
+		snprintf(buff, sizeof(buff), "%d", result[1]);
+		sec->cmd_state = SEC_CMD_STATUS_FAIL;
+		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+		return;
+	}
+
+	enable_irq(ts->client->irq);
+	snprintf(buff, sizeof(buff), "OK");
+	sec->cmd_state = SEC_CMD_STATUS_OK;
+	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+	return;
+
+err:
+	enable_irq(ts->client->irq);
+	snprintf(buff, sizeof(buff), "NG");
+	sec->cmd_state = SEC_CMD_STATUS_FAIL;
+	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+
+	input_info(true, &ts->client->dev, "%s: %s\n", __func__, buff);
 }
 
 static void run_force_calibration(void *device_data)

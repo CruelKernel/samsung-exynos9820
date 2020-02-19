@@ -27,13 +27,8 @@
 #define POC_CHKSUM_RES_LEN		(1)
 #define POC_CHKSUM_LEN		(POC_CHKSUM_DATA_LEN + POC_CHKSUM_RES_LEN)
 #ifdef CONFIG_DISPLAY_USE_INFO
-#ifdef CONFIG_SEC_FACTORY
-#define POC_TOTAL_TRY_COUNT_FILE_PATH	("/efs/FactoryApp/poc_totaltrycount")
-#define POC_TOTAL_FAIL_COUNT_FILE_PATH	("/efs/FactoryApp/poc_totalfailcount")
-#else
-#define POC_TOTAL_TRY_COUNT_FILE_PATH	("/efs/etc/poc/totaltrycount")
-#define POC_TOTAL_FAIL_COUNT_FILE_PATH	("/efs/etc/poc/totalfailcount")
-#endif
+#define POC_TOTAL_TRY_COUNT_FILE_PATH	("/efs/afc/apply_count")
+#define POC_TOTAL_FAIL_COUNT_FILE_PATH	("/efs/afc/fail_count")
 #define POC_INFO_FILE_PATH	("/efs/FactoryApp/poc_info")
 #define POC_USER_FILE_PATH	("/efs/FactoryApp/poc_user")
 #endif
@@ -170,6 +165,12 @@ struct panel_poc_info {
 #ifdef CONFIG_DISPLAY_USE_INFO
 	int total_failcount;
 	int total_trycount;
+	int erase_trycount;
+	int erase_failcount;
+	int write_trycount;
+	int write_failcount;
+	int read_trycount;
+	int read_failcount;
 #endif
 };
 

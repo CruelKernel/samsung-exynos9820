@@ -1227,7 +1227,7 @@ fail_drop:
 	unlock_new_inode(inode);
 out:
 	if (err == -ENOSPC) {
-		printk_ratelimited(KERN_INFO "Return ENOSPC : No free inode (%d/%u)\n",
+		printk_ratelimited(KERN_INFO "Return ENOSPC: ifree=%d, inodes=%u\n",
 			(int) percpu_counter_read_positive(&sbi->s_freeinodes_counter),
 			le32_to_cpu(sbi->s_es->s_inodes_count));
 	}

@@ -132,6 +132,7 @@ struct aod_ioctl_props {
 #ifdef SUPPORT_NORMAL_SELF_MOVE
 	int self_move_pattern;
 #endif
+	int prev_rotate;
 };
 
 struct aod_dev_info {

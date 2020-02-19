@@ -590,6 +590,11 @@ static int __mfc_just_run_dec(struct mfc_ctx *ctx)
 			ret = -EAGAIN;
 			break;
 		}
+		if (ctx->wait_state != WAIT_NONE) {
+			mfc_err_ctx("wait_state(%d) is not ready\n", ctx->wait_state);
+			ret = -EAGAIN;
+			break;
+		}		
 		ret = mfc_cmd_dec_init_buffers(ctx);
 		break;
 	case MFCINST_RES_CHANGE_INIT:

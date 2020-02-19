@@ -33,7 +33,7 @@ menuconfig MALI_MIDGARD
 config MALI_GATOR_SUPPORT
 	bool "Enable Streamline tracing support"
 	depends on MALI_MIDGARD
-	default n
+	default y
 	help
 	  Enables kbase tracing used by the Arm Streamline Performance Analyzer.
 	  The tracepoints are used to derive GPU activity charts in Streamline.

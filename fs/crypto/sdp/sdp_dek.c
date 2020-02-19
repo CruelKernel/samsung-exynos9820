@@ -61,6 +61,65 @@ inline struct sdp_info *fscrypt_sdp_alloc_sdp_info(void)
 	return ci_sdp_info;
 }
 
+void dump_file_key_hex(const char* tag, uint8_t *data, size_t data_len)
+{
+	static const char *hex = "0123456789ABCDEF";
+	static const char delimiter = ' ';
+	int i;
+	char *buf;
+	size_t buf_len;
+
+	if (tag == NULL || data == NULL || data_len <= 0) {
+		return;
+	}
+
+	buf_len = data_len * 3;
+	buf = (char *)kmalloc(buf_len, GFP_ATOMIC);
+	if (buf == NULL) {
+		return;
+	}
+	for (i= 0 ; i < data_len ; i++) {
+		buf[i*3 + 0] = hex[(data[i] >> 4) & 0x0F];
+		buf[i*3 + 1] = hex[(data[i]) & 0x0F];
+		buf[i*3 + 2] = delimiter;
+	}
+	buf[buf_len - 1] = '\0';
+	printk(KERN_ERR
+		"[%s] %s(len=%d) : %s\n", "DEK_DBG", tag, data_len, buf);
+	kfree(buf);
+}
+
+#ifdef CONFIG_SDP_KEY_DUMP
+int fscrypt_sdp_dump_file_key(struct inode *inode)
+{
+	struct fscrypt_info *ci = inode->i_crypt_info;
+	struct fscrypt_key file_encryption_key;
+	int res;
+
+	inode_lock(inode);
+
+	DEK_LOGE("dump file key for ino (%ld)\n", inode->i_ino);
+
+	memset(&file_encryption_key, 0, sizeof(file_encryption_key));
+	if (!ci->ci_sdp_info) {
+		DEK_LOGE("ci_sdp_info is null\n");
+		res = fscrypt_get_encryption_key(inode, &file_encryption_key);
+	} else {
+		res = fscrypt_get_encryption_key_classified(inode, &file_encryption_key);
+	}
+	if (res) {
+		DEK_LOGE("failed to retrieve file encryption key, rc:%d\n", res);
+		goto out;
+	}
+	dump_file_key_hex("FILE ENCRYPTION KEY", file_encryption_key.raw, file_encryption_key.size);
+	memzero_explicit(file_encryption_key.raw, file_encryption_key.size);
+
+out:
+	inode_unlock(inode);
+	return res;
+}
+#endif
+
 int fscrypt_sdp_set_sdp_policy(struct inode *inode, int engine_id)
 {
 	struct fscrypt_info *ci = inode->i_crypt_info;

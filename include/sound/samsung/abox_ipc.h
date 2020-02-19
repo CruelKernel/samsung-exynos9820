@@ -327,6 +327,7 @@ struct ABOX_COMPONENT_CONTROL {
 	char name[16];
 	unsigned int count;
 	int min, max;
+	unsigned int is_volatile:1;
 	union {
 		unsigned int aaddr;
 		unsigned long long kaddr;

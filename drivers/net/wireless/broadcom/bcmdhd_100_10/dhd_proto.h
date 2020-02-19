@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_proto.h 799966 2019-01-18 06:58:31Z $
+ * $Id: dhd_proto.h 799965 2019-01-18 06:55:56Z $
  */
 
 #ifndef _dhd_proto_h_

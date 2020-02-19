@@ -113,9 +113,14 @@ void npu_buffer_q_notify_done(const struct npu_frame *frame)
 	}
 
 	if (npu_if_session_protodrv_ops.queue_done) {
-		npu_uftrace("Calling npu_queue_done, frame_id = [%u]\n", frame, frame->frame_id);
-		npu_if_session_protodrv_ops.queue_done(frame->src_queue, frame->input, frame->output, flags);
-		npu_ufinfo("Succeeded frame_id = [%u]\n", frame, frame->frame_id);
+		if (frame->src_queue && frame->input && frame->output) {
+			npu_uftrace("Calling npu_queue_done, frame_id = [%u]\n", frame, frame->frame_id);
+			npu_if_session_protodrv_ops.queue_done(
+				frame->src_queue, frame->input, frame->output, flags);
+			npu_ufinfo("Succeeded frame_id = [%u]\n", frame, frame->frame_id);
+		} else
+			npu_ufinfo("Skip calling queue_done[queue=%p, in=%p, out=%p]\n",
+				frame, frame->src_queue, frame->input, frame->output);
 	} else {
 		npu_warn("not defined: queue_done\n");
 	}
