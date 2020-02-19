@@ -1,0 +1,30 @@
+/*
+ * SAMSUNG UNIVERSAL9810 board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/ {
+	fragment@haptic {
+		target-path = "/";
+			__overlay__ {
+			haptic {
+				status = "okay";
+				haptic,max_timeout = <10000>;
+				haptic,duty   = <27551>;
+				haptic,period = <37741>;
+				haptic,reg2 = <0x82>;
+				haptic,pwm_id = <1>;
+				haptic,regulator_name = "VDD_MOTOR_3P3";
+				haptic,normal_ratio = <75>;
+				haptic,overdrive_ratio = <95>;
+				haptic,type = "LINEAR_0832RC";
+			};
+		};
+	};
+};

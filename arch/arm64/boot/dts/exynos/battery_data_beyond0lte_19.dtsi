@@ -1,0 +1,33 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_beyond0lte_common.dtsi"
+
+/ {
+	fragment@battery {
+		target-path = "/";
+		__overlay__ {
+			battery {
+				battery,wpc_en = <&gpg0 1 0>;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+};
+
+&pinctrl_5 {
+	wpc_en: wpc-en {
+		samsung,pins = "gpg0-1";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+};
+
