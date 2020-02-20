@@ -238,6 +238,8 @@ int sec_bat_parse_dt(struct device *dev,
 	pdata->dis_auto_shipmode_temp_ctrl = of_property_read_bool(np,
 						     "battery,dis_auto_shipmode_temp_ctrl");
 
+	battery->ta_alert_wa = of_property_read_bool(np, "battery,ta_alert_wa");
+
 	p = of_get_property(np, "battery,polling_time", &len);
 	if (!p)
 		return 1;

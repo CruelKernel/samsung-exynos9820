@@ -231,6 +231,11 @@ struct dsim_adap_freq {
 };
 #endif
 
+#ifdef CONFIG_DYNAMIC_FREQ
+#define DSIM_MODE_POWER_OFF		0
+#define DSIM_MODE_HIBERNATION	1
+#endif
+
 struct dsim_device {
 	int id;
 	enum dsim_state state;
@@ -272,7 +277,8 @@ struct dsim_device {
 #endif
 
 #ifdef CONFIG_DYNAMIC_FREQ
-struct df_status_info *df_status;
+	struct df_status_info *df_status;
+	int df_mode;
 #endif
 
 };

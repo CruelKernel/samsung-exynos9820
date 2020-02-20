@@ -121,7 +121,7 @@ static int __init bootmode_setup(char *str)
 {
 	get_option(&str, &bootmode);
 	pr_info("[SSP] %s  = %d\n", __func__,  bootmode);
-	return 1;
+	return 0;
 }
 __setup("bootmode=", bootmode_setup);
 

@@ -24,7 +24,7 @@
 #include "exynos9820-d1_optics-r19.dtsi"
 #include "exynos9820-d1x_mst_22.dtsi"
 #include "exynos9820-mali_rev2.dtsi"
-#include "exynos9820-d1_vib.dtsi"
+#include "exynos9820-d1_eur_vib.dtsi"
 
 / {
 	compatible = "samsung,D1 EUR OPEN 23", "samsung,EXYNOS9825";

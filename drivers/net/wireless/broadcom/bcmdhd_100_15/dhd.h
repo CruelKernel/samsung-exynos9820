@@ -2577,7 +2577,6 @@ extern char fw_path2[MOD_PARAM_PATHLEN];
 #define DHD_EXPORT_CNTL_FILE
 #define DHD_SOFTAP_DUAL_IF_INFO
 #define DHD_SEND_HANG_PRIVCMD_ERRORS
-#define DHD_SEND_HANG_IOCTL_SUSPEND_ERROR
 #else
 #define PLATFORM_PATH   "/data/misc/conn/"
 #endif /* ANDROID_PLATFORM_VERSION >= 9 */

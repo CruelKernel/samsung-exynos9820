@@ -200,6 +200,8 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(cisd_cable_data_json),
 	SEC_BATTERY_ATTR(cisd_tx_data),
 	SEC_BATTERY_ATTR(cisd_tx_data_json),
+	SEC_BATTERY_ATTR(cisd_event_data),
+	SEC_BATTERY_ATTR(cisd_event_data_json),
 	SEC_BATTERY_ATTR(prev_battery_data),
 	SEC_BATTERY_ATTR(prev_battery_info),
 #endif
@@ -1431,9 +1433,50 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
 
-			/* Clear Daily Cable Data */
+			/* Clear Daily Tx Data */
 			for (j = TX_ON; j < TX_DATA_MAX; j++)
 				pcisd->tx_data[j] = 0;
+
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
+		}
+		break;
+	case CISD_EVENT_DATA:
+		{
+			struct cisd *pcisd = &battery->cisd;
+			char temp_buf[1024] = {0,};
+			int j = 0;
+			int size = 0;
+
+			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->event_data[EVENT_DC_ERR]);
+			size = sizeof(temp_buf) - strlen(temp_buf);
+
+			for (j = EVENT_DC_ERR + 1; j < EVENT_DATA_MAX; j++) {
+				snprintf(temp_buf+strlen(temp_buf), size, " %d", pcisd->event_data[j]);
+				size = sizeof(temp_buf) - strlen(temp_buf);
+			}
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
+		}
+		break;
+	case CISD_EVENT_DATA_JSON:
+		{
+			struct cisd *pcisd = &battery->cisd;
+			char temp_buf[1024] = {0,};
+			int j = 0;
+			int size = 0;
+
+			snprintf(temp_buf, sizeof(temp_buf), "\"%s\":\"%d\"",
+				cisd_event_data_str[EVENT_DC_ERR], pcisd->event_data[EVENT_DC_ERR]);
+			size = sizeof(temp_buf) - strlen(temp_buf);
+
+			for (j = EVENT_DC_ERR + 1; j < EVENT_DATA_MAX; j++) {
+				snprintf(temp_buf+strlen(temp_buf), size, ",\"%s\":\"%d\"",
+					cisd_event_data_str[j], pcisd->event_data[j]);
+				size = sizeof(temp_buf) - strlen(temp_buf);
+			}
+
+			/* Clear Daily Event Data */
+			for (j = EVENT_DC_ERR; j < EVENT_DATA_MAX; j++)
+				pcisd->event_data[j] = 0;
 
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
 		}
@@ -2260,7 +2303,7 @@ ssize_t sec_bat_store_attrs(
 #if defined(CONFIG_WIRELESS_FIRMWARE_UPDATE)
 	case BATT_WIRELESS_FIRMWARE_UPDATE:
 		if (sscanf(buf, "%10d\n", &x) == 1) {
-			if (sec_bat_check_boost_mfc_condition(battery)) {
+			if (sec_bat_check_boost_mfc_condition(battery, x)) {
 				if (x == SEC_WIRELESS_RX_SDCARD_MODE) {
 					pr_info("%s fw mode is SDCARD \n", __func__);
 					sec_bat_fw_update_work(battery, SEC_WIRELESS_RX_SDCARD_MODE);
@@ -2434,7 +2477,7 @@ ssize_t sec_bat_store_attrs(
 					pr_err("%s:sec_set_param failed\n", __func__);
 					return ret;
 				} else {
-					pr_info("%s: hv wirelee charging is disabled\n", __func__);
+					pr_info("%s: hv wireless charging is disabled\n", __func__);
 					sleep_mode = true;
 				}
 			} else if (x == 2) {
@@ -3002,6 +3045,26 @@ ssize_t sec_bat_store_attrs(
 		ret = count;
 		break;
 	case CISD_TX_DATA_JSON:
+		break;
+	case CISD_EVENT_DATA:
+		{
+			struct cisd *pcisd = &battery->cisd;
+			const char *p = buf;
+
+			pr_info("%s: %s\n", __func__, buf);
+			for (i = EVENT_DC_ERR; i < EVENT_DATA_MAX; i++) {
+				if (sscanf(p, "%10d%n", &pcisd->event_data[i], &x) > 0) {
+					p += (size_t)x;
+				} else {
+					pr_info("%s: NO DATA (CISD_EVENT_DATA)\n", __func__);
+					pcisd->event_data[i] = 0;
+					break;
+				}
+			}
+		}
+		ret = count;
+		break;
+	case CISD_EVENT_DATA_JSON:
 		break;
 	case PREV_BATTERY_DATA:
 		if (sscanf(buf, "%10d, %10d, %10d, %10d\n",

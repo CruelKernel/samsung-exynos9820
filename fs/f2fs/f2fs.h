@@ -812,6 +812,9 @@ static inline void print_block_data(struct super_block *sb, sector_t blocknr,
 	char ch;
 	struct mount *mnt = NULL;
 
+	if (ignore_fs_panic)
+		return;
+
 	printk(KERN_ERR "As F2FS-fs error, printing data in hex\n");
 	printk(KERN_ERR " [partition info] s_id : %s, start sector# : %lu\n"
 			, sb->s_id, sb->s_bdev->bd_part->start_sect);

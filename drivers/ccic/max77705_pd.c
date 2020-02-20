@@ -841,6 +841,7 @@ static void max77705_pd_check_pdmsg(struct max77705_usbc_platform_data *usbc_dat
 #endif
 
 	VDM_MSG_IRQ_State.DATA = 0x0;
+	init_usbc_cmd_data(&value);
 	msg_maxim(" pd_msg [%x]", pd_msg);
 
 	switch (pd_msg) {
@@ -980,7 +981,7 @@ static void max77705_pd_check_pdmsg(struct max77705_usbc_platform_data *usbc_dat
 		value.write_length = 1;
 		value.read_length = 32;
 		max77705_usbc_opcode_write(usbc_data, &value);
-		msg_maxim("Status Receviced : [%x]", pd_msg);
+		msg_maxim("@TA_ALERT: Status Receviced : [%x]", pd_msg);
 		break;
 	case Alert_Message:
 		value.opcode = OPCODE_SAMSUNG_READ_MESSAGE;

@@ -4089,8 +4089,13 @@ dhd_rtt_deinit(dhd_pub_t *dhd)
 	GCC_DIAGNOSTIC_POP();
 
 	if (delayed_work_pending(&rtt_status->rtt_retry_timer)) {
-		cancel_delayed_work(&rtt_status->rtt_retry_timer);
+		cancel_delayed_work_sync(&rtt_status->rtt_retry_timer);
 	}
+
+	if (delayed_work_pending(&rtt_status->proxd_timeout)) {
+		cancel_delayed_work_sync(&rtt_status->proxd_timeout);
+	}
+
 	kfree(rtt_status->rtt_config.target_info);
 	kfree(dhd->rtt_state);
 	dhd->rtt_state = NULL;

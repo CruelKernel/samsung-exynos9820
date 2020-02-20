@@ -28,22 +28,25 @@
 bool is_hbm_zone(struct brightness_table *brt_tbl, int brightness)
 {
 	bool retVal = false;
-	unsigned normal_max_brt = brt_tbl->brt[brt_tbl->sz_ui_lum - 1];
-	if(normal_max_brt < brightness)
+	int size_ui_lum = (brt_tbl->sz_panel_dim_ui_lum != 0) ?
+		brt_tbl->sz_panel_dim_ui_lum : brt_tbl->sz_ui_lum;
+	unsigned normal_max_brt = brt_tbl->brt[size_ui_lum - 1];
+	if (normal_max_brt < brightness)
 		retVal = true;
 	return retVal;
 }
 bool is_hbm_800(int hbm_max)
 {
 	bool retVal = false;
-	if(hbm_max >= 800)
+	if (hbm_max >= 800)
 		retVal = true;
 	return retVal;
 }
 
 int __generate_irc_v1(struct brightness_table *brt_tbl, struct panel_irc_info* info, u64 luminance, int brightness)
 {
-	int size_ui_lum = brt_tbl->sz_ui_lum;
+	int size_ui_lum = (brt_tbl->sz_panel_dim_ui_lum != 0) ?
+		brt_tbl->sz_panel_dim_ui_lum : brt_tbl->sz_ui_lum;
 	unsigned int *lum_tbl = brt_tbl->lum;
 	int gray = 0, color = 0, i = 0;
 	u64 coef = disp_pow(10, SCALEUP_5);
@@ -57,7 +60,7 @@ int __generate_irc_v1(struct brightness_table *brt_tbl, struct panel_irc_info* i
 		hbm 800 : calculate coefficient value refer excel sheet from d.lab
 		other : coef is 1
 	*/
-	if(is_hbm_800(hbm_max)) {
+	if (is_hbm_800(hbm_max)) {
 		if (is_hbm_zone(brt_tbl, brightness)) {				// is hbm
 			lum_gap = luminance - scaleup_normal_max;
 			lum_gap *= disp_pow(10, SCALEUP_4); // for precision scale up
@@ -86,7 +89,8 @@ int __generate_irc_v1(struct brightness_table *brt_tbl, struct panel_irc_info* i
 int __generate_irc_v2(struct brightness_table *brt_tbl, struct panel_irc_info* info, u64 luminance, int brightness)
 {
 	u64 coef = disp_pow(10, SCALEUP_5);
-	int size_ui_lum = brt_tbl->sz_ui_lum;
+	int size_ui_lum = (brt_tbl->sz_panel_dim_ui_lum != 0) ?
+		brt_tbl->sz_panel_dim_ui_lum : brt_tbl->sz_ui_lum;
 	unsigned int *lum_tbl = brt_tbl->lum;
 	int normal_max = lum_tbl[size_ui_lum - 1];
 	u64 scaleup_normal_max = normal_max * disp_pow(10, SCALEUP_4);
@@ -149,7 +153,7 @@ int generate_irc(struct brightness_table *brt_tbl, struct panel_irc_info* info, 
 		__generate_irc_v2
 	};
 
-	if(info->ref_tbl == NULL) {
+	if (info->ref_tbl == NULL) {
 		pr_info("%s ref_tbl is NULL\n", __func__);
 		return -EINVAL;
 	}

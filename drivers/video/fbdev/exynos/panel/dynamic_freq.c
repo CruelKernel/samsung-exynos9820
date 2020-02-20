@@ -200,10 +200,11 @@ static int init_dynamic_freq_status(struct panel_device *panel)
 
 	status->enabled = true;
 
-	status->current_df = panel->lcd_info.df_set_info.dft_index;
 	status->request_df = panel->lcd_info.df_set_info.dft_index;
-	status->target_df = panel->lcd_info.df_set_info.dft_index;
-	status->ffc_df = panel->lcd_info.df_set_info.dft_index;
+
+	status->current_df = MAX_DYNAMIC_FREQ;
+	status->target_df = MAX_DYNAMIC_FREQ;
+	status->ffc_df = MAX_DYNAMIC_FREQ;
 
 init_exit:
 	return ret;

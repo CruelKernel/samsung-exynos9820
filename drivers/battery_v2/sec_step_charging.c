@@ -77,7 +77,8 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 	if (battery->step_charging_type & STEP_CHARGING_CONDITION_ONLINE) {
 #if defined(CONFIG_DIRECT_CHARGING)
 		if (is_pd_apdo_wire_type(battery->cable_type) &&
-			!(battery->current_event & SEC_BAT_CURRENT_EVENT_DC_ERR))
+			!((battery->current_event & SEC_BAT_CURRENT_EVENT_DC_ERR) &&
+			(battery->ta_alert_mode == OCP_NONE)))
 			return false;
 #endif
 		if (!is_hv_wire_type(battery->cable_type) && !(battery->cable_type == SEC_BATTERY_CABLE_PDIC) &&
@@ -186,7 +187,8 @@ bool sec_bat_check_dc_step_charging(struct sec_battery_info *battery)
 
     if (battery->current_event & SEC_BAT_CURRENT_EVENT_SWELLING_MODE ||
 		battery->current_event & SEC_BAT_CURRENT_EVENT_HV_DISABLE ||
-		battery->current_event & SEC_BAT_CURRENT_EVENT_DC_ERR ||
+		((battery->current_event & SEC_BAT_CURRENT_EVENT_DC_ERR) &&
+		(battery->ta_alert_mode == OCP_NONE)) ||
 		battery->current_event & SEC_BAT_CURRENT_EVENT_SIOP_LIMIT) {
 		if (battery->step_charging_status >= 0)
 			sec_bat_reset_step_charging(battery);

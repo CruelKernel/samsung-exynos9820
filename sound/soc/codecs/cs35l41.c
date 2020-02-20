@@ -982,6 +982,12 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 			if (cs35l41->halo_played == false) {
 				cs35l41_set_csplmboxcmd(cs35l41,
 						CSPL_MBOX_CMD_PAUSE);
+				regcache_drop_region(cs35l41->regmap,
+							CS35L41_DAC_PCM1_SRC,
+							CS35L41_DAC_PCM1_SRC);
+				regmap_write(cs35l41->regmap,
+						CS35L41_DAC_PCM1_SRC,
+						CS35L41_INPUT_SRC_ASPRX1);
 			}
 			usleep_range(1000, 1100);
 		}

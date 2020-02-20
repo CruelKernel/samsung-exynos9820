@@ -1169,8 +1169,4 @@ struct mfc_charger_data {
 	int i2c_error_count;
 	unsigned long gear_start_time;
 };
-
-#define is_sleep_mode_active(pad_id) ( \
-    pad_id == TX_ID_DAVINCI_PAD_H ||    \
-    pad_id == TX_ID_DAVINCI_PAD_V)
-#endif /* __WIRELESS_CHARGER_MFC_H */
+#endif /* __WIRELESS_CHARGER_MFC_S2MIW04_H */

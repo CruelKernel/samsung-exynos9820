@@ -442,6 +442,8 @@ struct sec_battery_info {
 	int muic_cable_type;
 	int extended_cable_type;
 
+	bool auto_mode;
+
 #if defined(CONFIG_BATTERY_SAMSUNG_MHS)
 	int charging_port;
 #endif
@@ -614,6 +616,10 @@ struct sec_battery_info {
 	unsigned long cal_safety_time;
 	int fg_reset;
 
+	/* 25w ta alert */
+	bool ta_alert_wa;
+	int ta_alert_mode;
+
 	bool boot_complete;
 };
 
@@ -668,7 +674,7 @@ extern void sec_wireless_set_tx_enable(struct sec_battery_info *battery, bool wc
 
 #if defined(CONFIG_WIRELESS_FIRMWARE_UPDATE)
 extern void sec_bat_fw_update_work(struct sec_battery_info *battery, int mode);
-extern bool sec_bat_check_boost_mfc_condition(struct sec_battery_info *battery);
+extern bool sec_bat_check_boost_mfc_condition(struct sec_battery_info *battery, int mode);
 #endif
 
 #if defined(CONFIG_STEP_CHARGING)

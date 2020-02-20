@@ -292,6 +292,13 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Realtek r8153 Lan dongle */
 	{ USB_DEVICE(0x0bda, 0x8153), .driver_info = USB_QUIRK_NO_LPM },
 
+	/* BES USB Headset */
+	{ USB_DEVICE(0xbe57, 0x020f), .driver_info = USB_QUIRK_RESET },
+
+	/* Samsung R1 USB Headset */
+	{ USB_DEVICE(0x04e8, 0xa04f), .driver_info = USB_QUIRK_RESET },
+	{ USB_DEVICE(0x04e8, 0xa057), .driver_info = USB_QUIRK_RESET },
+
 	{ }  /* terminating entry must be last */
 };
 

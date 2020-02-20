@@ -539,7 +539,7 @@ enum charging_port {
 enum ta_alert_mode {
 	OCP_NONE = 0,
 	OCP_DETECT,
-	OCP_FIXED,
+	OCP_WA_ACTIVE,
 };
 
 #define sec_battery_full_charged_t \
