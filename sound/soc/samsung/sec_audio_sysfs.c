@@ -30,6 +30,7 @@
 
 struct sec_audio_sysfs_data *audio_data;
 
+#ifdef CONFIG_SND_SOC_SAMSUNG_SYSFS_EARJACK
 int audio_register_jack_select_cb(int (*set_jack) (int))
 {
 	if (audio_data->set_jack_state) {
@@ -166,6 +167,7 @@ static struct attribute *sec_audio_jack_attr[] = {
 static struct attribute_group sec_audio_jack_attr_group = {
 	.attrs = sec_audio_jack_attr,
 };
+#endif
 
 int audio_register_codec_id_state_cb(int (*codec_id_state) (void))
 {
@@ -197,7 +199,6 @@ static ssize_t audio_check_codec_id_show(struct device *dev,
 static DEVICE_ATTR(check_codec_id, 0664,
 			audio_check_codec_id_show, NULL);
 
-
 static struct attribute *sec_audio_codec_attr[] = {
 	&dev_attr_check_codec_id.attr,
 	NULL,
@@ -209,7 +210,8 @@ static struct attribute_group sec_audio_codec_attr_group = {
 
 static int __init sec_audio_sysfs_init(void)
 {
-	int ret = 0;
+	dev_t dev_id;
+	int ret;
 
 	audio_data = kzalloc(sizeof(struct sec_audio_sysfs_data), GFP_KERNEL);
 	if (audio_data == NULL)
@@ -217,77 +219,88 @@ static int __init sec_audio_sysfs_init(void)
 
 	audio_data->audio_class = class_create(THIS_MODULE, "audio");
 	if (IS_ERR(audio_data->audio_class)) {
-		pr_err("%s: Failed to create audio class\n", __func__);
 		ret = PTR_ERR(audio_data->audio_class);
-		goto err_alloc;
+		pr_err("%s: Failed to create audio class (%d)\n",
+							__func__, ret);
+		kfree(audio_data);
+		audio_data = NULL;
+		return ret;
 	}
 
-	audio_data->jack_dev =
-			device_create(audio_data->audio_class,
-					NULL, 0, NULL, "earjack");
+	dev_id = 0;
+
+#ifdef CONFIG_SND_SOC_SAMSUNG_SYSFS_EARJACK
+	audio_data->jack_dev = device_create(audio_data->audio_class, NULL,
+						++dev_id, NULL, "earjack");
 	if (IS_ERR(audio_data->jack_dev)) {
-		pr_err("%s: Failed to create earjack device\n", __func__);
 		ret = PTR_ERR(audio_data->jack_dev);
-		goto err_class;
+		pr_err("%s: Failed to create earjack device (%d)\n",
+							__func__, ret);
+		audio_data->jack_dev = NULL;
+		--dev_id;
+	} else {
+		ret = sysfs_create_group(&audio_data->jack_dev->kobj,
+					&sec_audio_jack_attr_group);
+		if (ret) {
+			pr_err("%s: Failed to create earjack sysfs (%d)\n",
+								__func__, ret);
+			device_destroy(audio_data->audio_class,
+					audio_data->jack_dev_id);
+			audio_data->jack_dev = NULL;
+			--dev_id;
+		} else {
+			pr_info("%s: create earjack device id(%lu)\n",
+							__func__, dev_id);
+			audio_data->jack_dev_id = dev_id;
+		}
 	}
+#endif
 
-	ret = sysfs_create_group(&audio_data->jack_dev->kobj,
-				&sec_audio_jack_attr_group);
-	if (ret) {
-		pr_err("%s: Failed to create earjack sysfs\n", __func__);
-		goto err_jack_device;
-	}
-
-	audio_data->codec_dev =
-			device_create(audio_data->audio_class,
-					NULL, 1, NULL, "codec");
+	audio_data->codec_dev = device_create(audio_data->audio_class, NULL,
+						++dev_id, NULL, "codec");
 	if (IS_ERR(audio_data->codec_dev)) {
-		pr_err("%s: Failed to create codec device\n", __func__);
 		ret = PTR_ERR(audio_data->codec_dev);
-		goto err_jack_attr;
-	}
-
-	ret = sysfs_create_group(&audio_data->codec_dev->kobj,
-				&sec_audio_codec_attr_group);
-	if (ret) {
-		pr_err("%s: Failed to create codec sysfs\n", __func__);
-		goto err_codec_device;
+		pr_err("%s: Failed to create codec device (%d)\n",
+							__func__, ret);
+		audio_data->codec_dev = NULL;
+		--dev_id;
+	} else {
+		ret = sysfs_create_group(&audio_data->codec_dev->kobj,
+					&sec_audio_codec_attr_group);
+		if (ret) {
+			pr_err("%s: Failed to create codec sysfs (%d)\n",
+								__func__, ret);
+			device_destroy(audio_data->audio_class,
+					audio_data->codec_dev_id);
+			audio_data->codec_dev = NULL;
+			--dev_id;
+		} else {
+			pr_info("%s: create codec device id(%lu)\n",
+							__func__, dev_id);
+			audio_data->codec_dev_id = dev_id;
+		}
 	}
 
 	return 0;
-
-err_codec_device:
-	device_destroy(audio_data->audio_class, 1);
-	audio_data->codec_dev = NULL;
-err_jack_attr:
-	sysfs_remove_group(&audio_data->jack_dev->kobj,
-				&sec_audio_jack_attr_group);
-err_jack_device:
-	device_destroy(audio_data->audio_class, 0);
-	audio_data->jack_dev = NULL;
-err_class:
-	class_destroy(audio_data->audio_class);
-	audio_data->audio_class = NULL;
-err_alloc:
-	kfree(audio_data);
-	audio_data = NULL;
-
-	return ret;
 }
 subsys_initcall(sec_audio_sysfs_init);
 
 static void __exit sec_audio_sysfs_exit(void)
 {
-	if (audio_data->codec_dev) {
-		sysfs_remove_group(&audio_data->codec_dev->kobj,
-				&sec_audio_codec_attr_group);
-		device_destroy(audio_data->audio_class, 1);
-	}
-
+#ifdef CONFIG_SND_SOC_SAMSUNG_SYSFS_EARJACK
 	if (audio_data->jack_dev) {
 		sysfs_remove_group(&audio_data->jack_dev->kobj,
 				&sec_audio_jack_attr_group);
-		device_destroy(audio_data->audio_class, 0);
+		device_destroy(audio_data->audio_class,
+				audio_data->jack_dev_id);
+	}
+#endif
+
+	if (audio_data->codec_dev) {
+		sysfs_remove_group(&audio_data->codec_dev->kobj,
+				&sec_audio_codec_attr_group);
+		device_destroy(audio_data->audio_class,
+				audio_data->codec_dev_id);
 	}
 
 	if (audio_data->audio_class)

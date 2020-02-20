@@ -304,6 +304,7 @@ cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
 	$(DTC) -O dtb -o $@ -b 0 -a 4\
 		$(addprefix -i,$(dir $<) $(DTC_INCLUDE)) $(DTC_FLAGS) \
 		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
+        $(DTC) -O dts -I dtb -o $@.reverse.dts $@ ; \
        cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
 
 $(obj)/%.dtb: $(src)/%.dts FORCE

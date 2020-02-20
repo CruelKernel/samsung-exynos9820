@@ -1,0 +1,218 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			gpio_keys {
+				status = "okay";
+				compatible = "gpio-keys";
+				pinctrl-names = "default";
+				pinctrl-0 = <&key_wink &key_voldown &key_volup &key_power>;
+				button_wink: button@1 {
+					label = "gpio-keys: KEY_WINK";
+					linux,code = <KEY_WINK>;
+					gpios = <&gpa0 6 GPIO_ACTIVE_LOW>;
+					gpio-key,wakeup = <1>;
+				};
+				button@2 {
+					label = "gpio-keys: KEY_VOLUMEDOWN";
+					linux,code = <KEY_VOLUMEDOWN>;
+					gpios = <&gpa0 4 GPIO_ACTIVE_LOW>;
+				};
+				button@3 {
+					label = "gpio-keys: KEY_VOLUMEUP";
+					linux,code = <KEY_VOLUMEUP>;
+					gpios = <&gpa0 3 GPIO_ACTIVE_LOW>;
+				};
+				button@4 {
+					label = "gpio-keys: KEY_POWER";
+					linux,code = <KEY_POWER>;
+					gpios = <&gpa2 4 GPIO_ACTIVE_LOW>;
+					gpio-key,wakeup = <1>;
+				};
+			};
+		};
+	};
+};
+
+&pinctrl_0 {
+	key_wink: key-wink {
+		samsung,pins = "gpa0-6";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	key_voldown: key-voldown {
+		samsung,pins = "gpa0-4";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	key_volup: key-volup {
+		samsung,pins = "gpa0-3";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	key_power: key-power {
+		samsung,pins = "gpa2-4";
+		samsung,pin-function = <0xf>;
+	};
+
+	attn_irq: attn-irq {
+		samsung,pins = "gpa1-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	attn_input: attn-input {
+		samsung,pins = "gpa1-0";
+		samsung,pin-function = <0>;
+		samsung,pin-pud = <1>;
+	};
+
+	epen_int_active: epen-int-active {
+		samsung,pins = "gpa0-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	epen_pdct_active: epen-pdct-active {
+		samsung,pins = "gpa3-7";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	keyless_int_default: keyless-int-default {
+		samsung,pins = "gpa4-1";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&hsi2c_10 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	samsung,reset-before-trans;
+	samsung,stop-after-trans;	/* LSI IC ONLY */
+	touchscreen@48 {
+		compatible = "sec,sec_ts";
+		reg = <0x48>;
+		pinctrl-names = "on_state", "off_state";
+		pinctrl-0 = <&attn_irq>;
+		pinctrl-1 = <&attn_input>;
+		sec,irq_gpio = <&gpa1 0 0>;
+		sec,irq_type = <8200>;
+		sec,max_coords = <4096 4096>;
+		sec,regulator_dvdd = "tsp_io";
+		sec,regulator_avdd = "tsp_avdd";
+		sec,regulator_boot_on;
+//		sec,firmware_name = "tsp_sec/y771_d.bin"
+		sec,project_name = "DAVINCI", "N970";
+		sec,tclm_level = <1>;
+//		sec,afe_base = <0x0000>;
+		support_dex_mode;
+		enable_settings_aot;
+		sec,area-size = <133 266 341>;
+		support_ear_detect_mode;
+		sync-reportrate-120 = "Y";
+		support_fod;
+		support_open_short_test;
+		support_mis_calibration_test;
+	};
+};
+
+&hsi2c_23 {
+	status = "okay";
+	samsung,reset-before-trans;
+	//samsung,transfer_delay = <50>;
+	wacom@56 {
+		compatible = "wacom,w90xx";
+		reg = <0x56>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&epen_int_active &epen_pdct_active>;
+		interrupts = <0 0 0>;
+		interrupt-parent = <&gpa0>;
+		//vdd-supply = <&wacom_ldo_en>;
+		/* gpios */
+		wacom,irq-gpio = <&gpa0 0 0>;
+		wacom,pdct-gpio = <&gpa3 7 0>;
+		wacom,fwe-gpio = <&gpm22 0 0>;
+		wacom,irq_type = <IRQ_TYPE_LEVEL_LOW>;
+		wacom,pdct_type = <IRQ_TYPE_EDGE_BOTH>;
+		/* features */
+		wacom,boot_addr = <0x09>;
+		wacom,origin = <0 0>; /* x y */
+		//wacom,max_coords = <15504 7344>; /* x y */
+		wacom,max_pressure = <4095>;
+		wacom,max_tilt = <63 63>; /* x y */
+		wacom,max_height = <255>;
+		wacom,invert = <1 0 1>; /* x y switch */
+		wacom,ic_type = <9020>;
+		//wacom,fw_path = "epen/w9020_d.fw";
+		//wacom,fw_fac_path = "epen/w9018_crown_unit.fw";
+		wacom,module_ver = <0x2>; /* this value use to distinguish open/short test (0x1 : only open test, 0x2: open/short test) */
+		wacom,support_aop_mode = "1"; /* S-note want to check to use aop */
+		wacom,use_garage;
+	};
+};
+
+&hsi2c_15 {
+	status = "disabled";
+	fsr@49 {
+		status = "disabled";
+		compatible = "stm,fsr_sidekey";
+		reg = <0x49>;
+		stm,irq_gpio = <&gpa4 1 0>;
+		stm,irq_type = <8200>;
+		stm,rst_gpio = <&gpa2 7 GPIO_ACTIVE_HIGH>;
+		stm,project_name = "DAVINCI", "N970";
+		stm,system_info_addr = <0x0000>;
+	};
+};
+
+&speedy {
+	s2mps19mfd@00 {
+		regulators {
+			ldo19_reg: LDO19M {
+				regulator-name = "tsp_io";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-ramp-delay = <12000>;
+				regulator-initial-mode = <2>;
+			};
+
+			ldo27_reg: LDO27M {
+				regulator-name = "tsp_avdd";
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-boot-on;
+				regulator-ramp-delay = <12000>;
+				regulator-initial-mode = <3>;
+			};
+		};
+	};
+};

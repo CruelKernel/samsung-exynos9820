@@ -1253,24 +1253,24 @@ static void dma_reg_dump_com_debug_regs(int id)
 
 static void dma_reg_dump_debug_regs(int id, unsigned long attr)
 {
-	u32 sel_plane0[10] = {
-		0x0000, 0x0001, 0x0002, 0x0003, 0x0007, 0x0008, 0x0400, 0x0401,
-		0x0402, 0x0403
+	u32 sel_plane0[11] = {
+		0x0000, 0x0001, 0x0002, 0x0003, 0x0007, 0x0008, 0x0100, 0x0101,
+		0x0102, 0x0103, 0x0200
 	};
 
-	u32 sel_plane1[10] = {
-		0x1000, 0x1001, 0x1002, 0x1003, 0x1007, 0x1008, 0x1400, 0x1401,
-		0x1402, 0x1403
+	u32 sel_plane1[11] = {
+		0x1000, 0x1001, 0x1002, 0x1003, 0x1007, 0x1008, 0x1100, 0x1101,
+		0x1102, 0x1103, 0x1200
 	};
 
-	u32 sel_plane2[10] = {
-		0x2000, 0x2001, 0x2002, 0x2003, 0x2007, 0x2008, 0x2400, 0x2401,
-		0x2402, 0x2403
+	u32 sel_plane2[11] = {
+		0x2000, 0x2001, 0x2002, 0x2003, 0x2007, 0x2008, 0x2100, 0x2101,
+		0x2102, 0x2103, 0x2200
 	};
 
-	u32 sel_plane3[10] = {
-		0x3000, 0x3001, 0x3002, 0x3003, 0x3007, 0x3008, 0x3400, 0x3401,
-		0x3402, 0x3403
+	u32 sel_plane3[11] = {
+		0x3000, 0x3001, 0x3002, 0x3003, 0x3007, 0x3008, 0x3100, 0x3101,
+		0x3102, 0x3103, 0x3200
 	};
 
 	u32 sel_yuv[6] = {
@@ -1292,12 +1292,12 @@ static void dma_reg_dump_debug_regs(int id, unsigned long attr)
 	};
 
 	dpp_info("-< DPU_DMA%d DEBUG SFR >-\n", id);
-	dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane0, 10);
+	dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane0, 11);
 
 	if (test_bit(DPP_ATTR_CSC, &attr)) {
-		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane1, 10);
-		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane2, 10);
-		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane3, 10);
+		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane1, 11);
+		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane2, 11);
+		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_plane3, 11);
 		dpp_reg_dump_ch_data(id, REG_AREA_DMA, sel_yuv, 6);
 	}
 

@@ -93,8 +93,9 @@ void dbg_snapshot_hook_hardlockup_entry(void *v_regs)
 
 		/* Then, we expect bug() function works well */
 		pr_emerg("\n--------------------------------------------------------------------------\n"
-			"      Debugging Information for Hardlockup core - CPU(%d), Mask:(0x%lx)"
+			"%s - Debugging Information for Hardlockup core - CPU(%d), Mask:(0x%lx)"
 			"\n--------------------------------------------------------------------------\n\n",
+			(dss_desc.allcorelockup_detected) ? "All Core" : "Core",
 			cpu, dss_desc.hardlockup_core_mask);
 
 #if defined(CONFIG_HARDLOCKUP_DETECTOR_OTHER_CPU)			\
@@ -286,9 +287,7 @@ static void dbg_snapshot_dump_one_task_info(struct task_struct *tsk, bool is_mai
 			task_cpu(tsk), wchan, pc, (unsigned long)tsk,
 			is_main ? '*' : ' ', tsk->comm, symname);
 
-	if (tsk->state == TASK_RUNNING
-			|| tsk->state == TASK_UNINTERRUPTIBLE
-			|| tsk->mm == NULL) {
+	if (tsk->state == TASK_RUNNING || tsk->state == TASK_UNINTERRUPTIBLE) {
 		show_stack(tsk, NULL);
 		pr_info("\n");
 	}

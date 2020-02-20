@@ -1071,7 +1071,7 @@ static void check_hardlockup_type(unsigned int cpu)
 			hl_to_name[hl_info->hl_type], hl_info->delay_time,  hl_info->smc_info.cmd);
 	} else if (hl_info->hl_type == HL_IRQ_STORM) {
 		pr_auto(ASL9, "Hardlockup state: %s, Latency: %lluns, IRQ : %d, Func: %pf, Avg period: %lluns\n",
-			hl_info->hl_type, hl_info->delay_time, hl_info->irq_info.irq, hl_info->irq_info.fn, hl_info->irq_info.avg_period);
+			hl_to_name[hl_info->hl_type], hl_info->delay_time, hl_info->irq_info.irq, hl_info->irq_info.fn, hl_info->irq_info.avg_period);
 	} else if (hl_info->hl_type == HL_UNKNOWN_STUCK) {
 		pr_auto(ASL9, "Hardlockup state: %s, Latency: %lluns, TASK: %s\n",
 			hl_to_name[hl_info->hl_type], hl_info->delay_time, hl_info->task_info.task_comm);

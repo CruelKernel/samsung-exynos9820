@@ -18,7 +18,8 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
+#include <linux/gpio.h>
 
 #include "secgpio_dvs.h"
 
@@ -158,36 +159,41 @@ static ssize_t secgpio_read_request_gpio(
         struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int val = -1;
-        struct gpio_dvs_t *gdvs = dev_get_drvdata(dev);
+	struct gpio_dvs_t *gdvs = dev_get_drvdata(dev);
 
-	if(gdvs->gpio_num >= 0 && gdvs->gpio_num < gdvs->count)
-		val = gdvs->read_gpio(gdvs->gpio_num);
+	if (gpio_request(gdvs->gpio_num, NULL)) {
+		pr_info("[secgpio_dvs] %s: fail to request gpio %d\n", __func__, gdvs->gpio_num);
+		goto err_gpio_request;
+	}
+
+	val = gpio_get_value(gdvs->gpio_num);
+	gpio_free(gdvs->gpio_num);
         
-        return snprintf(buf, PAGE_SIZE, "GPIO[%d] : [%x]", gdvs->gpio_num, val);
+err_gpio_request:
+	return snprintf(buf, PAGE_SIZE, "GPIO[%d] : [%x]", gdvs->gpio_num, val);
 }
 
 static ssize_t secgpio_write_request_gpio(
         struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-        int ret;
-        struct gpio_dvs_t *gdvs = dev_get_drvdata(dev);
+	int ret;
+	struct gpio_dvs_t *gdvs = dev_get_drvdata(dev);
 
 	ret = sscanf(buf, "%d", &gdvs->gpio_num);
 
-	if(ret <= 0){
+	if (ret <= 0) {
 		pr_info("[secgpio_dvs] %s: fail to read input value\n", __func__);
-                return size;
+		return size;
 	}
 
-	if(gdvs->gpio_num < 0 || gdvs->gpio_num >= gdvs->count){
+	if (!gpio_is_valid(gdvs->gpio_num)) {
 		pr_info("[secgpio_dvs] %s: invalid gpio range\n", __func__);
-                return size;
+		return size;
 	}
 
-	pr_info("[secgpio_dvs] %s: requested_gpio: [%d]\n", __func__, gdvs->gpio_num);
+	pr_info("[secgpio_dvs] %s: write requested_gpio: [%d]\n", __func__, gdvs->gpio_num);
 	return size;
 }
-
 
 void gpio_dvs_check_initgpio(void)
 {

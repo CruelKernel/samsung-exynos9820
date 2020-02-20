@@ -250,46 +250,42 @@ static ssize_t get_ncp_hdr_size(const struct npu_nw *nw)
 	return ncp_header->hdr_size;
 }
 
-int npu_interface_probe(struct device *dev, void *regs,	u32 irq2, u32 irq3)
+int npu_interface_probe(struct device *dev, void *regs)
 {
 	int ret = 0;
 
 	BUG_ON(!dev);
-	BUG_ON(!irq2);
-	BUG_ON(!irq3);
 
 	interface.sfr = (volatile struct mailbox_sfr *)regs;
-	ret = devm_request_irq(dev, irq2, mailbox_isr2, 0, "exynos-npu", NULL);
-	if (ret) {
-		probe_err("fail(%d) in devm_request_irq(2)\n", ret);
-		goto err_exit;
-	}
-	ret = devm_request_irq(dev, irq3, mailbox_isr3, 0, "exynos-npu", NULL);
-	if (ret) {
-		probe_err("fail(%d) in devm_request_irq(3)\n", ret);
-		goto err_probe_irq2;
-	}
 	mutex_init(&interface.lock);
 	wq = alloc_workqueue("my work", WQ_FREEZABLE|WQ_HIGHPRI, 1);
 	INIT_WORK(&work_report, __rprt_manager);
 	probe_info("complete in %s\n", __func__);
-	return ret;
-err_probe_irq2:
-	devm_free_irq(dev, irq2, NULL);
-err_exit:
-	interface.sfr = NULL;
 	return ret;
 }
 int npu_interface_open(struct npu_system *system)
 {
 	int ret = 0;
 	struct npu_device *device;
+	struct device *dev = &system->pdev->dev;
 
 	BUG_ON(!system);
 	device = container_of(system, struct npu_device, system);
 	interface.addr = (void *)((system->tcu_sram.vaddr) + NPU_MAILBOX_BASE);
 	interface.mbox_hdr = system->mbox_hdr;
-	wq = alloc_workqueue("rprt_manager", __WQ_LEGACY | __WQ_ORDERED, 0);
+
+	ret = devm_request_irq(dev, system->irq0, mailbox_isr2, 0, "exynos-npu", NULL);
+	if (ret) {
+		probe_err("fail(%d) in devm_request_irq(2)\n", ret);
+		goto err_exit;
+	}
+	ret = devm_request_irq(dev, system->irq1, mailbox_isr3, 0, "exynos-npu", NULL);
+	if (ret) {
+		probe_err("fail(%d) in devm_request_irq(3)\n", ret);
+		goto err_probe_irq2;
+	}
+
+	wq = create_singlethread_workqueue("rprt_manager");
 	if (!wq) {
 		npu_err("err in alloc_worqueue.\n");
 		goto err_exit;
@@ -301,8 +297,11 @@ int npu_interface_open(struct npu_system *system)
 	}
 
 	return ret;
+
 err_workqueue:
 	destroy_workqueue(wq);
+err_probe_irq2:
+	devm_free_irq(dev, system->irq0, NULL);
 err_exit:
 	interface.addr = NULL;
 	interface.mbox_hdr = NULL;
@@ -310,9 +309,13 @@ err_exit:
 	npu_err("EMERGENCY_RECOVERY is triggered.\n");
 	return ret;
 }
-int npu_interface_close(void)
+int npu_interface_close(struct npu_system *system)
 {
 	int wptr, rptr;
+	struct device *dev = &system->pdev->dev;
+
+	devm_free_irq(dev, system->irq0, NULL);
+	devm_free_irq(dev, system->irq1, NULL);
 
 	queue_work(wq, &work_report);
 	if ((wq) && (interface.mbox_hdr)) {
@@ -326,6 +329,7 @@ int npu_interface_close(void)
 		destroy_workqueue(wq);
 		wq = NULL;
 	}
+
 	interface.addr = NULL;
 	interface.mbox_hdr = NULL;
 	return 0;

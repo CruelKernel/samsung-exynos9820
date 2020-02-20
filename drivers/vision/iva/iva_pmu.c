@@ -250,6 +250,14 @@ void iva_pmu_show_status(struct iva_dev_data *iva)
 	}
 }
 
+void iva_pmu_show_qactive_status(struct iva_dev_data *iva)
+{
+	struct device	*dev = iva->dev;
+	void		*pmu_base = iva->pmu_va;
+
+	IVA_PMU_PRINT(dev, pmu_base, IVA_PMU_CTRL_ADDR, "PMU_CTRL");
+	IVA_PMU_PRINT(dev, pmu_base, IVA_PMU_STATUS_ADDR, "PMU_STATUS");
+}
 
 int iva_pmu_init(struct iva_dev_data *iva, bool en_hwa)
 {
@@ -268,6 +276,7 @@ int iva_pmu_init(struct iva_dev_data *iva, bool en_hwa)
 void iva_pmu_deinit(struct iva_dev_data *iva)
 {
 	iva_pmu_ctrl(iva, pmu_ctrl_qactive, false);
+	iva_pmu_show_qactive_status(iva);
 	iva_pmu_reset_all(iva);
 	iva_pmu_disable_all_clks(iva);
 }

@@ -66,6 +66,10 @@ struct fault_info {
 
 static const struct fault_info fault_info[];
 
+#ifdef CONFIG_SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+unsigned long long incorrect_addr = 0;
+#endif
+
 static inline const struct fault_info *esr_to_fault_info(unsigned int esr)
 {
 	return fault_info + (esr & 63);
@@ -690,10 +694,14 @@ static int do_sea(unsigned long addr, unsigned int esr, struct pt_regs *regs)
 	const struct fault_info *inf;
 	int ret = 0;
 
+#ifdef CONFIG_SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+	incorrect_addr = (unsigned long long)addr;
+#endif
+
 	inf = esr_to_fault_info(esr);
+
 	pr_auto(ASL1, "%s (0x%08x) at 0x%016lx[0x%09lx]\n",
 		      inf->name, esr, addr, show_virt_to_phys(addr));
-
 	/*
 	 * Synchronous aborts may interrupt code which had interrupts masked.
 	 * Before calling out into the wider kernel tell the interested

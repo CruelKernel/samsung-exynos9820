@@ -200,12 +200,20 @@ static bool dsim_fifo_empty_needed(struct dsim_device *dsim, unsigned int data_i
 	return false;
 }
 
-int dsim_write_data(struct dsim_device *dsim, u32 id, unsigned long d0, u32 d1, bool must_wait)
+/*  wakeup : true  : wakeup from hibernation..
+wakeup : false : return fail when dsim is inactive (hibernation) */
+
+int dsim_write_data(struct dsim_device *dsim, u32 id, unsigned long d0, u32 d1, bool must_wait, bool wakeup)
 {
+	bool flag_wakeup;
 	int ret = 0;
 	struct decon_device *decon = get_decon_drvdata(0);
 
-	decon_hiber_block_exit(decon);
+	flag_wakeup = wakeup;
+
+	if (flag_wakeup)
+		decon_hiber_block_exit(decon);
+
 	mutex_lock(&dsim->cmd_lock);
 	if (!IS_DSIM_ON_STATE(dsim)) {
 		dsim_err("%s dsim%d not ready (%s)\n",
@@ -270,7 +278,9 @@ int dsim_write_data(struct dsim_device *dsim, u32 id, unsigned long d0, u32 d1, 
 
 err_exit:
 	mutex_unlock(&dsim->cmd_lock);
-	decon_hiber_unblock(decon);
+
+	if (flag_wakeup)
+		decon_hiber_unblock(decon);
 
 	return ret;
 }
@@ -298,10 +308,10 @@ int dsim_read_data(struct dsim_device *dsim, u32 id, u32 addr, u32 cnt, u8 *buf)
 
 	/* Set the maximum packet size returned */
 	dsim_write_data(dsim,
-		MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE, cnt, 0, false);
+		MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE, cnt, 0, false, true);
 
 	/* Read request */
-	dsim_write_data(dsim, id, addr, 0, true);
+	dsim_write_data(dsim, id, addr, 0, true, true);
 	if (!wait_for_completion_timeout(&dsim->rd_comp, MIPI_RD_TIMEOUT)) {
 		dsim_err("MIPI DSIM read Timeout!\n");
 		decon_hiber_unblock(decon);
@@ -309,6 +319,12 @@ int dsim_read_data(struct dsim_device *dsim, u32 id, u32 addr, u32 cnt, u8 *buf)
 	}
 
 	mutex_lock(&dsim->cmd_lock);
+	if (IS_DSIM_OFF_STATE(dsim)) {
+		dsim_err("%s dsim%d is off (%s)\n",
+				__func__, dsim->id, dsim_state_names[dsim->state]);
+		goto exit;
+	}
+
 	DPU_EVENT_LOG_CMD(&dsim->sd, id, (char)addr);
 
 	do {
@@ -809,6 +825,11 @@ static int _dsim_enable(struct dsim_device *dsim, enum dsim_state state)
 #endif
 	panel_ctrl = (state == DSIM_STATE_ON || state == DSIM_STATE_DOZE) ? true : false;
 	ret = dsim_reg_init(dsim->id, &dsim->lcd_info, &dsim->clks, panel_ctrl);
+
+#ifdef CONFIG_DYNAMIC_FREQ
+	call_panel_ops(dsim, set_df_default, dsim);
+#endif
+
 	dsim_reg_start(dsim->id);
 
 	dsim->state = state;
@@ -1060,6 +1081,10 @@ static int dsim_exit_ulps(struct dsim_device *dsim)
 	dsim_update_adaptive_freq(dsim, false);
 #endif
 	dsim_reg_init(dsim->id, &dsim->lcd_info, &dsim->clks, false);
+
+#ifdef CONFIG_DYNAMIC_FREQ
+	call_panel_ops(dsim, set_df_default, dsim);
+#endif
 	ret = dsim_reg_exit_ulps_and_start(dsim->id, dsim->lcd_info.ddi_type,
 			dsim->data_lane);
 	if (ret < 0)
@@ -1084,6 +1109,50 @@ static int dsim_s_stream(struct v4l2_subdev *sd, int enable)
 	else
 		return dsim_disable(dsim);
 }
+
+
+#ifdef CONFIG_DYNAMIC_FREQ
+
+
+static int dsim_set_pre_freq_hop(struct dsim_device *dsim, struct df_param *param)
+{
+	int ret = 0;
+	
+#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
+	return ret;
+#endif
+
+	if (param->context)
+		dsim_dbg("[DYN_FREQ]:INFO:%s:p,m,k:%d,%d,%d\n", 
+			__func__, param->pms.p, param->pms.m, param->pms.k);
+
+	dsim_reg_set_dphy_freq_hopping(dsim->id,
+		param->pms.p, param->pms.m, param->pms.k, 1);
+
+	//memcpy(status->c_lp_ref, status->r_lp_ref, sizeof(unsigned int) * mres_cnt);
+
+	return ret;
+}
+
+
+static int dsim_set_post_freq_hop(struct dsim_device *dsim, struct df_param *param)
+{
+	int ret = 0;
+
+#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
+	return ret;
+#endif
+
+	if (param->context)
+		dsim_dbg("[DYN_FREQ]:INFO:%s:p,m,k:%d,%d,%d\n", 
+			__func__, param->pms.p, param->pms.m, param->pms.k);
+
+	dsim_reg_set_dphy_freq_hopping(dsim->id,
+		param->pms.p, param->pms.m, param->pms.k, 0);
+
+	return ret;
+}
+#endif
 
 static int dsim_set_freq_hop(struct dsim_device *dsim, struct decon_freq_hop *freq)
 {
@@ -1414,6 +1483,16 @@ static long dsim_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		ret = dsim_set_freq_hop(dsim, (struct decon_freq_hop *)arg);
 		break;
 
+#ifdef CONFIG_DYNAMIC_FREQ
+	case DSIM_IOC_SET_PRE_FREQ_HOP:
+		ret = dsim_set_pre_freq_hop(dsim, (struct df_param *) arg);
+		break;
+	
+	case DSIM_IOC_SET_POST_FREQ_HOP:
+		ret = dsim_set_post_freq_hop(dsim, (struct df_param *)arg);
+		break;
+#endif
+
 #if defined(CONFIG_EXYNOS_COMMON_PANEL)
 	case DSIM_IOC_NOTIFY:
 		call_panel_ops(dsim, notify, dsim, arg);
@@ -1476,10 +1555,10 @@ static int dsim_cmd_sysfs_write(struct dsim_device *dsim, bool on)
 
 	if (on)
 		ret = dsim_write_data(dsim, MIPI_DSI_DCS_SHORT_WRITE,
-			MIPI_DCS_SET_DISPLAY_ON, 0, false);
+			MIPI_DCS_SET_DISPLAY_ON, 0, false, true);
 	else
 		ret = dsim_write_data(dsim, MIPI_DSI_DCS_SHORT_WRITE,
-			MIPI_DCS_SET_DISPLAY_OFF, 0, false);
+			MIPI_DCS_SET_DISPLAY_OFF, 0, false, true);
 	if (ret < 0)
 		dsim_err("Failed to write test data!\n");
 	else
@@ -2178,6 +2257,12 @@ void parse_lcd_info(struct device_node *node, struct decon_lcd *lcd_info)
 	for(k = 0; k < lcd_info->color_mode_cnt; k++)
 		dsim_info("color mode[%d] : %d\n", k, lcd_info->color_mode[k]);
 
+#if defined(CONFIG_EXYNOS_DSIM_DITHER)
+	dsim_info("DSIM MIPI SSCG Enabled\n");
+#else
+	dsim_info("DSIM MIPI SSCG Disabled\n");
+#endif
+
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 	parse_adaptive_freq(node, lcd_info);
 #endif
@@ -2430,6 +2515,9 @@ static int dsim_probe(struct platform_device *pdev)
 	dsim_reg_set_bist(dsim->id, true);
 #endif
 
+#ifdef CONFIG_DYNAMIC_FREQ
+	call_panel_ops(dsim, update_lcd_info, dsim);
+#endif
 	/* for debug */
 	/* dsim_dump(dsim); */
 

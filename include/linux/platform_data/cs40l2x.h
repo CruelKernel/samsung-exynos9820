@@ -16,6 +16,8 @@ struct cs40l2x_platform_data {
 	unsigned int boost_ind;
 	unsigned int boost_cap;
 	unsigned int boost_ipk;
+	unsigned int boost_ctl;
+	unsigned int boost_ovp;
 	bool refclk_gpio2;
 	unsigned int f0_default;
 	unsigned int f0_min;
@@ -23,11 +25,39 @@ struct cs40l2x_platform_data {
 	unsigned int redc_default;
 	unsigned int redc_min;
 	unsigned int redc_max;
+	unsigned int q_default;
+	unsigned int q_min;
+	unsigned int q_max;
+	bool redc_comp_disable;
+	bool comp_disable;
 	unsigned int gpio1_rise_index;
 	unsigned int gpio1_fall_index;
 	unsigned int gpio1_fall_timeout;
 	unsigned int gpio1_mode;
+	unsigned int gpio2_rise_index;
+	unsigned int gpio2_fall_index;
+	unsigned int gpio3_rise_index;
+	unsigned int gpio3_fall_index;
+	unsigned int gpio4_rise_index;
+	unsigned int gpio4_fall_index;
+	unsigned int gpio_indv_enable;
+	unsigned int gpio_indv_pol;
 	bool hiber_enable;
+	unsigned int asp_bclk_freq;
+	bool asp_bclk_inv;
+	bool asp_fsync_inv;
+	unsigned int asp_fmt;
+	unsigned int asp_slot_num;
+	unsigned int asp_slot_width;
+	unsigned int asp_samp_width;
+	unsigned int asp_timeout;
+	bool vpbr_enable;
+	bool vbbr_enable;
+	unsigned int vpbr_thld1;
+	unsigned int vbbr_thld1;
+	unsigned int fw_id_remap;
+	bool amp_gnd_stby;
+	bool auto_recovery;
 };
 
 #endif /* __CS40L2X_H */

@@ -350,6 +350,18 @@ static inline void setup_sdfat_xattr_handler(struct super_block *sb) {};
 #endif
 
 /* sdfat/misc.c */
+#ifdef CONFIG_SDFAT_UEVENT
+extern int sdfat_uevent_init(struct kset *sdfat_kset);
+extern void sdfat_uevent_uninit(void);
+extern void sdfat_uevent_ro_remount(struct super_block *sb);
+#else
+static inline int sdfat_uevent_init(struct kset *sdfat_kset)
+{
+	return 0;
+}
+static inline void sdfat_uevent_uninit(void) {};
+static inline void sdfat_uevent_ro_remount(struct super_block *sb) {};
+#endif
 extern void
 __sdfat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 	__printf(3, 4) __cold;

@@ -304,20 +304,20 @@ static int send_cmd_with_retry(unsigned int cmd,
 		need_retry = (rc == TEEC_ERROR_COMMUNICATION ||
 						rc == TEEC_ERROR_TARGET_DEAD);
 		if (need_retry && retry_num) {
-			if (rc == TEEC_ERROR_ACCESS_DENIED) {
-				five_audit_tee_msg("send_cmd_with_retry",
-				"TA got TEEC_ERROR_ACCESS_DENIED", rc, 0);
-			} else {
-				pr_err("FIVE: TA got the fatal error rc=%d. Try again\n",
-									rc);
-				mutex_lock(&itee_driver_lock);
-				unload_trusted_app();
-				mutex_unlock(&itee_driver_lock);
-			}
+			pr_err("FIVE: TA got the fatal error rc=%d. Try again\n",
+								rc);
+			mutex_lock(&itee_driver_lock);
+			unload_trusted_app();
+			mutex_unlock(&itee_driver_lock);
 		} else {
 			break;
 		}
 	} while (retry_num--);
+
+	if (rc == TEEC_ERROR_ACCESS_DENIED) {
+		five_audit_tee_msg("send_cmd_with_retry",
+		"TA got TEEC_ERROR_ACCESS_DENIED", rc, 0);
+	}
 
 	return rc;
 }

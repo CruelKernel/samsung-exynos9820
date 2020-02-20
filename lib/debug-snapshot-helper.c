@@ -108,16 +108,9 @@ static void dbg_snapshot_report_reason(unsigned int val)
 		__raw_writel(val, dbg_snapshot_get_base_vaddr() + DSS_OFFSET_EMERGENCY_REASON);
 }
 
-void dbg_snapshot_set_debug_level_reg(void)
-{
-	if (dbg_snapshot_get_enable("header"))
-		__raw_writel(dss_desc.debug_level | DSS_DEBUG_LEVEL_PREFIX,
-			dbg_snapshot_get_base_vaddr() + DSS_OFFSET_DEBUG_LEVEL);
-}
-
 int dbg_snapshot_get_debug_level_reg(void)
 {
-	int ret = DSS_DEBUG_LEVEL_NONE;
+	int ret = DSS_DEBUG_LEVEL_MID;
 
 	if (dbg_snapshot_get_enable("header")) {
 		int val = __raw_readl(dbg_snapshot_get_base_vaddr() + DSS_OFFSET_DEBUG_LEVEL);
@@ -127,6 +120,27 @@ int dbg_snapshot_get_debug_level_reg(void)
 	}
 
 	return ret;
+}
+
+void dbg_snapshot_set_sjtag_status(void)
+{
+	int ret;
+
+	ret = dss_soc_ops->soc_smc_call(SMC_CMD_GET_SJTAG_STATUS, 0x3, 0, 0);
+
+	if (ret == true || ret == false) {
+		dss_desc.sjtag_status = ret;
+		pr_info("debug-snapshot: SJTAG is %sabled\n",
+				ret == true ? "en" : "dis");
+		return;
+	}
+
+	dss_desc.sjtag_status = -1;
+}
+
+int dbg_snapshot_get_sjtag_status(void)
+{
+	return dss_desc.sjtag_status;
 }
 
 void dbg_snapshot_scratch_reg(unsigned int val)
@@ -532,15 +546,17 @@ int dbg_snapshot_post_reboot(char *cmd)
 	dbg_snapshot_report_reason(DSS_SIGN_NORMAL_REBOOT);
 
 	if (!cmd)
-		dbg_snapshot_scratch_reg(DSS_SIGN_RESET);
+		dbg_snapshot_scratch_reg(DSS_SIGN_RESERVED);
 	else if (strcmp((char *)cmd, "bootloader") && strcmp((char *)cmd, "ramdump"))
-		dbg_snapshot_scratch_reg(DSS_SIGN_RESET);
+		dbg_snapshot_scratch_reg(DSS_SIGN_RESERVED);
 
 	pr_emerg("debug-snapshot: normal reboot done\n");
 
+	dbg_snapshot_save_context(NULL);
+
 	/* clear DSS_SIGN_PANIC when normal reboot */
 	for_each_possible_cpu(cpu) {
-		dbg_snapshot_set_core_panic_stat(DSS_SIGN_RESET, cpu);
+		dbg_snapshot_set_core_panic_stat(DSS_SIGN_RESERVED, cpu);
 	}
 
 	dss_soc_ops->soc_post_reboot_exit(NULL);
@@ -610,7 +626,11 @@ void dbg_snapshot_panic_handler_safe(void)
 
 	dbg_snapshot_report_reason(DSS_SIGN_SAFE_FAULT);
 	dbg_snapshot_dump_panic(text, len);
+#ifdef CONFIG_SEC_DEBUG
+	dss_soc_ops->soc_expire_watchdog((void *)_RET_IP_);
+#else
 	dss_soc_ops->soc_expire_watchdog((void *)NULL);
+#endif
 }
 
 void dbg_snapshot_register_soc_ops(struct dbg_snapshot_helper_ops *ops)

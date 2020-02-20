@@ -694,10 +694,6 @@ static void xhci_stop(struct usb_hcd *hcd)
 	pr_info("%s %d xhci->main_hcd = %pS\n", __func__, __LINE__, xhci->main_hcd);
 	/* Only halt host and free memory after both hcds are removed */
 	if (!usb_hcd_is_primary_hcd(hcd)) {
-<<<<<<< HEAD
-		/* usb core will free this hcd shortly, unset pointer */
-=======
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		mutex_unlock(&xhci->mutex);
 		return;
 	}
@@ -3778,8 +3774,6 @@ int xhci_set_deq(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx,
 	int i;
 	int last_ep_ctx = 31;
 
-	pr_info(">>>>>>> xhci_set_deq %d %x\n");
-
 	if (last_ep < 31)
 		last_ep_ctx = last_ep + 1;
 	for (i = 0; i < last_ep_ctx; ++i) {
@@ -3787,29 +3781,29 @@ int xhci_set_deq(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx,
 		struct xhci_ep_ctx *ep_ctx = xhci_get_ep_ctx(xhci, ctx, i);
 
 		if (epaddr == udev->hwinfo.in_ep ) {
-			pr_info("[%s] set in deq : %#08llx \n",
-					__func__, ep_ctx->deq);
+			pr_info("[%s] set in eq addr: 0x%x \n",
+					__func__, epaddr);
 			if (udev->hwinfo.in_deq)
 				udev->hwinfo.old_in_deq =
 						udev->hwinfo.in_deq;
 			udev->hwinfo.in_deq = ep_ctx->deq;
 		} else if (epaddr == udev->hwinfo.out_ep) {
-			pr_info("[%s] set out deq : %#08llx \n",
-					__func__, ep_ctx->deq);
+			pr_info("[%s] set out deq addr: 0x%x \n",
+					__func__, epaddr);
 			if (udev->hwinfo.out_deq)
 				udev->hwinfo.old_out_deq =
 						udev->hwinfo.out_deq;
 			udev->hwinfo.out_deq = ep_ctx->deq;
 		} else if (epaddr == udev->hwinfo.fb_out_ep) {
-			pr_info("[%s] set fb out deq : %#08llx \n",
-					__func__, ep_ctx->deq);
+			pr_info("[%s] set fb out deq addr : 0x%x \n",
+					__func__, epaddr);
 			if (udev->hwinfo.fb_out_deq)
 				udev->hwinfo.fb_old_out_deq =
 						udev->hwinfo.fb_out_deq;
 			udev->hwinfo.fb_out_deq = ep_ctx->deq;
 		} else if (epaddr == udev->hwinfo.fb_in_ep) {
-			pr_info("[%s] set fb in deq : %#08llx \n",
-					__func__, ep_ctx->deq);
+			pr_info("[%s] set fb in deq addr: 0x%x \n",
+					__func__, epaddr);
 			if (udev->hwinfo.fb_in_deq)
 				udev->hwinfo.fb_old_in_deq =
 						udev->hwinfo.fb_in_deq;

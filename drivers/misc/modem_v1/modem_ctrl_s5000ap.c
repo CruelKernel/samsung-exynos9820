@@ -31,6 +31,11 @@
 
 #define MIF_INIT_TIMEOUT	(15 * HZ)
 
+#ifdef CONFIG_EXYNOS_DECON_LCD
+#define DEFAULT_DSP_TYPE	0x01	// disconnected + C type
+extern int get_lcd_info(char *arg);
+#endif
+
 /*
  * CP_WDT interrupt handler
  */
@@ -89,7 +94,7 @@ static void cp_active_handler(void *arg)
 		mif_info("new_state = %s\n", cp_state_str(new_state));
 
 		if (old_state == STATE_ONLINE)
-			modem_notify_event(MODEM_EVENT_EXIT);
+			modem_notify_event(MODEM_EVENT_RESET);
 
 		list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
 			if (iod && atomic_read(&iod->opened) > 0)
@@ -250,6 +255,47 @@ static int init_mailbox_regs(struct modem_ctl *mc)
 				sbi_sys_rev_mask, sbi_sys_rev_pos);
 	mif_info("hw_rev:%d\n", hw_rev);
 
+#ifdef CONFIG_EXYNOS_DECON_LCD
+	{//////* Detect and deliver device type to CP */
+	unsigned int sbi_device_type_mask, sbi_device_type_pos;
+	unsigned int value = 0;
+	int dsp_connected = 0;
+	int dsp_type = 0;
+
+	mif_dt_read_u32(np, "sbi_device_type_mask", sbi_device_type_mask);
+	mif_dt_read_u32(np, "sbi_device_type_pos", sbi_device_type_pos);
+
+	dsp_connected = get_lcd_info("connected");
+	if (dsp_connected < 0) {
+		mif_err("Failed to get dsp_info(%d)\n", dsp_connected);
+		value = DEFAULT_DSP_TYPE;
+	} else {
+		/* 1: dsp_connect, 0: dsp_disconnect */
+		if (dsp_connected) {
+			dsp_type = get_lcd_info("id");
+			if (dsp_type < 0) {
+				mif_err("Failed to get dsp_type(%d)\n", dsp_type);
+				value = DEFAULT_DSP_TYPE;
+			} else {
+				/* [3:0] display type, [4] connected or not */
+				value |= ((dsp_connected & 0x1) << 4);
+				/* DSP ID1 value is located in [19:16] */
+				value |= ((dsp_type >> 16) & 0xf);
+			}
+		} else {
+			mif_err("display disconnected, set default value\n");
+			value = DEFAULT_DSP_TYPE;
+		}
+	}
+
+	mbox_update_value(MCU_CP, mbx_ap_status, value,
+		sbi_device_type_mask, sbi_device_type_pos);
+
+	mif_info("dsp_type:0x%x, conn:0x%x, get_val: 0x%x\n",
+		dsp_type, dsp_connected,
+		mbox_get_value(MCU_CP, mbx_ap_status));
+	}/* Detect and deliver device type to CP *//////
+#endif
 	return 0;
 }
 

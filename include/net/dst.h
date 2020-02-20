@@ -456,6 +456,9 @@ static inline void dst_set_expires(struct dst_entry *dst, int timeout)
 /* Output packet to network from transport.  */
 static inline int dst_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 {
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	skb->dropmask = PACKET_OUT;
+#endif
 	return skb_dst(skb)->output(net, sk, skb);
 }
 
@@ -490,14 +493,6 @@ static inline struct dst_entry *xfrm_lookup(struct net *net,
 	return dst_orig;
 }
 
-static inline struct dst_entry *
-xfrm_lookup_with_ifid(struct net *net, struct dst_entry *dst_orig,
-		      const struct flowi *fl, const struct sock *sk,
-		      int flags, u32 if_id)
-{
-	return dst_orig;
-}
-
 static inline struct dst_entry *xfrm_lookup_route(struct net *net,
 						  struct dst_entry *dst_orig,
 						  const struct flowi *fl,
@@ -516,12 +511,6 @@ static inline struct xfrm_state *dst_xfrm(const struct dst_entry *dst)
 struct dst_entry *xfrm_lookup(struct net *net, struct dst_entry *dst_orig,
 			      const struct flowi *fl, const struct sock *sk,
 			      int flags);
-
-struct dst_entry *xfrm_lookup_with_ifid(struct net *net,
-					struct dst_entry *dst_orig,
-					const struct flowi *fl,
-					const struct sock *sk, int flags,
-					u32 if_id);
 
 struct dst_entry *xfrm_lookup_route(struct net *net, struct dst_entry *dst_orig,
 				    const struct flowi *fl, const struct sock *sk,

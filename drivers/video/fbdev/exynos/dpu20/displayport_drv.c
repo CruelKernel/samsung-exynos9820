@@ -50,9 +50,7 @@
 #include "decon.h"
 #include "secdp_aux_control.h"
 
-#ifdef FEATURE_DP_UNDERRUN_TEST
 #include <dt-bindings/clock/exynos9820.h>
-#endif
 
 #define PIXELCLK_2160P30HZ 297000000 /* UHD 30hz */
 #define PIXELCLK_1080P60HZ 148500000 /* FHD 60Hz */
@@ -63,9 +61,14 @@ static int reduced_resolution;
 struct displayport_debug_param g_displayport_debug_param;
 
 extern enum hdcp22_auth_def hdcp22_auth_state;
+enum dp_state dp_hdcp_state;
 
 struct displayport_device *displayport_drvdata;
 EXPORT_SYMBOL(displayport_drvdata);
+
+extern u32 *phy_tune_param_table[];
+extern u32 (*phy_tune_parameters)[4][5];
+extern const int phy_tune_num;
 
 static int displayport_runtime_suspend(struct device *dev);
 static int displayport_runtime_resume(struct device *dev);
@@ -80,12 +83,23 @@ static void displayport_dump_registers(struct displayport_device *displayport)
 			displayport->res.link_regs, 0xC0, false);
 }
 
-struct switch_dev switch_secdp_msg;
+#ifdef CONFIG_SWITCH
+static struct switch_dev switch_secdp_hpd = {
+	.name = "secdp",
+};
+static struct switch_dev switch_secdp_msg = {
+	.name = "secdp_msg",
+};
+#endif
 static void displayport_set_switch_poor_connect(void)
 {
+#ifdef CONFIG_SWITCH
 	displayport_err("set poor connect switch event\n");
 	switch_set_state(&switch_secdp_msg, 1);
 	switch_set_state(&switch_secdp_msg, 0);
+#else
+	displayport_err("poor connect switch event disabled\n");
+#endif
 }
 
 static int displayport_remove(struct platform_device *pdev)
@@ -93,7 +107,11 @@ static int displayport_remove(struct platform_device *pdev)
 	struct displayport_device *displayport = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
+
+#ifdef CONFIG_SWITCH
 	switch_dev_unregister(&switch_secdp_msg);
+	switch_dev_unregister(&switch_secdp_hpd);
+#endif
 #if defined(CONFIG_EXTCON)
 	devm_extcon_dev_unregister(displayport->dev, displayport->extcon_displayport);
 	//devm_extcon_dev_unregister(displayport->dev, displayport->audio_switch);
@@ -900,6 +918,9 @@ static void displayport_set_switch_state(struct displayport_device *displayport,
 #else
 	displayport_info("Not compiled EXTCON driver\n");
 #endif
+#ifdef CONFIG_SWITCH
+	switch_set_state(&switch_secdp_hpd, state);
+#endif
 }
 
 void displayport_hpd_changed(int state)
@@ -925,6 +946,7 @@ void displayport_hpd_changed(int state)
 		displayport->bpc = BPC_8;	/*default setting*/
 		displayport->dyn_range = VESA_RANGE;
 		displayport->hpd_state = HPD_PLUG;
+		dp_hdcp_state = DP_CONNECT;
 		displayport->auto_test_mode = 0;
 		displayport->best_video = EDID_DEFAULT_TIMINGS_IDX;
 		/* PHY power on */
@@ -1525,6 +1547,7 @@ static irqreturn_t displayport_irq_handler(int irq, void *dev_data)
 	struct decon_device *decon = get_decon_drvdata(2);
 	int active;
 	u32 irq_status_reg;
+	static int underflow_occured = 0;
 
 	spin_lock(&displayport->slock);
 
@@ -1575,23 +1598,30 @@ static irqreturn_t displayport_irq_handler(int irq, void *dev_data)
 
 	if (irq_status_reg & MAPI_FIFO_UNDER_FLOW) {
 		displayport_info("VIDEO FIFO_UNDER_FLOW detect\n");
-#ifdef FEATURE_DP_UNDERRUN_TEST
 		if (displayport->ccic_hpd) {
 			dp_logger_set_max_count(100);
+			underflow_occured = 1;
+			decon_systrace(decon, 'C', "displayport_underflow", 1);
 			displayport_info("decon2 total_bw(%d -> %d), mif(%lu), int(%lu), disp(%lu)\n",
 					decon->bts.prev_total_bw, decon->bts.total_bw,
 					cal_dfs_get_rate(ACPM_DVFS_MIF),
 					cal_dfs_get_rate(ACPM_DVFS_INT),
 					cal_dfs_get_rate(ACPM_DVFS_DISP));
+#ifdef FEATURE_DP_UNDERRUN_TEST
 			dpu_bts_log_enable(0);
 			dpu_bts_print_log();
 			dpu_bts_log_enable(1);
-		}
 #endif
+		}
 	}
 
 	if (irq_status_reg & VSYNC_DET) {
 		/* VSYNC interrupt, accept it */
+		if (underflow_occured) {
+			underflow_occured = 0;
+			displayport_dbg("VSYNC detected after FIFO_UNDER_FLOW\n");
+			decon_systrace(decon, 'C', "displayport_underflow", 0);
+		}
 		decon->frame_cnt++;
 		wake_up_interruptible_all(&decon->wait_vstatus);
 
@@ -1933,8 +1963,12 @@ static void displayport_hdcp22_run(struct work_struct *work)
 {
 #if defined(CONFIG_EXYNOS_HDCP2)
 	struct displayport_device *displayport = get_displayport_drvdata();
-	u32 ret;
+	int ret;
 	u8 val[2] = {0, };
+
+	if (displayport->hdcp_ver != HDCP_VERSION_2_2 ||
+			!displayport->hpd_current_state)
+		return;
 
 	mutex_lock(&displayport->hdcp2_lock);
 	if (displayport_get_hpd_state() == 0) {
@@ -1942,6 +1976,7 @@ static void displayport_hdcp22_run(struct work_struct *work)
 		goto exit_hdcp;
 	}
 
+	dp_hdcp_state = DP_HDCP_READY;
 	ret = displayport_hdcp22_authenticate();
 	if (ret) {
 		displayport_err("hdcp22 auth fail %d\n", ret);
@@ -1950,6 +1985,7 @@ static void displayport_hdcp22_run(struct work_struct *work)
 #endif
 		goto exit_hdcp;
 	}
+	displayport_info("hdcp22 auth success\n");
 
 	if (displayport_get_hpd_state() == 0) {
 		displayport_info("stop hdcp2 : HPD is low\n");
@@ -2459,6 +2495,20 @@ static int displayport_parse_dt(struct displayport_device *displayport, struct d
 	if (!gpio_is_valid(displayport->gpio_usb_dir))
 		displayport_err("failed to get gpio dp_usb_con_sel\n");
 
+	if (of_property_read_u32(dev->of_node, "dp,phy_tuning", &displayport->phy_tune_set)) { 
+		phy_tune_parameters = (u32 (*)[4][5])phy_tune_param_table[0];
+		displayport_info("use default phy parameters\n");
+		 
+	} else {
+		if (displayport->phy_tune_set >= 0 && displayport->phy_tune_set < phy_tune_num) { 
+			phy_tune_parameters = (u32 (*)[4][5])phy_tune_param_table[displayport->phy_tune_set];
+			displayport_info("overwrite phy parameters(%d)\n", displayport->phy_tune_set);
+		} else {
+			phy_tune_parameters = (u32 (*)[4][5])phy_tune_param_table[0];
+			displayport_err("phy tuning table is not valid\n");
+		}
+	}
+
 	displayport_info("%s done\n", __func__);
 
 	return 0;
@@ -2522,33 +2572,26 @@ static int displayport_init_resources(struct displayport_device *displayport, st
 }
 
 #if defined(CONFIG_USB_TYPEC_MANAGER_NOTIFIER)
-#if !defined(CONFIG_COMBO_REDRIVER_PTN36502)
 static int displayport_aux_onoff(struct displayport_device *displayport, int
 		onoff)
 {
 	int rc = 0;
 
 	displayport_info("aux vdd onoff = %d\n", onoff);
-
-	if (onoff == 1)
-		gpio_direction_output(displayport->gpio_sw_oe, 0);
-	else
-		gpio_direction_output(displayport->gpio_sw_oe, 1);
-
+	if (gpio_is_valid(displayport->gpio_sw_oe)) {
+		if (onoff == 1)
+			gpio_direction_output(displayport->gpio_sw_oe, 0);
+		else
+			gpio_direction_output(displayport->gpio_sw_oe, 1);
+	} else {
+		displayport_info("aux switch is not available\n");
+		rc = -1;
+	}
 	return rc;
 }
-#endif
+
 static void displayport_aux_sel(struct displayport_device *displayport)
 {
-#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
-	if (gpio_is_valid(displayport->gpio_usb_dir)) {
-		displayport->dp_sw_sel = !gpio_get_value(displayport->gpio_usb_dir);
-		displayport_info("Get direction from ccic %d\n", displayport->dp_sw_sel);
-#ifdef CONFIG_SEC_DISPLAYPORT_BIGDATA
-		secdp_bigdata_save_item(BD_ORIENTATION,	displayport->dp_sw_sel ? "CC2" : "CC1");
-#endif
-	}
-#else
 	if (gpio_is_valid(displayport->gpio_usb_dir) &&
 			gpio_is_valid(displayport->gpio_sw_sel)) {
 		displayport->dp_sw_sel = !gpio_get_value(displayport->gpio_usb_dir);
@@ -2558,14 +2601,13 @@ static void displayport_aux_sel(struct displayport_device *displayport)
 		secdp_bigdata_save_item(BD_ORIENTATION,	displayport->dp_sw_sel ? "CC2" : "CC1");
 #endif
 	} else if (gpio_is_valid(displayport->gpio_usb_dir)) {
-		/* for old H/W - AUX switch is controlled by CCIC */
+		/* redriver support case */
 		displayport->dp_sw_sel = !gpio_get_value(displayport->gpio_usb_dir);
 		displayport_info("Get Direction From CCIC %d\n", !displayport->dp_sw_sel);
 #ifdef CONFIG_SEC_DISPLAYPORT_BIGDATA
 		secdp_bigdata_save_item(BD_ORIENTATION,	displayport->dp_sw_sel ? "CC2" : "CC1");
 #endif
 	}
-#endif
 }
 
 static void displayport_check_adapter_type(struct displayport_device *displayport)
@@ -2616,15 +2658,16 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_UNKNOWN;
 			displayport->ccic_link_conf = false;
 			displayport->ccic_hpd = false;
+			dp_hdcp_state = DP_DISCONNECT; 
 			displayport->dex_state = DEX_OFF;
 			displayport->dex_ver[0] = 0;
 			displayport->dex_ver[1] = 0;
 			displayport_hpd_changed(0);
 #if defined(CONFIG_COMBO_REDRIVER_PTN36502)
 			ptn36502_config(SAFE_STATE, 0);
-#else
-			displayport_aux_onoff(displayport, 0);
 #endif
+			displayport_aux_onoff(displayport, 0);
+
 #ifdef CONFIG_SEC_DISPLAYPORT_BIGDATA
 			secdp_bigdata_disconnection();
 #endif
@@ -2642,11 +2685,8 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 			secdp_bigdata_save_item(BD_ADT_VID, displayport->ven_id);
 			secdp_bigdata_save_item(BD_ADT_PID, displayport->prod_id);
 #endif
-#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
-			ptn36502_config(DP4_LANE_MODE, DR_DFP);
-#else
 			displayport_aux_onoff(displayport, 1);
-#endif
+
 			displayport->bist_used = 0;
 			break;
 		default:
@@ -2664,29 +2704,28 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 #endif
 		switch (usb_typec_info.sub1) {
 		case CCIC_NOTIFY_DP_PIN_UNKNOWN:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_UNKNOWN;
-			break;
 		case CCIC_NOTIFY_DP_PIN_A:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_A;
+		case CCIC_NOTIFY_DP_PIN_C:
+		case CCIC_NOTIFY_DP_PIN_E:
+			displayport->ccic_notify_dp_conf = usb_typec_info.sub1;
+#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
+			ptn36502_config(DP4_LANE_MODE, DR_DFP);
+#endif
 			break;
 		case CCIC_NOTIFY_DP_PIN_B:
 			displayport->dp_sw_sel = !displayport->dp_sw_sel;
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_B;
-			break;
-		case CCIC_NOTIFY_DP_PIN_C:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_C;
-			break;
 		case CCIC_NOTIFY_DP_PIN_D:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_D;
-			break;
-		case CCIC_NOTIFY_DP_PIN_E:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_E;
-			break;
 		case CCIC_NOTIFY_DP_PIN_F:
-			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_F;
+			displayport->ccic_notify_dp_conf = usb_typec_info.sub1;
+#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
+			ptn36502_config(DP2_LANE_USB3_MODE, DR_DFP);
+#endif
 			break;
 		default:
 			displayport->ccic_notify_dp_conf = CCIC_NOTIFY_DP_PIN_UNKNOWN;
+#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
+			ptn36502_config(DP4_LANE_MODE, DR_DFP);
+#endif
 			break;
 		}
 
@@ -2706,6 +2745,7 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 		case CCIC_NOTIFY_LOW:
 			displayport->ccic_hpd = false;
 			displayport->dex_state = DEX_OFF;
+			dp_hdcp_state = DP_DISCONNECT; 
 			displayport_hpd_changed(0);
 			break;
 		case CCIC_NOTIFY_HIGH:
@@ -3010,7 +3050,6 @@ static ssize_t bist_store(struct class *dev,
 static CLASS_ATTR_RW(bist);
 #endif
 
-extern u32 phy_tune_parameters[4][4][4];
 static ssize_t phy_tune_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
@@ -3020,10 +3059,10 @@ static ssize_t phy_tune_show(struct class *class,
 	int *phy_tune_param = (int *)phy_tune_parameters;
 	int size = 0;
 
-	for (i = 0; i < 64; i++) {
-		if (i % 16 == 0)
+	for (i = 0; i < 80; i++) {
+		if (i % 20 == 0)
 			*tmp++ = '\n';
-		if (i % 4 == 0)
+		if (i % 5 == 0)
 			*tmp++ = '/';
 
 		size = snprintf(tmp, 8, "%5x,", *phy_tune_param);
@@ -3038,20 +3077,20 @@ static ssize_t phy_tune_store(struct class *dev,
 			struct class_attribute *attr,
 			const char *buf, size_t size)
 {
-	int val[20] = {0,};
+	int val[24] = {0,};
 	int ind = 0;
 	int i = 0;
 	int *phy_tune_param;
 
-	get_options(buf, 18, val);
-	if (val[0] != 17 || val[1] > 3 || val[1] < 0) {
+	get_options(buf, 22, val);
+	if (val[0] != 21 || val[1] > 3 || val[1] < 0) {
 		displayport_info("phy tune: invalid input %d %d\n", val[0], val[1]);
 		return size;
 	}
 
 	ind = val[1];
 	phy_tune_param = (int *)phy_tune_parameters[ind];
-	for (i = 2; i < 18; i++)
+	for (i = 2; i < 22; i++)
 		*phy_tune_param++ = val[i];
 
 	return size;
@@ -3309,8 +3348,6 @@ static ssize_t dp_drm_store(struct class *dev, struct class_attribute *attr, con
 	displayport->drm_start_state = val[1];
 
 	displayport_err("drm %s!!\n", displayport->drm_start_state ? "start" :"end");
-	queue_delayed_work(displayport->hdcp2_wq,
-			&displayport->hdcp22_work, msecs_to_jiffies(0));
 
 	return size;
 }
@@ -3337,15 +3374,15 @@ static ssize_t dp_test_show(struct class *class,
 	size += snprintf(buf + size, PAGE_SIZE - size, "8: audio bist mode(on,ch,bit,fs)\n");
 	size += snprintf(buf + size, PAGE_SIZE - size, "9: HDR support(0:off 1:on 2:dummy)\n");
 
-#if defined(CONFIG_COMBO_REDRIVER_PTN36502)
-	size += snprintf(buf + size, PAGE_SIZE - size, "\n# gpio direction %d\n",
+	if (gpio_is_valid(displayport->gpio_sw_oe) && gpio_is_valid(displayport->gpio_sw_oe))
+		size += snprintf(buf + size, PAGE_SIZE - size, "\n# gpio oe %d, sel %d, direction %d\n",
+				gpio_get_value(displayport->gpio_sw_oe),
+				gpio_get_value(displayport->gpio_sw_sel),
+				gpio_get_value(displayport->gpio_usb_dir));
+	else
+		size += snprintf(buf + size, PAGE_SIZE - size, "\n# gpio direction %d\n",
 			gpio_get_value(displayport->gpio_usb_dir));
-#else
-	size += snprintf(buf + size, PAGE_SIZE - size, "\n# gpio oe %d, sel %d, direction %d\n",
-			gpio_get_value(displayport->gpio_sw_oe),
-			gpio_get_value(displayport->gpio_sw_sel),
-			gpio_get_value(displayport->gpio_usb_dir));
-#endif
+
 	return size;
 }
 static ssize_t dp_test_store(struct class *dev,
@@ -3669,9 +3706,7 @@ static CLASS_ATTR_RO(monitor_info);
 static ssize_t dp_sbu_sw_sel_store(struct class *dev,
 		struct class_attribute *attr, const char *buf, size_t size)
 {
-#if !defined(CONFIG_COMBO_REDRIVER_PTN36502)
 	struct displayport_device *displayport = get_displayport_drvdata();
-#endif
 	int val[10] = {0,};
 	int aux_sw_sel, aux_sw_oe;
 
@@ -3690,11 +3725,10 @@ static ssize_t dp_sbu_sw_sel_store(struct class *dev,
 			ptn36502_config(AUX_THRU_MODE, 0);
 		if (aux_sw_oe)
 			ptn36502_config(SAFE_STATE, 0);
-#else
+#endif
 		if (gpio_is_valid(displayport->gpio_sw_sel))
 			gpio_direction_output(displayport->gpio_sw_sel, aux_sw_sel);
 		displayport_aux_onoff(displayport, !aux_sw_oe);
-#endif
 	} else
 		displayport_err("invalid aux switch parameter\n");
 
@@ -3756,6 +3790,7 @@ static int displayport_probe(struct platform_device *pdev)
 	mutex_init(&displayport->aux_lock);
 	mutex_init(&displayport->training_lock);
 	mutex_init(&displayport->hdcp2_lock);
+	spin_lock_init(&displayport->spinlock_sfr);
 	init_waitqueue_head(&displayport->dp_wait);
 	init_waitqueue_head(&displayport->audio_wait);
 
@@ -3828,10 +3863,16 @@ static int displayport_probe(struct platform_device *pdev)
 #else
 	displayport_info("Not compiled EXTCON driver\n");
 #endif
-	switch_secdp_msg.name = "secdp_msg";
+
+#ifdef CONFIG_SWITCH
 	ret = switch_dev_register(&switch_secdp_msg);
 	if (ret)
 		displayport_err("Failed to register dp msg switch\n");
+
+	ret = switch_dev_register(&switch_secdp_hpd);
+	if (ret)
+		displayport_err("Failed to register dp hpd switch\n");
+#endif
 
 	displayport->hpd_state = HPD_UNPLUG;
 
@@ -3861,72 +3902,73 @@ static int displayport_probe(struct platform_device *pdev)
 		dev_err(displayport->dev, "failed to init wakeup device\n");
 		return -EINVAL;
 	}
-
-	dp_class = class_create(THIS_MODULE, "dp_sec");
-	if (IS_ERR(dp_class))
-		displayport_err("failed to creat dp_class\n");
-	else {
+	if (!displayport->dp_not_support) {
+		dp_class = class_create(THIS_MODULE, "dp_sec");
+		if (IS_ERR(dp_class))
+			displayport_err("failed to creat dp_class\n");
+		else {
 #ifdef DISPLAYPORT_TEST
-		ret = class_create_file(dp_class, &class_attr_link);
-		if (ret)
-			displayport_err("failed to create attr_link\n");
-		ret = class_create_file(dp_class, &class_attr_bpc);
-		if (ret)
-			displayport_err("failed to create attr_bpc\n");
-		ret = class_create_file(dp_class, &class_attr_range);
-		if (ret)
-			displayport_err("failed to create attr_range\n");
-		ret = class_create_file(dp_class, &class_attr_edid);
-		if (ret)
-			displayport_err("failed to create attr_edid\n");
-		ret = class_create_file(dp_class, &class_attr_bist);
-		if (ret)
-			displayport_err("failed to create attr_bist\n");
+			ret = class_create_file(dp_class, &class_attr_link);
+			if (ret)
+				displayport_err("failed to create attr_link\n");
+			ret = class_create_file(dp_class, &class_attr_bpc);
+			if (ret)
+				displayport_err("failed to create attr_bpc\n");
+			ret = class_create_file(dp_class, &class_attr_range);
+			if (ret)
+				displayport_err("failed to create attr_range\n");
+			ret = class_create_file(dp_class, &class_attr_edid);
+			if (ret)
+				displayport_err("failed to create attr_edid\n");
+			ret = class_create_file(dp_class, &class_attr_bist);
+			if (ret)
+				displayport_err("failed to create attr_bist\n");
 #endif
-		ret = class_create_file(dp_class, &class_attr_unit_test);
-		if (ret)
-			displayport_err("failed to create attr_unit_test\n");
+			ret = class_create_file(dp_class, &class_attr_unit_test);
+			if (ret)
+				displayport_err("failed to create attr_unit_test\n");
 #if defined(CONFIG_EXYNOS_HDCP2)
-		ret = class_create_file(dp_class, &class_attr_dp_drm);
-		if (ret)
-			displayport_err("failed to create attr_dp_drm\n");
+			ret = class_create_file(dp_class, &class_attr_dp_drm);
+			if (ret)
+				displayport_err("failed to create attr_dp_drm\n");
 #endif
-		ret = class_create_file(dp_class, &class_attr_phy_tune);
-		if (ret)
-			displayport_err("failed to create attr_phy_tune\n");
-		ret = class_create_file(dp_class, &class_attr_audio_test);
-		if (ret)
-			displayport_err("failed to create attr_audio_test\n");
-		ret = class_create_file(dp_class, &class_attr_edid_test);
-		if (ret)
-			displayport_err("failed to create attr_edid_test\n");
-		ret = class_create_file(dp_class, &class_attr_dp_test);
-		if (ret)
-			displayport_err("failed to create attr_dp_test\n");
-		ret = class_create_file(dp_class, &class_attr_forced_resolution);
-		if (ret)
-			displayport_err("failed to create attr_dp_forced_resolution\n");
-		ret = class_create_file(dp_class, &class_attr_reduced_resolution);
-		if (ret)
-			displayport_err("failed to create attr_dp_reduced_resolution\n");
-		ret = class_create_file(dp_class, &class_attr_dex);
-		if (ret)
-			displayport_err("failed to create attr_dp_dex\n");
-		ret = class_create_file(dp_class, &class_attr_dex_ver);
-		if (ret)
-			displayport_err("failed to create attr_dp_dex_ver\n");
-		ret = class_create_file(dp_class, &class_attr_monitor_info);
-		if (ret)
-			displayport_err("failed to create attr_dp_monitor_info\n");
-		ret = class_create_file(dp_class, &class_attr_dp_sbu_sw_sel);
-		if (ret)
-			displayport_err("failed to create class_attr_dp_sbu_sw_sel\n");
-		ret = class_create_file(dp_class, &class_attr_log_level);
-		if (ret)
-			displayport_err("failed to create class_attr_log_level\n");
+			ret = class_create_file(dp_class, &class_attr_phy_tune);
+			if (ret)
+				displayport_err("failed to create attr_phy_tune\n");
+			ret = class_create_file(dp_class, &class_attr_audio_test);
+			if (ret)
+				displayport_err("failed to create attr_audio_test\n");
+			ret = class_create_file(dp_class, &class_attr_edid_test);
+			if (ret)
+				displayport_err("failed to create attr_edid_test\n");
+			ret = class_create_file(dp_class, &class_attr_dp_test);
+			if (ret)
+				displayport_err("failed to create attr_dp_test\n");
+			ret = class_create_file(dp_class, &class_attr_forced_resolution);
+			if (ret)
+				displayport_err("failed to create attr_dp_forced_resolution\n");
+			ret = class_create_file(dp_class, &class_attr_reduced_resolution);
+			if (ret)
+				displayport_err("failed to create attr_dp_reduced_resolution\n");
+			ret = class_create_file(dp_class, &class_attr_dex);
+			if (ret)
+				displayport_err("failed to create attr_dp_dex\n");
+			ret = class_create_file(dp_class, &class_attr_dex_ver);
+			if (ret)
+				displayport_err("failed to create attr_dp_dex_ver\n");
+			ret = class_create_file(dp_class, &class_attr_monitor_info);
+			if (ret)
+				displayport_err("failed to create attr_dp_monitor_info\n");
+			ret = class_create_file(dp_class, &class_attr_dp_sbu_sw_sel);
+			if (ret)
+				displayport_err("failed to create class_attr_dp_sbu_sw_sel\n");
+			ret = class_create_file(dp_class, &class_attr_log_level);
+			if (ret)
+				displayport_err("failed to create class_attr_log_level\n");
 #ifdef CONFIG_SEC_DISPLAYPORT_BIGDATA
-		secdp_bigdata_init(dp_class);
+			secdp_bigdata_init(dp_class);
 #endif
+		}
 	}
 	g_displayport_debug_param.param_used = 0;
 	g_displayport_debug_param.link_rate = LINK_RATE_2_7Gbps;

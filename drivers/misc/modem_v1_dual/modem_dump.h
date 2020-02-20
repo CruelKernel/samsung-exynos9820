@@ -27,6 +27,8 @@ int save_cplog_dump(struct link_device *mld, struct io_device *iod,
 		unsigned long arg);
 int save_shmem_dump(struct link_device *mld, struct io_device *iod,
 		unsigned long arg);
+int save_databuf_dump(struct link_device *mld, struct io_device *iod,
+		unsigned long arg);
 
 void save_mem_dump(struct mem_link_device *mld);
 

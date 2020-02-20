@@ -64,7 +64,7 @@ struct file_verification_result {
 	struct file *file;
 	struct integrity_iint_cache *iint;
 	enum five_hooks fn;
-	int check;
+	int five_result;
 	void *xattr;
 	size_t xattr_len;
 };

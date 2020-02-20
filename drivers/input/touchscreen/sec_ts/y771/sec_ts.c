@@ -2834,6 +2834,8 @@ static int sec_ts_input_open(struct input_dev *dev)
 	if (ts->fix_active_mode)
 		sec_ts_fix_tmode(ts, TOUCH_SYSTEM_MODE_TOUCH, TOUCH_MODE_STATE_TOUCH);
 
+	sec_ts_set_temp(ts);
+
 	mutex_unlock(&ts->modechange);
 
 	cancel_delayed_work(&ts->work_print_info);

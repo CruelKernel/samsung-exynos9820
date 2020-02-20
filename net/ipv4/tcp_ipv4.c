@@ -519,13 +519,6 @@ void tcp_v4_err(struct sk_buff *icmp_skb, u32 info)
 					       TCP_TIMEOUT_INIT;
 		icsk->icsk_rto = inet_csk_rto_backoff(icsk, TCP_RTO_MAX);
 
-<<<<<<< HEAD
-		skb = tcp_write_queue_head(sk);
-		if (WARN_ON_ONCE(!skb))
-			break;
-
-=======
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		tcp_mstamp_refresh(tp);
 		delta_us = (u32)(tp->tcp_mstamp - skb->skb_mstamp);
 		remaining = icsk->icsk_rto -
@@ -673,6 +666,8 @@ void tcp_v4_send_reset(const struct sock *sk, struct sk_buff *skb)
 	struct sock *sk1 = NULL;
 #endif
 	struct net *net;
+
+	DROPDUMP_CLEAR_SKB(skb);
 
 	/* Never send a reset in response to a reset. */
 	if (th->rst)
@@ -1646,9 +1641,8 @@ discard:
 
 csum_err:
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_CSUMERRORS);
-	TCP_DUMP_STATS(skb, TCP_MIB_CSUMERRORS);
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_INERRS);
-	TCP_DUMP_STATS(skb, TCP_MIB_INERRS);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS3);
 	goto discard;
 }
 EXPORT_SYMBOL(tcp_v4_do_rcv);
@@ -1712,6 +1706,7 @@ bool tcp_add_backlog(struct sock *sk, struct sk_buff *skb)
 	if (unlikely(sk_add_backlog(sk, skb, limit))) {
 		bh_unlock_sock(sk);
 		__NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPBACKLOGDROP);
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_TCP_BACKLOGDROP1);
 		return true;
 	}
 	return false;
@@ -1857,6 +1852,7 @@ process:
 
 					bh_unlock_sock(sk);
 					__NET_INC_STATS(net, LINUX_MIB_TCPBACKLOGDROP);
+					DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_TCP_BACKLOGDROP);
 					goto discard_and_relse;
 				}
 
@@ -1900,6 +1896,7 @@ process:
 	}
 	if (unlikely(iph->ttl < inet_sk(sk)->min_ttl)) {
 		__NET_INC_STATS(net, LINUX_MIB_TCPMINTTLDROP);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_MINTTLDROP);
 		goto discard_and_relse;
 	}
 
@@ -1986,16 +1983,17 @@ no_tcp_socket:
 	if (tcp_checksum_complete(skb)) {
 csum_error:
 		__TCP_INC_STATS(net, TCP_MIB_CSUMERRORS);
-		TCP_DUMP_STATS(skb, TCP_MIB_CSUMERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_CSUMERRORS);
 bad_packet:
 		__TCP_INC_STATS(net, TCP_MIB_INERRS);
-		TCP_DUMP_STATS(skb, TCP_MIB_INERRS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS4);
 	} else {
 		tcp_v4_send_reset(NULL, skb);
 	}
 
 discard_it:
 	/* Discard frame. */
+	DROPDUMP_CHECK_SKB(skb);
 	kfree_skb(skb);
 	return 0;
 

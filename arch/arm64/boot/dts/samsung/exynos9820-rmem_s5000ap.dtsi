@@ -1,0 +1,30 @@
+/*
+ * SAMSUNG EXYNOS device tree source for reserved-memory
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+&reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <1>;
+
+	modem_if {
+		compatible = "exynos,modem_if";
+		reg = <0x0 0xF0000000 0xB900000>;
+	};
+
+	cp_ram_logging {
+		compatible = "exynos,cp_ram_logging";
+		reg = <0x0 0xFB900000 0x2000000>;
+	};
+
+	modem_spare {
+		compatible = "exynos,modem_spare";
+		reg = <0x0 0xD0000000 0x1600000>;
+	};
+};

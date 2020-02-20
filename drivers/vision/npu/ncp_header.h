@@ -11,7 +11,7 @@
 #define NCP_MAGIC1		0x0C0FFEE0
 #define NCP_MAGIC2		0xC0DEC0DE
 
-#define NCP_VERSION		8
+#define NCP_VERSION		9
 
 /**
  * @brief an element of address vector table
@@ -328,13 +328,6 @@ struct blob_vector {
 	 */
 	u16	mark;
 	/**
-	 * @brief memory vector index for source
-	 * @details producer : compiler
-	 * @n consumer : firmware
-	 * @n description :
-	 */
-	u32	src_vector;
-	/**
 	 * @brief offset for source
 	 * @details producer : compiler
 	 * @n consumer : firmware
@@ -343,26 +336,33 @@ struct blob_vector {
 	 */
 	u32	src_offset;
 	/**
+	 * @brief memory vector index for source
+	 * @details producer : compiler
+	 * @n consumer : firmware
+	 * @n description :
+	 */
+	u16	src_vector;
+	/**
+	 * @brief source wdith stride
+	 * @details producer : compiler
+	 * @n consumer : firmware
+	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
+	 */
+	u16	src_w_stride;
+	/**
 	 * @brief source channel stride
 	 * @details producer : compiler
 	 * @n consumer : firmware
 	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
 	 */
-	u16	src_c_stride;
+	u32	src_c_stride;
 	/**
 	 * @brief source n stride
 	 * @details producer : compiler
 	 * @n consumer : firmware
 	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
 	 */
-	u16	src_n_stride;
-	/**
-	 * @brief memory vector index for destination
-	 * @details producer : compiler
-	 * @n consumer : firmware
-	 * @n description :
-	 */
-	u32	dst_vector;
+	u32	src_n_stride;
 	/**
 	 * @brief offset for destination
 	 * @details producer : compiler
@@ -372,19 +372,33 @@ struct blob_vector {
 	 */
 	u32	dst_offset;
 	/**
+	 * @brief memory vector index for destination
+	 * @details producer : compiler
+	 * @n consumer : firmware
+	 * @n description :
+	 */
+	u16	dst_vector;
+	/**
+	 * @brief destination width stride
+	 * @details producer : compiler
+	 * @n consumer : firmware
+	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
+	 */
+	u16	dst_w_stride;
+	/**
 	 * @brief destination channel stride
 	 * @details producer : compiler
 	 * @n consumer : firmware
 	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
 	 */
-	u16	dst_c_stride;
+	u32	dst_c_stride;
 	/**
 	 * @brief destination n stride
 	 * @details producer : compiler
 	 * @n consumer : firmware
 	 * @n description : 16 bytes alignment, this value should be shifted right as 4 bits
 	 */
-	u16	dst_n_stride;
+	u32	dst_n_stride;
 	/**
 	 * @brief n
 	 * @details producer : compiler

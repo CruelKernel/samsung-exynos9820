@@ -159,7 +159,9 @@ struct request {
 	unsigned int __data_len;	/* total data len */
 	int tag;
 	sector_t __sector;		/* sector cursor */
-
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	u64 __dun;                      /* dun for UFS */
+#endif
 	struct bio *bio;
 	struct bio *biotail;
 
@@ -406,6 +408,76 @@ static inline int blkdev_reset_zones_ioctl(struct block_device *bdev,
 
 #endif /* CONFIG_BLK_DEV_ZONED */
 
+#ifdef CONFIG_BLK_IO_VOLUME
+struct block_io_volume {
+	int			queuing_rqs;
+	long long		queuing_bytes;
+
+	unsigned int		peak_rqs;
+	unsigned int		peak_rqs_cnt[4];
+	unsigned int		peak_mb;
+	unsigned int		peak_mb_cnt[4];
+};
+
+// WRITE : 1, READ : 0
+#define BLK_MAX_IO_VOLS	2
+#define blk_io_vol_rqs(q, op)		((q)->blk_io_vol[(op)&1].queuing_rqs)
+#define blk_io_vol_bytes(q, op)		((q)->blk_io_vol[(op)&1].queuing_bytes)
+#else
+#define blk_io_vol_rqs(q, op)		do {} while (0)
+#define blk_io_vol_bytes(q, op)		do {} while (0)
+#endif
+
+#ifdef CONFIG_BLK_TURBO_WRITE
+typedef void (blk_tw_try_on_fn) (struct request_queue *q);
+typedef void (blk_tw_try_off_fn) (struct request_queue *q);
+
+enum blk_tw_state{
+	TW_OFF = 0,
+	TW_OFF_READY,
+	TW_ON,
+
+	NR_TW_STATE
+};
+
+struct blk_turbo_write {
+	refcount_t		refs;
+	spinlock_t		lock;
+
+	enum blk_tw_state	state;
+	unsigned long		state_ts;
+
+	long long		up_threshold_bytes;
+	long long		down_threshold_bytes;
+	int			off_delay_ms;		/* turbo write delayed off */
+
+	blk_tw_try_on_fn	*try_on;
+	blk_tw_try_off_fn	*try_off;
+
+	struct delayed_work	release;
+
+	unsigned int		curr_issued_kb;		/* current issued turbo write size */
+	unsigned int		total_issued_mb;	/* total issued turbo write size */
+	unsigned int		issued_size_cnt[4];	/* count issued turbo write size per one tw ON */
+};
+
+int blk_alloc_turbo_write(struct request_queue *q);
+void blk_free_turbo_write(struct request_queue *q);
+int blk_register_tw_try_on_fn(struct request_queue *q, blk_tw_try_on_fn *fn);
+int blk_register_tw_try_off_fn(struct request_queue *q, blk_tw_try_off_fn *fn);
+int blk_reset_tw_state(struct request_queue *q);
+void blk_update_tw_state(struct request_queue *q, long long write_bytes);
+void blk_account_tw_io(struct request_queue *q, int opf, int bytes);
+#else
+#define blk_alloc_turbo_write(q)		do {} while (0)
+#define blk_free_turbo_write(q)			do {} while (0)
+#define blk_register_tw_enable_fn(q,fn)		do {} while (0)
+#define blk_register_tw_disable_fn(q,fn)	do {} while (0)
+#define blk_reset_tw_state(q)			do {} while (0)
+#define blk_update_tw_state(q,write_bytes)	do {} while (0)
+#define blk_account_tw_io(q,opf,bytes)		do {} while (0)
+#endif
+
 struct request_queue {
 	/*
 	 * Together with queue_head for cacheline sharing
@@ -625,6 +697,14 @@ struct request_queue {
 
 #define BLK_MAX_WRITE_HINTS	5
 	u64			write_hints[BLK_MAX_WRITE_HINTS];
+
+#ifdef CONFIG_BLK_IO_VOLUME
+	struct block_io_volume	blk_io_vol[BLK_MAX_IO_VOLS];
+#endif
+
+#ifdef CONFIG_BLK_TURBO_WRITE
+	struct blk_turbo_write	*tw;
+#endif
 };
 
 #define QUEUE_FLAG_QUEUED	0	/* uses generic tag queueing */
@@ -1037,6 +1117,13 @@ static inline sector_t blk_rq_pos(const struct request *rq)
 {
 	return rq->__sector;
 }
+
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+static inline sector_t blk_rq_dun(const struct request *rq)
+{
+	return rq->__dun;
+}
+#endif
 
 static inline unsigned int blk_rq_bytes(const struct request *rq)
 {

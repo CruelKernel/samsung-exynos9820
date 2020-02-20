@@ -3753,9 +3753,6 @@ void tcp_done(struct sock *sk)
 	if (sk->sk_state == TCP_SYN_SENT || sk->sk_state == TCP_SYN_RECV)
 		TCP_INC_STATS(sock_net(sk), TCP_MIB_ATTEMPTFAILS);
 
-#ifdef CONFIG_MPTCP
-	WARN_ON(sk->sk_state == TCP_CLOSE);
-#endif
 	tcp_set_state(sk, TCP_CLOSE);
 	tcp_clear_xmit_timers(sk);
 	if (req)

@@ -42,7 +42,6 @@ static DEFINE_HASHTABLE(package_to_appid, 8);
 static DEFINE_HASHTABLE(package_to_userid, 8);
 static DEFINE_HASHTABLE(ext_to_groupid, 8);
 
-
 static struct kmem_cache *hashtable_entry_cachep;
 
 static unsigned int full_name_case_hash(const void *salt, const unsigned char *name, unsigned int len)
@@ -94,6 +93,7 @@ appid_t get_appid(const char *key)
 	qstr_init(&q, key);
 	return __get_appid(&q);
 }
+EXPORT_SYMBOL(get_appid);
 
 static appid_t __get_ext_gid(const struct qstr *key)
 {
@@ -778,6 +778,30 @@ static ssize_t packages_list_show(struct config_item *item, char *page)
 
 	return count;
 }
+
+void uid_to_packagename(u32 uid, char* output, int buf_size)
+{
+	struct hashtable_entry *hash_cur_app;
+	int i;
+	int offs;
+
+	rcu_read_lock();
+	hash_for_each_rcu(package_to_appid, i, hash_cur_app, hlist) {
+		if (uid == atomic_read(&hash_cur_app->value)) {
+			offs = strlen(hash_cur_app->key.name) - (buf_size-1);
+			if (unlikely(offs < 0)) offs = 0;
+			strcpy(output, hash_cur_app->key.name + offs);
+			goto out;
+		}
+	}
+	
+	snprintf(output, buf_size, "<noname - %u>", uid);
+out:
+	rcu_read_unlock();
+
+	return;
+}
+EXPORT_SYMBOL(uid_to_packagename);
 
 static ssize_t packages_remove_userid_store(struct config_item *item,
 				       const char *page, size_t count)

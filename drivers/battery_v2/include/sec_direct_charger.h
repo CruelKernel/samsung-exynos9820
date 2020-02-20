@@ -51,6 +51,8 @@ struct sec_direct_charger_platform_data {
 	char *direct_charger_name;
 
 	int dchg_min_current;
+	int dchg_temp_low_threshold;
+	int dchg_temp_high_threshold;
 };
 
 struct sec_direct_charger_info {
@@ -65,23 +67,34 @@ struct sec_direct_charger_info {
 	unsigned int charger_mode;
 	unsigned int charger_mode_main;
 	unsigned int charger_mode_direct;
+	unsigned int dc_retry_cnt;
+
+	struct workqueue_struct *direct_wqueue;
+	struct wake_lock ta_alert_wake_lock;
+	struct delayed_work ta_alert_work;
 
 	int cable_type;
 	int input_current;
 	int charging_current;
 	int topoff_current;
 	int float_voltage;
-	int unhealth_cnt;
+	bool dc_err;
+	bool ta_alert_wa;
+	int ta_alert_mode;
 	bool is_charging;
 	int batt_status;
 	int capacity;
 	bool direct_chg_done;
+	bool wc_tx_enable;
+	bool now_isApdo;
+	bool hv_pdo;
+
+	int bat_temp;
 
 	sec_direct_chg_src_t charging_source;
 	int fpdo_pos;
 	int dc_input_current;
 	int dc_charging_current;
-	bool init_update;
 };
 
 void sec_direct_chg_init(struct sec_battery_info *battery, struct device *dev);

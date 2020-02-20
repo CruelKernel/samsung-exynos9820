@@ -46,6 +46,8 @@ static DEFINE_PER_CPU(struct task_struct *, worker);
 static DECLARE_WAIT_QUEUE_HEAD(tz_cmd_waitqueue);
 static atomic_t tz_nr_cmds = ATOMIC_INIT(0);
 
+static cpumask_t tz_kthread_pool_cpu_mask;
+
 static int tz_kthread_pool_cmd_get(void)
 {
 	return atomic_dec_if_positive(&tz_nr_cmds) >= 0;
@@ -66,7 +68,7 @@ static int tz_kthread_pool_should_wake(unsigned long cpu)
 	sk_cpu_mask = tz_iwservice_get_cpu_mask();
 
 	cpumask_copy(&requested_cpu_mask, to_cpumask(&sk_cpu_mask));
-	cpumask_and(&cpu_mask, &requested_cpu_mask, cpu_online_mask);
+	cpumask_and(&cpu_mask, &requested_cpu_mask, &tz_kthread_pool_cpu_mask);
 	cpumask_andnot(&outstanding_cpu_mask, &requested_cpu_mask, &cpu_mask);
 
 	tzdev_kthread_info("cpu mask iwservice = %lx\n",
@@ -149,12 +151,15 @@ static void tz_worker_handler(unsigned int cpu)
 {
 	int ret;
 
+	cpumask_set_cpu(cpu, &tz_kthread_pool_cpu_mask);
+
 	for (;;) {
 		ret = tz_kthread_pool_wait_for_event(cpu);
 
 		switch (ret) {
 		case KTHREAD_SHOULD_STOP:
 		case KTHREAD_SHOULD_PARK:
+			cpumask_clear_cpu(cpu, &tz_kthread_pool_cpu_mask);
 			return;
 		case KTHREAD_SHOULD_RUN:
 			tzdev_kthread_debug("Enter SWd from kthread on cpu = %u\n", cpu);

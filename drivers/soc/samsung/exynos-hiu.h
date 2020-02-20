@@ -126,8 +126,6 @@ struct hiu_cfg {
 
 struct exynos_hiu_data {
 	bool			enabled;
-	bool			pc_enabled;
-	bool			tb_enabled;
 
 	bool			normdvfs_req;
 	bool			normdvfs_done;
@@ -157,6 +155,8 @@ struct exynos_hiu_data {
 	unsigned int		boost_max;
 	unsigned int		level_offset;
 	unsigned int		sw_pbl;
+	unsigned int		pc_enabled;
+	unsigned int		tb_enabled;
 
 	unsigned int		last_req_level;
 	unsigned int		last_req_freq;

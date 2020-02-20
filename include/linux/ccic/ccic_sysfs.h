@@ -32,7 +32,8 @@ extern const struct attribute_group ccic_sysfs_group;
 
 enum {
 	BUILT_IN = 0,
-	UMS,
+	UMS = 1,
+	SPU = 2,
 };
 
 enum ccic_sysfs_property {
@@ -56,6 +57,7 @@ enum ccic_sysfs_property {
 	CCIC_SYSFS_PROP_CC_PIN_STATUS,
 	CCIC_SYSFS_PROP_RAM_TEST,
 	CCIC_SYSFS_PROP_SBU_ADC,
+	CCIC_SYSFS_PROP_VSAFE0V_STATUS,
 	CCIC_SYSFS_PROP_MAX_COUNT,
 };
 struct _ccic_data_t;

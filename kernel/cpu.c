@@ -377,22 +377,9 @@ void cpus_write_lock(void)
 
 void cpus_write_unlock(void)
 {
-<<<<<<< HEAD
 	cpu_hotplug.active_writer = NULL;
 	mutex_unlock(&cpu_hotplug.lock);
 	cpuhp_lock_release();
-=======
-	/*
-	 * We can't have hotplug operations before userspace starts running,
-	 * and some init codepaths will knowingly not take the hotplug lock.
-	 * This is all valid, so mute lockdep until it makes sense to report
-	 * unheld locks.
-	 */
-	if (system_state < SYSTEM_RUNNING)
-		return;
-
-	percpu_rwsem_assert_held(&cpu_hotplug_lock);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
 /*
@@ -1299,12 +1286,9 @@ out:
 	 * concurrent CPU hotplug via cpu_add_remove_lock.
 	 */
 	lockup_detector_cleanup();
-<<<<<<< HEAD
 	cpuset_wait_for_hotplug();
 
-=======
 	arch_smt_update();
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	return ret;
 }
 
@@ -1537,12 +1521,9 @@ static int _cpu_up(unsigned int cpu, int tasks_frozen, enum cpuhp_state target)
 	ret = cpuhp_up_callbacks(cpu, st, target);
 out:
 	cpus_write_unlock();
-<<<<<<< HEAD
 	cpuset_wait_for_hotplug();
 
-=======
 	arch_smt_update();
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	return ret;
 }
 

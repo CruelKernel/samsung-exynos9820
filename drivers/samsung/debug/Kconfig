@@ -1,0 +1,151 @@
+# drivers/samsung/debug/Kconfig
+#
+# Copyright (c) 2010-2011 Samsung Electronics Co., Ltd.
+#		http://www.samsung.com/
+#
+# Licensed under GPLv2
+
+menuconfig SEC_DEBUG
+	bool "Enable TN debugging features"
+	depends on DEBUG_SNAPSHOT && SEC_REBOOT
+	default y
+
+config SEC_DEBUG_RESET_REASON
+	bool "Enable TN reset reason"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables storing reset reason history file
+	  This option enables reading the reset reason history using proc/reset_reason file
+
+config SEC_DEBUG_EXTRA_INFO
+	bool "Enable TN reset reason extra info"
+	depends on SEC_DEBUG && SEC_DEBUG_RESET_REASON
+	default y
+	help
+	  This option enables storing reset reason extra info
+	  This option enables ap reset info bigdata based on reset reason extra info
+
+config SEC_DEBUG_HW_PARAM
+	bool "Enable TN HW PARAM bigdata info"
+	depends on SEC_DEBUG && SEC_DEBUG_RESET_REASON
+	default y
+	help
+	  This option enables storing hw param bigdata info
+
+config SEC_DEBUG_AUTO_COMMENT
+	bool "Enable TN kernel fault auto comment"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables kernel fault auto comment feature
+	  This option also requires bootloader change that enables auto comment extraction along with ramdump
+
+config SEC_DEBUG_DUMP_SUMMARY
+	bool "Enable TN kernel fault dump summary"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables kernel fault dump summary feature
+	  This option also requires bootloader change that enables dump summary extraction along with ramdump
+
+config SEC_DEBUG_LAST_KMSG
+	bool "Write last_kmsg at /proc/last_kmsg"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables /proc/last_kmsg support. This stores the previous
+	  kernel log into separate buffer. /proc/last_kmsg shows the stored log.
+
+config SEC_DEBUG_PPMPU
+	bool "Print ppmpu inforamtion by smc call"
+	depends on SEC_DEBUG
+	default n
+	help
+	  This option enables the kernel to print out ppmpu information when
+	  kernel oops. El3 monitor supports smc calls for this option.
+
+config SEC_DEBUG_INIT_LOG
+	bool "support hooking of init task log"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables hooking of init task log. 
+	  It can be used for debugging purpose in case of booting failure or something else.
+
+config SEC_DEBUG_HIST_LOG
+	bool "support storing debug history log"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables to store debug history log.
+
+config SEC_DEBUG_LIMIT_BACKTRACE
+	bool "Forcely break infinity backtrace"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option kick watchdog reset timer forcely in case of infinity backtrace.
+	  It can be used for debugging purpose to find why infinicy bactrace occurs.
+
+config SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+	bool "support avoiding unnecessary trap"
+	depends on SEC_DEBUG
+	default y
+	help
+	 This option helps to obtain normal log by avoiding unnessary trap again 
+	 after exception handling
+
+config SEC_DEBUG_FIRST_KMSG
+	bool "support storing of initial 2M kernel log"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables hooking of initial 2M kernel log.
+ 	  It can be used for debugging purpose in case of booting failure or something else.
+
+config SEC_DEBUG_DTASK
+	bool "support uninterruptible sleep task debugging"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables getting information of task with TASK_UNINTERRUPTIBLE.
+
+comment "Samsung ubsan debug feature"
+config SEC_DEBUG_UBSAN
+	bool "Enable ubsan debug feature"
+	default n
+	help
+	  This option enables ubsan debug feature.
+
+comment "Samsung kasan debug feature"
+config SEC_DEBUG_KASAN
+	bool "Enable kasan debug feature"
+	default n
+	help
+	  This option enables kasan debug feature.
+
+config SEC_BOOTSTAT
+	bool "Enable TN Bootstat logging"
+	depends on SEC_EXT
+	default y
+
+config SEC_DEBUG_PWDT
+	bool "Platform Watchdog"
+	default y
+	help
+	  Samsung Platform lockup detection
+
+config SEC_DEBUG_HIDING
+	bool "hide some from kernel command line"
+	default y
+	help
+	  Hide some string in kernel command line
+
+config SEC_DEBUG_SPINBUG_PANIC
+	bool "Panic on spin bug"
+	depends on DEBUG_SPINLOCK
+	default y
+	help
+	  This option enables the kernel to panic on "spin bug"
+

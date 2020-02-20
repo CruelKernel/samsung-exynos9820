@@ -190,11 +190,11 @@ int auto_sleep_thread_start(struct auto_sleep_thread *thrctx, struct auto_sleep_
 
 	npu_info("calling kthread_run for (%s)...\n", thrctx->name);
 	thrctx->thread_ref = kthread_run(auto_sleep_thread_thrfunc, thrctx, thrctx->name);
-	dump_auto_sleep_thread(thrctx);
 	if (IS_ERR(thrctx->thread_ref)) {
 		npu_err("NPU: kthread_run failed(%pK) [%s]\n", thrctx->thread_ref, thrctx->name);
 		return -EFAULT;
 	}
+	dump_auto_sleep_thread(thrctx);
 	npu_info("Starting Auto Sleep Thread[%s] : Completed - newthr = %pK, do_task = %pK\n",
 		 thrctx->name, thrctx, thrctx->do_task);
 	return 0;

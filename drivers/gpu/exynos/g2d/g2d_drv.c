@@ -114,7 +114,11 @@ void g2d_hw_timeout_handler(unsigned long arg)
 			"killed task not dead" :
 			"no running task on queued tasks", ret);
 
-		goto out;
+		spin_unlock_irqrestore(&g2d_dev->lock_task, flags);
+
+		wake_up(&g2d_dev->freeze_wait);
+
+		return;
 	}
 
 	mod_timer(&task->hw_timer,

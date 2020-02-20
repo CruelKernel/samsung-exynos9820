@@ -1,0 +1,42 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2019 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+&pinctrl_6 {
+	motor_int: motor-int {
+		samsung,pins ="gph1-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+	};
+};
+
+&hsi2c_44 {
+	status = "okay";
+	cs40l25@40 {
+		compatible = "cirrus,cs40l25a";
+		reg = <0x40>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&motor_boost_en &motor_int>;
+		interrupt-parent = <&gph1>;
+		interrupts = <0 0 0>;
+		reset-gpios = <&gpg1 7 0>;
+		samsung,vib_type = "LINEAR_INDEX";
+		cirrus,gpio1-mode = <1>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <4>;
+		cirrus,boost-ipk-milliamp = <4000>;
+		cirrus,refclk-gpio2;
+		cirrus,amp-gnd-stby;
+		cirrus,auto-recovery;
+		cirrus,hiber-enable;
+	};
+};

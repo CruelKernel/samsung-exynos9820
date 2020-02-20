@@ -1,5 +1,5 @@
 #include "../ssp.h"
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 #define	VENDOR		"AMS"
 #define	CHIP_ID		"TMG399x"

@@ -347,7 +347,7 @@ static int max77705_fg_read_qh(struct max77705_fuelgauge_data *fuelgauge)
 	} else
 		sign = POSITIVE;
 
-	qh = temp * 1000;
+	qh = temp * 1000 * fuelgauge->fg_resistor / 2;
 
 	if (sign)
 		qh *= -1;
@@ -826,6 +826,8 @@ int max77705_fg_reset_soc(struct max77705_fuelgauge_data *fuelgauge)
 
 	msleep(250);
 	max77705_write_word(fuelgauge->i2c, FULLCAP_REG,
+			    fuelgauge->battery_data->Capacity);
+	max77705_write_word(fuelgauge->i2c, FULLCAP_REP_REG,
 			    fuelgauge->battery_data->Capacity);
 	msleep(500);
 

@@ -115,6 +115,7 @@ enum dpp_csc_defs {
 	/* csc_id used in csc_3x3_t[] : increase by even value */
 	DPP_CSC_ID_BT_2020 = 0,
 	DPP_CSC_ID_DCI_P3 = 2,
+	CSC_CUSTOMIZED_START = 4,
 };
 
 enum dpp_state {

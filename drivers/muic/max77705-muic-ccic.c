@@ -167,6 +167,21 @@ static int max77705_muic_handle_ccic_WATER(struct max77705_muic_data *muic_data,
 	return 0;
 }
 
+static int max77705_muic_handle_ccic_hiccup(struct max77705_muic_data *muic_data, CC_NOTI_ATTACH_TYPEDEF *pnoti)
+{
+	pr_info("%s: src:%d dest:%d id:%d attach:%d cable_type:%d rprd:%d\n", __func__,
+		pnoti->src, pnoti->dest, pnoti->id, pnoti->attach, pnoti->cable_type, pnoti->rprd);
+
+	if (muic_data->pdata->muic_set_hiccup_mode_cb) {
+		if (pnoti->attach == CCIC_NOTIFY_ATTACH)
+			muic_data->pdata->muic_set_hiccup_mode_cb(MUIC_HICCUP_MODE_ON);
+		else
+			muic_data->pdata->muic_set_hiccup_mode_cb(MUIC_HICCUP_MODE_OFF);
+	}
+
+	return 0;
+}
+
 static int max77705_muic_handle_ccic_notification(struct notifier_block *nb,
 				unsigned long action, void *data)
 {
@@ -201,6 +216,10 @@ static int max77705_muic_handle_ccic_notification(struct notifier_block *nb,
 	case CCIC_NOTIFY_ID_WATER:
 		pr_info("%s: CCIC_NOTIFY_ID_WATER\n", __func__);
 		max77705_muic_handle_ccic_WATER(muic_data, (CC_NOTI_ATTACH_TYPEDEF *)pnoti);
+		break;
+	case CCIC_NOTIFY_ID_WATER_CABLE:
+		pr_info("%s: CCIC_NOTIFY_ID_WATER_CABLE\n", __func__);
+		max77705_muic_handle_ccic_hiccup(muic_data, (CC_NOTI_ATTACH_TYPEDEF *)pnoti);
 		break;
 	default:
 		pr_info("%s: Undefined Noti. ID\n", __func__);

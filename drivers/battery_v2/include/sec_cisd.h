@@ -171,10 +171,12 @@ extern const char *cisd_data_str_d[];
 extern const char *cisd_cable_data_str[];
 extern const char *cisd_tx_data_str[];
 
-#define PAD_INDEX_STRING	"INDEX"
-#define PAD_INDEX_VALUE		1
+#define PAD_INDEX_STRING	"COUNT"
 #define PAD_JSON_STRING		"PAD_0x"
 #define MAX_PAD_ID			0xFF
+#define MAX_CHARGER_POWER	100
+#define POWER_JSON_STRING	"POWER_"
+#define POWER_COUNT_JSON_STRING "COUNT"
 
 struct pad_data {
 	unsigned int id;
@@ -182,6 +184,14 @@ struct pad_data {
 
 	struct pad_data* prev;
 	struct pad_data* next;
+};
+
+struct power_data {
+	unsigned int power;
+	unsigned int count;
+
+	struct power_data* prev;
+	struct power_data* next;
 };
 
 struct cisd {
@@ -198,8 +208,11 @@ struct cisd {
 	unsigned int tx_data[TX_DATA_MAX];
 
 	struct mutex padlock;
+	struct mutex powerlock;
 	struct pad_data* pad_array;
+	struct power_data* power_array;
 	unsigned int pad_count;
+	unsigned int power_count;
 };
 
 extern struct cisd *gcisd;
@@ -224,4 +237,6 @@ static inline void increase_cisd_count(int type)
 void init_cisd_pad_data(struct cisd *cisd);
 void count_cisd_pad_data(struct cisd *cisd, unsigned int pad_id);
 
+void init_cisd_power_data(struct cisd* cisd);
+void count_cisd_power_data(struct cisd* cisd, int power);
 #endif /* __SEC_CISD_H */

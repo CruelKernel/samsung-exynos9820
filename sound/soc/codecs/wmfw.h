@@ -93,7 +93,7 @@ struct wmfw_adsp2_id_hdr {
 } __packed;
 
 struct wmfw_vpu_fwid_hdr {
-	__be32 id;
+	__be32 core_id;
 	__be32 block_rev;
 	__be32 vendor_id;
 	__be32 firmware_id;

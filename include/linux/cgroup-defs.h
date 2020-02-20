@@ -19,7 +19,6 @@
 #include <linux/percpu-rwsem.h>
 #include <linux/workqueue.h>
 #include <linux/bpf-cgroup.h>
-#include <linux/psi_types.h>
 
 #ifdef CONFIG_CGROUPS
 
@@ -31,7 +30,6 @@ struct kernfs_node;
 struct kernfs_ops;
 struct kernfs_open_file;
 struct seq_file;
-struct poll_table_struct;
 
 #define MAX_CGROUP_TYPE_NAMELEN 32
 #define MAX_CGROUP_ROOT_NAMELEN 64
@@ -370,9 +368,6 @@ struct cgroup {
 	/* used to schedule release agent */
 	struct work_struct release_agent_work;
 
-	/* used to track pressure stalls */
-	struct psi_group psi;
-
 	/* used to store eBPF programs */
 	struct cgroup_bpf bpf;
 
@@ -503,9 +498,6 @@ struct cftype {
 	ssize_t (*write)(struct kernfs_open_file *of,
 			 char *buf, size_t nbytes, loff_t off);
 
-	unsigned int (*poll)(struct kernfs_open_file *of,
-			     struct poll_table_struct *pt);
-
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	struct lock_class_key	lockdep_key;
 #endif
@@ -624,7 +616,6 @@ extern struct percpu_rw_semaphore cgroup_threadgroup_rwsem;
 static inline void cgroup_threadgroup_change_begin(struct task_struct *tsk)
 {
 	percpu_down_read(&cgroup_threadgroup_rwsem);
-	sec_debug_snapshot_printkl((size_t)tsk, 4);
 }
 
 /**
@@ -636,7 +627,6 @@ static inline void cgroup_threadgroup_change_begin(struct task_struct *tsk)
 static inline void cgroup_threadgroup_change_end(struct task_struct *tsk)
 {
 	percpu_up_read(&cgroup_threadgroup_rwsem);
-	sec_debug_snapshot_printkl((size_t)tsk, 12);
 }
 
 #else	/* CONFIG_CGROUPS */

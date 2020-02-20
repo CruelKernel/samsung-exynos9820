@@ -1,0 +1,18 @@
+#ifndef FIMC_IS_EEPROM_REAR_2L4_V012_H
+#define FIMC_IS_EEPROM_REAR_2L4_V012_H
+
+/* Davinci_Rear_Cal_Map_V012_20190214_for_ALL */
+
+#define FIMC_IS_MAX_CAL_SIZE					(64 * 1024)
+
+/* PAF calibration Data */
+#define ROM_PAF_CAL_DATA_START_ADDR				0x6500 /* WIDE F1.5 */
+#define ROM_F2_PAF_CAL_DATA_START_ADDR			0x9520 /* WIDE2 F2.4 */
+#define ROM_REAR3_PAF_CAL_DATA_START_ADDR			0xDA00 /* TELE */
+
+/********* TELE = REAR3 *********/
+
+#define ROM_REAR3_FLAG_DUMMY_ADDR				0xF096
+#define ROM_REAR3_IMAGE_CROP_NUM_ADDR			0xF097
+
+#endif /* FIMC_IS_EEPROM_REAR_2L4_V012_H */

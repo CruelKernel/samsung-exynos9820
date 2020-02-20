@@ -161,7 +161,13 @@ static void pdp_worker_stat0(struct work_struct *work)
 		switch (pa->type) {
 		case VC_STAT_TYPE_PDP_1_0_PDAF_STAT0:
 		case VC_STAT_TYPE_PDP_1_1_PDAF_STAT0:
+#ifdef ENABLE_FPSIMD_FOR_USER
+			fpsimd_get();
 			pa->notifier(pa->type, *(unsigned int *)&sensor->fcount, pa->data);
+			fpsimd_put();
+#else
+			pa->notifier(pa->type, *(unsigned int *)&sensor->fcount, pa->data);
+#endif
 			break;
 		default:
 			break;
@@ -300,7 +306,13 @@ void pdp_notify(struct v4l2_subdev *subdev, unsigned int type, void *data)
 			switch (pa->type) {
 			case VC_STAT_TYPE_PDP_1_0_PDAF_STAT1:
 			case VC_STAT_TYPE_PDP_1_1_PDAF_STAT1:
+#ifdef ENABLE_FPSIMD_FOR_USER
+				fpsimd_get();
 				pa->notifier(pa->type, *(unsigned int *)data, pa->data);
+				fpsimd_put();
+#else
+				pa->notifier(pa->type, *(unsigned int *)data, pa->data);
+#endif
 				break;
 			default:
 				break;

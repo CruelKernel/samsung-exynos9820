@@ -239,21 +239,12 @@ unsigned long freqvar_boost_vector(int cpu, unsigned long util)
 
 	boosted_util = util * boost->ratio / 100;
 
+	if (boost->step_max_util)
+		boosted_util = min_t(unsigned long, boosted_util, boost->step_max_util);
+
 	trace_ems_freqvar_boost(cpu, boost->ratio, boost->step_max_util, util, boosted_util);
 
 	return boosted_util;
-}
-
-static void freqvar_boost_update(int cpu, int new_freq)
-{
-	struct freqvar_boost *boost;
-
-	boost = per_cpu(freqvar_boost, cpu);
-	if (!boost)
-		return;
-
-	boost->ratio = freqvar_get_value(new_freq, boost->table);
-	boost->step_max_util = get_freq_cap(cpu, new_freq, 0) * boost->ratio / 100;
 }
 
 static void freqvar_boost_free(struct freqvar_boost *boost)
@@ -289,6 +280,7 @@ fail_alloc:
 	return NULL;
 }
 
+static void freqvar_boost_update(int cpu, int new_freq);
 static int freqvar_boost_init(struct device_node *dn, const struct cpumask *mask)
 {
 	struct freqvar_boost *boost;
@@ -337,13 +329,17 @@ fail_init:
 struct freqvar_rate_limit {
 	struct freqvar_table *up_table;
 	struct freqvar_table *down_table;
+	struct freqvar_table *st_table;
+	int ratio;
 };
 DEFINE_PER_CPU(struct freqvar_rate_limit *, freqvar_rate_limit);
 
 attr_freqvar(rate_limit, up_rate_limit, up_table);
 attr_freqvar(rate_limit, down_rate_limit, down_table);
+attr_freqvar(rate_limit, st_boost, st_table);
 static struct governor_attr freqvar_up_rate_limit = __ATTR_RW(freqvar_up_rate_limit);
 static struct governor_attr freqvar_down_rate_limit = __ATTR_RW(freqvar_down_rate_limit);
+static struct governor_attr freqvar_st_boost = __ATTR_RW(freqvar_st_boost);
 
 void sugov_update_rate_limit_us(struct cpufreq_policy *policy,
 			int up_rate_limit_ms, int down_rate_limit_ms);
@@ -403,6 +399,11 @@ freqvar_rate_limit *freqvar_rate_limit_alloc(struct cpufreq_policy *policy)
 	if (!rate_limit->down_table)
 		goto fail_alloc;
 
+	rate_limit->st_table= kzalloc(sizeof(struct freqvar_table)
+					* (size + 1), GFP_KERNEL);
+	if (!rate_limit->st_table)
+		goto fail_alloc;
+
 	return rate_limit;
 
 fail_alloc:
@@ -434,6 +435,10 @@ static int freqvar_rate_limit_init(struct device_node *dn, const struct cpumask 
 	if (ret)
 		goto fail_init;
 
+	ret = freqvar_fill_frequency_table(policy, rate_limit->st_table);
+	if (ret)
+		goto fail_init;
+
 	ret = freqvar_parse_value_dt(dn, "up_rate_limit_table", rate_limit->up_table);
 	if (ret)
 		goto fail_init;
@@ -442,11 +447,19 @@ static int freqvar_rate_limit_init(struct device_node *dn, const struct cpumask 
 	if (ret)
 		goto fail_init;
 
+	ret = freqvar_parse_value_dt(dn, "st_table", rate_limit->st_table);
+	if (ret)
+		goto fail_init;
+
 	ret = sugov_sysfs_add_attr(policy, &freqvar_up_rate_limit.attr);
 	if (ret)
 		goto fail_init;
 
 	ret = sugov_sysfs_add_attr(policy, &freqvar_down_rate_limit.attr);
+	if (ret)
+		goto fail_init;
+
+	ret = sugov_sysfs_add_attr(policy, &freqvar_st_boost.attr);
 	if (ret)
 		goto fail_init;
 
@@ -462,6 +475,37 @@ fail_init:
 	cpufreq_cpu_put(policy);
 
 	return ret;
+}
+
+static void freqvar_boost_update(int cpu, int new_freq)
+{
+	struct freqvar_boost *boost;
+	struct freqvar_rate_limit *rate_limit;
+
+	boost = per_cpu(freqvar_boost, cpu);
+	if (!boost)
+		return;
+
+	boost->ratio = freqvar_get_value(new_freq, boost->table);
+	boost->step_max_util = get_freq_cap(cpu, new_freq, 0) * boost->ratio / 100;
+
+	rate_limit = per_cpu(freqvar_rate_limit, cpu);
+	if (!rate_limit)
+		return;
+	rate_limit->ratio = freqvar_get_value(new_freq, rate_limit->st_table);
+
+}
+
+unsigned long freqvar_st_boost_vector(int cpu)
+{
+	struct freqvar_rate_limit *boost = per_cpu(freqvar_rate_limit, cpu);
+
+	if (!boost)
+		return 0;
+
+	trace_ems_freqvar_st_boost(cpu, boost->ratio);
+
+	return boost->ratio;
 }
 
 /**********************************************************************

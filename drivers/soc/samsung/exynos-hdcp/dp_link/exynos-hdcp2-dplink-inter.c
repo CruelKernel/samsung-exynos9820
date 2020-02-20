@@ -28,46 +28,20 @@ extern uint32_t func_test_mode;
 #define DRM_WAIT_RETRY_COUNT	1000
 /* current link data */
 enum auth_state auth_proc_state;
-enum drm_state drm_flag;
 
 int hdcp_dplink_auth_check(enum auth_signal hdcp_signal)
 {
 	int ret = 0;
-#ifndef CONFIG_HDCP2_FUNC_TEST_MODE
-	int i = 0;
-#endif
-	enum drm_state drm_flag;
 
+#if defined(CONFIG_HDCP2_FUNC_TEST_MODE)
+	ret = exynos_smc(SMC_DRM_HDCP_FUNC_TEST, 1, 0, 0);
+#endif
 	hdcp_info("hdcp auth check (%x)\n", hdcp_signal);
 	switch (hdcp_signal) {
 		case HDCP_DRM_OFF:
-			drm_flag = DRM_OFF;
 			ret = 0;
 			break;
 		case HDCP_DRM_ON:
-#ifdef CONFIG_HDCP2_FUNC_TEST_MODE
-			drm_flag = DRM_ON;
-#else
-			for (i = 0; i < DRM_WAIT_RETRY_COUNT; i++) {
-				if (auth_proc_state == HDCP_AUTH_PROCESS_STOP) {
-					hdcp_info("hdcp auth process stop\n");
-					drm_flag = 0;
-					auth_proc_state = HDCP_AUTH_PROCESS_IDLE;
-					return 0;
-				}
-
-				drm_flag = exynos_smc(SMC_CHECK_STREAM_TYPE_FLAG, 0, 0, 0);
-				if (drm_flag)
-					break;
-
-				msleep(500);
-			}
-#endif
-			if ((drm_flag == DRM_SAME_STREAM_TYPE && auth_proc_state ==	HDCP_AUTH_PROCESS_DONE) || drm_flag == DRM_OFF) {
-				hdcp_info("hdcp auth dese not need (drm_flag %x, auth state %x)\n", drm_flag, auth_proc_state);
-				return 0;
-			}
-
 			ret = exynos_smc(SMC_DRM_HDCP_AUTH_INFO, DP_HDCP22_DISABLE, 0, 0);
 			dplink_clear_irqflag_all();
 			ret = hdcp_dplink_authenticate();
@@ -138,7 +112,7 @@ int hdcp_dplink_cancel_auth(void)
 	uint32_t ret = 0;
 
 	hdcp_info("Cancel authenticate.\n");
-	ret = exynos_smc(SMC_DRM_HDCP_AUTH_INFO, DP_HDCP22_DISABLE, 0, 0);
+	ret = exynos_smc(SMC_DRM_HDCP_AUTH_INFO, DP_HPD_STATUS_ZERO, 0, 0);
 	auth_proc_state = HDCP_AUTH_PROCESS_STOP;
 
 	return dplink_set_integrity_fail();

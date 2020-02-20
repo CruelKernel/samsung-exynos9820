@@ -145,6 +145,67 @@ static ssize_t show_abc_hub_enable(struct device *dev,
 }
 static DEVICE_ATTR(enable, 0644, show_abc_hub_enable, store_abc_hub_enable);
 
+#ifdef CONFIG_SEC_ABC_HUB_BOOTC
+static ssize_t store_abc_hub_bootc_offset(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct abc_hub_info *pinfo = dev_get_drvdata(dev);
+	char module[BOOTC_OFFSET_STR_MAX] = {0,};
+	char *cur;
+	char delim = ',';
+	int offset = 0;
+	int i = 0;
+
+	if (strlen(buf) >= BOOTC_OFFSET_STR_MAX || count >= (unsigned int)BOOTC_OFFSET_STR_MAX) {
+		pr_err("%s: buf length is over(MAX:%d)!!\n", __func__, BOOTC_OFFSET_STR_MAX);
+		return count;
+	}
+
+	cur = strchr(buf, (int)delim);
+	if (cur) {
+		memcpy(module, buf, cur - buf);
+		if (kstrtoint(cur + 1, 0, &offset)) {
+			pr_err("%s: failed to get offest\n", __func__);
+			return count;
+		}
+	} else {
+		pr_err("%s: failed to get module\n", __func__);
+		return count;
+	}
+
+	pr_info("%s: module(%s), offset(%d)\n", __func__, module, offset);
+
+	if (offset > 0) {
+		for (i = 0; i < BOOTC_OFFSET_DATA_CNT; i++) {
+			if (strcmp(module, pinfo->pdata->bootc_pdata.offset_data[i].module) == 0) {
+				pinfo->pdata->bootc_pdata.offset_data[i].offset = offset;
+				break;
+			}
+		}
+	}
+
+	return count;
+}
+
+static ssize_t show_abc_hub_bootc_offset(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	struct abc_hub_info *pinfo = dev_get_drvdata(dev);
+	int res = 0;
+	int i;
+
+	for (i = 0; i < BOOTC_OFFSET_DATA_CNT; i++) {
+		res += sprintf(buf, "%s,%d\n", pinfo->pdata->bootc_pdata.offset_data[i].module,
+				pinfo->pdata->bootc_pdata.offset_data[i].offset);
+	}
+
+	return res;
+}
+static DEVICE_ATTR(bootc_offset, 0644, show_abc_hub_bootc_offset, store_abc_hub_bootc_offset);
+#endif
+
 int abc_hub_get_enabled(void)
 {
 	struct abc_hub_info *pinfo;
@@ -240,6 +301,15 @@ static int abc_hub_probe(struct platform_device *pdev)
 		goto err_create_abc_hub_enable_sysfs;
 	}
 
+#ifdef CONFIG_SEC_ABC_HUB_BOOTC
+	ret = device_create_file(pinfo->dev, &dev_attr_bootc_offset);
+	if (ret) {
+		pr_err("%s: Failed to create device bootc_offset file\n", __func__);
+		ret = -ENODEV;
+		goto err_create_abc_hub_bootc_offset_sysfs;
+	}
+#endif
+
 	abc_hub_dev = pinfo->dev;
 	pinfo->pdata = pdata;
 
@@ -268,6 +338,10 @@ static int abc_hub_probe(struct platform_device *pdev)
 
 	return ret;
 
+#ifdef CONFIG_SEC_ABC_HUB_BOOTC
+err_create_abc_hub_bootc_offset_sysfs:
+	device_remove_file(pinfo->dev, &dev_attr_enable);
+#endif
 err_create_abc_hub_enable_sysfs:
 	sec_device_destroy(abc_hub_dev->devt);
 out:

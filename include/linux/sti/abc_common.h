@@ -23,7 +23,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
@@ -105,7 +105,6 @@ struct abc_info {
 	int log_list_cnt;
 	char abc_str[ABC_BUFFER_MAX];
 	struct abc_platform_data *pdata;
-	struct mutex log_mutex;
 };
 
 extern void sec_abc_send_event(char *str);

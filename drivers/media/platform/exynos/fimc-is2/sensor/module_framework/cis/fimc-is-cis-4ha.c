@@ -205,11 +205,6 @@ int sensor_4ha_cis_init(struct v4l2_subdev *subdev)
 	struct fimc_is_cis *cis;
 	u32 setfile_index = 0;
 	cis_setting_info setinfo;
-#ifdef USE_CAMERA_HW_BIG_DATA
-	struct cam_hw_param *hw_param = NULL;
-	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
-#endif
-
 	setinfo.param = NULL;
 	setinfo.return_value = 0;
 
@@ -223,22 +218,16 @@ int sensor_4ha_cis_init(struct v4l2_subdev *subdev)
 	}
 
 	BUG_ON(!cis->cis_data);
+#if !defined(CONFIG_VENDER_MCD)
 	memset(cis->cis_data, 0, sizeof(cis_shared_data));
-	cis->rev_flag = false;
 
 	ret = sensor_cis_check_rev(cis);
 	if (ret < 0) {
-#ifdef USE_CAMERA_HW_BIG_DATA
-		sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
-		if (sensor_peri)
-			fimc_is_sec_get_hw_param(&hw_param, sensor_peri->module->position);
-		if (hw_param)
-			hw_param->i2c_sensor_err_cnt++;
-#endif
 		warn("sensor_4ha_check_rev is fail when cis init");
-		cis->rev_flag = true;
-		ret = 0;
+		ret = -EINVAL;
+		goto p_err;
 	}
+#endif
 
 	cis->cis_data->cur_width = SENSOR_4HA_MAX_WIDTH;
 	cis->cis_data->cur_height = SENSOR_4HA_MAX_HEIGHT;
@@ -484,16 +473,6 @@ int sensor_4ha_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 		err("invalid mode(%d)!!", mode);
 		ret = -EINVAL;
 		goto p_err;
-	}
-
-	/* If check_rev fail when cis_init, one more check_rev in mode_change */
-	if (cis->rev_flag == true) {
-		cis->rev_flag = false;
-		ret = sensor_cis_check_rev(cis);
-		if (ret < 0) {
-			err("sensor_4ha_check_rev is fail");
-			goto p_err;
-		}
 	}
 
 	sensor_4ha_cis_data_calculation(sensor_4ha_pllinfos[mode], cis->cis_data);
@@ -1968,6 +1947,7 @@ static struct fimc_is_cis_ops cis_ops = {
 	.cis_update_mipi_info = sensor_4ha_cis_update_mipi_info,
 	.cis_get_mipi_clock_string = sensor_4ha_cis_get_mipi_clock_string,
 #endif
+	.cis_check_rev_on_init = sensor_cis_check_rev_on_init,
 	.cis_set_initial_exposure = sensor_cis_set_initial_exposure,
 	.cis_recover_stream_on = sensor_4ha_cis_recover_stream_on,
 };
@@ -2142,6 +2122,8 @@ int cis_4ha_probe(struct i2c_client *client,
 	v4l2_set_subdevdata(subdev_cis, cis);
 	v4l2_set_subdev_hostdata(subdev_cis, device);
 	snprintf(subdev_cis->name, V4L2_SUBDEV_NAME_SIZE, "cis-subdev.%d", cis->id);
+
+	sensor_cis_parse_dt(dev, cis->subdev);
 
 	probe_info("%s done\n", __func__);
 

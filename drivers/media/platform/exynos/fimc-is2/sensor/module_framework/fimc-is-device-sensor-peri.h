@@ -28,6 +28,8 @@
 #define HRTIMER_POSSIBLE		1
 #define VIRTUAL_COORDINATE_WIDTH		32768
 #define VIRTUAL_COORDINATE_HEIGHT		32768
+#define FIMC_IS_CIS_REV_MAX_LIST		3
+#define VENDOR_SOFT_LANDING_STEP_MAX	2
 
 struct fimc_is_cis {
 	u32				id;
@@ -70,6 +72,12 @@ struct fimc_is_cis {
 
 	/* one more check_rev in mode_change */
 	bool				rev_flag;
+
+	/* For sensor revision checking */
+	u32 				rev_addr;
+	u32 				rev_byte;
+	u32 				rev_valid_count;
+	u32 				rev_valid_values[FIMC_IS_CIS_REV_MAX_LIST];
 
 	/* get a min, max fps to HAL */
 	u32				min_fps;
@@ -156,7 +164,10 @@ struct fimc_is_actuator {
 	u32				vendor_product_id;
 	u32				vendor_first_pos;
 	u32				vendor_first_delay;
+	u32				vendor_soft_landing_list[VENDOR_SOFT_LANDING_STEP_MAX * 2];
+	u32				vendor_soft_landing_list_len;
 	bool				vendor_use_sleep_mode;
+	bool				vendor_use_standby_mode;
 };
 
 struct fimc_is_aperture {
@@ -223,7 +234,7 @@ struct fimc_is_ois {
 	u8				pre_coef;
 	bool				fadeupdown;
 	bool				initial_centering_mode;
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 	int				ois_power_mode;
 #endif
 	struct work_struct		ois_set_init_work;

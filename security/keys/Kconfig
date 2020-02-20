@@ -101,3 +101,8 @@ config KEY_DH_OPERATIONS
 	 in the kernel.
 
 	 If you are unsure as to whether this is required, answer N.
+
+config KEYS_SUPPORT_STLOG
+	bool "Enable storage log"
+	default y
+	depends on KEYS && PROC_STLOG

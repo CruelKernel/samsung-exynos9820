@@ -21,3 +21,6 @@ obj-$(CONFIG_DISPLAY_USE_INFO) += dpui.o
 obj-$(CONFIG_PANEL_NOTIFY) += panel_notify.o
 obj-$(CONFIG_SUPPORT_DDI_FLASH) += panel_poc.o
 obj-$(CONFIG_EXTEND_LIVE_CLOCK) += aod/aod_drv.o
+obj-$(CONFIG_SUPPORT_POC_SPI) += panel_spi.o
+obj-$(CONFIG_DYNAMIC_FREQ) += dynamic_freq.o
+obj-$(CONFIG_SUPPORT_DISPLAY_PROFILER) += display_profiler/display_profiler.o s6e3ha9/s6e3ha9_profiler.o

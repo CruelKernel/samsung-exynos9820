@@ -164,6 +164,13 @@ typedef enum {
 	S_PARAM_ERROR,
 } npu_s_param_ret;
 
+/* Structure to keep iomem mapped area */
+struct npu_iomem_area {
+	void __iomem            *vaddr;
+	u32                     paddr;
+	resource_size_t         size;
+};
+
 /*
  * Convinient macros
  */

@@ -37,6 +37,11 @@ config EXYNOS_DECON_LCD_TUNING
 	tristate "Support LCD TUNING"
 	default n
 
+config EXYNOS_LCD_ENG
+	depends on EXYNOS_DECON_LCD
+	tristate "Support LCD featue on ENG binary"
+	default n
+
 config PANEL_AID_DIMMING
 	depends on EXYNOS_DECON_LCD
 	tristate "Support AID Dimming"
@@ -67,6 +72,11 @@ config SUPPORT_AOD_BL
 	depends on EXYNOS_DECON_LCD && SUPPORT_DOZE
 	tristate "Support AOD(Active On Display) BL(BackLight) Driver"
 	default n
+
+config SUPPORT_DISPLAY_PROFILER
+    	depends on EXYNOS_DECON_LCD
+    	tristate "Support Display Profiler"
+    	default n
 
 config EXYNOS_DECON_LCD_S6E3HF3
 	depends on EXYNOS_DECON_LCD && EXYNOS_MIPI_DSIM
@@ -146,3 +156,13 @@ config PANEL_NOTIFY
 	depends on EXYNOS_DECON_LCD
 	tristate "Support panel notifier"
 	default y
+
+config SUPPORT_POC_SPI
+	depends on EXYNOS_DECON_LCD
+	tristate "Support poc SPI connection"
+	default n
+	
+config DYNAMIC_FREQ
+    	depends on EXYNOS_DECON_LCD
+    	tristate "Support Dynamic Freq"
+    	default n

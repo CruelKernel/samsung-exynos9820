@@ -6,6 +6,8 @@
  */
 
 #include <linux/sched.h>
+#include <linux/ems_service.h>
+#include <linux/ems.h>
 #include <trace/events/ems.h>
 
 #include "../tune.h"
@@ -108,7 +110,7 @@ unsigned long __ml_cpu_util(int cpu, int sse)
 				READ_ONCE(cfs_rq->avg.ml.util_avg);
 }
 
-static unsigned long __ml_cpu_util_est(int cpu, int sse)
+unsigned long __ml_cpu_util_est(int cpu, int sse)
 {
 	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
 
@@ -182,6 +184,8 @@ unsigned long ml_cpu_util_ratio(int cpu, int sse)
 					/ capacity_orig_of_sse(cpu, sse);
 }
 
+#define UTIL_AVG_UNCHANGED 0x1
+
 /*
  * ml_cpu_util_wake - cpu utilization except waking task
  *
@@ -198,13 +202,26 @@ unsigned long ml_cpu_util_wake(int cpu, struct task_struct *p)
 	sse_util = __ml_cpu_util(cpu, SSE);
 
 	if (p->sse)
-		sse_util -= min_t(unsigned long, sse_util, ml_task_util_est(p));
+		sse_util -= min_t(unsigned long, sse_util, ml_task_util(p));
 	else
-		uss_util -= min_t(unsigned long, uss_util, ml_task_util_est(p));
+		uss_util -= min_t(unsigned long, uss_util, ml_task_util(p));
 
 	if (sched_feat(UTIL_EST)) {
-		uss_util = max_t(unsigned long, uss_util, __ml_cpu_util_est(cpu, USS));
-		sse_util = max_t(unsigned long, sse_util, __ml_cpu_util_est(cpu, SSE));
+		unsigned int uss_util_est = __ml_cpu_util_est(cpu, USS);
+		unsigned int sse_util_est = __ml_cpu_util_est(cpu, SSE);
+
+		if (unlikely(task_on_rq_queued(p) || current == p)) {
+			if (p->sse) {
+				sse_util_est -= min_t(unsigned int, sse_util_est,
+						(_ml_task_util_est(p) | UTIL_AVG_UNCHANGED));
+			} else {
+				uss_util_est -= min_t(unsigned int, uss_util_est,
+						(_ml_task_util_est(p) | UTIL_AVG_UNCHANGED));
+			}
+		}
+
+		uss_util = max_t(unsigned long, uss_util, uss_util_est);
+		sse_util = max_t(unsigned long, sse_util, sse_util_est);
 	}
 
 	uss_util = min_t(unsigned long, uss_util, capacity_orig_of_sse(cpu, USS));
@@ -226,26 +243,28 @@ unsigned long ml_task_attached_cpu_util(int cpu, struct task_struct *p)
 	uss_util = __ml_cpu_util(cpu, USS);
 	sse_util = __ml_cpu_util(cpu, SSE);
 
-	/* task is already attached */
-	if (cpu == task_cpu(p) && READ_ONCE(p->se.avg.last_update_time)) {
+	if (READ_ONCE(p->se.avg.last_update_time))
+		return ml_cpu_util(cpu);
+
+	if (cpu != task_cpu(p)) {
 		if (p->sse)
-			sse_util -= min_t(unsigned long, sse_util, ml_task_util_est(p));
+			sse_util += ml_task_util(p);
 		else
-			uss_util -= min_t(unsigned long, uss_util, ml_task_util_est(p));
+			uss_util += ml_task_util(p);
 	}
 
 	if (sched_feat(UTIL_EST)) {
-		uss_util = max_t(unsigned long, uss_util, __ml_cpu_util_est(cpu, USS));
-		sse_util = max_t(unsigned long, sse_util, __ml_cpu_util_est(cpu, SSE));
+		unsigned int uss_util_est = __ml_cpu_util_est(cpu, USS);
+		unsigned int sse_util_est = __ml_cpu_util_est(cpu, SSE);
+
+		if (p->sse)
+			sse_util_est += ml_task_util_est(p);
+		else
+			uss_util_est += ml_task_util_est(p);
+
+		uss_util = max_t(unsigned long, uss_util, uss_util_est);
+		sse_util = max_t(unsigned long, sse_util, sse_util_est);
 	}
-
-	uss_util = min_t(unsigned long, uss_util, capacity_orig_of_sse(cpu, USS));
-	sse_util = min_t(unsigned long, sse_util, capacity_orig_of_sse(cpu, SSE));
-
-	if (p->sse)
-		sse_util += ml_task_util_est(p);
-	else
-		uss_util += ml_task_util_est(p);
 
 	return __normalize_util(cpu, uss_util, sse_util, USS);
 }
@@ -255,16 +274,24 @@ unsigned long ml_task_attached_cpu_util(int cpu, struct task_struct *p)
  *
  * Sse and uss combined and uss normalized cpu utilization with schedtune.boost.
  */
+
+extern DEFINE_PER_CPU(struct boost_groups, cpu_boost_groups);
 unsigned long ml_boosted_cpu_util(int cpu)
 {
-	int boost = schedtune_cpu_boost(cpu);
+	int fv_boost = 0, boost = schedtune_cpu_boost(cpu);
+	struct boost_groups *bg = &per_cpu(cpu_boost_groups, cpu);
 	unsigned long util = ml_cpu_util(cpu);
 	unsigned long capacity;
-
 	if (boost == 0)
 		return util;
 
 	capacity = capacity_orig_of(cpu);
+
+	if (bg->group[STUNE_TOPAPP].tasks)
+		fv_boost = freqvar_st_boost_vector(cpu);
+
+	if (fv_boost > boost)
+		boost = fv_boost;
 
 	return util + schedtune_margin(capacity, util, boost);
 }
@@ -273,6 +300,7 @@ static void update_next_balance(int cpu, struct multi_load *ml)
 {
 	struct sched_avg *sa = container_of(ml, struct sched_avg, ml);
 	struct sched_entity *se = container_of(sa, struct sched_entity, avg);
+
 	if (se->my_q)
 		return;
 
@@ -545,7 +573,6 @@ void update_tg_multi_load(struct cfs_rq *cfs_rq, struct sched_entity *se)
  * We map this information into the LSB bit of the utilization saved at
  * dequeue time (i.e. util_est.dequeued).
  */
-#define UTIL_AVG_UNCHANGED 0x1
 
 void cfs_se_util_change_multi_load(struct task_struct *p, struct sched_avg *avg)
 {
@@ -938,7 +965,7 @@ void part_cpu_active_ratio(unsigned long *util, unsigned long *max, int cpu)
 	unsigned long pelt_max = *max;
 	unsigned long pelt_util = *util;
 	int util_ratio = *util * SCHED_CAPACITY_SCALE / *max;
-	int demand;
+	int demand = 0;
 
 	if (unlikely(pa->period_start == 0))
 		return;
@@ -1027,7 +1054,7 @@ static ssize_t store_part_policy(struct kobject *kobj,
 	if (!sscanf(buf, "%ld", &input))
 		return -EINVAL;
 
-	if (input >= PART_POLICY_INVALID)
+	if (input >= PART_POLICY_INVALID || input < 0)
 		return -EINVAL;
 
 	part_policy_idx = input;
@@ -1220,7 +1247,7 @@ static int __init parse_part(void)
 {
 	struct device_node *dn, *coregroup;
 	char name[15];
-	int cpu, cnt = 0, limit, boost;
+	int cpu, cnt = 0, limit = -1, boost = -1;
 
 	dn = of_find_node_by_path("/cpus/ems/part");
 	if (!dn)

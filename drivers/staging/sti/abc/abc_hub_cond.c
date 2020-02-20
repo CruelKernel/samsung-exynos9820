@@ -27,32 +27,55 @@
 #define SEC_CONN_PRINT(format, ...) pr_info("[ABC_COND] " format, ##__VA_ARGS__)
 #define NWEINT_GPM23_CON		0x15c3075C
 #define WEINT_GPA3_CON		0x1585070C
+#define NWEINT_GPG0_CON		0x10430710
 #define WEINT_GPM18_CON		0x15c30748
 
 
 static void detect_con_weint_dump(void)
 {
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
     void __iomem *ub_int_reg;
+#endif
 	void __iomem *sub_int_reg;
 	void __iomem *cam_int_reg;
 
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
 	u32 ub_tmp_reg;
+#endif
 	u32 sub_tmp_reg;
 	u32 cam_tmp_reg;
-	
+
+#if defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
+	sub_int_reg = ioremap(NWEINT_GPG0_CON, 0x10);
+	cam_int_reg = ioremap(WEINT_GPM18_CON, 0x10);
+#else
 	ub_int_reg = ioremap(NWEINT_GPM23_CON, 0x10);
 	sub_int_reg = ioremap(WEINT_GPA3_CON, 0x10);
 	cam_int_reg = ioremap(WEINT_GPM18_CON, 0x10);
+#endif
 
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
 	ub_tmp_reg = readl(ub_int_reg);
+#endif
 	sub_tmp_reg = readl(sub_int_reg);
 	cam_tmp_reg = readl(cam_int_reg);
+	
 
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
 	SEC_CONN_PRINT("GPM23[0] 0x15c3075C: %#x\n", ub_tmp_reg);
+#endif
+#if defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
+	SEC_CONN_PRINT("GPG0[1] :0x10430710: %#x\n", sub_tmp_reg);
+	SEC_CONN_PRINT("GPM18[0] 0x15c30748: %#x\n", cam_tmp_reg);
+#else	
 	SEC_CONN_PRINT("GPA3[3] :0x1585070C: %#x\n", sub_tmp_reg);
 	SEC_CONN_PRINT("GPM18[0] 0x15c30748: %#x\n", cam_tmp_reg);
+#endif
+	
 
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
 	iounmap(ub_int_reg);
+#endif
 	iounmap(sub_int_reg);
 	iounmap(cam_int_reg);
 }
@@ -76,11 +99,23 @@ static irqreturn_t abc_hub_cond_interrupt_handler(int irq, void *handle)
 			 * and if it still level high send uevent.
 			 */
 			if (gpio_get_value(pinfo->pdata->cond_pdata.irq_gpio[i])) {
+#if !defined(CONFIG_SEC_ABC_HUB_COND_DAVINCI)
 				if (i == 0)
-					abc_hub_send_event("MODULE:cond@ERROR:ub");
+					abc_hub_send_event("MODULE=cond@ERROR=ub");
+				else if (i == 1)
+					abc_hub_send_event("MODULE=cond@ERROR=sub");
 				else
-					abc_hub_send_event("MODULE:cond@ERROR:cam");
+					abc_hub_send_event("MODULE=cond@ERROR=cam");
 			}
+#else
+				if (i == 0)
+					abc_hub_send_event("MODULE=cond@ERROR=sub");
+				else if (i == 1)
+					abc_hub_send_event("MODULE=cond@ERROR=cam");
+				else
+					abc_hub_send_event("MODULE=cond@ERROR=tof");
+			}
+#endif
 		}
 	}
 	return IRQ_HANDLED;
@@ -217,10 +252,7 @@ void abc_hub_cond_enable(struct device *dev, int enable)
 		SEC_CONN_PRINT("driver enabled.\n");
 		for (i = 0; i < pinfo->pdata->cond_pdata.gpio_cnt; i++) {
 			/*get level value of the gpio pin.*/
-			if (gpio_get_value(pinfo->pdata->cond_pdata.irq_gpio[i]))
-				SEC_CONN_PRINT("gpio level [%d] = %d\n", pinfo->pdata->cond_pdata.irq_gpio[i], gpio_get_value(pinfo->pdata->cond_pdata.irq_gpio[i]));
-			else
-				SEC_CONN_PRINT("gpio level [%d] = %d\n", pinfo->pdata->cond_pdata.irq_gpio[i], gpio_get_value(pinfo->pdata->cond_pdata.irq_gpio[i]));
+			SEC_CONN_PRINT("gpio level [%d] = %d\n", pinfo->pdata->cond_pdata.irq_gpio[i], gpio_get_value(pinfo->pdata->cond_pdata.irq_gpio[i]));
 		}
 		/*Enable interrupt.*/
 		ret = abc_hub_cond_irq_enable(dev, enable);

@@ -3,6 +3,7 @@
  *
  * get/set sdp context to xattr
  */
+#include "../fscrypt_private.h"
 #include "fscrypto_sdp_xattr_private.h"
 #include <linux/xattr.h>
 
@@ -51,7 +52,7 @@ int fscrypt_sdp_get_context(struct inode *inode, void *ctx, size_t len)
 	return -ENOTTY;
 }
 
-static int __fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len, bool is_lock)
+static int __fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len, bool is_lock, void *fs_data)
 {
 	int retval = -ENOTTY;
 	const char *fs_type_name = inode->i_mapping->host->i_sb->s_type->name;
@@ -62,19 +63,33 @@ static int __fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len,
 				FSCRYPT_SDP_XATTR_NAME_ENCRYPTION_SDP_CONTEXT, ctx, len, 0);
 	} else if (!strcmp(FSCRYPT_SDP_FS_TYPE_F2FS_STR, fs_type_name)) {
 		retval = f2fs_setxattr(inode, FSCRYPT_SDP_F2FS_XATTR_INDEX_ENCRYPTION,
-				FSCRYPT_SDP_XATTR_NAME_ENCRYPTION_SDP_CONTEXT, ctx, len, 0, XATTR_CREATE);
+				FSCRYPT_SDP_XATTR_NAME_ENCRYPTION_SDP_CONTEXT, ctx, len, fs_data, 0);
 	}
 	if (is_lock) inode_unlock(inode);
 
 	return retval;
 }
 
-int fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len)
+int fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len, void *fs_data)
 {
-	return __fscrypt_sdp_set_context(inode, ctx, len, true);
+	return __fscrypt_sdp_set_context(inode, ctx, len, true, fs_data);
 }
 
-int fscrypt_sdp_set_context_nolock(struct inode *inode, void *ctx, size_t len)
+int fscrypt_sdp_set_context_nolock(struct inode *inode, void *ctx, size_t len, void *fs_data)
 {
-	return __fscrypt_sdp_set_context(inode, ctx, len, false);
+	return __fscrypt_sdp_set_context(inode, ctx, len, false, fs_data);
+}
+
+static int __fscrypt_knox_set_context(struct inode *inode, void *ctx, size_t len)
+{
+	if (inode->i_sb->s_cop->set_knox_context) {
+		return inode->i_sb->s_cop->set_knox_context(inode, NULL, ctx, len, NULL);
+	} else {
+		return -EOPNOTSUPP;
+	}
+}
+
+int fscrypt_knox_set_context(struct inode *inode, void *ctx, size_t len)
+{
+	return __fscrypt_knox_set_context(inode, ctx, len);
 }

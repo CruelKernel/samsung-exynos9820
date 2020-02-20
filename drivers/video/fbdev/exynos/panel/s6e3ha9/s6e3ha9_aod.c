@@ -586,7 +586,7 @@ void s6e3ha9_copy_partial_hlpm(struct maptbl *tbl, u8 *dst)
 }
 
 #ifdef SUPPORT_NORMAL_SELF_MOVE
-int getidx_self_pattern(struct maptbl *tbl)
+int s6e3ha9_getidx_self_pattern(struct maptbl *tbl)
 {
 	int row = 0;
 	struct aod_dev_info *aod = tbl->pdata;
@@ -616,7 +616,7 @@ int getidx_self_pattern(struct maptbl *tbl)
 }
 
 #if 0
-void copy_self_move_enable(struct maptbl *tbl, u8 *dst)
+void s6e3ha9_copy_self_move_enable(struct maptbl *tbl, u8 *dst)
 {
 	struct aod_dev_info *aod = tbl->pdata;
 	struct aod_ioctl_props *props = &aod->props;
@@ -629,7 +629,7 @@ void copy_self_move_enable(struct maptbl *tbl, u8 *dst)
 }
 #endif
 
-void copy_self_move_pattern(struct maptbl *tbl, u8 *dst)
+void s6e3ha9_copy_self_move_pattern(struct maptbl *tbl, u8 *dst)
 {
 	int idx;
 

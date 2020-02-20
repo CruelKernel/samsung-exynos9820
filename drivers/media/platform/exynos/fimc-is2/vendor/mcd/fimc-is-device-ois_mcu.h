@@ -130,6 +130,13 @@ enum fimc_is_ois_power_mode {
 	OIS_POWER_MODE_DUAL,
 };
 
+struct mcu_default_data {
+	u32 ois_gyro_list[5];
+	u32 ois_gyro_list_len;
+	u32 aperture_delay_list[2];
+	u32 aperture_delay_list_len;
+};
+
 #define	SWAP32(x) ((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >> 8) | (((x) & 0x0000ff00) << 8) | (((x) & 0x000000ff) << 24))
 #define	RND_DIV(num, den) ((num > 0) ? (num+(den>>1))/den : (num-(den>>1))/den)
 #define	SCALE				10000

@@ -163,6 +163,7 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 {
 	struct stackframe frame;
 	int skip = 0;
+	int cnt = 0;
 
 	pr_debug("%s(regs = %p tsk = %p)\n", __func__, regs, tsk);
 
@@ -197,6 +198,13 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 		unsigned long stack;
 		int ret;
 
+#ifdef CONFIG_SEC_DEBUG_LIMIT_BACKTRACE
+		if (MAX_UNWINDING_LOOP < cnt) {
+			pr_info("%s: Forcely break dump_backtrace to avoid infinity backtrace\n", __func__);
+			break;
+		}
+#endif
+
 		/* skip until specified stack frame */
 		if (!skip) {
 			dump_backtrace_entry(frame.pc);
@@ -214,6 +222,7 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 			dbg_snapshot_save_log(raw_smp_processor_id(), regs->pc);
 		}
 		ret = unwind_frame(tsk, &frame);
+
 		if (ret < 0)
 			break;
 		if (in_entry_text(frame.pc)) {
@@ -223,6 +232,7 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 				dump_mem("", "Exception stack", stack,
 					 stack + sizeof(struct pt_regs));
 		}
+		cnt++;
 	}
 
 	put_task_stack(tsk);
@@ -233,6 +243,7 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 {
 	struct stackframe frame;
 	int skip;
+	int cnt = 0;
 
 	pr_debug("%s(regs = %p tsk = %p)\n", __func__, regs, tsk);
 
@@ -263,6 +274,13 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 		unsigned long stack;
 		int ret;
 
+#ifdef CONFIG_SEC_DEBUG_LIMIT_BACKTRACE
+		if (MAX_UNWINDING_LOOP < cnt) {
+			pr_info("%s: Forcely break dump_backtrace to avoid infinity backtrace\n", __func__);
+			break;
+		}
+#endif
+
 		/* skip until specified stack frame */
 		if (!skip) {
 			dump_backtrace_entry_auto_summary(frame.pc);
@@ -287,6 +305,7 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 				dump_mem("", "Exception stack", stack,
 					 stack + sizeof(struct pt_regs));
 		}
+		cnt++;
 	}
 
 	put_task_stack(tsk);
@@ -326,17 +345,12 @@ static int __die(const char *str, int err, struct pt_regs *regs)
 		 end_of_stack(tsk));
 	show_regs(regs);
 
-<<<<<<< HEAD
 	if (!user_mode(regs)) {
 #ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
 		dump_backtrace_auto_summary(regs, tsk);
-#else
-		dump_backtrace(regs, tsk);
 #endif
-=======
-	if (!user_mode(regs))
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		dump_instr(KERN_EMERG, regs);
+	}
 
 	return ret;
 }
@@ -369,7 +383,8 @@ void die(const char *str, struct pt_regs *regs, int err)
 	oops_exit();
 
 #ifdef CONFIG_SEC_DEBUG_EXTRA_INFO
-	sec_debug_set_extra_info_backtrace(regs);
+	if (regs && (!user_mode(regs)))
+		sec_debug_set_extra_info_backtrace(regs);
 #endif
 #if defined(CONFIG_SEC_DEBUG)
 	if (in_interrupt()) {

@@ -92,6 +92,12 @@
  */
 static DEFINE_PER_CPU(struct fpsimd_state *, fpsimd_last_state);
 
+#ifdef CONFIG_FPSIMD_CORRUPTION_DETECT
+void fpsimd_context_check(struct task_struct *next);
+#else
+#define fpsimd_context_check(a)   do { } while (0)
+#endif
+
 /*
  * Trapped FP/ASIMD access.
  */
@@ -127,6 +133,32 @@ void do_fpsimd_exc(unsigned int esr, struct pt_regs *regs)
 
 	send_sig_info(SIGFPE, &info, current);
 }
+
+#ifdef CONFIG_FPSIMD_CORRUPTION_DETECT
+void fpsimd_context_check(struct task_struct *next)
+{
+	int simd_reg_index;
+	struct fpsimd_state current_st, *saved_st;
+	saved_st = &next->thread.fpsimd_state;
+	fpsimd_save_state(&current_st);
+	
+	for (simd_reg_index = 0; simd_reg_index < 32; simd_reg_index++)
+	{
+		if(current_st.vregs[simd_reg_index] != saved_st->vregs[simd_reg_index]) {
+			pr_auto(ASL4,"%s: (%s:%d), (%s:%d) \n", __func__, current->comm, current->pid,
+									next->comm, next->pid);
+			dump_stack();
+		}
+	}
+
+	if((current_st.fpsr != saved_st->fpsr) || (current_st.fpcr != saved_st->fpcr)) {
+		pr_auto(ASL4,"%s : (%s:%d), (%s:%d) \n", __func__, current->comm, current->pid,
+								next->comm, next->pid);
+		dump_stack();
+	}
+
+}
+#endif
 
 void fpsimd_thread_switch(struct task_struct *next)
 {
@@ -165,9 +197,11 @@ void fpsimd_thread_switch(struct task_struct *next)
 		 * upon the next return to userland.
 		 */
 		if (__this_cpu_read(fpsimd_last_state) == nxt_st
-		    && nxt_st->cpu == smp_processor_id())
+		    && nxt_st->cpu == smp_processor_id()) {
+			fpsimd_context_check(next);
 			clear_ti_thread_flag(task_thread_info(next),
 					     TIF_FOREIGN_FPSTATE);
+		}
 		else
 			set_ti_thread_flag(task_thread_info(next),
 					   TIF_FOREIGN_FPSTATE);

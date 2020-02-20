@@ -35,8 +35,6 @@ DEFINE_DLOG(dlog_rmdir);
 #define MAX_EXT			(1 << 7)
 #define MAX_DEPTH		2
 
-#define SDFAT_SUPER_MAGIC       (0x5EC5DFA4UL)
-
 struct dlog_keyword {
 	struct hlist_node hlist;
 	const char *keyword;

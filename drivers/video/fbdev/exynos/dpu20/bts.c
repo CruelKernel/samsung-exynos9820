@@ -29,6 +29,13 @@
 #include <linux/sched/clock.h>
 #endif
 
+#ifdef CONFIG_AVOID_TSP_NOISE
+#define TSP_INTER_MIN		134000
+#define TSP_INTER_MAX		333000
+#define ACLK_AVOID_INTER 	333000
+#endif
+
+
 #define DISP_FACTOR		100UL
 #define LCD_REFRESH_RATE	63UL
 #define MULTI_FACTOR 		(1UL << 10)
@@ -276,6 +283,7 @@ static u32 dpu_bts_find_latency_meet_aclk(u32 lat_cycle, u32 line_time,
 	return (u32)(aclk_mhz * 1000UL);
 }
 
+
 u64 dpu_bts_calc_aclk_disp(struct decon_device *decon,
 		struct decon_win_config *config, u64 resol_clock)
 {
@@ -350,6 +358,18 @@ u64 dpu_bts_calc_aclk_disp(struct decon_device *decon,
 
 	aclk_disp = dpu_bts_find_latency_meet_aclk(lat_cycle, line_time,
 			criteria_v, aclk_disp, is_yuv10, is_rotate, rot_factor);
+
+#ifdef CONFIG_AVOID_TSP_NOISE
+	if ((decon->lcd_info->mres_mode == DSU_MODE_2) ||
+		(decon->lcd_info->mres_mode == DSU_MODE_3)) {
+
+		if ((aclk_disp > TSP_INTER_MIN) &&
+			(aclk_disp < TSP_INTER_MAX)) {
+			decon_dbg("aclk : %d -> %d\n", aclk_disp, ACLK_AVOID_INTER);
+			aclk_disp = ACLK_AVOID_INTER;
+		}
+	}
+#endif
 
 	DPU_DEBUG_BTS("\t[R:%d C:%d S:%d] (lat_cycle=%d) (line_time=%d)\n",
 		is_rotate, is_comp, is_scale, lat_cycle, line_time);
@@ -685,17 +705,11 @@ void dpu_bts_acquire_bw(struct decon_device *decon)
 			decon->bts.scen_updated = 1;
 			bts_update_scen(BS_DP_DEFAULT, 1);
 		}
-	} else if (pixelclock > 148500000) { /* pixelclock < 533000000 ? */
+	} else { /* pixelclock < 533000000 ? */ 
 		if (pm_qos_request_active(&decon->bts.mif_qos))
 			pm_qos_update_request(&decon->bts.mif_qos, 1352 * 1000);
 		else
 			DPU_ERR_BTS("%s mif qos setting error\n", __func__);
-	
-	} else { /* pixelclock <= 148500000 ? */
-		if (pm_qos_request_active(&decon->bts.mif_qos))
-			pm_qos_update_request(&decon->bts.mif_qos, 845 * 1000);
-	  	else
-	   		DPU_ERR_BTS("%s mif qos setting error\n", __func__);
 	}
 
 	DPU_DEBUG_BTS("%s: decon%d, pixelclock(%u)\n", __func__, decon->id,

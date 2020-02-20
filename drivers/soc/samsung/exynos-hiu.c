@@ -628,16 +628,26 @@ hiu_dvfs_limit_store(struct device *dev, struct device_attribute *devattr,
 	return count;
 }
 
+static ssize_t
+hiu_pb_enabled_show(struct device *dev, struct device_attribute *devattr,
+		       char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s sw-pbl:%x\n",
+				data->tb_enabled?"enabled":"disabled", data->sw_pbl);
+}
+
 static DEVICE_ATTR(enabled, 0644, hiu_enable_show, hiu_enable_store);
 static DEVICE_ATTR(boosted, 0444, hiu_boosted_show, NULL);
 static DEVICE_ATTR(boost_threshold, 0444, hiu_boost_threshold_show, NULL);
 static DEVICE_ATTR(dvfs_limit, 0644, hiu_dvfs_limit_show, hiu_dvfs_limit_store);
+static DEVICE_ATTR(pb_enabled, 0444, hiu_pb_enabled_show, NULL);
 
 static struct attribute *exynos_hiu_attrs[] = {
 	&dev_attr_enabled.attr,
 	&dev_attr_boosted.attr,
 	&dev_attr_boost_threshold.attr,
 	&dev_attr_dvfs_limit.attr,
+	&dev_attr_pb_enabled.attr,
 	NULL,
 };
 
@@ -671,11 +681,11 @@ static int hiu_dt_parsing(struct device_node *dn)
 	if (data->boost_max == UINT_MAX)
 		return -ENODEV;
 
-	if (of_property_read_bool(dn, "pc-enabled"))
-		data->pc_enabled = true;
+	if (of_property_read_u32(dn, "pc-enabled", &data->pc_enabled))
+		data->pc_enabled = 0;
 
-	if (of_property_read_bool(dn, "tb-enabled"))
-		data->tb_enabled = true;
+	if (of_property_read_u32(dn, "tb-enabled", &data->tb_enabled))
+		data->tb_enabled = 0;
 
 	cpulist_parse(buf, &data->cpus);
 	cpumask_and(&data->cpus, &data->cpus, cpu_possible_mask);

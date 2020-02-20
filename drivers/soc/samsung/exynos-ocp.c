@@ -758,8 +758,10 @@ static int ocp_dt_parsing(struct device_node *dn)
 	cpulist_parse(buf, &data->cpus);
 	cpumask_and(&data->cpus, &data->cpus, cpu_possible_mask);
 	cpumask_and(&data->cpus, &data->cpus, cpu_online_mask);
-	if (cpumask_weight(&data->cpus) == 0)
+	if (cpumask_weight(&data->cpus) == 0) {
+		CONTROL_OCP_WARN(0);
 		return -ENODEV;
+	}
 
 	data->cpu = cpumask_first(&data->cpus);
 
@@ -823,6 +825,12 @@ static int exynos_ocp_probe(struct platform_device *pdev)
 
 	data->base = ioremap(GCU_BASE_ADDR, SZ_4K);
 
+	get_s2mps19_i2c(&data->i2c);
+	if (data->i2c == NULL) {
+		dev_err(&pdev->dev, "Failed to get s2mps19 i2c_client\n");
+		goto free_data;
+	}
+
 	ret = ocp_dt_parsing(dn);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to parse OCP data\n");
@@ -857,14 +865,6 @@ static int exynos_ocp_probe(struct platform_device *pdev)
 					"exynos:ocp",
 					exynos_ocp_cpu_up_callback,
 					exynos_ocp_cpu_down_callback);
-
-	get_s2mps19_i2c(&data->i2c);
-	if (data->i2c == NULL) {
-		dev_err(&pdev->dev, "Failed to get s2mps19 i2c_client\n");
-		goto free_data;
-	}
-
-	CONTROL_OCP_WARN(1);
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &exynos_ocp_attr_group);
 	if (ret)

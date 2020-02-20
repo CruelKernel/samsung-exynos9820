@@ -24,6 +24,7 @@ extern int select_perf_cpu(struct task_struct *p);
 extern int global_boosting(struct task_struct *p);
 extern int global_boosted(void);
 extern int select_energy_cpu(struct task_struct *p, int prev_cpu, int sd_flag, int sync);
+extern int select_best_cpu(struct task_struct *p, int prev_cpu, int sd_flag, int sync);
 extern unsigned int calculate_energy(struct task_struct *p, int target_cpu);
 extern int alloc_bands(void);
 extern int band_play_cpu(struct task_struct *p);
@@ -40,6 +41,7 @@ extern unsigned long ml_boosted_cpu_util(int cpu);
 extern unsigned long ml_cpu_util(int cpu);
 extern unsigned long ml_cpu_util_ratio(int cpu, int sse);
 extern unsigned long ml_task_util_est(struct task_struct *p);
+extern unsigned long __ml_cpu_util_est(int cpu, int sse);
 
 extern void init_part(void);
 
@@ -67,3 +69,5 @@ static inline struct task_struct *task_of(struct sched_entity *se)
 }
 
 struct list_head *lb_cfs_tasks(struct rq *rq, int sse);
+
+extern unsigned long freqvar_st_boost_vector(int cpu);

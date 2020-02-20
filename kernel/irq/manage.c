@@ -20,6 +20,7 @@
 #include <linux/sched/task.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/task_work.h>
+#include <linux/sec_debug.h>
 
 #include "internals.h"
 

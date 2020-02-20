@@ -209,6 +209,16 @@ static inline bool sipc5_ipc_ch(u8 ch)
 		? true : false;
 }
 
+/**
+@param ch	the channel ID
+@return		true if the channel ID is for MISC channel want to logging
+*/
+static inline bool sipc5_misc_ch(u8 ch)
+{
+	return (ch == SIPC_CH_ID_CASS)
+		? true : false;
+}
+
 struct sipc5_frame_data {
 	/* Frame length calculated from the length fields */
 	unsigned int len;

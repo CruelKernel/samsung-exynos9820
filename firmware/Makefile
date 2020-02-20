@@ -16,13 +16,23 @@ fw-external-$(CONFIG_EXYNOS9810_ACPM) += exynos9810_acpm_tmu.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SEC_TS_Y771) += tsp_sec/y761_beyond0_phole.bin tsp_sec/y771_beyond1_phole.bin \
 						tsp_sec/y771_beyond2_phole.bin tsp_sec/y771_beyondx_phole.bin
 
-fw-shipped-$(CONFIG_EPEN_WACOM_W9020) += epen/w9020_davinci.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SEC_TS_Y771_D) += tsp_sec/y771_d1.bin tsp_sec/y771_d2.bin \
+						tsp_sec/y771_d1_bringup.bin tsp_sec/y771_davinci_bringup.bin tsp_sec/y771_davinci_bringup2nd.bin
 
-#ifdef CONFIG_SEC_FACTORY
-#fw-shipped-$(CONFIG_EPEN_WACOM_W9020) += epen/w9018_crown_garage.fw epen/w9018_crown_unit.fw
-#endif
+fw-shipped-$(CONFIG_EPEN_WACOM_W9020) += epen/w9020_d2.fw epen/w9020_d1.fw epen/w9020_d1_bringup.fw
+ifdef CONFIG_SEC_FACTORY
+fw-shipped-$(CONFIG_EPEN_WACOM_W9020) += epen/w9020_d2_unit.fw epen/w9020_d1_unit.fw
+endif
+
+fw-shipped-$(CONFIG_KEYBOARD_STM_FSR) += key_stm/fsr1ad04_davinci.fw key_stm/fsr1ad04_d2_dv2.fw \
+					key_stm/fsr1ad04_d1.fw key_stm/fsr1ad04_d2.fw \
+					key_stm/fsr1ad04_davinci_dv1.fw key_stm/fsr1ad04_d1_dv1.fw \
+					key_stm/fsr1ad04_d1_dv2.fw
 
 fw-shipped-$(CONFIG_WIRELESS_FIRMWARE_UPDATE) += mfc/mfc_fw_flash.bin mfc/mfc_fw_flash_lsi.bin
+ifdef CONFIG_WIRELESS_FIRMWARE_UPDATE
+fw-shipped-$(CONFIG_WIRELESS_CHARGER_MFC_S2MIW04) += mfc/mfc_fw_flash_s2miw04.bin
+endif
 
 # There are three cases to care about:
 # 1. Building kernel with CONFIG_FIRMWARE_IN_KERNEL=y -- $(fw-shipped-y) should
@@ -199,12 +209,12 @@ wordsize_deps := $(wildcard include/config/64bit.h include/config/32bit.h \
 		firmware/Makefile)
 
 $(patsubst %,$(obj)/%.gen.S, $(fw-shipped-y)): %: $(wordsize_deps)
-	$(call cmd,fwbin,$(patsubst %.gen.S,%,$@))
+	$(call cmd,fwbin,$(fwabs)/$(patsubst $(obj)/%.gen.S,%,$@))
 $(patsubst %,$(obj)/%.gen.S, $(fw-external-y)): %: $(wordsize_deps)
 	$(call cmd,fwbin,$(fwabs)/$(patsubst $(obj)/%.gen.S,%,$@))
 
 # The .o files depend on the binaries directly; the .S files don't.
-$(patsubst %,$(obj)/%.gen.o, $(fw-shipped-y)): %.gen.o: %
+$(patsubst %,$(obj)/%.gen.o, $(fw-shipped-y)): $(obj)/%.gen.o: $(fwdir)/%
 $(patsubst %,$(obj)/%.gen.o, $(fw-external-y)): $(obj)/%.gen.o: $(fwdir)/%
 
 # .ihex is used just as a simple way to hold binary files in a source tree
@@ -226,3 +236,6 @@ targets := $(patsubst $(obj)/%,%, \
 # Without this, built-in.o won't be created when it's empty, and the
 # final vmlinux link will fail.
 obj- := dummy
+
+# SPU signature verify
+obj-y += spu_verify/

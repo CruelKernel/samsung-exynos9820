@@ -48,11 +48,7 @@ static int __init exynos_ion_reserved_mem_setup(struct reserved_mem *rmem)
 	reusable = !!of_get_flat_dt_prop(rmem->fdt_node, "ion,reusable", NULL);
 	untch = !!of_get_flat_dt_prop(rmem->fdt_node, "ion,untouchable", NULL);
 	secure = !!of_get_flat_dt_prop(rmem->fdt_node, "ion,secure", NULL);
-#ifdef CONFIG_ION_RBIN_HEAP
 	recyclable = !!of_get_flat_dt_prop(rmem->fdt_node, "ion,recyclable", NULL);
-#else
-	recyclable = false;
-#endif
 
 	prop = of_get_flat_dt_prop(rmem->fdt_node, "ion,protection_id", &len);
 	if (prop)
@@ -85,7 +81,7 @@ static int __init exynos_ion_reserved_mem_setup(struct reserved_mem *rmem)
 		return -EINVAL;
 	}
 
-	if (reusable || recyclable) {
+	if (reusable) {
 		struct cma *cma;
 		int ret;
 
@@ -94,16 +90,6 @@ static int __init exynos_ion_reserved_mem_setup(struct reserved_mem *rmem)
 		if (ret < 0) {
 			perrfn("failed to init cma for '%s'", heapname);
 			return ret;
-		}
-
-		if (recyclable) {
-			cma_set_rbin(cma);
-			totalrbin_pages += (rmem->size / PAGE_SIZE);
-			/*
-			 * # of cma pages was increased by this RBIN memory in
-			 * cma_init_reserved_mem_with_name(). Need to deduct.
-			 */
-			totalcma_pages -= (rmem->size / PAGE_SIZE);
 		}
 
 		ion_reserved_mem[reserved_mem_count].cma = cma;
@@ -280,18 +266,14 @@ static int __init exynos_ion_register_heaps(void)
 		}
 
 		if (ion_reserved_mem[i].cma) {
-#ifdef CONFIG_RBIN
-			if (ion_reserved_mem[i].recyclable) {
-				pheap.type = ION_HEAP_TYPE_RBIN;
-				heap = ion_rbin_heap_create(ion_reserved_mem[i].cma,
-								&pheap);
-			} else
+			pheap.type = ION_HEAP_TYPE_DMA;
+			heap = ion_cma_heap_create(ion_reserved_mem[i].cma,
+						   &pheap);
+#ifdef CONFIG_ION_RBIN_HEAP
+		} else if (ion_reserved_mem[i].recyclable) {
+			pheap.type = ION_HEAP_TYPE_RBIN;
+			heap = ion_rbin_heap_create(&pheap);
 #endif
-			{
-				pheap.type = ION_HEAP_TYPE_DMA;
-				heap = ion_cma_heap_create(ion_reserved_mem[i].cma,
-								&pheap);
-			}
 		} else {
 			pheap.type = ION_HEAP_TYPE_CARVEOUT;
 			heap = ion_carveout_heap_create(&pheap);

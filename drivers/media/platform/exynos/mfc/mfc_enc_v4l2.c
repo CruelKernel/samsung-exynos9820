@@ -884,6 +884,7 @@ static int __mfc_enc_ext_info(struct mfc_ctx *ctx)
 	val |= ENC_SET_FIXED_SLICE;
 	val |= ENC_SET_PVC_MODE;
 	val |= ENC_SET_RATIO_OF_INTRA;
+	val |= ENC_SET_DROP_CONTROL;
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->color_aspect_enc))
 		val |= ENC_SET_COLOR_ASPECT;
@@ -1763,6 +1764,9 @@ static int __mfc_enc_set_param(struct mfc_ctx *ctx, struct v4l2_control *ctrl)
 	case V4L2_CID_MPEG_VIDEO_SEI_DISPLAY_PRIMARIES_2:
 		p->display_primaries_2 = ctrl->value;
 		break;
+	case V4L2_CID_MPEG_VIDEO_DROP_CONTROL:
+		p->drop_control = ctrl->value;
+		break;
 	case V4L2_CID_MPEG_MFC_HDR_USER_SHARED_HANDLE:
 		if (enc->sh_handle_hdr.fd == -1) {
 			enc->sh_handle_hdr.fd = ctrl->value;
@@ -1849,6 +1853,7 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 	case V4L2_CID_MPEG_VIDEO_ROI_CONTROL:
 	case V4L2_CID_MPEG_VIDEO_YSUM:
 	case V4L2_CID_MPEG_VIDEO_RATIO_OF_INTRA:
+	case V4L2_CID_MPEG_VIDEO_DROP_CONTROL:
 		list_for_each_entry(ctx_ctrl, &ctx->ctrls, list) {
 			if (!(ctx_ctrl->type & MFC_CTRL_TYPE_SET))
 				continue;
@@ -1856,13 +1861,6 @@ static int __mfc_enc_set_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 			if (ctx_ctrl->id == ctrl->id) {
 				ctx_ctrl->has_new = 1;
 				ctx_ctrl->val = ctrl->value;
-				if (ctx_ctrl->id == \
-					V4L2_CID_MPEG_MFC51_VIDEO_FRAME_RATE_CH) {
-					ctx_ctrl->val &= ~(0xFFFF << 16);
-					ctx_ctrl->val |= ctx_ctrl->val << 16;
-					ctx_ctrl->val &= ~(0xFFFF);
-					ctx_ctrl->val |= p->rc_frame_delta & 0xFFFF;
-				}
 				if ((ctx_ctrl->id == \
 					V4L2_CID_MPEG_VIDEO_H264_HIERARCHICAL_CODING_LAYER_CH) ||
 					(ctx_ctrl->id == \

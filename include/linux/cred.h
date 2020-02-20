@@ -85,6 +85,15 @@ extern int groups_search(const struct group_info *, kgid_t);
 extern bool may_setgroups(void);
 extern void groups_sort(struct group_info *);
 
+#ifdef CONFIG_RKP_KDP
+struct ro_rcu_head {
+	struct rcu_head	rcu;		/* RCU deletion hook */
+	void *bp_cred;
+};
+#define get_rocred_rcu(cred) ((struct ro_rcu_head *)((atomic_t *)cred->use_cnt+1))
+#define get_usecnt_rcu(use_cnt) ((struct ro_rcu_head *)((atomic_t *)use_cnt+1))
+#endif /*CONFIG_RKP_KDP*/
+
 /*
  * The security context of a task
  *

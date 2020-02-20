@@ -435,6 +435,10 @@ extern bool events_check_enabled;
 extern unsigned int pm_wakeup_irq;
 extern suspend_state_t pm_suspend_target_state;
 
+#ifdef CONFIG_SEC_PM_DEBUG
+extern bool pm_system_wakeup_without_irq_num;
+#endif
+
 extern bool pm_wakeup_pending(void);
 extern void pm_system_wakeup(void);
 extern void pm_system_cancel_wakeup(void);

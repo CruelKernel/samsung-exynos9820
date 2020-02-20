@@ -22,7 +22,7 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/ccic/ccic_core.h>
 #include <linux/ccic/ccic_sysfs.h>
 #include <linux/power_supply.h>

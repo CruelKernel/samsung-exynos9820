@@ -104,7 +104,7 @@ struct fimc_is_cam_info {
 };
 
 struct fimc_is_common_cam_info {
-	unsigned int supported_camera_ids[9];	/*FIMC_IS_SENSOR_COUNT*/
+	unsigned int supported_camera_ids[11];	/*FIMC_IS_SENSOR_COUNT*/
 	unsigned int max_supported_camera;
 };
 

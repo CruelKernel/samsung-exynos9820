@@ -21,6 +21,8 @@
 #include <linux/uaccess.h>
 #include <linux/xattr.h>
 
+#include "proca_porting.h"
+
 /**
  * Length/Value structure
  */

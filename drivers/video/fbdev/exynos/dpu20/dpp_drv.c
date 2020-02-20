@@ -761,48 +761,6 @@ static int dpp_get_mcd_hdr_subdev(struct dpp_device *dpp, char *devname)
 
 	return ret;
 }
-
-static ssize_t show_color_mode(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int len = 0;
-	struct dpp_device *dpp = dev_get_drvdata(dev);
-
-	len = snprintf(buf, PAGE_SIZE, "WCG SRC:%d, DST:%d\n",
-			dpp->wcg_src_cm, dpp->wcg_dst_cm);
-
-	return len;
-}
-
-static ssize_t store_color_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
-{
-	int ret;
-	struct dpp_device *dpp = dev_get_drvdata(dev);
-
-	ret = sscanf(buf, "%d %d %d", &dpp->wcg_src_cm, &dpp->wcg_dst_cm);
-	if (ret < 0)
-		return ret;
-
-	return size;
-}
-
-
-static DEVICE_ATTR(color_mode, 0644, show_color_mode, store_color_mode);
-
-static int dpp_create_mcd_hdr_sysfs(struct dpp_device *dpp)
-{
-	int ret = 0;
-
-	ret = device_create_file(dpp->dev, &dev_attr_color_mode);
-	if (ret) {
-		decon_err("failed to create color_mode file\n");
-		return ret;
-	}
-
-	return ret;
-}
-
 #endif
 
 static void dpp_init_subdev(struct dpp_device *dpp)
@@ -1212,8 +1170,6 @@ static int dpp_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_EXYNOS_MCD_HDR
 	dpp_get_mcd_hdr_subdev(dpp, MCD_HDR_MODULE_NAME);
-
-	dpp_create_mcd_hdr_sysfs(dpp);
 
 	ret = v4l2_subdev_call(dpp->mcd_sd,
 		core , ioctl ,GET_ATTR, &attr);

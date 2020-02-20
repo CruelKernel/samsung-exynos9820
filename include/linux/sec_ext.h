@@ -26,6 +26,13 @@
  */
 #define EXYNOS_PMU_INFORM2 0x0808
 #define EXYNOS_PMU_INFORM3 0x080C
+
+#define EXYNOS_PMU_INFORM4 0x0840
+#define EXYNOS_PMU_INFORM5 0x0844
+
+#define EXYNOS_PMU_INFORM8 0x0850
+#define EXYNOS_PMU_INFORM9 0x0854
+
 #define EXYNOS_PMU_PS_HOLD_CONTROL 0x030C
 
 /*
@@ -73,18 +80,26 @@ extern void sec_initcall_debug_add(initcall_t fn, unsigned long long t);
  */
 #ifdef CONFIG_SEC_PARAM
 #define CM_OFFSET				CONFIG_CM_OFFSET
-#define CM_OFFSET_LIMIT 8
+#define CM_OFFSET_LIMIT				8
+#define WC_OFFSET				CONFIG_WC_OFFSET
+#define WC_OFFSET_LIMIT				0
+
 enum {
 	PARAM_OFF = '0',
 	PARAM_ON = '1',
 };
 
 extern int sec_set_param(unsigned long offset, char val);
+extern int sec_set_param_u32(unsigned long offset, u32 val);
 extern int sec_set_param_str(unsigned long offset, const char *val, int size);
+extern int sec_set_param_extra(unsigned long offset, void *extra, size_t size);
+extern int sec_get_param_u32(unsigned long offset, u32 *val);
 extern int sec_get_param_str(unsigned long offset, char *val);
 extern void sec_debug_recovery_reboot(void);
 #else
 #define sec_set_param(a, b)			(-1)
+#define sec_set_param_u32(a, b)			(-1)
+#define sec_get_param_u32(a, b)			(-1)
 #endif /* CONFIG_SEC_PARAM */
 
 #endif /* CONFIG_SEC_EXT */

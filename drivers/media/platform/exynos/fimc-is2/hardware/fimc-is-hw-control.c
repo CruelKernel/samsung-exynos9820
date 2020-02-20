@@ -988,7 +988,6 @@ int fimc_is_hardware_probe(struct fimc_is_hardware *hardware,
 	atomic_set(&hardware->bug_count, 0);
 	atomic_set(&hardware->log_count, 0);
 	hardware->video_mode = false;
-	hardware->hs_mode = false;
 	clear_bit(HW_OVERFLOW_RECOVERY, &hardware->hw_recovery_flag);
 
 	prepare_sfr_dump(hardware);

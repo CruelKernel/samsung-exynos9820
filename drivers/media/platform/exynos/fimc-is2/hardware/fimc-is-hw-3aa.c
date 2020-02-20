@@ -177,7 +177,9 @@ int fimc_is_hw_3aa_mode_change(struct fimc_is_hw_ip *hw_ip, u32 instance, ulong 
 		FIMC_BUG(!framemgr);
 
 		framemgr_e_barrier(framemgr, 0);
+		msinfo_hw("wait peek_frame\n", instance, hw_ip);
 		frame = peek_frame(framemgr, FS_HW_CONFIGURE);
+		msinfo_hw("end peek_frame\n", instance, hw_ip);
 		framemgr_x_barrier(framemgr, 0);
 		if (frame) {
 			shot = frame->shot;

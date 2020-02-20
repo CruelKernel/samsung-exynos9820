@@ -1191,21 +1191,25 @@ crc_retry:
 
 #ifdef CAMERA_REAR_TOF
 	if (rom_id == REAR_TOF_ROM_ID) {
-		if (finfo->cal_map_ver[3] >= '3') {
-			specific->rear_tof_uid = *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr]);
-		} else {
-			specific->rear_tof_uid = 0xCD2D;
+#ifdef REAR_TOF_CHECK_SENSOR_ID
+		fimc_is_sec_sensorid_find_rear_tof(core);
+		if (specific->rear_tof_sensor_id == SENSOR_NAME_IMX316) {
+			finfo->rom_tof_cal_uid_addr_len = 1;
+			finfo->rom_tof_cal_size_addr_len = 1;
+			if (finfo->cal_map_ver[3] == '1') {
+				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP001;
+			} else {
+				finfo->crc_check_list[1] = REAR_TOF_IMX316_CRC_ADDR1_MAP002;
+			}
 		}
+#endif
+		fimc_is_sec_sensor_find_rear_tof_uid(core, buf);
 	}
 #endif
 
 #ifdef CAMERA_FRONT_TOF
 	if (rom_id == FRONT_TOF_ROM_ID) {
-		if (finfo->cal_map_ver[3] >= '5') {
-			specific->front_tof_uid = *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr]);
-		} else {
-			specific->front_tof_uid = 0xCB29;
-		}
+		fimc_is_sec_sensor_find_front_tof_uid(core, buf);
 	}
 #endif
 
@@ -2927,6 +2931,77 @@ int fimc_is_sec_sensorid_find_front(struct fimc_is_core *core)
 	return 0;
 }
 
+int fimc_is_sec_sensorid_find_rear_tof(struct fimc_is_core *core)
+{
+#if defined(CAMERA_REAR_TOF) && defined(REAR_TOF_CHECK_SENSOR_ID)
+	struct fimc_is_vender_specific *specific = core->vender.private_data;
+	struct fimc_is_rom_info *finfo = NULL;
+
+	fimc_is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
+
+	if(finfo->header_ver[FW_PIXEL_SIZE+1] == REAR_TOF_CHECK_SENSOR_ID) {
+		specific->rear_tof_sensor_id = SENSOR_NAME_IMX316;
+		info("current sensor is imx316");
+	}
+#endif
+	return 0;
+}
+
+int fimc_is_sec_sensor_find_rear_tof_uid(struct fimc_is_core *core, char *buf)
+{
+#ifdef CAMERA_REAR_TOF
+	struct fimc_is_vender_specific *specific = core->vender.private_data;
+	struct fimc_is_rom_info *finfo = NULL;
+
+	fimc_is_sec_get_sysfs_finfo(&finfo, REAR_TOF_ROM_ID);
+
+	if (finfo->cal_map_ver[3] >= REAR_TOF_CHECK_MAP_VERSION) {
+		char uid_list[256] = {0, };
+		char uid_temp[10] = {0, };
+		for (int i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++) {
+			specific->rear_tof_uid[i] = *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr[i]]);
+			sprintf(uid_temp, "0x%x ", specific->rear_tof_uid[i]);
+			strcat(uid_list, uid_temp);
+		}
+		info("rear_tof_uid: %s\n", uid_list);
+	} else {
+		for (int i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++) {
+			specific->rear_tof_uid[i] = REAR_TOF_DEFAULT_UID;
+		}
+		info("rear_tof_uid: 0x%x, use default 0x%x", *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr[0]]),
+													specific->rear_tof_uid[0]);
+	}
+#endif
+	return 0;
+}
+
+int fimc_is_sec_sensor_find_front_tof_uid(struct fimc_is_core *core, char *buf)
+{
+#ifdef CAMERA_FRONT_TOF
+	struct fimc_is_vender_specific *specific = core->vender.private_data;
+	struct fimc_is_rom_info *finfo = NULL;
+
+	fimc_is_sec_get_sysfs_finfo(&finfo, FRONT_TOF_ROM_ID);
+
+	if (finfo->cal_map_ver[3] >= FRONT_TOF_CHECK_MAP_VERSION) {
+		char uid_list[256] = {0, };
+		char uid_temp[10] = {0, };
+		for (int i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++) {
+			specific->front_tof_uid[i] = *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr[i]]);
+			sprintf(uid_temp, "0x%x ", specific->front_tof_uid[i]);
+			strcat(uid_list, uid_temp);
+		}
+		info("front_tof_uid: %s\n", uid_list);
+	} else {
+		for (int i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++) {
+			specific->front_tof_uid[i] = FRONT_TOF_DEFAULT_UID;
+		}
+		info("front_tof_uid: 0x%x, use default 0x%x", *((int32_t*)&buf[finfo->rom_tof_cal_uid_addr[0]]),
+													specific->front_tof_uid[0]);
+	}
+#endif
+	return 0;
+}
 int fimc_is_get_dual_cal_buf(int slave_position, char **buf, int *size)
 {
 	char *cal_buf;
@@ -3005,7 +3080,7 @@ int fimc_is_sec_fw_find(struct fimc_is_core *core)
 	case SENSOR_NAME_SAK2L4:
 		snprintf(finfo->load_setfile_name, sizeof(FIMC_IS_2L4_SETF), "%s", FIMC_IS_2L4_SETF);
 #ifdef CAMERA_MODULE_REAR2_SETF_DUMP
-		snprintf(finfo->load_setfile2_name, sizeof(FIMC_IS_3M3_SETF), "%s", FIMC_IS_3M3_SETF);
+		snprintf(finfo->load_setfile2_name, sizeof(FIMC_IS_3M5_SETF), "%s", FIMC_IS_3M5_SETF);
 #endif
 		snprintf(finfo->load_rta_fw_name, sizeof(FIMC_IS_RTA), "%s", FIMC_IS_RTA);
 		break;

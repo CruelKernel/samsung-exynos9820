@@ -21,7 +21,16 @@
 #define KAIR_CONVERGING			(0)
 #define KAIR_TPDF_CUMSUM		(512)
 #define KAIR_TPDF_MINVAL		(1)
+#define KAIR_TPDF_CASCADE_LEVEL		(1)
 #define KAIR_ALIAS_LEN			(8)
+
+#define KAIR_INF_TPDF_WEIGHT		(1)
+#define KAIR_FIN_TPDF_WEIGHT		(2)
+#if KAIR_TPDF_CASCADE_LEVEL > 1
+#define KAIR_INST_TPDF_WEIGHT		(4)
+#else
+#define KAIR_INST_TPDF_WEIGHT		(8)
+#endif
 
 /**
  * Calculating Energy-Performance(EP) weight ratio, which is described
@@ -42,16 +51,9 @@
 #define KAIR_WINDOW_CNT_MASK		(0x000000000FFFFFFFUL)
 
 /**
- * bit-shift representation of KAIR capacity denominator
- * which is considered as the summation of each level's TPDF weight
- * multiplied by maximum randomness.
- **/
-#define KAIR_CAPA_DENOM_SHIFT		(7)
-
-/**
  *
  **/
-#define KAIR_DEF_RAND_NEUTRAL		(0)
+#define KAIR_DEF_RAND_NEUTRAL		(2)
 #define KAIR_TRIGGER_THROTTLE		(3)
 #define KAIR_FASTEN_THROTTLE		(-100)
 
@@ -233,10 +235,18 @@ struct kairistics {
  **/
 struct kair_class {
 	struct list_head	tpdf_cascade;
+	/**
+ 	 * bit-shift representation of KAIR capacity denominator
+ 	 * which is considered as the summation of each level's TPDF weight
+ 	 * multiplied by maximum randomness.
+ 	 **/
+	unsigned int		capa_denom;
 
 	/**
 	 * """ KAIR methods list """:
 	 * @initializer : self-initializer
+	 * @stopper	: stopping to learn tpdf, cleaning up.
+	 * @finalizer	: returning all resources.
 	 * @job_learner : learner of capacity-probability-density which is
 	 *		  actually conducting exclusive on-device learning
 	 *		  algorithm on the given capacity-random variable.
@@ -245,6 +255,7 @@ struct kair_class {
 	 * @cap_bettor  : returns betting capacity estimated.
 	 **/
 	int (*initializer)(struct kair_class *self);
+	void (*stopper)(struct kair_class *self);
 	void (*finalizer)(struct kair_class *self);
 	void (*job_learner)(struct kair_class *self, struct rand_var *v);
 	int (*job_inferer)(struct kair_class *self);
@@ -287,7 +298,7 @@ extern void kair_tpdf_rescaler(struct tpdf *self);
 		.win_size = KAIR_WINDOW_INF,				\
 		.pc_cnt = 0,						\
 		.irand = KAIR_DIVERGING,				\
-		.weight = 1,						\
+		.weight = KAIR_INF_TPDF_WEIGHT,				\
 		.cache = tfifo_init(&__pdf->cache),			\
 		.tabling = kair_tpdf_tabling,				\
 		.untabling = kair_tpdf_untabling,			\
@@ -313,7 +324,7 @@ extern void kair_tpdf_rescaler(struct tpdf *self);
 				KAIR_WINDOW_NEED_RESCALE,		\
 		.pc_cnt = 0,						\
 		.irand = KAIR_DIVERGING,				\
-		.weight = 2,						\
+		.weight = KAIR_FIN_TPDF_WEIGHT,				\
 		.cache = tfifo_init(&__pdf->cache),			\
 		.tabling = kair_tpdf_tabling,				\
 		.untabling = kair_tpdf_untabling,			\
@@ -338,7 +349,7 @@ extern void kair_tpdf_rescaler(struct tpdf *self);
 		.win_size = ((u64)period << KAIR_WINDOW_SIZE_SHIFT),	\
 		.pc_cnt	= 0,						\
 		.irand = KAIR_DIVERGING,				\
-		.weight = 4,						\
+		.weight = KAIR_INST_TPDF_WEIGHT,			\
 		.cache = tfifo_init(&__pdf->cache),			\
 		.tabling = kair_tpdf_tabling,				\
 		.untabling = kair_tpdf_untabling,			\
@@ -406,3 +417,4 @@ struct kair_class *kair_obj_creator(const char *alias,
 				    unsigned int min_capa,
 				    struct kairistics *kairistic);
 void kair_obj_destructor(struct kair_class *self);
+

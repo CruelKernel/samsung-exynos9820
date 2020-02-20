@@ -112,36 +112,42 @@ config OIS_USE_RUMBA_S4
         default n
         help
           Use RUMBA S4 ois driver IC.
-config CAMERA_BEYOND0
-        bool "This camera is beyond0 project"
+config CAMERA_BSS_V00
+        bool "This camera is bss_v00"
         depends on VENDER_MCD
         default n
         help
-          This camera is beyond0 project.
-config CAMERA_BEYOND1
-        bool "This camera is beyond1 project"
+          This camera is bss_v00.
+config CAMERA_BSS_V01
+        bool "This camera is bss_v01"
         depends on VENDER_MCD
         default n
         help
-          This camera is beyond1 project.
-config CAMERA_BEYOND2
-        bool "This camera is beyond2 project"
+          This camera is bss_v01.
+config CAMERA_BSS_V02
+        bool "This camera is bss_v02"
         depends on VENDER_MCD
         default n
         help
-          This camera is beyond2 project.
-config CAMERA_BEYONDX
-        bool "This camera is beyondx project"
+          This camera is bss_v02.
+config CAMERA_BSS_V00X
+        bool "This camera is bss_v00x"
         depends on VENDER_MCD
         default n
         help
-          This camera is beyondx project.
-config CAMERA_DAVINCI5G
-        bool "This camera is davinci5g project"
+          This camera is bss_v00x.
+config CAMERA_DNS_V01
+        bool "This camera is dns_v01"
         depends on VENDER_MCD
         default n
         help
-          This camera is davinci5g project.
+          This camera is dns_v01.
+config CAMERA_DNS_V02
+        bool "This camera is dns_v02"
+        depends on VENDER_MCD
+        default n
+        help
+          This camera is dns_v02.
 config OIS_USE_RUMBA_S6
         bool "Use RUMBA S6 ois driver IC"
         depends on OIS_USE

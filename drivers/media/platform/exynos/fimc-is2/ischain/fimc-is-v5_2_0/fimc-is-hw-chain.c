@@ -1797,3 +1797,15 @@ u32 fimc_is_hw_find_settle(u32 mipi_speed)
 
 	return fimc_is_csi_settle_table[m + 1];
 }
+
+void fimc_is_hw_djag_get_input(struct fimc_is_device_ischain *ischain, u32 *djag_in)
+{
+	/* Do nothing. */
+}
+
+void fimc_is_hw_djag_adjust_out_size(struct fimc_is_device_ischain *ischain,
+					u32 in_width, u32 in_height,
+					u32 *out_width, u32 *out_height)
+{
+	/* Do nothing. */
+}

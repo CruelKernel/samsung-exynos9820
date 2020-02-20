@@ -96,6 +96,11 @@ extern int lb_check_priority(int src_cpu, int dst_cpu);
 extern struct list_head *lb_prefer_cfs_tasks(int src_cpu, int dst_cpu);
 extern int lb_need_active_balance(enum cpu_idle_type idle,
 				struct sched_domain *sd, int src_cpu, int dst_cpu);
+
+/* check the status of energy table */
+extern bool energy_initialized;
+extern void set_energy_table_status(bool status);
+extern bool get_energy_table_status(void);
 #else
 static inline void init_ems(void);
 static inline void exynos_init_entity_util_avg(struct sched_entity *se) { }
@@ -162,6 +167,11 @@ static inline int lb_need_active_balance(enum cpu_idle_type idle,
 {
 	return 0;
 }
+static inline void set_energy_table_status(bool status) { }
+static inline bool get_energy_table_status(void)
+{
+	return false;
+}
 #endif /* CONFIG_SCHED_EMS */
 
 #ifdef CONFIG_SIMPLIFIED_ENERGY_MODEL
@@ -178,3 +188,33 @@ static inline void update_qos_capacity(int cpu, unsigned long freq, unsigned lon
 
 /* Fluid Real Time */
 extern unsigned int frt_disable_cpufreq;
+
+/*
+ * Maximum number of boost groups to support
+ * When per-task boosting is used we still allow only limited number of
+ * boost groups for two main reasons:
+ * 1. on a real system we usually have only few classes of workloads which
+ *    make sense to boost with different values (e.g. background vs foreground
+ *    tasks, interactive vs low-priority tasks)
+ * 2. a limited number allows for a simpler and more memory/time efficient
+ *    implementation especially for the computation of the per-CPU boost
+ *    value
+ */
+#define BOOSTGROUPS_COUNT 5
+
+struct boost_groups {
+	/* Maximum boost value for all RUNNABLE tasks on a CPU */
+	bool idle;
+	int boost_max;
+	u64 boost_ts;
+	struct {
+		/* The boost for tasks on that boost group */
+		int boost;
+		/* Count of RUNNABLE tasks on that boost group */
+		unsigned tasks;
+		/* Timestamp of boost activation */
+		u64 ts;
+	} group[BOOSTGROUPS_COUNT];
+	/* CPU's boost group locking */
+	raw_spinlock_t lock;
+};

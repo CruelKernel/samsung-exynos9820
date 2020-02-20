@@ -119,6 +119,18 @@ void blk_account_io_start(struct request *req, bool new_io);
 void blk_account_io_completion(struct request *req, unsigned int bytes);
 void blk_account_io_done(struct request *req);
 
+#ifdef CONFIG_BLK_IO_VOLUME
+void blk_queue_reset_io_vol(struct request_queue *q);
+void blk_queue_io_vol_add(struct request_queue *q, int opf, long long bytes);
+void blk_queue_io_vol_del(struct request_queue *q, int opf, long long bytes);
+void blk_queue_io_vol_merge(struct request_queue *q, int opf, int rqs, long long bytes);
+#else
+#define blk_queue_reset_io_vol(q)			do {} while (0)
+#define blk_queue_io_vol_add(q, opf, bytes)		do {} while (0)
+#define blk_queue_io_vol_del(q, opf, bytes)		do {} while (0)
+#define blk_queue_io_vol_merge(q, opf, rqs, bytes)	do {} while (0)
+#endif
+
 /*
  * Internal atomic flags for request handling
  */

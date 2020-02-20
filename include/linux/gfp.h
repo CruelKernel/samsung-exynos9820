@@ -42,10 +42,8 @@ struct vm_area_struct;
 #define ___GFP_KSWAPD_RECLAIM	0x1000000u
 #ifdef CONFIG_LOCKDEP
 #define ___GFP_NOLOCKDEP	0x2000000u
-#define ___GFP_RBIN		0x4000000u
 #else
 #define ___GFP_NOLOCKDEP	0
-#define ___GFP_RBIN		0x2000000u
 #endif
 /* If the above are modified, __GFP_BITS_SHIFT may need updating */
 
@@ -60,7 +58,6 @@ struct vm_area_struct;
 #define __GFP_HIGHMEM	((__force gfp_t)___GFP_HIGHMEM)
 #define __GFP_DMA32	((__force gfp_t)___GFP_DMA32)
 #define __GFP_MOVABLE	((__force gfp_t)___GFP_MOVABLE)  /* ZONE_MOVABLE allowed */
-#define __GFP_RBIN	((__force gfp_t)___GFP_RBIN)      /* Allocate from RBIN */
 #define GFP_ZONEMASK	(__GFP_DMA|__GFP_HIGHMEM|__GFP_DMA32|__GFP_MOVABLE)
 
 /*
@@ -213,7 +210,7 @@ struct vm_area_struct;
 #define __GFP_NOLOCKDEP ((__force gfp_t)___GFP_NOLOCKDEP)
 
 /* Room for N __GFP_FOO bits */
-#define __GFP_BITS_SHIFT (26 + IS_ENABLED(CONFIG_LOCKDEP))
+#define __GFP_BITS_SHIFT (25 + IS_ENABLED(CONFIG_LOCKDEP))
 #define __GFP_BITS_MASK ((__force gfp_t)((1 << __GFP_BITS_SHIFT) - 1))
 
 /*
@@ -491,6 +488,11 @@ static inline struct page *alloc_pages_node(int nid, gfp_t gfp_mask,
 	return __alloc_pages_node(nid, gfp_mask, order);
 }
 
+#ifdef CONFIG_KZEROD
+extern struct page *alloc_zeroed_page(void);
+extern unsigned long kzerod_get_zeroed_size(void);
+#endif
+
 #ifdef CONFIG_NUMA
 extern struct page *alloc_pages_current(gfp_t gfp_mask, unsigned order);
 
@@ -587,7 +589,7 @@ extern void free_contig_range(unsigned long pfn, unsigned nr_pages);
 
 #ifdef CONFIG_CMA
 /* CMA stuff */
-extern void init_cma_reserved_pageblock(struct page *page, bool is_rbin);
+extern void init_cma_reserved_pageblock(struct page *page);
 #endif
 
 #ifdef CONFIG_HPA

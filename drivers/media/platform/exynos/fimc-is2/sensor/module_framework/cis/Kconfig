@@ -139,6 +139,14 @@ config CAMERA_CIS_3M3_OBJ
 		help
 		  Use to build 3M3 camera sensor.
 
+config CAMERA_CIS_3M5_OBJ
+		bool "Use 3M5 camera cis"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_CIS_SELECT
+		default n
+		help
+		  Use to build 3M5 camera sensor.
+
 config CAMERA_CIS_2L1_OBJ
 		bool "Use 2L1 camera cis"
 	depends on USE_DIRECT_IS_CONTROL
@@ -314,6 +322,14 @@ config CAMERA_CIS_IMX316_OBJ
 		default n
 		help
 		  Use to build IMX316 camera sensor.
+
+config CAMERA_CIS_IMX516_OBJ
+		bool "Use IMX516 camera cis"
+	depends on USE_DIRECT_IS_CONTROL
+	depends on CAMERA_CIS_SELECT
+		default n
+		help
+		  Use to build IMX516 camera sensor.
 
 config CAMERA_CIS_VIRTUAL_OBJ
 		bool "Use VIRTUAL camera cis"

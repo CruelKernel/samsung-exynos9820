@@ -254,14 +254,6 @@ int fimc_is_ois_gpio_on(struct fimc_is_core *core)
 		goto p_err;
 	}
 
-#ifdef CAMERA_USE_OIS_EXT_CLK
-	ret = fimc_is_sensor_mclk_on(&core->sensor[i], SENSOR_SCENARIO_OIS_FACTORY, module->pdata->mclk_ch);
-	if (ret) {
-		err("fimc_is_sensor_mclk_on is fail(%d)", ret);
-		goto p_err;
-	}
-#endif
-
 	ret = module_pdata->gpio_cfg(module, SENSOR_SCENARIO_OIS_FACTORY, GPIO_SCENARIO_ON);
 	if (ret) {
 		err("gpio_cfg is fail(%d)", ret);
@@ -304,14 +296,6 @@ int fimc_is_ois_gpio_off(struct fimc_is_core *core)
 		err("gpio_cfg is fail(%d)", ret);
 		goto p_err;
 	}
-
-#ifdef CAMERA_USE_OIS_EXT_CLK
-	ret = fimc_is_sensor_mclk_off(&core->sensor[i], SENSOR_SCENARIO_OIS_FACTORY, module->pdata->mclk_ch);
-	if (ret) {
-		err("fimc_is_sensor_mclk_off is fail(%d)", ret);
-		goto p_err;
-	}
-#endif
 
 p_err:
 	return ret;
@@ -441,7 +425,7 @@ bool fimc_is_ois_auto_test(struct fimc_is_core *core,
 	return result;
 }
 
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 bool fimc_is_ois_auto_test_rear2(struct fimc_is_core *core,
 				int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y,
 				bool *x_result_2nd, bool *y_result_2nd, int *sin_x_2nd, int *sin_y_2nd)
@@ -636,6 +620,7 @@ void fimc_is_ois_fw_update_from_sensor(void *ois_core)
 	struct fimc_is_device_ois *ois_device = NULL;
 	struct fimc_is_core *core = (struct fimc_is_core *)ois_core;
 	struct i2c_client *client = fimc_is_ois_i2c_get_client(core);
+	struct fimc_is_vender_specific *specific = core->vender.private_data;
 
 	if (client) {
 		ois_device = fimc_is_ois_get_device(client);
@@ -644,10 +629,14 @@ void fimc_is_ois_fw_update_from_sensor(void *ois_core)
 		return;
 	}
 
+	mutex_lock(&specific->hw_init_lock);
+
 	fimc_is_ois_gpio_on(core);
 	msleep(50);
 	CALL_OISOPS(ois_device, ois_fw_update, core);
 	fimc_is_ois_gpio_off(core);
+
+	mutex_unlock(&specific->hw_init_lock);
 
 	return;
 }

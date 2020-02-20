@@ -23,18 +23,29 @@
 #include <linux/etherdevice.h>
 #include <linux/device.h>
 #include <linux/module.h>
+
+#ifdef CONFIG_MCPS
+#include "../../mcps/mcps.h"
+#endif
+
 #include <trace/events/napi.h>
 #include <net/ip.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/netdevice.h>
+#include <uapi/linux/net_dropdump.h>
 
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
 #include <linux/modem_notifier.h>
 #endif
 
+#ifdef CONFIG_LINK_FORWARD
+#include <linux/linkforward.h>
+#endif
+
 #include "modem_prj.h"
 #include "modem_utils.h"
+#include "modem_klat.h"
 
 static u8 sipc5_build_config(struct io_device *iod, struct link_device *ld,
 			     unsigned int count);
@@ -326,7 +337,7 @@ static int rx_multi_pdp(struct sk_buff *skb)
 	struct net_device *ndev;
 	struct iphdr *iphdr;
 	int len = skb->len;
-	int ret;
+	int ret, l2forward = 0;
 
 	ndev = iod->ndev;
 	if (!ndev) {
@@ -340,8 +351,6 @@ static int rx_multi_pdp(struct sk_buff *skb)
 	}
 
 	skb->dev = ndev;
-	ndev->stats.rx_packets++;
-	ndev->stats.rx_bytes += skb->len;
 
 	/* check the version of IP */
 	iphdr = (struct iphdr *)skb->data;
@@ -373,29 +382,53 @@ static int rx_multi_pdp(struct sk_buff *skb)
 	skb_reset_transport_header(skb);
 	skb_reset_network_header(skb);
 
-	if (check_gro_support(skb)) {
-		ret = napi_gro_receive(napi_get_current(), skb);
-		if (ret == GRO_DROP) {
-			mif_err_limited("%s: %s<-%s: ERR! napi_gro_receive\n",
-					ld->name, iod->name, iod->mc->name);
-		}
+#ifdef CONFIG_LINK_FORWARD
+	/* Link Forward */
+#ifdef CONFIG_CP_DIT
+	if (skbpriv(skb)->support_dit)
+#endif
+		l2forward = (get_linkforward_mode() & 0x1) ? linkforward_manip_skb(skb, LINK_FORWARD_DIR_REPLY) : 0;
+#endif
 
-		if (ld->gro_flush)
-			ld->gro_flush(ld);
+	if (!l2forward) {
+		/* klat */
+		klat_rx(skb, skbpriv(skb)->sipc_ch - SIPC_CH_ID_PDP_0);
+
+		ndev->stats.rx_packets++;
+		ndev->stats.rx_bytes += skb->len;
+
+#ifdef CONFIG_MCPS
+		if(!mcps_try_gro(skb)) {
+			return len;
+		}
+#endif
+		if (check_gro_support(skb)) {
+			ret = napi_gro_receive(napi_get_current(), skb);
+			if (ret == GRO_DROP) {
+				mif_err_limited("%s: %s<-%s: ERR! napi_gro_receive\n",
+						ld->name, iod->name, iod->mc->name);
+			}
+
+			if (ld->gro_flush)
+				ld->gro_flush(ld);
+			return len;
+		}
 	} else {
+		ndev->stats.rx_packets++;
+		ndev->stats.rx_bytes += skb->len;
+	}
 #ifdef CONFIG_LINK_DEVICE_NAPI
-		ret = netif_receive_skb(skb);
+	ret = netif_receive_skb(skb);
 #else /* !CONFIG_LINK_DEVICE_NAPI */
-		if (in_interrupt())
-			ret = netif_rx(skb);
-		else
-			ret = netif_rx_ni(skb);
+	if (in_interrupt())
+		ret = netif_rx(skb);
+	else
+		ret = netif_rx_ni(skb);
 #endif /* CONFIG_LINK_DEVICE_NAPI */
 
-		if (ret != NET_RX_SUCCESS) {
-			mif_err_limited("%s: %s<-%s: ERR! netif_rx\n",
-					ld->name, iod->name, iod->mc->name);
-		}
+	if (ret != NET_RX_SUCCESS) {
+		mif_err_limited("%s: %s<-%s: ERR! netif_rx\n",
+				ld->name, iod->name, iod->mc->name);
 	}
 	return len;
 }
@@ -827,22 +860,31 @@ static long misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case IOCTL_MODEM_CP_UPLOAD:
 	{
-		char *buff = iod->msd->cp_crash_info + strlen(CP_CRASH_TAG);
+		char buff[CP_CRASH_INFO_SIZE];
 		void __user *user_buff = (void __user *)arg;
 
 		mif_err("%s: ERR! IOCTL_MODEM_CP_UPLOAD\n", iod->name);
-		strcpy(iod->msd->cp_crash_info, CP_CRASH_TAG);
-		if (arg) {
-			if (copy_from_user(buff, user_buff, CP_CRASH_INFO_SIZE))
+		strcpy(buff, CP_CRASH_TAG);
+
+		if (strncmp(cp_crash_info, "none", 4) || !arg) {
+			sprintf(buff + strlen(CP_CRASH_TAG),
+				"%s", cp_crash_info);
+		} else {
+			if (copy_from_user(
+				(void *)((unsigned long)buff + strlen(CP_CRASH_TAG)),
+				user_buff,
+				CP_CRASH_INFO_SIZE - strlen(CP_CRASH_TAG)))
 				return -EFAULT;
 		}
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
 		if (check_cp_upload_cnt())
-			panic(iod->msd->cp_crash_info);
-		else
+			panic(buff);
+		else {
 			mif_info("Wait another IOCTL_MODEM_CP_UPLOAD\n");
+			return 1;
+		}
 #else
-		panic(iod->msd->cp_crash_info);
+		panic(buff);
 #endif
 		return 0;
 	}
@@ -879,6 +921,13 @@ static long misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		mif_info("%s: IOCTL_SHMEM_FULL_DUMP\n", iod->name);
 		if (ld->shmem_dump)
 			return ld->shmem_dump(ld, iod, arg);
+		else
+			return -EINVAL;
+
+	case IOCTL_DATABUF_FULL_DUMP:
+		mif_info("%s: IOCTL_DATABUF_FULL_DUMP\n", iod->name);
+		if (ld->databuf_dump)
+			return ld->databuf_dump(ld, iod, arg);
 		else
 			return -EINVAL;
 
@@ -1165,7 +1214,7 @@ static ssize_t misc_read(struct file *filp, char *buf, size_t count,
 		skb_pull(skb, copied);
 		skb_queue_head(rxq, skb);
 	} else {
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 	}
 
 	return copied;
@@ -1270,16 +1319,17 @@ static int vnet_xmit(struct sk_buff *skb, struct net_device *ndev)
 	getnstimeofday(&ts);
 #endif
 
+#ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
+	ld = get_current_link(get_current_rmnet_tx_iod(iod->id));
+	mc = ld->mc;
+#endif
+
 	if (unlikely(!cp_online(mc))) {
 		if (!netif_queue_stopped(ndev))
 			netif_stop_queue(ndev);
 		/* Just drop the TX packet */
 		goto drop;
 	}
-
-#ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
-	ld = get_current_link(get_current_rmnet_tx_iod(iod->id));
-#endif
 
 	/* When use `handover' with Network Bridge,
 	 * user -> bridge device(rmnet0) -> real rmnet(xxxx_rmnet0) -> here.
@@ -1372,7 +1422,7 @@ static int vnet_xmit(struct sk_buff *skb, struct net_device *ndev)
 	($skb_new will be freed by the link device.)
 	*/
 	if (skb_new != skb)
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 
 	return NETDEV_TX_OK;
 
@@ -1382,20 +1432,21 @@ retry:
 	because @skb will be reused by NET_TX.
 	*/
 	if (skb_new && skb_new != skb)
-		dev_kfree_skb_any(skb_new);
+		dev_consume_skb_any(skb_new);
 
 	return NETDEV_TX_BUSY;
 
 drop:
 	ndev->stats.tx_dropped++;
 
+	DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_MIF_TXFAIL);
 	dev_kfree_skb_any(skb);
 
 	/*
 	If @skb has been expanded to $skb_new, $skb_new must also be freed here.
 	*/
 	if (skb_new != skb)
-		dev_kfree_skb_any(skb_new);
+		dev_consume_skb_any(skb_new);
 
 	return NETDEV_TX_OK;
 }

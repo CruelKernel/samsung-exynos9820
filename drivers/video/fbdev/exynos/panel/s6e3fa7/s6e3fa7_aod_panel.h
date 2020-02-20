@@ -177,7 +177,7 @@ static struct maptbl s6e3fa7_aod_maptbl[] = {
 		init_common_table, NULL, s6e3fa7_copy_self_move_reset),
 #ifdef SUPPORT_NORMAL_SELF_MOVE
 	[SELF_MOVE_PATTERN_MAPTBL] = DEFINE_2D_MAPTBL(s6e3fa7_aod_self_move_patt_tbl,
-		init_common_table, getidx_self_pattern, copy_self_move_pattern),
+		init_common_table, s6e3fa7_getidx_self_pattern, s6e3fa7_copy_self_move_pattern),
 #endif
 };
 

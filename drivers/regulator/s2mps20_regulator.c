@@ -32,7 +32,7 @@
 #include <linux/debugfs.h>
 #include <linux/interrupt.h>
 #ifdef CONFIG_SEC_PM
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 struct device *ap_sub_pmic_dev;
 #endif /* CONFIG_SEC_PM */
@@ -421,6 +421,13 @@ static int s2mps20_pmic_dt_parse_pdata(struct s2mps20_dev *iodev,
 		return -EINVAL;
 	pdata->ocp_warn3_lv = val;
 
+	pdata->buck1s_pwm = 0;
+	ret = of_property_read_u32(pmic_np, "buck1s_pwm", &val);
+	if (ret)
+		pdata->buck1s_pwm = 0;
+	else
+		pdata->buck1s_pwm = !!val;
+
 	regulators_np = of_find_node_by_name(pmic_np, "regulators");
 	if (!regulators_np) {
 		dev_err(iodev->dev, "could not find regulators sub-node\n");
@@ -743,6 +750,17 @@ static int s2mps20_pmic_probe(struct platform_device *pdev)
 #ifdef CONFIG_SEC_PM
 	ap_sub_pmic_dev = sec_device_create(NULL, "ap_sub_pmic");
 #endif /* CONFIG_SEC_PM */
+
+	/* BUCK1S PWM */
+	if (pdata->buck1s_pwm) {
+		ret = s2mps20_update_reg(s2mps20->i2c, S2MPS20_PMIC_REG_B1S_CTRL, 0x0C, 0x0C);
+		if (ret) {
+			dev_err(&pdev->dev,"%s : i2c write for buck1s pwm configuration caused error\n",
+				__func__);
+			goto err;
+		}
+		pr_info("%s : Set BUCK1S PWM\n", __func__);
+	}
 
 #ifdef CONFIG_DEBUG_FS
 	dbgi2c = s2mps20->i2c;

@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
+#include <linux/usb/composite.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -221,6 +222,18 @@ int dwc3_gadget_set_link_state(struct dwc3 *dwc, enum dwc3_link_state state)
 	return -ETIMEDOUT;
 }
 
+static void dwc3_gedget_link_state_print (struct dwc3 *dwc, char* fname)
+{
+	int i;
+	char buf[DWC3_LINK_STATE_LAST_INFO_MEM*5+1] = {0,};
+
+	for (i=0; i<DWC3_LINK_STATE_LAST_INFO_MEM; i++) {
+		sprintf(buf+(i*5), "%02d > ",
+			dwc->linkstate_record[(dwc->linkstate_ai+i)%DWC3_LINK_STATE_LAST_INFO_MEM]);
+	}
+	dev_info(dwc->dev, "usb: %s (%s%s)\n", __func__, buf, fname);
+}
+
 /**
  * dwc3_ep_inc_trb - increment a trb index.
  * @index: Pointer to the TRB index to increment.
@@ -295,12 +308,16 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 		int status)
 {
 	struct dwc3			*dwc = dep->dwc;
+	struct usb_gadget		*gadget = &dwc->gadget;
+	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 
 	dwc3_gadget_del_and_unmap_request(dep, req, status);
-
-	spin_unlock(&dwc->lock);
-	usb_gadget_giveback_request(&dep->endpoint, &req->request);
-	spin_lock(&dwc->lock);
+	
+	if (cdev && cdev->gadget) {
+		spin_unlock(&dwc->lock);
+		usb_gadget_giveback_request(&dep->endpoint, &req->request);
+		spin_lock(&dwc->lock);
+	}
 }
 
 /**
@@ -1636,10 +1653,7 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 		else
 			dep->flags |= DWC3_EP_STALL;
 	} else {
-<<<<<<< HEAD
-=======
 
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		ret = dwc3_send_clear_stall_ep_cmd(dep);
 		if (ret)
 			dev_err(dwc->dev, "failed to clear STALL on %s\n",
@@ -1950,6 +1964,7 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 
 		dwc->pullups_connected = true;
 	} else {
+		dwc3_gedget_link_state_print(dwc, "STOP");
 		dwc3_gadget_disable_irq(dwc);
 		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg &= ~DWC3_DCTL_ULSTCHNGREQ_MASK;
@@ -2056,6 +2071,7 @@ static int dwc3_gadget_run_stop_vbus(struct dwc3 *dwc, int is_on, int suspend)
 
 		dwc->pullups_connected = true;
 	} else {
+		dwc3_gedget_link_state_print(dwc, "STOP_VBUS");
 		dwc3_gadget_disable_irq(dwc);
 		dwc3_event_buffers_cleanup(dwc);
 		__dwc3_gadget_ep_disable(dwc->eps[1]);
@@ -3445,6 +3461,10 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 		dwc->max_cnt_link_info--;
 	}
 
+	if (dwc->linkstate_ai >= DWC3_LINK_STATE_LAST_INFO_MEM)
+		dwc->linkstate_ai = 0;
+	dwc->linkstate_record[dwc->linkstate_ai++] = next;
+
 	switch (next) {
 	case DWC3_LINK_STATE_U0:
 		if (dwc->is_not_vbus_pad) {
@@ -3536,7 +3556,7 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		dwc3_gadget_disconnect_interrupt(dwc);
 		break;
 	case DWC3_DEVICE_EVENT_RESET:
-		dev_info(dwc->dev, "usb: %s RESET\n", __func__);
+		dwc3_gedget_link_state_print(dwc, "RESET");
 		dwc3_gadget_reset_interrupt(dwc);
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 		if (dwc->gadget.speed == USB_SPEED_FULL)
@@ -3871,7 +3891,6 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 		goto err4;
 	}
 
-<<<<<<< HEAD
 	if (dwc->dotg) {
 		ret = otg_set_peripheral(&dwc->dotg->otg, &dwc->gadget);
 		if (ret) {
@@ -3879,9 +3898,8 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 			goto err4;
 		}
 	}
-=======
+
 	dwc3_gadget_set_speed(&dwc->gadget, dwc->maximum_speed);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	return 0;
 

@@ -190,6 +190,58 @@ void abox_debug_string_update(enum abox_debug_err_type type, void *addr)
 }
 EXPORT_SYMBOL_GPL(abox_debug_string_update);
 
+void adev_err(struct device *dev, const char *fmt, ...)
+{
+	va_list args;
+	char temp_buf[LOG_MSG_BUFF_SZ];
+
+	va_start(args, fmt);
+	vsnprintf(temp_buf, sizeof(temp_buf), fmt, args);
+	va_end(args);
+
+	dev_printk(KERN_ERR, dev, "%s", temp_buf);
+	sec_audio_log(3, dev, "%s", temp_buf);
+}
+
+void adev_warn(struct device *dev, const char *fmt, ...)
+{
+	va_list args;
+	char temp_buf[LOG_MSG_BUFF_SZ];
+
+	va_start(args, fmt);
+	vsnprintf(temp_buf, sizeof(temp_buf), fmt, args);
+	va_end(args);
+
+	dev_printk(KERN_WARNING, dev, "%s", temp_buf);
+	sec_audio_log(4, dev, "%s", temp_buf);
+}
+
+void adev_info(struct device *dev, const char *fmt, ...)
+{
+	va_list args;
+	char temp_buf[LOG_MSG_BUFF_SZ];
+
+	va_start(args, fmt);
+	vsnprintf(temp_buf, sizeof(temp_buf), fmt, args);
+	va_end(args);
+
+	dev_printk(KERN_INFO, dev, "%s", temp_buf);
+	sec_audio_log(6, dev, "%s", temp_buf);
+}
+
+void adev_dbg(struct device *dev, const char *fmt, ...)
+{
+	va_list args;
+	char temp_buf[LOG_MSG_BUFF_SZ];
+
+	va_start(args, fmt);
+	vsnprintf(temp_buf, sizeof(temp_buf), fmt, args);
+	va_end(args);
+
+	dev_printk(KERN_DEBUG, dev, "%s", temp_buf);
+	sec_audio_log(7, dev, "%s", temp_buf);
+}
+
 static int get_debug_buffer_switch(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {

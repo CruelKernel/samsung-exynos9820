@@ -16,6 +16,7 @@ config SEC_MODEM_S5000AP
 	select CP_ZEROCOPY
 	select MODEM_IF_NET_GRO
 	select CP_LINEAR_WA
+	select CP_ETDAC_OTP_WA
 	default n
 
 config SEC_MODEM_S5100
@@ -67,6 +68,29 @@ config LINK_DEVICE_NAPI
 config CP_ZEROCOPY
 	bool "Support zero memory copy"
 	default n
+
+config CP_DIT
+	bool "Support DIT"
+	default n
+	help
+	DIT (Direct Internet packet Transfer engine)
+
+config CP_LINEAR_WA
+	bool "CP linear mode work-around for Exynos9820"
+	default n
+
+config CP_PKTPROC
+	bool "Support packet processor"
+	default n
+	help
+	Packet processor
+
+config CP_PKTPROC_V2
+	bool "Support packet processor V2"
+	depends on LINK_DEVICE_NAPI
+	default n
+	help
+	Packet processor V2
 
 config LINK_DEVICE_C2C
 	bool "Pseudo shared-memory with chip-to-chip (C2C) interface"
@@ -148,8 +172,12 @@ config MODEM_IF_NET_GRO
 	---help---
 	 This enables GRO(Generic Receive Offload) feature
 
-config CP_LINEAR_WA
-	bool "CP linear mode work-around for Exynos9820"
+config CP_ETDAC_OTP_WA
+	bool "Support CP ET-DAC OTP"
+	default n
+
+config KLAT
+	bool "kernel CLAT"
 	default n
 
 endmenu

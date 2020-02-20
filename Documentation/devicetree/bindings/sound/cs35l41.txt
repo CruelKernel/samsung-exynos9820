@@ -133,6 +133,8 @@ Optional properties:
   14 = 60 s
   15 = 120 s
 
+  - cirrus,invert-pcm : Invert PCM data before output
+
 Optional H/G Algorithm sub-node:
 
   The cs35l41 node can have a single "cirrus,classh-internal-algo" sub-node

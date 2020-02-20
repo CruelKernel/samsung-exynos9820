@@ -9,11 +9,19 @@ config WLAN_VENDOR_BROADCOM
 	  the questions about  cards. If you say Y, you will be asked for
 	  your specific card in the following questions.
 
+config WLAN_BCM4375_ENHANCED_FEATURES
+	bool "Enable BCM4375 Enhanced features"
+	default n
+	---help---
+	Enable BCM4375 Enhanced features such as NAN RTT 11ax-MU-MIMO
+
 if WLAN_VENDOR_BROADCOM
 
 source "drivers/net/wireless/broadcom/b43/Kconfig"
 source "drivers/net/wireless/broadcom/b43legacy/Kconfig"
 source "drivers/net/wireless/broadcom/brcm80211/Kconfig"
 source "drivers/net/wireless/broadcom/bcmdhd_100_10/Kconfig"
+source "drivers/net/wireless/broadcom/bcmdhd_100_15/Kconfig"
+source "drivers/net/wireless/broadcom/bcmdhd/Kconfig"
 
 endif # WLAN_VENDOR_BROADCOM

@@ -145,17 +145,18 @@ static __ref int tz_deploy_handler(void *arg)
 		msleep(CONNECTION_ATTEMPT_TIMEOUT);
 	}
 	if (reply.base.result)
-		panic("tzdev: iwsock error. result=%d\n", reply.base.result);
+		tzdev_print(0, "tzdev: iwsock error. result=%d\n", reply.base.result);
 
 	if (reply.base.base.cmd != CMD_STARTUP_LOADER_REPLY_UPLOAD_CONTAINER)
-		panic("tzdev: iwsock wrong cmd. cmd=%u\n", reply.base.base.cmd);
+		tzdev_print(0, "tzdev: iwsock wrong cmd. cmd=%u\n", reply.base.base.cmd);
 
-	if(ret)
-		BUG();
-
-	tz_iwsock_release(sd);
-	tzdev_mem_release(command.buf_desc.id);
-	vfree(tzar);
+	if (ret)
+		tzdev_print(0, "tzdev: Startuploader failed\n");
+	else {
+		tz_iwsock_release(sd);
+		tzdev_mem_release(command.buf_desc.id);
+		vfree(tzar);
+	}
 
 	return ret;
 }

@@ -2074,16 +2074,6 @@ static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
 	struct sk_buff *head;
 	int win_divisor;
 
-<<<<<<< HEAD
-#ifdef CONFIG_MPTCP
-	if ((TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN) || mptcp_is_data_fin(skb))
-#else
-	if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN)
-#endif
-		goto send_now;
-
-=======
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	if (icsk->icsk_ca_state >= TCP_CA_Recovery)
 		goto send_now;
 

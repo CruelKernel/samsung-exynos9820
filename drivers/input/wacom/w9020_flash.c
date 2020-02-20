@@ -124,7 +124,7 @@ static bool wacom_i2c_get_feature(struct wacom_i2c *wac_i2c, u8 report_id,
 	}
 
 	/*Coppy data pointer, subtracting the first two bytes of the length */
-	memcpy(data, (recv + 2), total);
+	memcpy(data, (recv + 2), buf_size);
 
 	bRet = true;
 err_fail_i2c:

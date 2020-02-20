@@ -57,6 +57,14 @@
 #define FINGER_DOWN_GPIO_STATE 1
 #define FINGER_LEAVE_GPIO_STATE 0
 
+#ifdef CONFIG_EPEN_WACOM_W9020
+#define QBT2000_AVOID_NOISE
+#define QBT2000_NOISE_OFF_DELAY 40
+#ifndef ENABLE_SENSORS_FPRINT_SECURE // only for factory
+#define QBT2000_NOISE_SENSORTEST_DELAY 25000
+#endif
+#endif
+
 enum qbt2000_commands {
 	QBT2000_POWER_CONTROL = 21,
 	QBT2000_ENABLE_SPI_CLOCK = 22,
@@ -69,8 +77,32 @@ enum qbt2000_commands {
 	QBT2000_SET_SENSOR_TYPE = 29,
 	QBT2000_SET_LOCKSCREEN = 30,
 	QBT2000_SENSOR_RESET = 31,
+	QBT2000_SENSOR_TEST = 32,
+	QBT2000_NOISE_REQUEST_STOP = 33,
+	QBT2000_NOISE_REQUEST_START = 34,
+	QBT2000_NOISE_STATUS_GET = 35,
+	QBT2000_NOISE_I2C_RESULT_GET = 36,
 	QBT2000_IS_WHUB_CONNECTED = 105,
 };
+
+#define QBT2000_SENSORTEST_DONE 		0x0000 // do nothing or test done
+#define QBT2000_SENSORTEST_BGECAL 		0x0001 // begin the BGECAL
+#define QBT2000_SENSORTEST_NORMALSCAN 	0x0002 // begin the normalscan
+#define QBT2000_SENSORTEST_SNR 			0x0004 // begin the snr
+#define QBT2000_SENSORTEST_CAPTURE 		0x0008 // begin the image capture. it also needs liveness capture.
+
+enum qbt2000_noise_status {
+	QBT2000_NOISE_NO_CHARGING = 0,
+	QBT2000_NOISE_CHARGING = 1,
+	QBT2000_NOISE_MODE_CHANGED = 2,
+	QBT2000_NOISE_I2C_FAILED = 3,
+};
+
+enum qbt2000_noise_onof {
+	QBT2000_NOISE_OFF = 0,
+	QBT2000_NOISE_ON = 1,
+};
+	
 
 /*
  * enum qbt2000_fw_event -
@@ -94,6 +126,10 @@ struct finger_detect_gpio {
 	int active_low;
 	int irq;
 	struct work_struct work;
+#ifdef QBT2000_AVOID_NOISE
+	struct work_struct work_noise_down;
+	struct delayed_work delayed_noise_down_work;
+#endif
 	int last_gpio_state;
 	int event_reported;
 };
@@ -133,6 +169,7 @@ struct qbt2000_drvdata {
 	int cbge_count;
 	int wuhb_count;
 	int reset_count;
+	int now_state;
 	bool enabled_ipc;
 	bool enabled_wuhb;
 	bool enabled_ldo;
@@ -140,6 +177,22 @@ struct qbt2000_drvdata {
 	bool tz_mode;
 	bool wuhb_test_flag;
 	int wuhb_test_result;
+#ifdef QBT2000_AVOID_NOISE
+	int noise_status;
+	int noise_onoff_flag;
+	int ignored_cbge_count;
+	int delayed_work_on_flag;
+	int noise_i2c_result;
+	int i2c_error_set;
+	int i2c_error_get;
+	int i2c_charging;
+	struct mutex	fod_event_mutex;
+	struct work_struct work_ipc_noise_status;
+	struct work_struct work_noise_control;
+#ifndef ENABLE_SENSORS_FPRINT_SECURE
+	struct delayed_work delayed_work_noiseon;
+#endif
+#endif
 	struct pinctrl *p;
 	struct pinctrl_state *pins_poweron;
 	struct pinctrl_state *pins_poweroff;
@@ -159,5 +212,14 @@ int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff);
 int fps_qbt2000_set_cpu_speedup(struct qbt2000_drvdata *drvdata, int onoff);
 int fps_qbt2000_register_platform_variable(struct qbt2000_drvdata *drvdata);
 int fps_qbt2000_unregister_platform_variable(struct qbt2000_drvdata *drvdata);
+
+#ifdef QBT2000_AVOID_NOISE
+extern int get_wacom_scan_info(bool mode);
+extern int set_wacom_ble_charge_mode(bool mode);
+#endif
+
+#ifdef CONFIG_BATTERY_SAMSUNG
+extern unsigned int lpcharge;
+#endif
 
 #endif /* _UAPI_QBT2000_H_ */

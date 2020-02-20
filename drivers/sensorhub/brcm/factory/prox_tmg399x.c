@@ -23,6 +23,8 @@
 #define CHIP_ID		"TMD4903"
 #elif defined(CONFIG_SENSORS_SSP_TMD4906)
 #define CHIP_ID		"TMD4906"
+#elif defined(CONFIG_SENSORS_SSP_TMD4907)
+#define CHIP_ID		"TMD4907"
 #elif defined(CONFIG_SENSORS_SSP_TMD4910)
 #define CHIP_ID		"TMD4910"
 #endif

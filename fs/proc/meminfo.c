@@ -51,12 +51,14 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	long available;
 	unsigned long pages[NR_LRU_LISTS];
 	int lru;
+	long rbinfree;
 
 	si_meminfo(&i);
 	si_swapinfo(&i);
 	committed = percpu_counter_read_positive(&vm_committed_as);
 
-	cached = global_node_page_state(NR_FILE_PAGES) -
+	cached = global_node_page_state(NR_FILE_PAGES) +
+			atomic_read(&rbin_cached_pages) -
 			total_swapcache_pages() - i.bufferram;
 	if (cached < 0)
 		cached = 0;
@@ -65,10 +67,11 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		pages[lru] = global_node_page_state(NR_LRU_BASE + lru);
 
 	available = si_mem_available();
+	rbinfree = global_zone_page_state(NR_FREE_RBIN_PAGES);
 
 	show_val_kb(m, "MemTotal:       ", i.totalram);
-	show_val_kb(m, "MemFree:        ", i.freeram);
-	show_val_kb(m, "MemAvailable:   ", available);
+	show_val_kb(m, "MemFree:        ", i.freeram + rbinfree);
+	show_val_kb(m, "MemAvailable:   ", available + rbinfree);
 	show_val_kb(m, "Buffers:        ", i.bufferram);
 	show_val_kb(m, "Cached:         ", cached);
 	show_val_kb(m, "SwapCached:     ", total_swapcache_pages());
@@ -95,14 +98,18 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    (unsigned long)atomic_long_read(&mmap_pages_allocated));
 #endif
 
-#ifdef CONFIG_RBIN
+#ifdef CONFIG_ION_RBIN_HEAP
 	show_val_kb(m, "RbinTotal:       ", totalrbin_pages);
 	show_val_kb(m, "RbinAlloced:       ",
 		    atomic_read(&rbin_allocated_pages)
 		    + atomic_read(&rbin_pool_pages));
 	show_val_kb(m, "RbinPool:       ", atomic_read(&rbin_pool_pages));
-	show_val_kb(m, "RbinFree:        ",
-		    global_zone_page_state(NR_FREE_RBIN_PAGES));
+	show_val_kb(m, "RbinFree:        ", rbinfree);
+	show_val_kb(m, "RbinCached:       ",
+		    atomic_read(&rbin_cached_pages));
+#endif
+#ifdef CONFIG_KZEROD
+	show_val_kb(m, "ZeroedFree:     ", kzerod_get_zeroed_size());
 #endif
 	show_val_kb(m, "SwapTotal:      ", i.totalswap);
 	show_val_kb(m, "SwapFree:       ", i.freeswap);

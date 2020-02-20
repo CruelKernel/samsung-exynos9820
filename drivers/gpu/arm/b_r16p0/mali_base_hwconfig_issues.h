@@ -1249,7 +1249,6 @@ static const enum base_hw_issue base_hw_issues_tTRx_r0p0[] = {
 	BASE_HW_ISSUE_TSIX_2033,
 	BASE_HW_ISSUE_TTRX_1337,
 	BASE_HW_ISSUE_TTRX_3336,
-	BASE_HW_ISSUE_TTRX_3336,
 	BASE_HW_ISSUE_END
 };
 
@@ -1268,7 +1267,6 @@ static const enum base_hw_issue base_hw_issues_tNAx_r0p0[] = {
 	BASE_HW_ISSUE_TMIX_8133,
 	BASE_HW_ISSUE_TSIX_2033,
 	BASE_HW_ISSUE_TTRX_1337,
-	BASE_HW_ISSUE_TTRX_3336,
 	BASE_HW_ISSUE_TTRX_3336,
 	BASE_HW_ISSUE_END
 };

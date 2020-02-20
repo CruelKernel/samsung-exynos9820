@@ -31,6 +31,12 @@ int pktproc_pio_rx(struct link_device *ld)
 	u8 *src;
 	u32 out = pktproc_gdesc->rear_ptr;
 	u16 len = pktproc_desc[out].length;
+	u32 usage = circ_get_usage(pktproc_gdesc->num_of_desc,
+				   pktproc_gdesc->fore_ptr,
+				   pktproc_gdesc->rear_ptr);
+
+	if (pktproc_gdesc->num_of_desc - usage < 50)
+		mif_err_limited("could be buffer shortage... %d\n", usage);
 
 	if (len > MAX_PKTPROC_SKB_SIZE) {
 		mif_err_limited("len is %d. skip this.\n", len);

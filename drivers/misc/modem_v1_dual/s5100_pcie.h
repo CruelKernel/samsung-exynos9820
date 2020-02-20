@@ -20,6 +20,7 @@
 #define MAX_MSI_NUM	(16)
 
 extern int s5100pcie_init(int ch_num);
+extern void first_save_s5100_status(void);
 extern int exynos_pcie_host_v1_register_event(struct exynos_pcie_register_event *reg);
 extern void exynos_pcie_host_v1_register_dump(int ch_num);
 
@@ -51,7 +52,7 @@ extern int exynos_pcie_host_v1_l1ss_ctrl(int enable, int id);
 extern int pcie_iommu_map(int ch_num, unsigned long iova, phys_addr_t paddr,
 				size_t size, int prot);
 
-#define AUTOSUSPEND_TIMEOUT	200
+#define AUTOSUSPEND_TIMEOUT	50
 
 int s5100pcie_request_msi_int(int int_num);
 void __iomem *s5100pcie_get_doorbell_address(void);
@@ -63,10 +64,9 @@ void restore_s5100_state(void);
 void disable_msi_int(void);
 void print_msi_register(void);
 int s5100_recover_pcie_link(bool start);
-void s5100_check_doorbell_ready(void);
 int request_pcie_msi_int(struct link_device *ld,
 				struct platform_device *pdev);
-int s5100_force_crash_exit_ext(void);
+int s5100_force_crash_exit_ext(u32 owner, char *reason);
 int s5100_send_panic_noti_ext(void);
 int s5100_set_gpio_2cp_uart_sel(struct modem_ctl *mc, int value);
 int s5100_get_gpio_2cp_uart_sel(struct modem_ctl *mc);

@@ -20,7 +20,6 @@
 
 #include "internal.h"
 
-
 #ifdef CONFIG_CRYPTO_DISKCIPHER_DEBUG
 #include <crypto/fmp.h>
 #include <linux/mm_types.h>
@@ -52,7 +51,7 @@ void crypto_diskcipher_debug(enum diskcipher_dbg api, int bi_opf)
 	if (api <= DISKC_API_MAX)
 		dbg->cnt[api][bi_opf]++;
 	else {
-		if (bi_opf & REQ_CRYPT)
+		if (bi_opf)
 			idx = 1;
 		dbg->cnt[api][idx]++;
 	}
@@ -100,6 +99,34 @@ static void print_err(void)
 	}
 }
 
+static void disckipher_log_show(struct seq_file *m)
+{
+	int i;
+	struct diskc_debug_info *dbg = &diskc_dbg;
+	char name[DISKC_USER_MAX][32] = {
+		"ALLOC", "FREE", "FREEREQ", "SETKEY", "SET", "GET", "CRYPT", "CLEAR",
+		"DISKC_API_MAX", "FS_PAGEIO", "FS_READP", "FS_DIO", "FS_BLOCK_WRITE",
+		"FS_ZEROPAGE", "BLK_BH", "DMCRYPT", "DISKC_MERGE", "DISKC_MERGE_ERR_INODE", "DISKC_MERGE_ERR_DISK",
+		"FS_DEC_WARN", "FS_ENC_WARN", "DISKC_MERGE_DIO", "DISKC_FREE_REQ_WARN",
+		"DISKC_FREE_WQ_WARN", "DISKC_CRYPT_WARN",
+		"DM_CRYPT_NONENCRYPT", "DM_CRYPT_CTR", "DM_CRYPT_DTR", "DM_CRYPT_OVER",
+		"F2FS_gc", "F2FS_gc_data_page", "F2FS_gc_data_page_no_key", "F2FS_gc_data_page_no_key_FC",
+		"F2FS_gc_data_page_FC",	"F2FS_gc_data_block", "F2FS_gc_data_block_key",
+		"F2FS_gc_data_block_err1", "F2FS_gc_data_block_err2", "F2FS_gc_data_block_err3", "F2FS_gc_skip",
+		"DISKC_ERR", "DISKC_NO_KEY_ERR", "DISKC_NO_SYNC_ERR", "DISKC_NO_CRYPT_ERR", "DISKC_NO_DISKC_ERR"};
+
+	for (i = 0; i < DISKC_USER_MAX; i++)
+		if (dbg->cnt[i][0] || dbg->cnt[i][1])
+			seq_printf(m, "%s\t: %6u(err:%u)\n",
+				name[i], dbg->cnt[i][0], dbg->cnt[i][1]);
+
+	if (dbg->err)
+		print_err();
+}
+
+/* check diskcipher for FBE */
+#undef DISKC_FS_ENCRYPT_DEBUG /* it's not work on fips */
+#ifdef DISKC_FS_ENCRYPT_DEBUG
 static void dump_err(struct crypto_diskcipher *ci, enum diskcipher_dbg api,
 	      struct bio *bio, struct page *page)
 {
@@ -121,32 +148,8 @@ static void dump_err(struct crypto_diskcipher *ci, enum diskcipher_dbg api,
 	dbg->err++;
 }
 
-static void disckipher_log_show(struct seq_file *m)
+static bool crypto_diskcipher_check(struct bio *bio)
 {
-	int i;
-	struct diskc_debug_info *dbg = &diskc_dbg;
-	char name[DISKC_USER_MAX][20]
-		= {"alloc", "free", "freereq", "setkey", "set", "get",
-		"crypt", "clear", "null", "page-io", "readpage", "dio",
-		"blk_write", "zeropage", "bufferhead",
-		"dmcrypt", "merge", "diskc_check_err", "fs_dec_warn",
-		"fs_enc_warn", "diskc_merge_dio", "diskc_freereq_warn",
-		"diskc_freewq_warn", "disk_crypt_warn"};
-
-	for (i = 0; i < DISKC_USER_MAX; i++)
-		if (dbg->cnt[i][0] || dbg->cnt[i][1])
-			seq_printf(m, "%s\t: %6u(err:%u)\n",
-				name[i], dbg->cnt[i][0], dbg->cnt[i][1]);
-
-	if (dbg->err)
-		print_err();
-}
-
-/* check diskcipher for FBE */
-#define DISKC_FS_ENCRYPT_DEBUG
-void crypto_diskcipher_check(struct bio *bio)
-{
-#ifdef DISKC_FS_ENCRYPT_DEBUG
 	int ret = 0;
 	struct crypto_diskcipher *ci = NULL;
 	struct inode *inode = NULL;
@@ -160,26 +163,36 @@ void crypto_diskcipher_check(struct bio *bio)
 	page = bio->bi_io_vec[0].bv_page;
 	if (page && !PageAnon(page) && bio)
 		if (page->mapping)
-			if (page->mapping->host)
+			if (page->mapping->host) {
 				if (page->mapping->host->i_crypt_info) {
 					inode = page->mapping->host;
-					ci = fscrypt_get_bio_cryptd(page->mapping->host);
+					ci = fscrypt_get_bio_cryptd(inode);
 					if (ci && (bio->bi_cryptd != ci)
 					    && (!(bio->bi_flags & REQ_OP_DISCARD))) {
+						pr_err("%s: no sync err\n", __func__);
 						dump_err(ci, DISKC_API_GET, bio, page);
-						ret = 1;
-						crypto_diskcipher_debug(DISKC_CHECK_ERR, 0);
+						crypto_diskcipher_debug(DISKC_NO_SYNC_ERR, 0);
+						ret = -EINVAL;
 					}
-					if (!inode->i_crypt_info || !ci) {
-						ret = 1;
-						crypto_diskcipher_debug(DISKC_CHECK_ERR, 1);
+					if (!ci) {
+						crypto_diskcipher_debug(DISKC_NO_DISKC_ERR, 1);
+						pr_err("%s: no crypt err\n", __func__);
+						ret = -EINVAL;
 					}
+				} else {
+					crypto_diskcipher_debug(DISKC_NO_KEY_ERR, 1);
+					ret = -EINVAL;
 				}
+			}
 out:
 	crypto_diskcipher_debug(DISKC_API_GET, ret);
-#endif
+	return ret;
 }
 #else
+#define crypto_diskcipher_check(a) (0)
+#endif
+#else
+#define crypto_diskcipher_check(a) (0)
 #define disckipher_log_show(a) do { } while (0)
 #endif
 
@@ -189,18 +202,32 @@ struct crypto_diskcipher *crypto_diskcipher_get(struct bio *bio)
 		pr_err("%s: Invalid bio:%p\n", __func__, bio);
 		return NULL;
 	}
-	if (bio->bi_opf & REQ_CRYPT)
-		return bio->bi_cryptd;
-	else
-		return NULL;
+
+	if (bio->bi_opf & REQ_CRYPT) {
+		if (bio->bi_cryptd) {
+			if (!crypto_diskcipher_check(bio))
+				return bio->bi_cryptd;
+			else
+				return ERR_PTR(-EINVAL);
+		} else {
+			crypto_diskcipher_debug(DISKC_NO_CRYPT_ERR, 0);
+			return ERR_PTR(-EINVAL);
+		}
+	}
+
+	return NULL;
 }
 
 void crypto_diskcipher_set(struct bio *bio,
-			   struct crypto_diskcipher *tfm)
+			struct crypto_diskcipher *tfm, u64 dun)
 {
 	if (bio && tfm) {
 		bio->bi_opf |= REQ_CRYPT;
 		bio->bi_cryptd = tfm;
+#ifdef CONFIG_CRYPTO_DISKCIPHER_DUN
+		if (dun)
+			bio->bi_iter.bi_dun = dun;
+#endif
 	}
 	crypto_diskcipher_debug(DISKC_API_SET, 0);
 }
@@ -211,6 +238,7 @@ enum diskc_status {
 	DISKC_ST_FREE_REQ,
 	DISKC_ST_FREE,
 };
+
 int crypto_diskcipher_setkey(struct crypto_diskcipher *tfm, const char *in_key,
 			     unsigned int key_len, bool persistent)
 {

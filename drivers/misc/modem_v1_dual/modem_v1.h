@@ -159,6 +159,8 @@ enum sipc_ch_id {
 	SIPC_CH_ID_LOOPBACK1,	/*ID:30*/
 	SIPC_CH_ID_LOOPBACK2,	/*ID:31*/
 
+	SIPC_CH_ID_CASS = 35,
+
 	/* 32 ~ 214 are reserved */
 
 	SIPC5_CH_ID_BOOT_0 = 215,
@@ -272,7 +274,7 @@ enum iodev_attr_bit {
 	ATTR_NO_CHECK_MAXQ,     /* no need to check rxq overflow condition */
 	ATTR_DUALSIM,		/* support Dual SIM */
 	ATTR_OPTION_REGION,	/* region & operator info */
-	ATTR_ZEROCOPY,		/* suppoert Zerocopy : 0x1 << 12*/
+	ATTR_ZEROCOPY,		/* support Zerocopy : 0x1 << 12*/
 };
 #define IODEV_ATTR(b)	(0x1 << b)
 
@@ -588,14 +590,14 @@ struct modem_boot_spi {
 #define FUNC	(__func__)
 #define CALLER	(__builtin_return_address(0))
 
-#define mif_err_limited(fmt, ...) \
-	printk_ratelimited(KERN_ERR LOG_TAG "%s: " pr_fmt(fmt), __func__, ##__VA_ARGS__)
 #define mif_err(fmt, ...) \
 	pr_err(LOG_TAG "%s: " pr_fmt(fmt), __func__, ##__VA_ARGS__)
 #define mif_debug(fmt, ...) \
 	pr_debug(LOG_TAG "%s: " pr_fmt(fmt), __func__, ##__VA_ARGS__)
 #define mif_info(fmt, ...) \
 	pr_info(LOG_TAG "%s: " pr_fmt(fmt), __func__, ##__VA_ARGS__)
+#define mif_err_limited(fmt, ...) \
+	net_ratelimited_function(mif_err, fmt, ##__VA_ARGS__)
 #define mif_trace(fmt, ...) \
 	printk(KERN_DEBUG "mif: %s: %d: called(%pF): " fmt, \
 		__func__, __LINE__, __builtin_return_address(0), ##__VA_ARGS__)

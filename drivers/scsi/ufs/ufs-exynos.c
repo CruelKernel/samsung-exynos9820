@@ -904,6 +904,16 @@ static int exynos_ufs_hibern8_prepare(struct ufs_hba *hba,
 
 	return ret;
 }
+
+static int __exynos_ufs_reset_ctrl(struct ufs_hba *hba, enum ufs_dev_reset dev_reset)
+{
+	struct exynos_ufs *ufs = to_exynos_ufs(hba);
+
+	exynos_ufs_dev_reset_ctrl(ufs, (bool)dev_reset);
+
+	return 0;
+}
+
 static int __exynos_ufs_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	struct exynos_ufs *ufs = to_exynos_ufs(hba);
@@ -964,9 +974,9 @@ static u8 exynos_ufs_get_unipro_direct(struct ufs_hba *hba, u32 num)
 static int exynos_ufs_crypto_engine_cfg(struct ufs_hba *hba,
 				struct ufshcd_lrb *lrbp,
 				struct scatterlist *sg, int index,
-				int sector_offset)
+				int sector_offset, int page_index)
 {
-	return exynos_ufs_fmp_cfg(hba, lrbp, sg, index, sector_offset);
+	return exynos_ufs_fmp_cfg(hba, lrbp, sg, index, sector_offset, page_index);
 }
 
 static int exynos_ufs_crypto_engine_clear(struct ufs_hba *hba,
@@ -994,6 +1004,7 @@ static struct ufs_hba_variant_ops exynos_ufs_ops = {
 	.hibern8_notify = exynos_ufs_hibern8_notify,
 	.hibern8_prepare = exynos_ufs_hibern8_prepare,
 	.dbg_register_dump = exynos_ufs_dump_debug_info,
+	.reset_ctrl = __exynos_ufs_reset_ctrl,
 	.suspend = __exynos_ufs_suspend,
 	.resume = __exynos_ufs_resume,
 	.get_unipro_result = exynos_ufs_get_unipro_direct,

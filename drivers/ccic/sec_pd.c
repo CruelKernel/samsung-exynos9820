@@ -20,7 +20,7 @@
 struct pdic_notifier_struct pd_noti;
 void (*fp_select_pdo)(int num);
 int (*fp_sec_pd_select_pps)(int num, int ppsVol, int ppsCur);
-int (*fp_sec_pd_get_apdo_max_current)(unsigned int *pdo_pos, unsigned int taMaxVol, unsigned int *taMaxCur);
+int (*fp_sec_pd_get_apdo_max_power)(unsigned int *pdo_pos, unsigned int *taMaxVol, unsigned int *taMaxCur, unsigned int *taMaxPwr);
 
 void select_pdo(int num)
 {
@@ -36,10 +36,10 @@ int sec_pd_select_pps(int num, int ppsVol, int ppsCur)
 	return 0;
 }
 
-int sec_pd_get_apdo_max_current(unsigned int *pdo_pos, unsigned int taMaxVol, unsigned int *taMaxCur)
+int sec_pd_get_apdo_max_power(unsigned int *pdo_pos, unsigned int *taMaxVol, unsigned int *taMaxCur, unsigned int *taMaxPwr)
 {
-	if (fp_sec_pd_get_apdo_max_current)
-		return fp_sec_pd_get_apdo_max_current(pdo_pos, taMaxVol, taMaxCur);
+	if (fp_sec_pd_get_apdo_max_power)
+		return fp_sec_pd_get_apdo_max_power(pdo_pos, taMaxVol, taMaxCur, taMaxPwr);
 
 	return -ENOTSUPP;
 }

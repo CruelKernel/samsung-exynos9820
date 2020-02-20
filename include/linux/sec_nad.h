@@ -41,6 +41,11 @@
 #define NAD_SECOND_FLAG			6001
 #define NAD_ACAT_SECOND_FLAG	5002
 
+#if defined(CONFIG_SEC_NAD_C)
+#define NAD_CUSTOM_FAIL_SKIP_FLAG 1019
+#define NAD_CUSTOM_FLAG 1010
+#endif
+
 #define NAD_RETRY_COUNT			30
 #define NAD_FAIL_COUNT			10
 
@@ -48,6 +53,8 @@
 #define NAD_HPM_LIT_LEVELCOUNT 6
 #define NAD_HPM_G3D_LEVELCOUNT 4
 #define NAD_HPM_MIF_LEVELCOUNT 8
+
+#define CHIPSET_MAX_COUNT 12
 
 /* MAGIC CODE for NAD API Success */
 #define MAGIC_NAD_API_SUCCESS	6057
@@ -71,10 +78,214 @@ enum {
     EXYNOS9610 = 9,
 };
 
+enum {
+    VST_BIG_UNZIP_L4_TO_7    = 0,
+    VST_BIG_UNZIP_L8_TO_23   = 1,
+    VST_BIG_C2_L8_TO_23      = 2,
+    VST_BIG_DIJ_L8_TO_23     = 3,
+    VST_BIG_FFT_L8_TO_23     = 4,
+    VST_BIG_CRYPTO			 = 5,
+    VST_BIG_UNZIPSPD_L7      = 6,
+    VST_BIG_UNZIP_L11        = 7,
+    VST_BIG_UNZIP_L16        = 8,
+    
+    VST_MIDD_UNZIP_L1_TO_17   = 9,
+    VST_MIDD_C2_L1_TO_17      = 10,
+    VST_MIDD_DIJ_L1_TO_17    = 11,
+    VST_MIDD_FFT_L1_TO_17    = 12,
+    VST_MIDD_UNZIP_L6        = 13,
+    VST_MIDD_UNZIP_L10       = 14,
+    
+    VST_LITT_UNZIP_L2_TO_14  = 15,
+    VST_LITT_C2_L2_TO_14     = 16,
+    VST_LITT_DIJ_L2_TO_14    = 17,
+    VST_LITT_FFT_L2_TO_14    = 18,
+    VST_LITT_UNZIP_L4        = 19,
+    VST_LITT_UNZIP_L6        = 20,
+    
+    VST_MIF_MEMTEST_ALL      = 21,
+    VST_MIF_MEMTEST_L1       = 22,
+    VST_MIF_MEMTEST_L3       = 23,   
+    
+    VST_INT_G2D_L0_TO_3      = 24,
+    VST_INT_JPEG_L0_TO_3     = 25,
+    VST_INT_MFC_L0_TO_3      = 26,   
+    VST_INT_SSS_L0_TO_3      = 27, 
+};
+
+
+enum {
+	NAD_DRAM = 0,
+	NAD_BIG,
+	NAD_MIDD,
+	NAD_LITT,
+	NAD_MIF,
+	NAD_G3D,
+	NAD_INT,
+	NAD_CAM,
+	NAD_FUNC,
+	NAD_CP,
+};
+
+
+
+
 
 	//EXYNOS8890_JUNGFRAU[0], EXYNOS8895_KANGCHEN[1], EXYNOS7880_JOON[2], EXYNOS7870_JOSHUA[3], EXYNOS7570_JAVA[4], EXYNOS7885_LASSEN[5],EXYNOS7883_LASSENQ[5], EXYNOS7884_LASSENO[5],EXYNOS9810_LHOTSE[6],EXYNOS9610_RAMEN[7],EXYNOS9820_MAKALU[8]
-	static  char nad_chipset_name[][12] = {"EXYNOS8890", "EXYNOS8895", "EXYNOS7880", "EXYNOS7870", "EXYNOS7570", "EXYNOS7885", "EXYNOS9810","EXYNOS9110","EXYNOS9820","EXYNOS9610","EXYNOSXXXX","EXYNOSXXXX"};
-  static char nad_block_name[10][8] = {"DRAM", "BIG", "MIDD", "LITT", "MIF", "G3D", "INT", "CAM", "FUNC", "CP"};	
+static  char nad_chipset_name[CHIPSET_MAX_COUNT][12] = {"EXYNOS8890", "EXYNOS8895", "EXYNOS7880", "EXYNOS7870", "EXYNOS7570", "EXYNOS7885", "EXYNOS9810","EXYNOS9110","EXYNOS9820","EXYNOS9610","EXYNOS9820","EXYNOSXXXX"};
+static char nad_block_name[10][8] = {"DRAM", "BIG", "MIDD", "LITT", "MIF", "G3D", "INT", "CAM", "FUNC", "CP"};	
+  
+
+
+
+
+struct nad_block {
+	char nad_block[64][16];
+};
+
+
+static struct nad_block nad_block_data[] = {
+	//DRAM
+	{"NONE",    "PATTERN1",   "PATTERN2",   "SELF_WRITE", "SELF_READ",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"WRITE",    "READ",       "SMALL_EYE",  "MANUAL",     "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//BIG
+	{"NONE",    "UNZIP",      "C2",         "CACHE",      "Dijkstra",
+	"CRYPTO",   "SHA",        "FFT_NEON",   "MEMBAND",    "SGEMM",
+	"DVFS_MIF", "UNZIP_DVFS", "C2_DVFS",    "CACHE_DVFS", "DIJKSTRA_DVFS",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "UNZIP_SPD",  "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//MID
+	{"NONE",    "UNZIP",      "C2",         "CACHE",      "Dijkstra",
+	"CRYPTO",   "SHA",        "FFT_NEON",   "MEMBAND",    "SGEMM",
+	"DVFS_MIF", "UNZIP_DVFS", "C2_DVFS",    "CACHE_DVFS", "DIJKSTRA_DVFS",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "UNZIP_SPD",  "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//LITT
+	{"NONE",    "UNZIP",      "C2",         "CACHE",      "Dijkstra",
+	"CRYPTO",   "SHA",        "FFT_NEON",   "MEMBAND",    "SGEMM",
+	"DVFS_MIF", "UNZIP_DVFS", "C2_DVFS",    "CACHE_DVFS", "DIJKSTRA_DVFS",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "UNZIP_SPD",  "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//MIF
+	{"NONE",    "MEMTESTER",  "VWM",        "SFR",        "RANDOM_DVFS",
+	"NONE",     "PART_DVFS",  "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//G3D
+	{"NONE",    "mTREX",      "mMANHATTAN", "mCARCHASE",  "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//INT
+	{"NONE",    "SSS",        "JPEG",       "MSH",        "USB",
+	"G2D",      "G3D",        "MFC",        "SLEEP_WAKE", "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//CAM
+	{"NONE",    "ABOX",       "DISP",       "IVA",        "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//FUNC
+	{"NONE",    "LOADING",    "G3D_UNZIP",  "OTP",        "MCT",
+	"ADC",      "UFS_MAIN",   "NONE",       "NPU",        "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE"},
+	//CP
+	{"NONE",    "MODEM_IF",   "MODEM_IF_5G_KOR",       "MODEM_IF_5G_EUR",    "WDOG",
+	"NONE",     "UART",       "NONE",       "PMIC",       "NONE",
+	"MAILBOX",  "DRAM",       "NONE",       "PCM_COUNT",  "DMA",
+	"TIMER",    "GIC",        "LCPU",       "NONE",       "NONE",
+	"LMAC",     "NONE",       "UCPU/LCPU",  "NONE",       "PMU",
+	"UNZIP",    "UCPU_INST",  "CMU",        "NONE",       "NONE",
+	"NONE",     "NONE",       "NONE",       "NONE",       "NONE",
+	"NONE",     "WDT",        "NONE",       "UART",       "NONE",
+	"PMIC",     "NONE",       "NONE",       "DRAM",       "TMU",
+	"PCMCNTR",  "DMA",        "TIMER",      "NONE",       "LCPU",
+	"NONE",     "NONE",       "MODEM",      "NONE",       "NONE",
+	"NONE",     "PMU",        "ZIP",        "NONE",       "CMU",
+	"DRAM_VWM", "PCIE",       "NONE",       "NONE"},
+};
 
 #if defined(CONFIG_SEC_SUPPORT_SECOND_NAD)
 typedef struct{
@@ -142,8 +353,8 @@ typedef struct {
     unsigned int level;
     unsigned int operation_time;
     unsigned int vst_current;
-	unsigned int spec_out;
-    unsigned int rsvd;
+    unsigned int spec_out;
+    unsigned int temperature;
 } current_info;
 
 typedef struct {
@@ -152,7 +363,29 @@ typedef struct {
     int rsvd;
     current_info current_list[100];
 } nad_ave_current_information;
+
+typedef struct {
+    unsigned int list_num;
+    unsigned int block;
+	unsigned int vector;
+	int margin;
+    unsigned int level;
+    unsigned int operation_time;
+    unsigned int ecc_err_count;
+	unsigned int temperature;
+} vector_operation_item;
+
+typedef struct {
+    char magic[8];
+    int total_num;
+    int rsvd;
+    vector_operation_item vector_list[100];
+} nad_vector_operation_info;
+
 #endif
+
+
+
 
 #if defined(CONFIG_SEC_NAD_HPM)
 typedef struct  {
@@ -202,6 +435,32 @@ typedef struct {
 } nad_api_results;
 #endif
 
+typedef struct {
+	unsigned int  time_sum;
+	unsigned int  temperature_sum;
+} VST_Performance_data;
+
+typedef struct {
+	char nad_name[8];
+	char nad_result[8];
+	unsigned int  nad_inform1;
+	unsigned int  nad_inform2;
+	unsigned int  nad_inform3;
+	unsigned int  nad_max_temp;
+	unsigned int  nad_init_temp;
+	unsigned int  nad_Pre_Level[7]; //{cl2_lv, cl1_lv, cl0_lv, g3d_lv, mif_lv, int_lv, disp_lv},
+	unsigned int  nad_Margin;
+
+	unsigned int  loop_count;
+	unsigned int  running_count;
+	unsigned int  skip_fail_flag;
+	unsigned int  running_fail_count;
+
+	nad_fail_information nad_fail_info;
+	nad_dram_information nad_dram_fail_info;
+	nad_fail_backup_data nad_fail_data_backup;
+} F_NAD_DATA;
+
 struct nad_env {
 	char nad_factory[8];
 	char nad_result[8];
@@ -242,6 +501,7 @@ struct nad_env {
 
 	nad_ave_current_information nad_ave_current_info;
 	unsigned char nAsv_TABLE;
+	VST_Performance_data vst_perform_data[7];
 #endif
 
 #if defined(CONFIG_SEC_SUPPORT_SECOND_NAD)
@@ -330,6 +590,13 @@ struct nad_env {
 	nad_dram_information nad_extend_second_dram_fail_information;
 	unsigned int nad_X_second_Pre_Domain_Level[7]; //{cl2_lv, cl1_lv, cl0_lv, g3d_lv, mif_lv, int_lv, disp_lv},
 	unsigned int nad_X_second_Margin;
+#endif
+#if defined(CONFIG_SEC_SUPPORT_VST)
+	nad_vector_operation_info nad_vector_oper_info;
+#endif
+
+#if defined(CONFIG_SEC_NAD_C)
+	F_NAD_DATA fused_nad_custom_data;
 #endif
 
 	nad_fail_backup_data last_fail_data_backup;

@@ -186,6 +186,8 @@ static bool iva_mcu_print_init_print_info(struct iva_dev_data *iva,
 	u32			tail;
 	int			lb_sz;
 
+	if (sh_mem == NULL) return false;
+
 	lb_sz = readl(&sh_mem->log_buf_size);
 	if (lb_sz & PRINT_CHARS_ALIGN_MASK) {
 		dev_err(dev, "%s() log_buf_size(0x%x) is not aligned to %d. ",
@@ -586,6 +588,12 @@ int32_t iva_mcu_boot_file(struct iva_dev_data *iva,
 		return 0;
 	}
 
+	if (strncmp(mcu_file, IVA_MCU_FILE_PATH, sizeof(IVA_MCU_FILE_PATH))) {
+		dev_err(dev, "%s() mcu_file(%s) is wrong file path.\n",
+				__func__, mcu_file);
+		return 0;
+	}
+
 	mcu_fp = filp_open(mcu_file, O_RDONLY, 0);
 	if (IS_ERR_OR_NULL(mcu_fp)) {
 		dev_err(dev, "%s() unable to open mcu file(%s)\n",
@@ -698,6 +706,7 @@ int32_t iva_mcu_exit(struct iva_dev_data *iva)
 #if defined(CONFIG_SOC_EXYNOS9820)
 #ifdef MCU_IVA_QACTIVE_HOLD
 	iva_pmu_ctrl(iva, pmu_ctrl_qactive, false);
+	iva_pmu_show_qactive_status(iva);
 #endif
 #endif
 	dev_dbg(iva->dev, "%s() mcu exited(0x%lx) successfully\n",

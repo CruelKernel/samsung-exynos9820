@@ -300,6 +300,13 @@ config SENSORS_SSP_TMD4910
 	help
 	  This option enables tmd4910 proxitmity sensor.
 
+config SENSORS_SSP_TMD4907
+	tristate "Sensors ssp tmd4907"
+	default n
+	depends on SPI
+	help
+	  This option enables tmd4907 proxitmity sensor.
+
 config SENSORS_SSP_TMD4904
 	tristate "Sensors ssp tmd4904"
 	default n
@@ -535,6 +542,26 @@ config SENSORS_SX9330
 	  SemTech sx9330 device driver.
 	  Say N here if you do not use sx9330.
 
+config SENSORS_SX9360
+	depends on I2C
+	tristate "SX9360 driver"
+	default n
+	help
+	  Say Y here if you use sx9360.
+	  This option enables grip sensors using
+	  SemTech sx9360 device driver.
+	  Say N here if you do not use sx9360.
+
+config SUPPORT_MCC_THRESHOLD_CHANGE
+	depends on I2C
+	tristate "Change grip sensor threshold according to the MCC value"
+	default n
+	help
+	  Say Y here if you need to check mcc(mobile country code).
+	  This option enables when it is necessary to adjust the threshold
+	  according to the mcc value.
+	  Say N here if you do not need to check mcc.
+
 config SENSORS_SSP_INTERRUPT_GYRO_SENSOR
          tristate "Sensors ssp interrpt gyro"
          default n
@@ -721,5 +748,19 @@ config SSP_SUPPORT_MAGNETIC_OVERFLOW
 	default n
 	help
 	  If you want to use Register RW sysfs, it should be set.
+
+config SENSORS_SSP_LIGHT_LUX_RAW
+	tristate "Sensors ssp light lux"
+	default n
+	depends on SPI
+	help
+	  If you want to use lux raw value, it should be set.
+
+config SENSORS_SSP_PROX_LIGHT_DIFF
+	tristate "Sensors ssp prox light diff"
+	default n
+	depends on SPI
+	help
+	  If you want to use light diff value at proximity data, it should be set.
 
 source "drivers/sensorhub/brcm/bbdpl/Kconfig"

@@ -20,6 +20,8 @@
  *
  */
 
+#define pr_fmt(fmt)     "[sec_nfc] %s: " fmt, __func__
+
 #include <linux/wait.h>
 #include <linux/delay.h>
 
@@ -103,7 +105,7 @@ static irqreturn_t sec_nfc_irq_thread_fn(int irq, void *dev_id)
 #ifdef FEATURE_SEC_NFC_TEST
 	if (on_nfc_test) {
 		nfc_int_wait = true;
-		pr_info("NFC_TEST: interrupt is raised\n");
+		NFC_LOG_INFO("NFC_TEST: interrupt is raised\n");
 		wake_up_interruptible(&info->i2c_info.read_wait);
 		return IRQ_HANDLED;
 	}
@@ -139,6 +141,7 @@ static int nfc_state_print(struct sec_nfc_info *info)
 
 	int en = gpio_get_value(info->pdata->ven);
 	int firm =	gpio_get_value(info->pdata->firm);
+	int irq = gpio_get_value(info->pdata->irq);
 	int pvdd = 0;
 
 	regulator_nfc_pvdd = regulator_get(NULL, pdata->nfc_pvdd);
@@ -148,7 +151,7 @@ static int nfc_state_print(struct sec_nfc_info *info)
 	}
 	pvdd = regulator_is_enabled(regulator_nfc_pvdd);
 
-	NFC_LOG_INFO("%s en: %d, firm: %d power: %d\n", __func__, en, firm, pvdd);
+	NFC_LOG_INFO("%s en: %d, firm: %d power: %d irq: %d\n", __func__, en, firm, pvdd, irq);
 	NFC_LOG_INFO("%s mode %d, clk_state: %d\n", __func__, info->mode, info->clk_state);
 
 	regulator_put(regulator_nfc_pvdd);
@@ -759,7 +762,7 @@ static int sec_nfc_i2c_read(char *buf, int count)
 	mutex_lock(&info->mutex);
 
 	if (info->mode == SEC_NFC_MODE_OFF) {
-		pr_err("NFC_TEST: sec_nfc is not enabled\n");
+		NFC_LOG_ERR("NFC_TEST: sec_nfc is not enabled\n");
 		ret = -ENODEV;
 		goto out;
 	}
@@ -769,7 +772,7 @@ static int sec_nfc_i2c_read(char *buf, int count)
 		count = info->i2c_info.buflen;
 
 	if (count > SEC_NFC_MSG_MAX_SIZE) {
-		pr_err("NFC_TEST: user required wrong size :%d\n", (u32)count);
+		NFC_LOG_ERR("NFC_TEST: user required wrong size :%d\n", (u32)count);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -777,13 +780,13 @@ static int sec_nfc_i2c_read(char *buf, int count)
 	mutex_lock(&info->i2c_info.read_mutex);
 	memset(buf, 0, count);
 	ret = i2c_master_recv(info->i2c_info.i2c_dev, buf, (u32)count);
-	pr_info("NFC_TEST: recv size : %d\n", ret);
+	NFC_LOG_INFO("NFC_TEST: recv size : %d\n", ret);
 
 	if (ret == -EREMOTEIO) {
 		ret = -ERESTART;
 		goto read_error;
 	} else if (ret != count) {
-		pr_err("NFC_TEST: read failed: return: %d count: %d\n",
+		NFC_LOG_ERR("NFC_TEST: read failed: return: %d count: %d\n",
 			ret, (u32)count);
 		goto read_error;
 	}
@@ -809,7 +812,7 @@ static int sec_nfc_i2c_write(char *buf,	int count)
 	mutex_lock(&info->mutex);
 
 	if (info->mode == SEC_NFC_MODE_OFF) {
-		pr_err("NFC_TEST: sec_nfc is not enabled\n");
+		NFC_LOG_ERR("NFC_TEST: sec_nfc is not enabled\n");
 		ret = -ENODEV;
 		goto out;
 	}
@@ -818,7 +821,7 @@ static int sec_nfc_i2c_write(char *buf,	int count)
 		count = info->i2c_info.buflen;
 
 	if (count > SEC_NFC_MSG_MAX_SIZE) {
-		pr_err("NFC_TEST: user required wrong size :%d\n", (u32)count);
+		NFC_LOG_ERR("NFC_TEST: user required wrong size :%d\n", (u32)count);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -828,14 +831,14 @@ static int sec_nfc_i2c_write(char *buf,	int count)
 	mutex_unlock(&info->i2c_info.read_mutex);
 
 	if (ret == -EREMOTEIO) {
-		pr_err("NFC_TEST: send failed: return: %d count: %d\n",
+		NFC_LOG_ERR("NFC_TEST: send failed: return: %d count: %d\n",
 		ret, (u32)count);
 		ret = -ERESTART;
 		goto out;
 	}
 
 	if (ret != count) {
-		pr_err("NFC_TEST: send failed: return: %d count: %d\n",
+		NFC_LOG_ERR("NFC_TEST: send failed: return: %d count: %d\n",
 		ret, (u32)count);
 		ret = -EREMOTEIO;
 	}
@@ -858,12 +861,12 @@ static ssize_t test_show(struct class *class,
 
 	on_nfc_test = true;
 	nfc_int_wait = false;
-	pr_info("NFC_TEST: mode = %d\n", old_mode);
+	NFC_LOG_INFO("NFC_TEST: mode = %d\n", old_mode);
 
 	sec_nfc_set_mode(g_nfc_info, SEC_NFC_MODE_BOOTLOADER);
 	ret = sec_nfc_i2c_write(cmd, 4);
 	if (ret < 0) {
-		pr_info("NFC_TEST: i2c write error %d\n", ret);
+		NFC_LOG_INFO("NFC_TEST: i2c write error %d\n", ret);
 		size = sprintf(buf, "NFC_TEST: i2c write error %d\n", ret);
 		goto exit;
 	}
@@ -871,12 +874,12 @@ static ssize_t test_show(struct class *class,
 	timeout = wait_event_interruptible_timeout(g_nfc_info->i2c_info.read_wait, nfc_int_wait, 100);
 	ret = sec_nfc_i2c_read(buf, 16);
 	if (ret < 0) {
-		pr_info("NFC_TEST: i2c read error %d\n", ret);
+		NFC_LOG_INFO("NFC_TEST: i2c read error %d\n", ret);
 		size = sprintf(buf, "NFC_TEST: i2c read error %d\n", ret);
 		goto exit;
 	}
 
-	pr_info("NFC_TEST: BL ver: %02X %02X %02X %02X, INT: %s\n", buf[0],
+	NFC_LOG_INFO("NFC_TEST: BL ver: %02X %02X %02X %02X, INT: %s\n", buf[0],
 				buf[1],	buf[2], buf[3], timeout ? "OK":"NOK");
 	size = sprintf(buf, "BL ver: %02X.%02X.%02X.%02X, INT: %s\n", buf[0],
 				buf[1], buf[2],	buf[3], timeout ? "OK":"NOK");

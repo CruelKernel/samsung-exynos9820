@@ -145,7 +145,7 @@ static void cp_active_handler(void *arg)
 		mif_err("new_state = %s\n", cp_state_str(new_state));
 
 		if (old_state == STATE_ONLINE)
-			modem_notify_event(MODEM_EVENT_EXIT);
+			modem_notify_event(MODEM_EVENT_RESET);
 
 		list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
 			if (iod && atomic_read(&iod->opened) > 0)

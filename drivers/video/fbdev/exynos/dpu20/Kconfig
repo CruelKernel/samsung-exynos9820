@@ -149,6 +149,11 @@ config EXYNOS_PLL_SLEEP
 	bool "Support DPHY PLL Sleep"
         depends on EXYNOS_DPU20
         default n
+
+config AVOID_TSP_NOISE
+    bool "Tune disp clock to avoid tsp noise"
+        depends on EXYNOS_DPU20
+        default n
 endif
 
 source "drivers/video/fbdev/exynos/dpu20/panels/Kconfig"

@@ -50,7 +50,7 @@ int __generate_irc_v1(struct brightness_table *brt_tbl, struct panel_irc_info* i
 	int normal_max = lum_tbl[size_ui_lum - 1];
 	u64 scaleup_normal_max = normal_max * disp_pow(10, SCALEUP_4);
 	int hbm_max = lum_tbl[brt_tbl->sz_lum - 1];
-	u64 lum_gap = 0, brt_gap = 0, temp_val = 0;
+	u64 temp_val = 0, lum_gap = 0, brt_gap = 0;
 	int dynamic_offset = info->dynamic_offset;
 
 	/*
@@ -62,7 +62,7 @@ int __generate_irc_v1(struct brightness_table *brt_tbl, struct panel_irc_info* i
 			lum_gap = luminance - scaleup_normal_max;
 			lum_gap *= disp_pow(10, SCALEUP_4); // for precision scale up
 			brt_gap = hbm_max - normal_max;
-			temp_val = (lum_gap * 3) / brt_gap;
+			temp_val = (lum_gap * info->hbm_coef) / brt_gap;
 			temp_val = disp_pow_round(temp_val, SCALEUP_4);
 			temp_val /= disp_pow(10, SCALEUP_4); // scanel down
 			coef = coef - temp_val;
@@ -98,7 +98,7 @@ int __generate_irc_v2(struct brightness_table *brt_tbl, struct panel_irc_info* i
 		lum_gap = luminance - scaleup_normal_max;
 		lum_gap *= disp_pow(10, SCALEUP_4); // for precision scale up
 		brt_gap = hbm_max - normal_max;
-		temp_val = (lum_gap * 3) / brt_gap;
+		temp_val = (lum_gap * info->hbm_coef) / brt_gap;
 		temp_val = disp_pow_round(temp_val, SCALEUP_4);
 		temp_val /= disp_pow(10, SCALEUP_4); // scanel down
 		coef = coef - temp_val;
@@ -158,8 +158,7 @@ int generate_irc(struct brightness_table *brt_tbl, struct panel_irc_info* info, 
 		current_lum = get_scaleup_luminance(brt_tbl, info, brightness);
 		memcpy(info->buffer, info->ref_tbl, info->total_len);
 		gen_irc[info->irc_version](brt_tbl, info, current_lum, brightness);
-	}
-	else {
+	} else {
 		pr_info("unsupport irc interpolation %d", info->irc_version);
 	}
 

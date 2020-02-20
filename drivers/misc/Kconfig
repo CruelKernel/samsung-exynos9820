@@ -521,6 +521,14 @@ config UID_SYS_STATS_DEBUG
 	help
 	  Per TASK based io statistics exported to /proc/uid_io
 
+config UID_STAT_JBD_SUBMIT_BH
+	bool "Export amount of submit_bh performed by JBD thread"
+	depends on SUBMIT_BH_IO_ACCOUNTING
+	default n
+	help
+	  Export amount of submit_bh performed by JBD thread
+	  (Exported to Background I/O amount)
+
 config MEMORY_STATE_TIME
 	tristate "Memory freq/bandwidth time statistics"
 	depends on PROFILING

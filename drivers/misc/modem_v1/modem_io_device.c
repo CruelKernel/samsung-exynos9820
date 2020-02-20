@@ -27,12 +27,14 @@
 #include <net/ip.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
+#include <uapi/linux/net_dropdump.h>
 #ifdef CONFIG_LINK_FORWARD
 #include <linux/linkforward.h>
 #endif
 
 #include "modem_prj.h"
 #include "modem_utils.h"
+#include "modem_klat.h"
 
 static u8 sipc5_build_config(struct io_device *iod, struct link_device *ld,
 			     unsigned int count);
@@ -338,8 +340,6 @@ static int rx_multi_pdp(struct sk_buff *skb)
 	}
 
 	skb->dev = ndev;
-	ndev->stats.rx_packets++;
-	ndev->stats.rx_bytes += skb->len;
 
 	/* check the version of IP */
 	iphdr = (struct iphdr *)skb->data;
@@ -375,26 +375,40 @@ static int rx_multi_pdp(struct sk_buff *skb)
 	/* Link Forward */
 	l2forward = (get_linkforward_mode() & 0x1) ? linkforward_manip_skb(skb, LINK_FORWARD_DIR_REPLY) : 0;
 #endif
-	if (!l2forward && check_gro_support(skb)) {
-		ret = napi_gro_receive(napi_get_current(), skb);
-		if (ret == GRO_DROP)
-			mif_err_limited("%s: %s<-%s: ERR! napi_gro_receive\n",
-				ld->name, iod->name, iod->mc->name);
 
-		if (ld->gro_flush)
-			ld->gro_flush(ld);
+	if (!l2forward) {
+		/* klat */
+		klat_rx(skb, skbpriv(skb)->sipc_ch - SIPC_CH_ID_PDP_0);
+
+		ndev->stats.rx_packets++;
+		ndev->stats.rx_bytes += skb->len;
+
+		if (check_gro_support(skb)) {
+			ret = napi_gro_receive(napi_get_current(), skb);
+			if (ret == GRO_DROP) {
+				mif_err_limited("%s: %s<-%s: ERR! napi_gro_receive\n",
+						ld->name, iod->name, iod->mc->name);
+			}
+
+			if (ld->gro_flush)
+				ld->gro_flush(ld);
+			return len;
+		}
 	} else {
+		ndev->stats.rx_packets++;
+		ndev->stats.rx_bytes += skb->len;
+	}
 #ifdef CONFIG_LINK_DEVICE_NAPI
-		ret = netif_receive_skb(skb);
+	ret = netif_receive_skb(skb);
 #else /* !CONFIG_LINK_DEVICE_NAPI */
-		if (in_interrupt())
-			ret = netif_rx(skb);
-		else
-			ret = netif_rx_ni(skb);
+	if (in_interrupt())
+		ret = netif_rx(skb);
+	else
+		ret = netif_rx_ni(skb);
 #endif /* CONFIG_LINK_DEVICE_NAPI */
 
-		if (ret != NET_RX_SUCCESS)
-			mif_err_limited("%s: %s<-%s: ERR! netif_rx\n",
+	if (ret != NET_RX_SUCCESS) {
+		mif_err_limited("%s: %s<-%s: ERR! netif_rx\n",
 				ld->name, iod->name, iod->mc->name);
 	}
 	return len;
@@ -1146,7 +1160,7 @@ static ssize_t misc_read(struct file *filp, char *buf, size_t count,
 		skb_pull(skb, copied);
 		skb_queue_head(rxq, skb);
 	} else {
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 	}
 
 	return copied;
@@ -1349,7 +1363,7 @@ static int vnet_xmit(struct sk_buff *skb, struct net_device *ndev)
 	($skb_new will be freed by the link device.)
 	*/
 	if (skb_new != skb)
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 
 	return NETDEV_TX_OK;
 
@@ -1359,20 +1373,21 @@ retry:
 	because @skb will be reused by NET_TX.
 	*/
 	if (skb_new && skb_new != skb)
-		dev_kfree_skb_any(skb_new);
+		dev_consume_skb_any(skb_new);
 
 	return NETDEV_TX_BUSY;
 
 drop:
 	ndev->stats.tx_dropped++;
 
+	DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_MIF_TXFAIL);
 	dev_kfree_skb_any(skb);
 
 	/*
 	If @skb has been expanded to $skb_new, $skb_new must also be freed here.
 	*/
 	if (skb_new != skb)
-		dev_kfree_skb_any(skb_new);
+		dev_consume_skb_any(skb_new);
 
 	return NETDEV_TX_OK;
 }

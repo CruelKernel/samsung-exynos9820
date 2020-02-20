@@ -19,18 +19,20 @@
 #define USE_TZ_CONTROLLED_MEM_ATTRIBUTE
 #endif
 
-#if defined(CONFIG_CAMERA_BEYOND0)
-#include "fimc-is-vendor-config_beyond0.h"
-#elif defined(CONFIG_CAMERA_BEYOND1)
-#include "fimc-is-vendor-config_beyond1.h"
-#elif defined(CONFIG_CAMERA_BEYOND2)
-#include "fimc-is-vendor-config_beyond2.h"
-#elif defined(CONFIG_CAMERA_BEYONDX)
-#include "fimc-is-vendor-config_beyondx.h"
-#elif defined(CONFIG_CAMERA_DAVINCI5G)
-#include "fimc-is-vendor-config_davinci5g.h"
+#if defined(CONFIG_CAMERA_BSS_V00)
+#include "fimc-is-vendor-config_bss_v00.h"
+#elif defined(CONFIG_CAMERA_BSS_V01)
+#include "fimc-is-vendor-config_bss_v01.h"
+#elif defined(CONFIG_CAMERA_BSS_V02)
+#include "fimc-is-vendor-config_bss_v02.h"
+#elif defined(CONFIG_CAMERA_BSS_V00X)
+#include "fimc-is-vendor-config_bss_v00x.h"
+#elif defined(CONFIG_CAMERA_DNS_V01)
+#include "fimc-is-vendor-config_dns_v01.h"
+#elif defined(CONFIG_CAMERA_DNS_V02)
+#include "fimc-is-vendor-config_dns_v02.h"
 #else
-#include "fimc-is-vendor-config_beyond2.h" /* Default */
+#include "fimc-is-vendor-config_bss_v02.h" /* Default */
 #endif
 
 #endif

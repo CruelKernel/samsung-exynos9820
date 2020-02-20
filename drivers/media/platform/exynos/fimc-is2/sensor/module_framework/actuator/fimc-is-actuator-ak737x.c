@@ -138,6 +138,26 @@ p_err:
 	return ret;
 }
 
+static int sensor_ak737x_soft_landing(struct i2c_client *client,
+		struct fimc_is_actuator *actuator)
+{
+	int ret = 0;
+	int i;
+
+	pr_info("[%s][%d] E\n", __func__, actuator->device);
+
+	for (i = 0; i < actuator->vendor_soft_landing_list_len; i += 2) {
+		ret = sensor_ak737x_write_position(client, actuator->vendor_soft_landing_list[i]);
+		if (ret < 0)
+			goto p_err;
+
+		msleep(actuator->vendor_soft_landing_list[i + 1]);
+	}
+
+p_err:
+	return ret;
+}
+
 int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 {
 	int ret = 0;
@@ -196,6 +216,14 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 		goto p_err;
 	}
 
+	if (actuator->vendor_use_standby_mode) {
+		/* Go standby mode */
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_STANDBY);
+		if (ret < 0)
+			goto p_err;
+		msleep(1);
+	}
+
 	for (i = 0; i < product_id_len; i += 2) {
 		ret = fimc_is_sensor_addr8_read8(client, product_id_list[i], &product_id);
 		if (ret < 0) {
@@ -209,7 +237,7 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 			goto p_err;
 		}
 
-		pr_info("[%s][%d] dt[addr=%x,id=%x], module id=%x\n",
+		pr_info("[%s][%d] dt[addr=0x%X,id=0x%X], product_id=0x%X\n",
 				__func__, actuator->device, product_id_list[i], product_id_list[i+1], product_id);
 
 		if (product_id_list[i+1] == product_id) {
@@ -225,17 +253,18 @@ int sensor_ak737x_actuator_init(struct v4l2_subdev *subdev, u32 val)
 	}
 
 	/* ToDo: Cal init data from FROM */
-
 	if (actuator->vendor_use_sleep_mode) {
 		/* Go sleep mode */
-		ret = fimc_is_sensor_addr8_write8(client, 0x02, 32);
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_SLEEP);
+		if (ret < 0)
+			goto p_err;
 	} else {
 		ret = sensor_ak737x_init_position(client, actuator);
 		if (ret < 0)
 			goto p_err;
 
 		/* Go active mode */
-		ret = fimc_is_sensor_addr8_write8(client, 0x02, 0);
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_ACTIVE);
 		if (ret < 0)
 			goto p_err;
 	}
@@ -426,17 +455,29 @@ static int sensor_ak737x_actuator_set_active(struct v4l2_subdev *subdev, int ena
 
 	I2C_MUTEX_LOCK(actuator->i2c_lock);
 
+	if (!enable && actuator->vendor_soft_landing_list_len > 0) {
+		/* Go sleep mode */
+		sensor_ak737x_soft_landing(client, actuator);
+	}
+
+	if (actuator->vendor_use_standby_mode) {
+		/* Go standby mode */
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_STANDBY);
+		if (ret < 0)
+			goto p_err;
+		msleep(1);
+	}
+
 	if (enable) {
 		sensor_ak737x_init_position(client, actuator);
 
 		/* Go active mode */
-		ret = fimc_is_sensor_addr8_write8(client, 0x02, 0);
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_ACTIVE);
 		if (ret < 0)
 			goto p_err;
-
 	} else {
 		/* Go sleep mode */
-		ret = fimc_is_sensor_addr8_write8(client, 0x02, 32);
+		ret = fimc_is_sensor_addr8_write8(client, AK737X_REG_CONT1, AK737X_MODE_SLEEP);
 		if (ret < 0)
 			goto p_err;
 	}
@@ -475,8 +516,10 @@ int sensor_ak737x_actuator_probe(struct i2c_client *client,
 	u32 first_pos = 0;
 	u32 first_delay = 0;
 	bool vendor_use_sleep_mode = false;
+	bool vendor_use_standby_mode = false;
 	struct device *dev;
 	struct device_node *dnode;
+	const u32 *vendor_soft_landing_list_spec;
 
 	WARN_ON(!fimc_is_dev);
 	WARN_ON(!client);
@@ -493,6 +536,9 @@ int sensor_ak737x_actuator_probe(struct i2c_client *client,
 
 	if (of_property_read_bool(dnode, "vendor_use_sleep_mode"))
 		vendor_use_sleep_mode = true;
+
+	if (vendor_use_sleep_mode & of_property_read_bool(dnode, "vendor_use_standby_mode"))
+		vendor_use_standby_mode = true;
 
 	ret = of_property_read_u32(dnode, "vendor_first_pos", &first_pos);
 	if (ret) {
@@ -521,6 +567,18 @@ int sensor_ak737x_actuator_probe(struct i2c_client *client,
 		goto p_err;
 	}
 
+	vendor_soft_landing_list_spec = of_get_property(dnode, "vendor_soft_landing_list", &actuator->vendor_soft_landing_list_len);
+	if (vendor_soft_landing_list_spec) {
+		actuator->vendor_soft_landing_list_len /= (unsigned int)sizeof(*vendor_soft_landing_list_spec);
+
+		ret = of_property_read_u32_array(dnode, "vendor_soft_landing_list",
+											actuator->vendor_soft_landing_list, actuator->vendor_soft_landing_list_len);
+		if (ret)
+			err("vendor_soft_landing_list read is fail(%d)", ret);
+	} else {
+		actuator->vendor_soft_landing_list_len = 0;
+	}
+
 	subdev_actuator = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_actuator) {
 		err("subdev_actuator is NULL");
@@ -545,6 +603,7 @@ int sensor_ak737x_actuator_probe(struct i2c_client *client,
 	actuator->vendor_first_pos = first_pos;
 	actuator->vendor_first_delay = first_delay;
 	actuator->vendor_use_sleep_mode = vendor_use_sleep_mode;
+	actuator->vendor_use_standby_mode = vendor_use_standby_mode;
 
 	device->subdev_actuator[sensor_id] = subdev_actuator;
 	device->actuator[sensor_id] = actuator;

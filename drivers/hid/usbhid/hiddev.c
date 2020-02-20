@@ -37,6 +37,9 @@
 #include <linux/compat.h>
 #include <linux/vmalloc.h>
 #include <linux/nospec.h>
+#ifdef CONFIG_USB_HOST_SAMSUNG_FEATURE
+#include <linux/completion.h>
+#endif
 #include "usbhid.h"
 
 #ifdef CONFIG_USB_DYNAMIC_MINORS
@@ -948,6 +951,17 @@ void hiddev_disconnect(struct hid_device *hid)
 {
 	struct hiddev *hiddev = hid->hiddev;
 	struct usbhid_device *usbhid = hid->driver_data;
+
+#ifdef CONFIG_USB_HOST_SAMSUNG_FEATURE
+	hid_info(hid, "%s\n", __func__);
+	if (usbhid->intf->usb_dev->power.is_suspended) {
+		hid_info(hid, "%s is_suspend+\n", __func__);
+		wait_for_completion_timeout
+			(&usbhid->intf->usb_dev->power.completion,
+				msecs_to_jiffies(1500));
+		hid_info(hid, "%s is_suspend-\n", __func__);
+	}
+#endif
 
 	usb_deregister_dev(usbhid->intf, &hiddev_class);
 

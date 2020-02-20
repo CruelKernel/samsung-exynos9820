@@ -609,12 +609,15 @@ int sec_cmd_init(struct sec_cmd_data *data, struct sec_cmd *cmds,
 	} else if (devt == SEC_CLASS_DEVT_WACOM) {
 		dev_name = SEC_CLASS_DEV_NAME_WACOM;
 
+	} else if (devt == SEC_CLASS_DEVT_SIDEKEY) {
+		dev_name = SEC_CLASS_DEV_NAME_SIDEKEY;
+
 	} else {
 		pr_err("%s %s: not defined devt=%d\n", SECLOG, __func__, devt);
 		goto err_get_dev_name;
 	}
 
-#ifdef CONFIG_SEC_SYSFS
+#ifdef CONFIG_DRV_SAMSUNG
 	data->fac_dev = sec_device_create(data, dev_name);
 #else
 	data->fac_dev = device_create(sec_class, NULL, devt, data, dev_name);
@@ -635,7 +638,7 @@ int sec_cmd_init(struct sec_cmd_data *data, struct sec_cmd *cmds,
 	return 0;
 
 err_sysfs_group:
-#ifdef CONFIG_SEC_SYSFS
+#ifdef CONFIG_DRV_SAMSUNG
 	sec_device_destroy(data->fac_dev->devt);
 #else
 	device_destroy(sec_class, devt);
@@ -662,7 +665,7 @@ void sec_cmd_exit(struct sec_cmd_data *data, int devt)
 	pr_info("%s %s", SECLOG, __func__);
 	sysfs_remove_group(&data->fac_dev->kobj, &sec_fac_attr_group);
 	dev_set_drvdata(data->fac_dev, NULL);
-#ifdef CONFIG_SEC_SYSFS
+#ifdef CONFIG_DRV_SAMSUNG
 	sec_device_destroy(data->fac_dev->devt);
 #else
 	device_destroy(sec_class, devt);

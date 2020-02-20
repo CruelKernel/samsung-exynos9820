@@ -35,6 +35,7 @@ struct cs35l41_platform_data {
 	bool right_channel;
 	bool amp_gain_zc;
 	bool dsp_ng_enable;
+	bool inv_pcm;
 	int bst_ind;
 	int bst_vctrl;
 	int bst_ipk;

@@ -27,6 +27,14 @@
  * instructions.
  */
 
+/* Please try to use LSE Atomics unless you are sure LL/SC is safe. */
+#ifdef CONFIG_SEC_ARM64_LSE_SPINLOCK
+#define SEC_ARM64_LSE_ATOMIC_INSN(llsc, lse)	lse
+#else
+#define SEC_ARM64_LSE_ATOMIC_INSN(llsc, lse)				\
+	ARM64_LSE_ATOMIC_INSN(llsc, lse)
+#endif	/* CONFIG_SEC_ARM64_LSE_SPINLOCK */
+
 #define arch_spin_lock_flags(lock, flags) arch_spin_lock(lock)
 
 static inline void arch_spin_lock(arch_spinlock_t *lock)
@@ -36,7 +44,7 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 
 	asm volatile(
 	/* Atomically increment the next ticket. */
-	ARM64_LSE_ATOMIC_INSN(
+	SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 "	prfm	pstl1strm, %3\n"
 "1:	ldaxr	%w0, %3\n"
@@ -73,7 +81,7 @@ static inline int arch_spin_trylock(arch_spinlock_t *lock)
 	unsigned int tmp;
 	arch_spinlock_t lockval;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"	prfm	pstl1strm, %2\n"
 	"1:	ldaxr	%w0, %2\n"
@@ -103,7 +111,7 @@ static inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
 	unsigned long tmp;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"	ldrh	%w1, %0\n"
 	"	add	%w1, %w1, #1\n"
@@ -153,7 +161,7 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 {
 	unsigned int tmp;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"	sevl\n"
 	"1:	wfe\n"
@@ -180,7 +188,7 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 {
 	unsigned int tmp;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"1:	ldaxr	%w0, %1\n"
 	"	cbnz	%w0, 2f\n"
@@ -200,7 +208,7 @@ static inline int arch_write_trylock(arch_rwlock_t *rw)
 
 static inline void arch_write_unlock(arch_rwlock_t *rw)
 {
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	"	stlr	wzr, %0",
 	"	swpl	wzr, wzr, %0")
 	: "=Q" (rw->lock) :: "memory");
@@ -231,7 +239,7 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 
 	asm volatile(
 	"	sevl\n"
-	ARM64_LSE_ATOMIC_INSN(
+	SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"1:	wfe\n"
 	"2:	ldaxr	%w0, %2\n"
@@ -257,7 +265,7 @@ static inline void arch_read_unlock(arch_rwlock_t *rw)
 {
 	unsigned int tmp, tmp2;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"1:	ldxr	%w0, %2\n"
 	"	sub	%w0, %w0, #1\n"
@@ -276,7 +284,7 @@ static inline int arch_read_trylock(arch_rwlock_t *rw)
 {
 	unsigned int tmp, tmp2;
 
-	asm volatile(ARM64_LSE_ATOMIC_INSN(
+	asm volatile(SEC_ARM64_LSE_ATOMIC_INSN(
 	/* LL/SC */
 	"	mov	%w1, #1\n"
 	"1:	ldaxr	%w0, %2\n"

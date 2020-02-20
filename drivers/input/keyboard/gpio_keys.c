@@ -31,13 +31,17 @@
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
 #include <linux/debug-snapshot.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/sec_debug.h>
+
+static struct gpio_keys_drvdata *g_ddata;
 
 struct device *sec_key;
 EXPORT_SYMBOL(sec_key);
 
+#ifndef CONFIG_SEC_KEY_NOTIFIER
 static int call_gpio_keys_notifier(unsigned int code, int state);
+#endif
 
 struct gpio_button_data {
 	struct gpio_keys_button *button;
@@ -367,6 +371,26 @@ static const struct attribute_group gpio_keys_attr_group = {
 	.attrs = gpio_keys_attrs,
 };
 
+int get_voldn_press(void)
+{
+	struct gpio_keys_drvdata *ddata = g_ddata;
+	int i;
+
+	if (!ddata) {
+		return 0;
+	}
+
+	for (i = 0; i < ddata->pdata->nbuttons; i++) {
+		struct gpio_button_data *bdata = &ddata->data[i];
+
+		if (bdata->button->code == KEY_VOLUMEDOWN)
+			return bdata->key_state;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(get_voldn_press);
+
 static ssize_t key_pressed_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -584,7 +608,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
 	int state;
-	struct irq_desc *desc = irq_to_desc(gpio_to_irq(button->gpio));
+	struct irq_desc *desc = irq_to_desc(bdata->irq);
 
 	if (!desc) {
 		dev_err(input->dev.parent, "irq_desc is null! (gpio=%d)\n",
@@ -634,6 +658,7 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
 {
 	struct gpio_button_data *bdata = dev_id;
+#ifndef CONFIG_SEC_KEY_NOTIFIER
 	/*
 	 * int state = (gpio_get_value(bdata->button->gpio) ? 1 : 0) ^ bdata->button->active_low;
 	 *
@@ -642,10 +667,13 @@ static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
 	 *
 	 */
 	int state = gpiod_get_value(bdata->gpiod);
+#endif
 
 	BUG_ON(irq != bdata->irq);
 
+#ifndef CONFIG_SEC_KEY_NOTIFIER
 	call_gpio_keys_notifier(bdata->button->code, state);
+#endif
 
 	if (bdata->button->wakeup) {
 		const struct gpio_keys_button *button = bdata->button;
@@ -659,12 +687,17 @@ static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
 			 * handler to run.
 			 */
 			input_report_key(bdata->input, button->code, 1);
+			pr_info("%s %s: %d (%d)\n", SECLOG, __func__, button->code, 1);
 		}
 	}
 
-	mod_delayed_work(system_wq,
-			 &bdata->work,
-			 msecs_to_jiffies(bdata->software_debounce));
+	if (bdata->software_debounce) {
+		mod_delayed_work(system_wq,
+				&bdata->work,
+				msecs_to_jiffies(bdata->software_debounce));
+	} else {
+		gpio_keys_gpio_work_func(&bdata->work.work);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1104,6 +1137,7 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(dev, wakeup);
+	g_ddata = ddata;
 
 	return 0;
 
@@ -1163,6 +1197,7 @@ static int __maybe_unused gpio_keys_resume(struct device *dev)
 	return 0;
 }
 
+#ifndef CONFIG_SEC_KEY_NOTIFIER
 static ATOMIC_NOTIFIER_HEAD(gpio_keys_notifiers);
 
 int register_gpio_keys_notifier(struct  notifier_block *nb)
@@ -1181,6 +1216,7 @@ static int call_gpio_keys_notifier(unsigned int code, int state)
 {
 	return atomic_notifier_call_chain(&gpio_keys_notifiers, code, &state);
 }
+#endif
 
 static SIMPLE_DEV_PM_OPS(gpio_keys_pm_ops, gpio_keys_suspend, gpio_keys_resume);
 
@@ -1203,7 +1239,7 @@ static void __exit gpio_keys_exit(void)
 	platform_driver_unregister(&gpio_keys_device_driver);
 }
 
-late_initcall(gpio_keys_init);
+module_init(gpio_keys_init);
 module_exit(gpio_keys_exit);
 
 MODULE_LICENSE("GPL");

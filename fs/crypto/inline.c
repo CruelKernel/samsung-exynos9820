@@ -41,20 +41,32 @@ void *fscrypt_get_bio_cryptd(const struct inode *inode)
 }
 EXPORT_SYMBOL(fscrypt_get_bio_cryptd);
 
+unsigned long long fscrypt_get_dun(const struct inode *inode, pgoff_t pg_idx)
+{
+	struct super_block *sb = inode->i_sb;
+	if (sb->s_cop && sb->s_cop->get_dun)
+		return sb->s_cop->get_dun(inode, pg_idx);
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_get_dun);
 
-void fscrypt_set_bio_cryptd(const struct inode *inode, struct bio *bio)
+void fscrypt_set_bio_cryptd_dun(const struct inode *inode, struct bio *bio, u64 dun)
 {
 	BUG_ON(!__fscrypt_inline_encrypted(inode));
 
 	BUG_ON(!S_ISREG(inode->i_mode));
 	bio->bi_opf |= REQ_CRYPT;
 	bio->bi_cryptd = __fscrypt_get_bio_cryptd(inode);
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	if (dun)                          
+		bio->bi_iter.bi_dun = dun;
+#endif
 #if defined(CONFIG_CRYPTO_DISKCIPHER_DEBUG)
 	//crypto_diskcipher_set(bio, inode->i_crypt_info->ci_dtfm);
 	crypto_diskcipher_debug(DISKC_API_SET, 0);
 #endif
 }
-EXPORT_SYMBOL(fscrypt_set_bio_cryptd);
+EXPORT_SYMBOL(fscrypt_set_bio_cryptd_dun);
 
 int fscrypt_submit_bh(int op, int op_flags, struct buffer_head *bh, struct inode *inode)
 {

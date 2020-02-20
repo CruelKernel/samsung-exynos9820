@@ -663,6 +663,9 @@ EXPORT_SYMBOL(__kfree_skb);
  */
 void kfree_skb(struct sk_buff *skb)
 {
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	dropdump_queue(skb);
+#endif
 	if (!skb_unref(skb))
 		return;
 
@@ -809,6 +812,11 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
 	skb_dst_copy(new, old);
 #ifdef CONFIG_XFRM
 	new->sp			= secpath_get(old->sp);
+#endif
+
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	new->dropmask		= old->dropmask;
+	new->dropid		= old->dropid;
 #endif
 	__nf_copy(new, old, false);
 

@@ -62,7 +62,7 @@ static int __init exynos_handler_setup(struct device_node *np)
 
 		err = request_irq(ecc_handler[i].irq,
 				ecc_handler[i].handle_irq,
-				IRQF_NOBALANCING | IRQF_GIC_MULTI_TARGET,
+				IRQF_TRIGGER_HIGH | IRQF_NOBALANCING | IRQF_GIC_MULTI_TARGET,
 				ecc_handler[i].name, &ecc_handler[i]);
 		if (err) {
 			pr_err("unable to request irq%d for %s ecc handler\n",

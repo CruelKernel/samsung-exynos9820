@@ -30,6 +30,11 @@
 #include <linux/uaccess.h>
 
 
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+
+#include "uid_sys_stats_bgio_whitelist.h"
+
 #define UID_HASH_BITS	10
 DECLARE_HASHTABLE(hash_table, UID_HASH_BITS);
 
@@ -44,6 +49,9 @@ struct io_stats {
 	u64 rchar;
 	u64 wchar;
 	u64 fsync;
+#ifdef CONFIG_UID_STAT_JBD_SUBMIT_BH
+	u64 submit_bh_write_bytes;
+#endif
 };
 
 #define UID_STATE_FOREGROUND	0
@@ -76,7 +84,62 @@ struct uid_entry {
 #ifdef CONFIG_UID_SYS_STATS_DEBUG
 	DECLARE_HASHTABLE(task_entries, UID_HASH_BITS);
 #endif
+
+	u64 last_fg_write_bytes;
+	u64 last_bg_write_bytes;
+	u64 daily_fg_write;
+	u64 daily_bg_write;
+	struct list_head top_n_list;
+	int is_whitelist;
 };
+
+/*********** Background IOSTAT ***************/
+#define NR_TOP_BG_ENTRIES	10
+#define TOP_BG_ENTRY_NAMELEN	32
+#define BG_IO_THRESHOLD		300 // Unit : MiB
+
+struct bg_iostat_attr {
+	struct kobj_attribute attr;
+	int value;
+};
+
+#define BG_IOSTAT_RO_ATTR(name, func) \
+static struct bg_iostat_attr bg_iostat_attr_##name = { \
+	.attr = __ATTR(name, 0444, func, NULL), \
+}
+
+#define BG_IOSTAT_WO_ATTR(name, func) \
+static struct bg_iostat_attr bg_iostat_attr_##name = { \
+	.attr = __ATTR(name, 0644, NULL, func), \
+}
+
+#define BG_IOSTAT_GENERAL_RW_ATTR(name, val) \
+static struct bg_iostat_attr bg_iostat_attr_##name = { \
+	.attr = __ATTR(name, 0644, bg_iostat_generic_show, bg_iostat_generic_store), \
+	.value = val, \
+}
+
+#define ATTR_VALUE(name) bg_iostat_attr_##name.value
+
+#define UID_ENTRY_DAILY_FG_WRITE(entry)	\
+	(entry->io[UID_STATE_FOREGROUND].write_bytes - entry->last_fg_write_bytes)
+#define UID_ENTRY_DAILY_BG_WRITE(entry)	\
+	(entry->io[UID_STATE_BACKGROUND].write_bytes - entry->last_bg_write_bytes)
+
+#define BtoM(val)	((val)/(1024*1024))
+
+#define NR_ENTRIES_IN_ARR(v)	(sizeof(v) / sizeof(*v))
+
+typedef uid_t appid_t;
+
+appid_t get_appid(const char *key);
+void uid_to_packagename(u32 uid, char* output, int buf_size);
+
+static void inline update_daily_writes(struct uid_entry *entry) {
+	entry->last_fg_write_bytes = entry->io[UID_STATE_FOREGROUND].write_bytes;
+	entry->last_bg_write_bytes = entry->io[UID_STATE_BACKGROUND].write_bytes;
+}
+/* END ****** Background IOSTAT ***************/
 
 static u64 compute_write_bytes(struct task_struct *task)
 {
@@ -109,15 +172,49 @@ static void compute_io_bucket_stats(struct io_stats *io_bucket,
 	io_bucket->wchar += delta > 0 ? delta : 0;
 	delta = io_curr->fsync + io_dead->fsync - io_last->fsync;
 	io_bucket->fsync += delta > 0 ? delta : 0;
+#ifdef CONFIG_UID_STAT_JBD_SUBMIT_BH
+	delta = io_curr->submit_bh_write_bytes 
+		+ io_dead->submit_bh_write_bytes
+		- io_last->submit_bh_write_bytes;
+	io_bucket->submit_bh_write_bytes += delta > 0 ? delta : 0;
+#endif
 
 	io_last->read_bytes = io_curr->read_bytes;
 	io_last->write_bytes = io_curr->write_bytes;
 	io_last->rchar = io_curr->rchar;
 	io_last->wchar = io_curr->wchar;
 	io_last->fsync = io_curr->fsync;
+#ifdef CONFIG_UID_STAT_JBD_SUBMIT_BH
+	io_last->submit_bh_write_bytes = io_curr->submit_bh_write_bytes;
+#endif
 
 	memset(io_dead, 0, sizeof(struct io_stats));
 }
+
+
+#if defined(CONFIG_UID_STAT_JBD_SUBMIT_BH) && defined(CONFIG_SUBMIT_BH_IO_ACCOUNTING)
+static void compute_jbd_submit_bh_write(struct io_stats *io_slot,
+		struct task_struct *task) {
+	//Submit_bh bytes of JBD thread -> add to Background write_bytes
+	if(task->ioac.submit_bh_write_bytes &&
+		strstr(task->comm, "jbd2") == task->comm) {
+		io_slot->submit_bh_write_bytes += 
+			task->ioac.submit_bh_write_bytes;
+	}
+};
+static void compute_submit_bh_io_stats(struct io_stats *io_slots) {
+	u64 sum = 0;
+	sum = io_slots[UID_STATE_FOREGROUND].submit_bh_write_bytes +
+		io_slots[UID_STATE_BACKGROUND].submit_bh_write_bytes;
+
+	if(sum)
+		io_slots[UID_STATE_BACKGROUND].write_bytes = sum;
+}
+#else
+static void compute_jbd_submit_bh_write(struct io_stats *io_slot,
+		struct task_struct *task) {};
+static void compute_submit_bh_io_stats(struct io_stats *io_slots) {};
+#endif
 
 #ifdef CONFIG_UID_SYS_STATS_DEBUG
 static void get_full_task_comm(struct task_entry *task_entry,
@@ -251,6 +348,8 @@ static void add_uid_tasks_io_stats(struct uid_entry *uid_entry,
 	task_io_slot->rchar += task->ioac.rchar;
 	task_io_slot->wchar += task->ioac.wchar;
 	task_io_slot->fsync += task->ioac.syscfs;
+
+	compute_jbd_submit_bh_write(task_io_slot, task);
 }
 
 static void compute_io_uid_tasks(struct uid_entry *uid_entry)
@@ -263,6 +362,7 @@ static void compute_io_uid_tasks(struct uid_entry *uid_entry)
 					&task_entry->io[UID_STATE_TOTAL_CURR],
 					&task_entry->io[UID_STATE_TOTAL_LAST],
 					&task_entry->io[UID_STATE_DEAD_TASKS]);
+		compute_submit_bh_io_stats(task_entry->io);
 	}
 }
 
@@ -460,6 +560,8 @@ static void add_uid_io_stats(struct uid_entry *uid_entry,
 	io_slot->wchar += task->ioac.wchar;
 	io_slot->fsync += task->ioac.syscfs;
 
+	compute_jbd_submit_bh_write(io_slot, task);
+
 	add_uid_tasks_io_stats(uid_entry, task, slot);
 }
 
@@ -493,6 +595,7 @@ static void update_io_stats_all_locked(void)
 					&uid_entry->io[UID_STATE_TOTAL_CURR],
 					&uid_entry->io[UID_STATE_TOTAL_LAST],
 					&uid_entry->io[UID_STATE_DEAD_TASKS]);
+		compute_submit_bh_io_stats(uid_entry->io);
 		compute_io_uid_tasks(uid_entry);
 	}
 }
@@ -518,6 +621,7 @@ static void update_io_stats_uid_locked(struct uid_entry *uid_entry)
 				&uid_entry->io[UID_STATE_TOTAL_CURR],
 				&uid_entry->io[UID_STATE_TOTAL_LAST],
 				&uid_entry->io[UID_STATE_DEAD_TASKS]);
+	compute_submit_bh_io_stats(uid_entry->io);
 	compute_io_uid_tasks(uid_entry);
 }
 
@@ -544,12 +648,234 @@ static int uid_io_show(struct seq_file *m, void *v)
 				uid_entry->io[UID_STATE_BACKGROUND].write_bytes,
 				uid_entry->io[UID_STATE_FOREGROUND].fsync,
 				uid_entry->io[UID_STATE_BACKGROUND].fsync);
-
 		show_io_uid_tasks(m, uid_entry);
 	}
 
 	rt_mutex_unlock(&uid_lock);
 	return 0;
+}
+
+static void bg_iostat_set_whitelist(u32 uid, int set) {
+	struct uid_entry *uid_entry;
+
+	uid_entry = find_uid_entry(uid);
+	if (uid_entry != NULL) 
+		uid_entry->is_whitelist = set;
+
+	return;
+}
+
+static void bg_iostat_predefined_whitelist(void) {
+	int i, nr_entries;
+	u32 uid = 0;
+
+	nr_entries = NR_ENTRIES_IN_ARR(bgio_whitelist_by_name);
+	for (i=0; i<nr_entries; i++) {
+		uid = get_appid(bgio_whitelist_by_name[i]);
+		if (uid != 0) {
+			bg_iostat_set_whitelist(uid, 1);
+		}
+	}
+
+	nr_entries = NR_ENTRIES_IN_ARR(bgio_whitelist_by_uid);
+	for (i=0; i<nr_entries; i++) {
+		uid = bgio_whitelist_by_uid[i];
+		bg_iostat_set_whitelist(uid, 1);
+	}
+}
+
+static ssize_t bg_iostat_generic_show(struct kobject *kobj, 
+		struct kobj_attribute *attr, char *buf)
+{
+	struct bg_iostat_attr *entry = \
+				container_of(attr, struct bg_iostat_attr, attr);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", entry->value);
+}
+
+static ssize_t bg_iostat_generic_store(struct kobject *kobj, 
+		struct kobj_attribute *attr, const char *buf, size_t len)
+{
+	struct bg_iostat_attr *entry = \
+				container_of(attr, struct bg_iostat_attr, attr);
+	sscanf(buf, "%d", &entry->value);
+
+	return len;
+}
+
+BG_IOSTAT_GENERAL_RW_ATTR(write_threshold, BG_IO_THRESHOLD);
+BG_IOSTAT_GENERAL_RW_ATTR(auto_reset_daily_stat, 1);
+
+static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr, 
+		char *buf)
+{
+	LIST_HEAD(top_n_head); //HEAD : Small ----> Large : TAIL
+	struct uid_entry *uid_entry;
+	unsigned long bkt;
+	int nr_entries = 0;
+	u64 smallest_bg_io = 0;
+	struct uid_entry *cur_entry;
+	char package_name_buf[TOP_BG_ENTRY_NAMELEN];
+	int idx;
+	int len = 0;
+	u64 total_fg_bytes=0;
+	u64 total_bg_bytes=0;
+	unsigned int nr_apps=0, nr_apps_bg=0, nr_apps_thr=0;
+
+	rt_mutex_lock(&uid_lock);
+
+	update_io_stats_all_locked();
+	
+	bg_iostat_predefined_whitelist();
+
+	hash_for_each(hash_table, bkt, uid_entry, hash) {
+		nr_apps++;
+		total_fg_bytes+=UID_ENTRY_DAILY_FG_WRITE(uid_entry);
+		total_bg_bytes+=UID_ENTRY_DAILY_BG_WRITE(uid_entry);
+		if (UID_ENTRY_DAILY_BG_WRITE(uid_entry) != 0)
+			nr_apps_bg++;
+
+		if (BtoM(UID_ENTRY_DAILY_BG_WRITE(uid_entry)) > ATTR_VALUE(write_threshold))
+			nr_apps_thr++;
+
+		if (uid_entry->is_whitelist) 
+			continue;
+
+		if (UID_ENTRY_DAILY_BG_WRITE(uid_entry) > smallest_bg_io) {
+			list_for_each_entry(cur_entry, &top_n_head, top_n_list) {
+				if(UID_ENTRY_DAILY_BG_WRITE(cur_entry) >
+						UID_ENTRY_DAILY_BG_WRITE(uid_entry))
+					break;
+			}
+
+			list_add_tail(&uid_entry->top_n_list, &cur_entry->top_n_list);
+			uid_entry->daily_fg_write = UID_ENTRY_DAILY_FG_WRITE(uid_entry);
+			uid_entry->daily_bg_write = UID_ENTRY_DAILY_BG_WRITE(uid_entry);
+			
+			if (nr_entries >= NR_TOP_BG_ENTRIES) {
+				list_del(top_n_head.next);
+
+				cur_entry = container_of(top_n_head.next, struct uid_entry, top_n_list);
+				smallest_bg_io = UID_ENTRY_DAILY_BG_WRITE(cur_entry);
+			} else {
+				nr_entries++;
+			}
+		}
+
+		if(ATTR_VALUE(auto_reset_daily_stat))
+			update_daily_writes(uid_entry);
+	}
+
+	len += snprintf(buf, PAGE_SIZE,
+		"\"bg_stat_ver\":\"%d\",\"total_io_MB\":\"%llu\",\"bg_io_MB\":\"%llu\","
+		"\"nr_apps_tot\":\"%u\",\"nr_apps_bg\":\"%u\",\"nr_apps_thr\":\"%u\","
+		"\"bg_threshold\":\"%d\"",
+		BG_STAT_VER, BtoM(total_fg_bytes + total_bg_bytes), BtoM(total_bg_bytes),
+		nr_apps, nr_apps_bg, nr_apps_thr,
+		ATTR_VALUE(write_threshold)
+		);
+
+	idx = 1;
+	list_for_each_entry_reverse(cur_entry, &top_n_head, top_n_list) {
+		memset(package_name_buf, 0x0, TOP_BG_ENTRY_NAMELEN);
+		uid_to_packagename(cur_entry->uid, package_name_buf, TOP_BG_ENTRY_NAMELEN);
+		len += snprintf(buf+len, PAGE_SIZE,
+			",\"title_%d\":\"%s\",\"fg_val_%d\":\"%llu\",\"bg_val_%d\":\"%llu\"",
+			idx, package_name_buf,
+			idx, BtoM(cur_entry->daily_fg_write),
+			idx, BtoM(cur_entry->daily_bg_write));
+		idx++;
+	}
+
+	for (; idx <= NR_TOP_BG_ENTRIES; idx++) {
+		len += snprintf(buf+len, PAGE_SIZE,
+			",\"title_%d\":\"<nodata>\",\"fg_val_%d\":\"0\",\"bg_val_%d\":\"0\"",
+			idx, idx, idx);
+	}
+
+	len += snprintf(buf+len, PAGE_SIZE, "\n");
+
+	rt_mutex_unlock(&uid_lock);
+	return len;
+}
+BG_IOSTAT_RO_ATTR(sec_stat, bg_iostat_show);
+
+static ssize_t bg_iostat_whitelist_mngt(struct kobject *kobj, 
+		struct kobj_attribute *attr, const char *buf, size_t len)
+{
+	struct bg_iostat_attr *entry = \
+				container_of(attr, struct bg_iostat_attr, attr);
+	struct uid_entry *uid_entry;
+	u32 ret, uid = -1;
+	int set;
+
+	if (!strcmp(entry->attr.attr.name, "add_to_whitelist_by_id")) {
+		set = 1;
+		sscanf(buf, "%u", &uid);
+	}
+	else if (!strcmp(entry->attr.attr.name, "add_to_whitelist_by_name")) {
+		set = 1;
+		ret = get_appid(buf);
+		if(ret != 0) uid = ret;
+	}
+	else if (!strcmp(entry->attr.attr.name, "remove_to_whitelist_by_id")) {
+		set = 0;
+		sscanf(buf, "%u", &uid);
+	}
+	else if (!strcmp(entry->attr.attr.name, "remove_to_whitelist_by_name")) {
+		set = 0;
+		ret = get_appid(buf);
+		if(ret != 0) uid = ret;
+	}
+
+	if (uid != -1) {
+		uid_entry = find_uid_entry(uid);
+		if(uid_entry == NULL) return 0;
+		uid_entry->is_whitelist = set;
+	}
+
+	return len;
+}
+
+BG_IOSTAT_WO_ATTR(add_to_whitelist_by_id, bg_iostat_whitelist_mngt);
+BG_IOSTAT_WO_ATTR(add_to_whitelist_by_name, bg_iostat_whitelist_mngt);
+BG_IOSTAT_WO_ATTR(remove_to_whitelist_by_id, bg_iostat_whitelist_mngt);
+BG_IOSTAT_WO_ATTR(remove_to_whitelist_by_name, bg_iostat_whitelist_mngt);
+
+#define ATTR_LIST(name) (&bg_iostat_attr_##name.attr.attr)
+static struct attribute *bg_iostat_attrs[] = {
+	ATTR_LIST(sec_stat),
+	ATTR_LIST(write_threshold),
+	ATTR_LIST(auto_reset_daily_stat),
+	ATTR_LIST(add_to_whitelist_by_id),
+	ATTR_LIST(add_to_whitelist_by_name),
+	ATTR_LIST(remove_to_whitelist_by_id),
+	ATTR_LIST(remove_to_whitelist_by_name),
+	NULL,
+};
+
+static struct attribute_group bg_iostat_group = {
+	.attrs = bg_iostat_attrs,
+};
+
+static void bgio_stat_init(void) {
+	extern struct kobject *fs_iostat_kobj;
+	struct kobject *bg_iostat_kobj;
+	int ret;
+
+	bg_iostat_kobj = kobject_create_and_add("bgiostat", fs_iostat_kobj);
+	if(!bg_iostat_kobj) {
+		printk(KERN_WARNING "%s: BG iostat kobj create error\n",
+					__func__);
+		return;
+	}
+	
+	ret = sysfs_create_group(bg_iostat_kobj, &bg_iostat_group);
+	if (ret) {
+		printk("%s: sysfs_create_group() failed. ret=%d\n", 
+				__func__, ret);
+		return;
+	}
 }
 
 static int uid_io_open(struct inode *inode, struct file *file)
@@ -689,6 +1015,8 @@ static int __init proc_uid_sys_stats_init(void)
 
 	proc_create_data("set", 0222, proc_parent,
 		&uid_procstat_fops, NULL);
+
+	bgio_stat_init();
 
 	profile_event_register(PROFILE_TASK_EXIT, &process_notifier_block);
 

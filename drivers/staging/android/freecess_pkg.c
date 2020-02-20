@@ -283,7 +283,7 @@ static int __init kfreecess_pkg_init(void)
 	pr_err("nf_register_hooks(freecess hooks) success\n");
 
 	register_kfreecess_hook(MOD_PKG, kfreecess_pkg_hook);
-	register_kfreecess_hook(MOD_BINDER, kfreecess_cfb_hook);
+	register_kfreecess_hook(MOD_CFB, kfreecess_cfb_hook);
 
 	return 0;
 }
@@ -293,7 +293,7 @@ static void __exit kfreecess_pkg_exit(void)
 	struct net *net;
 
 	unregister_kfreecess_hook(MOD_PKG);
-	unregister_kfreecess_hook(MOD_BINDER);
+	unregister_kfreecess_hook(MOD_CFB);
 
 	rtnl_lock();
 	for_each_net(net) {

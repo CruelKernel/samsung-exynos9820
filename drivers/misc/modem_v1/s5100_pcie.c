@@ -121,7 +121,7 @@ send_doorbell_again:
 	mif_debug("DBG: s5100pcie.doorbell_addr = 0x%x - written(int_num=0x%x) read(reg=0x%x)\n", \
 		s5100pcie.doorbell_addr, int_num, reg);
 
-	if ((reg == 0xffffffff) || (reg == 0x0)) {
+	if (reg == 0xffffffff) {
 		count++;
 		if (count < 100) {
 			if (!in_interrupt())
@@ -167,14 +167,14 @@ void s5100pcie_set_cp_wake_gpio(int cp_wakeup)
 void save_s5100_status()
 {
 	if (exynos_check_pcie_link_status(s5100pcie.pcie_channel_num) == 0) {
-		mif_err("It's not Linked - Ignore restore state!!!\n");
+		mif_err("It's not Linked - Ignore saving the s5100\n");
 		return;
 	}
 
 	/* pci_pme_active(s5100pcie.s5100_pdev, 0); */
 
 	/* Disable L1.2 before PCIe power off */
-	exynos_pcie_host_v1_l1ss_ctrl(0, PCIE_L1SS_CTRL_MODEM_IF);
+	/* exynos_pcie_host_v1_l1ss_ctrl(0, PCIE_L1SS_CTRL_MODEM_IF); */
 
 	pci_clear_master(s5100pcie.s5100_pdev);
 
@@ -199,13 +199,10 @@ void restore_s5100_state()
 {
 	int ret;
 
-#ifdef CONFIG_DISABLE_PCIE_CP_L1_2
-	/* Disable L1.2 after PCIe power on */
-	exynos_pcie_host_v1_l1ss_ctrl(0, PCIE_L1SS_CTRL_MODEM_IF);
-#else
-	/* Enable L1.2 after PCIe power on */
-	exynos_pcie_host_v1_l1ss_ctrl(1, PCIE_L1SS_CTRL_MODEM_IF);
-#endif
+	if (exynos_check_pcie_link_status(s5100pcie.pcie_channel_num) == 0) {
+		mif_err("It's not Linked - Ignore restoring the s5100_status!\n");
+		return;
+	}
 
 	if (pci_set_power_state(s5100pcie.s5100_pdev, PCI_D0)) {
 		mif_err("Can't set D0 state!!!!\n");
@@ -223,6 +220,14 @@ void restore_s5100_state()
 		pr_err("Can't enable PCIe Device after linkup!\n");
 	}
 	pci_set_master(s5100pcie.s5100_pdev);
+
+#ifdef CONFIG_DISABLE_PCIE_CP_L1_2
+	/* Disable L1.2 after PCIe power on */
+	exynos_pcie_host_v1_l1ss_ctrl(0, PCIE_L1SS_CTRL_MODEM_IF);
+#else
+	/* Enable L1.2 after PCIe power on */
+	exynos_pcie_host_v1_l1ss_ctrl(1, PCIE_L1SS_CTRL_MODEM_IF);
+#endif
 
 	s5100pcie.link_status = 1;
 	/* pci_pme_active(s5100pcie.s5100_pdev, 1); */
@@ -273,13 +278,7 @@ static void s5100pcie_linkdown_cb(struct exynos_pcie_notify *noti)
 
 	pr_err("S5100 Link-Down notification callback function!!!\n");
 
-	if (s5100pcie.suspend_try) {
-		pr_err("PCIe link down during S5100 suspend operation\n");
-		s5100pcie.suspend_try = false;
-		exynos_pcie_host_v1_poweroff(s5100pcie.pcie_channel_num);
-	} else {
-		s5100_force_crash_exit_ext();
-	}
+	s5100_force_crash_exit_ext();
 }
 
 static int s5100pcie_probe(struct pci_dev *pdev,
@@ -310,25 +309,25 @@ static int s5100pcie_probe(struct pci_dev *pdev,
 	pr_err("Set Doorbell register addres.\n");
 #if defined(CONFIG_SOC_EXYNOS8890)
 	if (s5100pcie.pcie_channel_num == 0)
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x1c002c20, SZ_4);
 	else
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x1e002c20, SZ_4);
 #elif defined(CONFIG_SOC_EXYNOS8895)
 	if (s5100pcie.pcie_channel_num == 0)
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x11802c20, SZ_4);
 	else
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x11c02c20, SZ_4);
 #elif defined(CONFIG_SOC_EXYNOS9820)
 	/* doorbell target address: (RC)0x1100_0d20 ->(EP)0x12d0_0d20 */
 	if (s5100pcie.pcie_channel_num == 0)
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x0, SZ_4); /* ch0: TBD */
 	else
-		s5100pcie.doorbell_addr = devm_ioremap(&pdev->dev,
+		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x11000d20, SZ_4);
 
 	pr_info("s5100pcie.doorbell_addr = 0x%x (CONFIG_SOC_EXYNOS9820: 0x11000d20)\n", \

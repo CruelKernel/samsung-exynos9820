@@ -536,6 +536,9 @@ struct decon_reg_data {
 	u32 lcd_width;
 	u32 lcd_height;
 	int mres_idx;
+#ifdef CONFIG_DYNAMIC_FREQ
+	int df_update;
+#endif
 };
 
 struct decon_win_config_data {
@@ -1151,6 +1154,14 @@ struct decon_freq_hop {
 	u32 request_k;	/* user requested k value */
 };
 
+
+#ifdef CONFIG_SUPPORT_DISPLAY_PROFILER
+struct profile_data {
+	unsigned int win_cnt;
+};
+#endif
+
+
 struct decon_device {
 	int id;
 	enum decon_state state;
@@ -1230,6 +1241,7 @@ struct decon_device {
 
 	bool mres_enabled;
 	bool low_persistence;
+	int color_mode;
 
 #ifdef CONFIG_EXYNOS_COMMON_PANEL
 	struct v4l2_subdev *panel_sd;
@@ -1247,7 +1259,12 @@ struct decon_device {
 	struct lcd_hdr_info hdr_info;
 #endif
 
-	int color_mode;
+#ifdef CONFIG_DYNAMIC_FREQ
+	struct df_status_info *df_status;
+#endif
+#ifdef CONFIG_SUPPORT_DISPLAY_PROFILER
+	struct v4l2_subdev *profile_sd;
+#endif
 };
 
 
@@ -1422,7 +1439,7 @@ void dpu_set_mres_config(struct decon_device *decon, struct decon_reg_data *regs
 /* DPHY PLL frequency hopping feature related functions */
 void dpu_init_freq_hop(struct decon_device *decon);
 void dpu_update_freq_hop(struct decon_device *decon);
-void dpu_set_freq_hop(struct decon_device *decon, bool en);
+void dpu_set_freq_hop(struct decon_device *decon, struct decon_reg_data *regs, bool en);
 
 /* internal only function API */
 int decon_check_var(struct fb_var_screeninfo *var, struct fb_info *info);
@@ -1841,6 +1858,9 @@ void decon_dpp_stop(struct decon_device *decon, bool do_reset);
 int decon_update_last_regs(struct decon_device *decon,
 		struct decon_reg_data *regs);
 #endif
+
+int decon_panel_ioc_update_ffc(struct decon_device *decon);
+
 
 /* cursor async mode functions */
 void decon_set_cursor_reset(struct decon_device *decon,

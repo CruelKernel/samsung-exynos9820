@@ -30,6 +30,8 @@
 #include <crypto/hash.h>
 #include <crypto/hash_info.h>
 #include "five.h"
+#include "five_crypto_comp.h"
+#include "five_porting.h"
 
 struct ahash_completion {
 	struct completion completion;

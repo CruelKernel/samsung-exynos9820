@@ -16,7 +16,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/sec_haptic.h>
 #if defined(CONFIG_SSP_MOTOR_CALLBACK)
 #include <linux/ssp_motorcallback.h>

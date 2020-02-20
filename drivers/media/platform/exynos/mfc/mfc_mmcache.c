@@ -231,7 +231,6 @@ void mfc_invalidate_mmcache(struct mfc_dev *dev)
 		mfc_mmcache_dump_info(dev);
 		call_dop(dev, dump_and_stop_debug_mode, dev);
 	}
-
 	mfc_debug(2, "[MMCACHE] invalidated\n");
 	MFC_TRACE_DEV("[MMCACHE] invalidated\n");
 

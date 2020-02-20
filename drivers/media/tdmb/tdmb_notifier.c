@@ -23,7 +23,7 @@
 
 #include <linux/notifier.h>
 #include <linux/tdmb_notifier.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 #define SET_TDMB_NOTIFIER_BLOCK(nb, fn, dev) do {	\
 		(nb)->notifier_call = (fn);		\

@@ -31,6 +31,7 @@ struct blk_crypt_algorithm_cbs {
 	int (*set_key)(void *, const char *, int);
 };
 
+extern bool blk_crypt_encrypted(const struct bio *bio);
 extern bool blk_crypt_mergeable(const struct bio *a, const struct bio *b);
 
 extern void *blk_crypt_alg_register(struct block_device *, const char *, const unsigned int,

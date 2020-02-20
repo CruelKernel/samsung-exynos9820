@@ -339,7 +339,7 @@ static void __mfc_dec_src_stop_streaming(struct mfc_ctx *ctx)
 static void __mfc_dec_dst_stop_streaming(struct mfc_ctx *ctx)
 {
 	struct mfc_dec *dec = ctx->dec_priv;
-	struct mfc_dev *dev = ctx->dev;	
+	struct mfc_dev *dev = ctx->dev;
 	int index = 0;
 
 	mfc_cleanup_assigned_fd(ctx);
@@ -369,7 +369,7 @@ static void __mfc_dec_dst_stop_streaming(struct mfc_ctx *ctx)
 	if (ctx->wait_state & WAIT_STOP) {
 		ctx->wait_state &= ~(WAIT_STOP);
 		mfc_debug(2, "clear WAIT_STOP %d\n", ctx->wait_state);
-		MFC_TRACE_CTX("** DEC clear WAIT_STOP(wait_state %d)\n", ctx->wait_state);		
+		MFC_TRACE_CTX("** DEC clear WAIT_STOP(wait_state %d)\n", ctx->wait_state);
 	}
 }
 

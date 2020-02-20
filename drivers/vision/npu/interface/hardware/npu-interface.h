@@ -61,9 +61,9 @@ enum numCtrl_e {
 	ECTRL_REPORT,
 };
 
-int npu_interface_probe(struct device *dev, void *regs,	u32 irq2, u32 irq3);
+int npu_interface_probe(struct device *dev, void *regs);
 int npu_interface_open(struct npu_system *system);
-int npu_interface_close(void);
+int npu_interface_close(struct npu_system *system);
 
 int nw_req_manager(int msgid, struct npu_nw *nw);
 int fr_req_manager(int msgid, struct npu_frame *frame);

@@ -156,7 +156,8 @@ static ssize_t pktlog_read(struct file *filp, char *buf, size_t count,
 		goto exit;
 	}
 	cplen += payload_len;
-
+	dev_consume_skb_any(pkt);
+	return cplen;
 exit:
 	dev_kfree_skb_any(pkt);
 	return cplen;

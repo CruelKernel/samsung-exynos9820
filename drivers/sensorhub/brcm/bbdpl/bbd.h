@@ -39,10 +39,11 @@ union short_union_t
 
 #define BBD_DEVICE_MAJOR	239
 enum {
-	BBD_MINOR_SHMD	    = 0,
-	BBD_MINOR_SENSOR    = 1,
-	BBD_MINOR_CONTROL   = 2,
-	BBD_MINOR_PATCH     = 3,
+	BBD_MINOR_SHMD	    	= 0,
+	BBD_MINOR_SENSOR    	= 1,
+	BBD_MINOR_CONTROL   	= 2,
+	BBD_MINOR_PATCH     	= 3,
+	BBD_MINOR_URGENT_PATCH 	= 4,
 	//BBD_MINOR_SSI_SPI_DEBUG = 5,	//NOT supported yet
 	BBD_DEVICE_INDEX
 };

@@ -38,6 +38,7 @@
 #include "fimc-is-dt.h"
 #include "fimc-is-cis-imx316.h"
 #include "fimc-is-cis-imx316-setA.h"
+#include "fimc-is-cis-imx316-setB.h"
 #include "fimc-is-vender-specific.h"
 #include "fimc-is-helper-i2c.h"
 
@@ -54,8 +55,20 @@
 #define SENSOR_EXTAREA_INTG_0_B_2 0x2116
 #define SENSOR_EXTAREA_INTG_0_B_3 0x2117
 
+#define SENSOR_LASER_CONTROL_REG_1 0x2134
+#define SENSOR_LASER_CONTROL_REG_2 0x2135
+#define SENSOR_LASER_OFF  0xAA
+#define SENSOR_LASER_ON   0x00
+
 #define SENSOR_HMAX_UPPER 0x0800
 #define SENSOR_HMAX_LOWER 0x0801
+
+#define SENSOR_DEPTH_MAP_NUMBER 0x152C
+#define SENSOR_FPS_30		33333333
+#define SENSOR_FPS_20		50000000
+#define SENSOR_FPS_15		66666666
+#define SENSOR_FPS_10		100000000
+#define SENSOR_FPS_5		200000000
 
 static const struct v4l2_subdev_ops subdev_ops;
 
@@ -66,44 +79,75 @@ static const u32 *sensor_imx316_uid;
 static u32 sensor_imx316_max_uid_num;
 static const u32 *sensor_imx316_setfile_sizes;
 static u32 sensor_imx316_max_setfile_num;
+static const u32 *sensor_imx316_vcsel_current_setting;
+static u32 sensor_imx316_vcsel_current_setting_size;
 
+int sensor_imx316_mode = -1;
 u16 sensor_imx316_HMAX;
+bool sensor_imx316_enable_i2c_control;
+u32 sensor_imx316_frame_duration;
 
-void sensor_imx316_set_integration_max_margin(u32 mode, cis_shared_data *cis_data)
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+#define FRONT_TX_DEFAULT_FREQ 80
+
+static const struct cam_tof_sensor_mode *sensor_imx316_tx_freq_sensor_mode;
+static u32 sensor_imx316_tx_freq_sensor_mode_size;
+static const int *sensor_imx316_verify_sensor_mode;
+static int sensor_imx316_verify_sensor_mode_size;
+u32 sensor_imx316_front_tx_freq = FRONT_TX_DEFAULT_FREQ;
+
+static int sensor_imx316_cis_set_tx_clock(struct v4l2_subdev *subdev)
 {
-}
+	struct fimc_is_cis *cis = NULL;
+	struct fimc_is_device_sensor *device;
+	const struct cam_tof_sensor_mode *cur_tx_sensor_mode;
+	int found = -1;
 
-void sensor_imx316_cis_data_calculation(const struct sensor_pll_info_compact *pll_info, cis_shared_data *cis_data)
-{
-}
+	device = (struct fimc_is_device_sensor *)v4l2_get_subdev_hostdata(subdev);
+	if (device == NULL) {
+		err("device is NULL");
+		return -1;
+	}
 
-void sensor_imx316_cis_data_calc(struct v4l2_subdev *subdev, u32 mode)
-{
-}
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+	if (cis == NULL) {
+		err("cis is NULL");
+		return -1;
+	}
 
-int sensor_imx316_wait_stream_off_status(cis_shared_data *cis_data)
-{
-	int ret = 0;
-	u32 timeout = 0;
+	if (sensor_imx316_mode >= sensor_imx316_tx_freq_sensor_mode_size) {
+		err("sensor mode is out of bound");
+		return -1;
+	}
 
-	FIMC_BUG(!cis_data);
+	cur_tx_sensor_mode = &sensor_imx316_tx_freq_sensor_mode[sensor_imx316_mode];
 
-#define STREAM_OFF_WAIT_TIME 250
-	while (timeout < STREAM_OFF_WAIT_TIME) {
-		if (cis_data->is_active_area == false &&
-				cis_data->stream_on == false) {
-			pr_debug("actual stream off\n");
-			break;
+	if (cur_tx_sensor_mode->mipi_channel_size == 0 ||
+		cur_tx_sensor_mode->mipi_channel == NULL) {
+		dbg_sensor(1, "skip select mipi channel\n");
+		return -1;
+	}
+
+	found = fimc_is_vendor_select_mipi_by_rf_channel(cur_tx_sensor_mode->mipi_channel,
+				cur_tx_sensor_mode->mipi_channel_size);
+
+	if (found != -1) {
+		if (found < cur_tx_sensor_mode->sensor_setting_size) {
+			sensor_cis_set_registers(subdev,
+				cur_tx_sensor_mode->sensor_setting[found].setting,
+				cur_tx_sensor_mode->sensor_setting[found].setting_size);
+			sensor_imx316_front_tx_freq = cur_tx_sensor_mode->sensor_setting[found].tx_freq;
+			info("%s - tx setting %d freq %d\n", __func__, found, sensor_imx316_front_tx_freq);
+		} else {
+			err("sensor setting size is out of bound");
 		}
-		timeout++;
 	}
 
-	if (timeout == STREAM_OFF_WAIT_TIME) {
-		pr_err("actual stream off wait timeout\n");
-		ret = -1;
-	}
-	return ret;
+	return 0;
 }
+#endif
+
+int sensor_imx316_cis_set_frame_duration(struct v4l2_subdev *subdev, u32 duration);
 
 int sensor_imx316_cis_check_rev(struct fimc_is_cis *cis)
 {
@@ -145,13 +189,13 @@ int sensor_imx316_cis_check_rev(struct fimc_is_cis *cis)
 	info("sensor_imx316_cis_check_rev 0x0019 %x ", rev);
 	if (ret < 0) {
 		err("fimc_is_sensor_read8 fail, (ret %d)", ret);
-		I2C_MUTEX_UNLOCK(cis->i2c_lock);
-		return ret;
+		ret = -EAGAIN;
+	} else {
+		cis->cis_data->cis_rev = rev;
 	}
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 
-	cis->cis_data->cis_rev = rev;
-	return 0;
+	return ret;
 }
 
 /* CIS OPS */
@@ -192,7 +236,6 @@ int sensor_imx316_cis_init(struct v4l2_subdev *subdev)
 #endif
 		warn("sensor_imx316_check_rev is fail when cis init");
 		cis->rev_flag = true;
-		ret = 0;
 	}
 
 	cis->cis_data->product_name = cis->id;
@@ -200,6 +243,9 @@ int sensor_imx316_cis_init(struct v4l2_subdev *subdev)
 	cis->cis_data->cur_height = SENSOR_IMX316_MAX_HEIGHT;
 	cis->cis_data->low_expo_start = 33000;
 	cis->need_mode_change = false;
+	sensor_imx316_enable_i2c_control = false;
+	sensor_imx316_frame_duration = 0;
+	sensor_imx316_mode = -1;
 
 #ifdef DEBUG_SENSOR_TIME
 	do_gettimeofday(&end);
@@ -238,7 +284,7 @@ int sensor_imx316_cis_log_status(struct v4l2_subdev *subdev)
 	pr_err("[SEN:DUMP] IMX316 *************************\n");
 	fimc_is_sensor_read16(client, 0x0001, &data16);
 	pr_err("[SEN:DUMP] manufacturer ID(%x)\n", data16);
-	fimc_is_sensor_read8(client, 0x152C, &data8);
+	fimc_is_sensor_read8(client, SENSOR_DEPTH_MAP_NUMBER, &data8);
 	pr_err("[SEN:DUMP] frame counter (%x)\n", data8);
 	fimc_is_sensor_read8(client, 0x1001, &data8);
 	pr_err("[SEN:DUMP] mode_select(%x)\n", data8);
@@ -257,35 +303,15 @@ p_err:
 	return ret;
 }
 
-/* Input
- *	hold : true - hold, flase - no hold
- * Output
- *      return: 0 - no effect(already hold or no hold)
- *		positive - setted by request
- *		negative - ERROR value
- */
-int sensor_imx316_cis_group_param_hold(struct v4l2_subdev *subdev, bool hold)
-{
-	int ret = 0;
-	return ret;
-}
-
 int sensor_imx316_cis_set_global_setting(struct v4l2_subdev *subdev)
 {
 	int ret = 0;
 	struct fimc_is_cis *cis = NULL;
-	struct fimc_is_module_enum *module;
-	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
-	struct sensor_open_extended *ext_info;
 
 	FIMC_BUG(!subdev);
 
 	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
 	FIMC_BUG(!cis);
-
-	sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
-	module = sensor_peri->module;
-	ext_info = &module->ext;
 
 	I2C_MUTEX_LOCK(cis->i2c_lock);
 	/* setfile global setting is at camera entrance */
@@ -329,9 +355,6 @@ int sensor_imx316_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 	struct fimc_is_vender_specific *specific = NULL;
 	//int index = 0;
 	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
-	struct fimc_is_module_enum *module;
-	struct sensor_open_extended *ext_info;
-	struct exynos_platform_fimc_is_module *pdata;
 	u32 sensor_uid = 0;
 	int i;
 
@@ -344,7 +367,7 @@ int sensor_imx316_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 	if (mode > sensor_imx316_max_setfile_num) {
 		err("invalid mode(%d)!!", mode);
 		ret = -EINVAL;
-		goto p_err;
+		return ret;
 	}
 
 	/* If check_rev fail when cis_init, one more check_rev in mode_change */
@@ -353,26 +376,28 @@ int sensor_imx316_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 		ret = sensor_cis_check_rev(cis);
 		if (ret < 0) {
 			err("sensor_imx316_check_rev is fail");
-			goto p_err;
+			ret = -EINVAL;
+			return ret;
 		}
 	}
 
 	sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
-	module = sensor_peri->module;
-	ext_info = &module->ext;
 
 	core = (struct fimc_is_core *)dev_get_drvdata(fimc_is_dev);
 	if (!core) {
 		probe_info("core device is not yet probed");
 		ret = -EINVAL;
-		goto p_err;
+		return ret;
 	}
 
 	specific = core->vender.private_data;
 	if (sensor_peri->module->position == SENSOR_POSITION_REAR_TOF) {
-		sensor_uid = specific->rear_tof_uid;
+		sensor_uid = specific->rear_tof_uid[mode];
 	} else {  // SENSOR_POSITION_FRONT_TOF
-		sensor_uid = specific->front_tof_uid;
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+		sensor_imx316_front_tx_freq = FRONT_TX_DEFAULT_FREQ;
+#endif
+		sensor_uid = specific->front_tof_uid[mode];
 	}
 
 	for (i = 0; i < sensor_imx316_max_uid_num; i++) {
@@ -382,10 +407,11 @@ int sensor_imx316_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 		}
 	}
 
+	sensor_imx316_mode = mode;
 	if (i == sensor_imx316_max_uid_num) {
 		err("sensor_imx316_cis_mode_change can't find uid set");
 		ret = -EINVAL;
-		goto p_err;
+		return ret;
 	}
 
 	info("sensor_imx316_cis_mode_change pos %d sensor_uid %x mode %d 0x%x",
@@ -398,39 +424,159 @@ int sensor_imx316_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 		goto p_err;
 	}
 
-	/* VCSEL ON  */
-	pdata = module->pdata;
-	if (!pdata) {
-		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
-		err("pdata is NULL");
-		ret = -EINVAL;
-		goto p_err;
-	}
-
-	if (!pdata->gpio_cfg) {
-		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
-		err("gpio_cfg is NULL");
-		ret = -EINVAL;
-		goto p_err;
-	}
-
-	ret = pdata->gpio_cfg(module, SENSOR_SCENARIO_ADDITIONAL_POWER, GPIO_SCENARIO_ON);
-	if (ret) {
-		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
-		err("gpio_cfg is fail(%d)", ret);
-		goto p_err;
-	}
-
 	sensor_imx316_get_HMAX_value(sensor_imx316_setfiles[mode], sensor_imx316_setfile_sizes[mode]);
 p_err:
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 	return ret;
 }
 
-/* TODO: Sensor set size sequence(sensor done, sensor stop, 3AA done in FW case */
-int sensor_imx316_cis_set_size(struct v4l2_subdev *subdev, cis_shared_data *cis_data)
+int sensor_imx316_cis_wait_streamoff(struct v4l2_subdev *subdev)
 {
 	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct i2c_client *client;
+	cis_shared_data *cis_data;
+	u32 wait_cnt = 0, time_out_cnt = 250;
+	u8 sensor_fcount = 0;
+
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+	if (unlikely(!cis)) {
+		err("cis is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	cis_data = cis->cis_data;
+	if (unlikely(!cis_data)) {
+		err("cis_data is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	usleep_range(33000, 33000);
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	ret = fimc_is_sensor_read8(client, SENSOR_DEPTH_MAP_NUMBER, &sensor_fcount);
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+	if (ret < 0) {
+		err("i2c transfer fail addr(%x), val(%x), ret = %d\n", SENSOR_DEPTH_MAP_NUMBER, sensor_fcount, ret);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	/*
+	 * Read sensor frame counter (sensor_fcount address = 0x0005)
+	 * stream on (0x00 ~ 0xFE), stream off (0xFF)
+	 */
+	while (sensor_fcount != 0xFF) {
+		I2C_MUTEX_LOCK(cis->i2c_lock);
+		ret = fimc_is_sensor_read8(client, SENSOR_DEPTH_MAP_NUMBER, &sensor_fcount);
+		I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+		if (ret < 0) {
+			err("i2c transfer fail addr(%x), val(%x), ret = %d\n", SENSOR_DEPTH_MAP_NUMBER, sensor_fcount, ret);
+			ret = -EINVAL;
+			goto p_err;
+		}
+
+		usleep_range(CIS_STREAM_OFF_WAIT_TIME, CIS_STREAM_OFF_WAIT_TIME);
+		wait_cnt++;
+
+		if (wait_cnt >= time_out_cnt) {
+			err("[MOD:D:%d] %s, time out, wait_limit(%d) > time_out(%d), sensor_fcount(%d)",
+					cis->id, __func__, wait_cnt, time_out_cnt, sensor_fcount);
+			ret = -EINVAL;
+			goto p_err;
+		}
+
+		dbg_sensor(1, "[MOD:D:%d] %s, sensor_fcount(%d), (wait_limit(%d) < time_out(%d))\n",
+				cis->id, __func__, sensor_fcount, wait_cnt, time_out_cnt);
+	}
+
+p_err:
+	return ret;
+}
+
+int sensor_imx316_cis_wait_streamon(struct v4l2_subdev *subdev)
+{
+	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct i2c_client *client;
+	cis_shared_data *cis_data;
+	u32 wait_cnt = 0, time_out_cnt = 250;
+	u8 sensor_fcount = 0;
+
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+	if (unlikely(!cis)) {
+	    err("cis is NULL");
+	    ret = -EINVAL;
+	    goto p_err;
+	}
+
+	cis_data = cis->cis_data;
+	if (unlikely(!cis_data)) {
+	    err("cis_data is NULL");
+	    ret = -EINVAL;
+	    goto p_err;
+	}
+
+	client = cis->client;
+	if (unlikely(!client)) {
+	    err("client is NULL");
+	    ret = -EINVAL;
+	    goto p_err;
+	}
+
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	ret = fimc_is_sensor_read8(client, SENSOR_DEPTH_MAP_NUMBER, &sensor_fcount);
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+	if (ret < 0) {
+	    err("i2c transfer fail addr(%x), val(%x), ret = %d\n", SENSOR_DEPTH_MAP_NUMBER, sensor_fcount, ret);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	/*
+	 * Read sensor frame counter (sensor_fcount address = 0x0005)
+	 * stream on (0x00 ~ 0xFE), stream off (0xFF)
+	 */
+	while (sensor_fcount == 0xff) {
+		usleep_range(CIS_STREAM_ON_WAIT_TIME, CIS_STREAM_ON_WAIT_TIME);
+		wait_cnt++;
+
+		I2C_MUTEX_LOCK(cis->i2c_lock);
+		ret = fimc_is_sensor_read8(client, SENSOR_DEPTH_MAP_NUMBER, &sensor_fcount);
+		I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+		if (ret < 0) {
+		    err("i2c transfer fail addr(%x), val(%x), ret = %d\n", SENSOR_DEPTH_MAP_NUMBER, sensor_fcount, ret);
+			ret = -EINVAL;
+			goto p_err;
+		}
+
+		if (wait_cnt >= time_out_cnt) {
+			err("[MOD:D:%d] %s, Don't sensor stream on and time out, wait_limit(%d) > time_out(%d), sensor_fcount(%d)",
+				cis->id, __func__, wait_cnt, time_out_cnt, sensor_fcount);
+			ret = -EINVAL;
+			goto p_err;
+		}
+
+		dbg_sensor(1, "[MOD:D:%d] %s, sensor_fcount(%d), (wait_limit(%d) < time_out(%d))\n",
+				cis->id, __func__, sensor_fcount, wait_cnt, time_out_cnt);
+	}
+
+p_err:
 	return ret;
 }
 
@@ -439,8 +585,10 @@ int sensor_imx316_cis_stream_on(struct v4l2_subdev *subdev)
 	int ret = 0;
 	struct fimc_is_cis *cis;
 	struct i2c_client *client;
+	struct fimc_is_module_enum *module;
 	cis_shared_data *cis_data;
 	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
+	struct exynos_platform_fimc_is_module *pdata;
 
 #ifdef DEBUG_SENSOR_TIME
 	struct timeval st, end;
@@ -465,19 +613,50 @@ int sensor_imx316_cis_stream_on(struct v4l2_subdev *subdev)
 	}
 
 	cis_data = cis->cis_data;
+	module = sensor_peri->module;
 
 	dbg_sensor(1, "[MOD:D:%d] %s\n", cis->id, __func__);
-
-	I2C_MUTEX_LOCK(cis->i2c_lock);
-	if (ret < 0)
-		err("group_param_hold_func failed at stream on");
+	/* fps setting */
+	if (sensor_imx316_frame_duration != 0)
+		sensor_imx316_cis_set_frame_duration(subdev, sensor_imx316_frame_duration);
 
 	/* Sensor stream on */
-	info("sensor_imx316_cis_stream_on");
+	info("sensor_imx316_cis_stream_on %d", module->position);
+
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+	if (module->position == SENSOR_POSITION_FRONT_TOF) {
+		sensor_imx316_cis_set_tx_clock(subdev);
+	}
+#endif
 	fimc_is_sensor_write8(client, 0x1001, 0x01);
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 
 	cis_data->stream_on = true;
+
+	/* VCSEL ON  */
+	pdata = module->pdata;
+	if (!pdata) {
+		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
+		err("pdata is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	if (!pdata->gpio_cfg) {
+		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
+		err("gpio_cfg is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	usleep_range(200, 200);
+	ret = pdata->gpio_cfg(module, SENSOR_SCENARIO_ADDITIONAL_POWER, GPIO_SCENARIO_ON);
+	if (ret) {
+		clear_bit(FIMC_IS_MODULE_GPIO_ON, &module->state);
+		err("gpio_cfg is fail(%d)", ret);
+		goto p_err;
+	}
 
 #ifdef DEBUG_SENSOR_TIME
 	do_gettimeofday(&end);
@@ -525,6 +704,7 @@ int sensor_imx316_cis_stream_off(struct v4l2_subdev *subdev)
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 
 	cis_data->stream_on = false;
+	sensor_imx316_enable_i2c_control = false;
 
 #ifdef DEBUG_SENSOR_TIME
 	do_gettimeofday(&end);
@@ -541,8 +721,6 @@ int sensor_imx316_cis_set_exposure_time(struct v4l2_subdev *subdev, struct ae_pa
 	int ret = 0;
 	struct fimc_is_cis *cis;
 	struct i2c_client *client;
-	struct fimc_is_module_enum *module;
-	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
 	u8 value;
 	u32 value_32;
 
@@ -560,9 +738,10 @@ int sensor_imx316_cis_set_exposure_time(struct v4l2_subdev *subdev, struct ae_pa
 		goto p_err;
 	}
 
-
-	sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
-	module = sensor_peri->module;
+	if (target_exposure->long_val) {
+		info("initial setting is skip");
+		goto p_err;
+	}
 
 	value_32 = target_exposure->short_val * 120;
 	if (value_32 > AE_MAX) {
@@ -571,32 +750,201 @@ int sensor_imx316_cis_set_exposure_time(struct v4l2_subdev *subdev, struct ae_pa
 		value_32 = sensor_imx316_HMAX;
 	}
 
-	info("sensor_imx316_cis_set_exposure_time org %x value %x",
-		target_exposure->short_val * 120, value_32);
+	info("sensor_imx316_cis_set_exposure_time org %d value %x sensor_imx316_HMAX %x",
+		target_exposure->short_val, value_32, sensor_imx316_HMAX);
 
 	I2C_MUTEX_LOCK(cis->i2c_lock);
-	if (sensor_peri->module->position == SENSOR_POSITION_REAR_TOF) { /* dual mode - rear tof */
-		value = value_32 & 0xFF;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_3, value);
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_3, value);
-		value = (value_32 & 0xFF00) >> 8;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_2, value);
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_2, value);
-		value = (value_32 & 0xFF0000) >> 16;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_1, value);
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_1, value);
-		value = (value_32 & 0xFF000000) >> 24;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_0, value);
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_0, value);
-	} else { /* single mode - front tof */
-		value = value_32 & 0xFF;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_3, value);
-		value = (value_32 & 0xFF00) >> 8;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_2, value);
-		value = (value_32 & 0xFF0000) >> 16;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_1, value);
-		value = (value_32 & 0xFF000000) >> 24;
-		fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_0, value);
+	value = value_32 & 0xFF;
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_3, value);
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_3, value);
+	value = (value_32 & 0xFF00) >> 8;
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_2, value);
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_2, value);
+	value = (value_32 & 0xFF0000) >> 16;
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_1, value);
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_1, value);
+	value = (value_32 & 0xFF000000) >> 24;
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_A_0, value);
+	fimc_is_sensor_write8(client, SENSOR_EXTAREA_INTG_0_B_0, value);
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+p_err:
+	return ret;
+}
+
+int sensor_imx316_cis_set_frame_duration(struct v4l2_subdev *subdev, u32 duration)
+{
+	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct i2c_client *client;
+
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+
+	FIMC_BUG(!cis);
+	FIMC_BUG(!cis->cis_data);
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	if (duration == 0) {
+		err("duration is 0");
+		return ret;
+	}
+
+	if (sensor_imx316_mode == -1) {
+		sensor_imx316_frame_duration = duration;
+		err("need sensor setting (%d)", duration);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	sensor_imx316_frame_duration = duration;
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	fimc_is_sensor_write8(client, 0x0102, 0x01);
+
+	info("%s : set %d", __func__, duration);
+	switch (duration) {
+		case SENSOR_FPS_5:
+			fimc_is_sensor_write8(client, 0x2154, 0x36);
+			fimc_is_sensor_write8(client, 0x2155, 0x3C);
+			break;
+		case SENSOR_FPS_10:
+			fimc_is_sensor_write8(client, 0x2154, 0x17);
+			fimc_is_sensor_write8(client, 0x2155, 0xBC);
+			break;
+		case SENSOR_FPS_15:
+			fimc_is_sensor_write8(client, 0x2154, 0x0D);
+			fimc_is_sensor_write8(client, 0x2155, 0x92);
+			break;
+		case SENSOR_FPS_20:
+			fimc_is_sensor_write8(client, 0x2154, 0x08);
+			fimc_is_sensor_write8(client, 0x2155, 0x7E);
+			break;
+		case SENSOR_FPS_30:
+			fimc_is_sensor_write8(client, 0x2154, 0x03);
+			fimc_is_sensor_write8(client, 0x2155, 0x68);
+			break;
+		default:
+			err("Unsupported fps : %d", duration);
+			break;
+	}
+
+	fimc_is_sensor_write8(client, 0x0102, 0x00);
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+p_err:
+	return ret;
+}
+
+int sensor_imx316_cis_set_laser_control(struct v4l2_subdev *subdev, u32 onoff)
+{
+	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct i2c_client *client;
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+
+	FIMC_BUG(!cis);
+	FIMC_BUG(!cis->cis_data);
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	info("sensor_imx316_cis_set_laser_control %d", onoff);
+
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	if (onoff) {
+		fimc_is_sensor_write8(client, SENSOR_LASER_CONTROL_REG_1, SENSOR_LASER_ON);
+		fimc_is_sensor_write8(client, SENSOR_LASER_CONTROL_REG_2, SENSOR_LASER_ON);
+	} else {
+		fimc_is_sensor_write8(client, SENSOR_LASER_CONTROL_REG_1, SENSOR_LASER_OFF);
+		fimc_is_sensor_write8(client, SENSOR_LASER_CONTROL_REG_2, SENSOR_LASER_OFF);
+	}
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+p_err:
+	return ret;
+}
+
+int sensor_imx316_cis_set_vcsel_current(struct v4l2_subdev *subdev, u32 value)
+{
+	int ret = 0;
+	struct fimc_is_cis *cis;
+	cis_shared_data *cis_data;
+	struct i2c_client *client;
+	struct fimc_is_module_enum *module;
+	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
+	u8 value8 = (u8)value;
+
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+
+	FIMC_BUG(!cis);
+	FIMC_BUG(!cis->cis_data);
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		return ret;
+	}
+
+	sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
+	FIMC_BUG(!sensor_peri);
+	module = sensor_peri->module;
+
+	cis_data = cis->cis_data;
+	if (cis_data->stream_on == false) {
+		err("sensor_imx316_cis_set_vcsel_current fail!! sensor is off ");
+		ret = -EINVAL;
+		return ret;
+	}
+
+	info("sensor_imx316_cis_set_vcsel_current %d", value);
+
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	if (sensor_imx316_enable_i2c_control == false) {
+		ret = sensor_cis_set_registers(subdev, sensor_imx316_vcsel_current_setting, sensor_imx316_vcsel_current_setting_size);
+		if (ret < 0) {
+			err("sensor_imx316_cis_set_vcsel_current fail!!");
+			goto p_err;
+		}
+		sensor_imx316_enable_i2c_control = true;
+	}
+
+	fimc_is_sensor_write8(client, 0x0436, 0x00);
+	fimc_is_sensor_write8(client, 0x0437, 0x00);
+	fimc_is_sensor_write8(client, 0x043A, 0x02);
+	fimc_is_sensor_write8(client, 0x0500, 0x02);
+	fimc_is_sensor_write8(client, 0x0501, 0x08);
+	fimc_is_sensor_write8(client, 0x0502, value8);
+
+	fimc_is_sensor_write8(client, 0x0431, 0x01);
+	fimc_is_sensor_write8(client, 0x0430, 0x01);
+	fimc_is_sensor_write8(client, 0x0431, 0x00);
+
+	if (module->position == SENSOR_POSITION_REAR_TOF) {  /* for setting IPD_OFFSET */
+		fimc_is_sensor_write8(client, 0x0436, 0x00);
+		fimc_is_sensor_write8(client, 0x0437, 0x00);
+		fimc_is_sensor_write8(client, 0x043A, 0x02);
+		fimc_is_sensor_write8(client, 0x0500, 0x02);
+		fimc_is_sensor_write8(client, 0x0501, 0x0D);
+		fimc_is_sensor_write8(client, 0x0502, 0xC3);
+		fimc_is_sensor_write8(client, 0x0431, 0x01);
+		fimc_is_sensor_write8(client, 0x0430, 0x01);
+		fimc_is_sensor_write8(client, 0x0431, 0x00);
 	}
 
 p_err:
@@ -604,130 +952,111 @@ p_err:
 	return ret;
 }
 
-int sensor_imx316_cis_get_min_exposure_time(struct v4l2_subdev *subdev, u32 *min_expo)
+int sensor_imx316_cis_get_vcsel_photo_diode(struct v4l2_subdev *subdev, u16 *value)
 {
 	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct i2c_client *client;
+	u8 value8_1 = 0, value8_0 = 0;
+
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+
+	FIMC_BUG(!cis);
+	FIMC_BUG(!cis->cis_data);
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	if (!sensor_imx316_enable_i2c_control) {
+		ret = -EINVAL;
+		err("sensor_imx316_cis_get_vcsel_photo_diode not available!!");
+		goto p_err;
+	}
+
+	I2C_MUTEX_LOCK(cis->i2c_lock);
+	fimc_is_sensor_write8(client, 0x0421, 0x00);
+	fimc_is_sensor_write8(client, 0x0436, 0x00);
+	fimc_is_sensor_write8(client, 0x0437, 0x00);
+	fimc_is_sensor_write8(client, 0x043A, 0x01);
+	fimc_is_sensor_write8(client, 0x0500, 0x11);
+	fimc_is_sensor_write8(client, 0x0501, 0x90);
+	fimc_is_sensor_write8(client, 0x0431, 0x01);
+	fimc_is_sensor_write8(client, 0x0430, 0x01);
+	fimc_is_sensor_write8(client, 0x0431, 0x00);
+
+	fimc_is_sensor_read8(client, 0x058B, &value8_1); /*0x058B for APC2_CHECK_DATA[9:8]*/
+
+	fimc_is_sensor_write8(client, 0x0423, 0xA0);
+	fimc_is_sensor_write8(client, 0x0436, 0x00);
+	fimc_is_sensor_write8(client, 0x0437, 0x00);
+	fimc_is_sensor_write8(client, 0x043A, 0x01);
+	fimc_is_sensor_write8(client, 0x0500, 0x07);
+	fimc_is_sensor_write8(client, 0x0501, 0xA0);
+	fimc_is_sensor_write8(client, 0x0431, 0x01);
+	fimc_is_sensor_write8(client, 0x0430, 0x01);
+	fimc_is_sensor_write8(client, 0x0431, 0x00);
+	fimc_is_sensor_read8(client, 0x0582, &value8_0); /* 0x0582 for APC2_CHECK_DATA[7:0] */
+
+	*value = (((value8_1 & 0x30) << 4) | value8_0);
+	info("sensor_imx316_cis_get_vcsel_photo_diode value8_1 0x%x value8_0 0x%x => (0x%x)%d", value8_1, value8_0, *value, *value);
+	I2C_MUTEX_UNLOCK(cis->i2c_lock);
+
+p_err:
 	return ret;
 }
 
-int sensor_imx316_cis_get_max_exposure_time(struct v4l2_subdev *subdev, u32 *max_expo)
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+int sensor_imx316_cis_get_tx_freq(struct v4l2_subdev *subdev, u32 *value)
 {
 	int ret = 0;
+	struct fimc_is_cis *cis;
+	struct fimc_is_module_enum *module;
+	struct fimc_is_device_sensor_peri *sensor_peri = NULL;
+	FIMC_BUG(!subdev);
+
+	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
+
+	FIMC_BUG(!cis);
+	FIMC_BUG(!cis->cis_data);
+
+	sensor_peri = container_of(cis, struct fimc_is_device_sensor_peri, cis);
+	FIMC_BUG(!sensor_peri);
+	module = sensor_peri->module;
+
+	if (module->position == SENSOR_POSITION_FRONT_TOF) {
+		info("%s front tx freq %d", __func__, sensor_imx316_front_tx_freq);
+		*value = sensor_imx316_front_tx_freq;
+	} else {
+		info("%s rear tx freq none ", __func__);
+	}
+
 	return ret;
 }
-
-int sensor_imx316_cis_adjust_frame_duration(struct v4l2_subdev *subdev,
-						u32 input_exposure_time,
-						u32 *target_duration)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_set_frame_duration(struct v4l2_subdev *subdev, u32 frame_duration)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_set_frame_rate(struct v4l2_subdev *subdev, u32 min_fps)
-{
-	int ret = 0;
-	return ret;
-}
-
-u32 sensor_imx316_cis_calc_again_code(u32 permile)
-{
-	return 1024 - (1024000 / permile);
-}
-
-u32 sensor_imx316_cis_calc_again_permile(u32 code)
-{
-	return 1024000 / (1024 - code);
-}
-
-int sensor_imx316_cis_adjust_analog_gain(struct v4l2_subdev *subdev, u32 input_again, u32 *target_permile)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_set_analog_gain(struct v4l2_subdev *subdev, struct ae_param *again)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_analog_gain(struct v4l2_subdev *subdev, u32 *again)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_min_analog_gain(struct v4l2_subdev *subdev, u32 *min_again)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_max_analog_gain(struct v4l2_subdev *subdev, u32 *max_again)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_set_digital_gain(struct v4l2_subdev *subdev, struct ae_param *dgain)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_digital_gain(struct v4l2_subdev *subdev, u32 *dgain)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_min_digital_gain(struct v4l2_subdev *subdev, u32 *min_dgain)
-{
-	int ret = 0;
-	return ret;
-}
-
-int sensor_imx316_cis_get_max_digital_gain(struct v4l2_subdev *subdev, u32 *max_dgain)
-{
-	int ret = 0;
-	return ret;
-}
+#endif
 
 static struct fimc_is_cis_ops cis_ops_imx316 = {
 	.cis_init = sensor_imx316_cis_init,
 	.cis_log_status = sensor_imx316_cis_log_status,
-	.cis_group_param_hold = sensor_imx316_cis_group_param_hold,
 	.cis_set_global_setting = sensor_imx316_cis_set_global_setting,
 	.cis_mode_change = sensor_imx316_cis_mode_change,
-	.cis_set_size = sensor_imx316_cis_set_size,
 	.cis_stream_on = sensor_imx316_cis_stream_on,
 	.cis_stream_off = sensor_imx316_cis_stream_off,
 	.cis_set_exposure_time = sensor_imx316_cis_set_exposure_time,
-	.cis_get_min_exposure_time = sensor_imx316_cis_get_min_exposure_time,
-	.cis_get_max_exposure_time = sensor_imx316_cis_get_max_exposure_time,
-	.cis_adjust_frame_duration = sensor_imx316_cis_adjust_frame_duration,
+	.cis_wait_streamoff = sensor_imx316_cis_wait_streamoff,
+	.cis_wait_streamon = sensor_imx316_cis_wait_streamon,
+	.cis_set_laser_control = sensor_imx316_cis_set_laser_control,
+	.cis_set_laser_current = sensor_imx316_cis_set_vcsel_current,
+	.cis_get_laser_photo_diode = sensor_imx316_cis_get_vcsel_photo_diode,
 	.cis_set_frame_duration = sensor_imx316_cis_set_frame_duration,
-	.cis_set_frame_rate = sensor_imx316_cis_set_frame_rate,
-	.cis_adjust_analog_gain = sensor_imx316_cis_adjust_analog_gain,
-	.cis_set_analog_gain = sensor_imx316_cis_set_analog_gain,
-	.cis_get_analog_gain = sensor_imx316_cis_get_analog_gain,
-	.cis_get_min_analog_gain = sensor_imx316_cis_get_min_analog_gain,
-	.cis_get_max_analog_gain = sensor_imx316_cis_get_max_analog_gain,
-	.cis_set_digital_gain = sensor_imx316_cis_set_digital_gain,
-	.cis_get_digital_gain = sensor_imx316_cis_get_digital_gain,
-	.cis_get_min_digital_gain = sensor_imx316_cis_get_min_digital_gain,
-	.cis_get_max_digital_gain = sensor_imx316_cis_get_max_digital_gain,
-	.cis_compensate_gain_for_extremely_br = sensor_cis_compensate_gain_for_extremely_br,
-	.cis_wait_streamoff = sensor_cis_wait_streamoff,
-	.cis_wait_streamon = sensor_cis_wait_streamon,
-	.cis_data_calculation = sensor_imx316_cis_data_calc,
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+	.cis_get_tof_tx_freq = sensor_imx316_cis_get_tx_freq,
+#endif
 };
 
 static int cis_imx316_probe(struct i2c_client *client,
@@ -810,35 +1139,61 @@ static int cis_imx316_probe(struct i2c_client *client,
 		setfile = "default";
 	}
 
-	if (strcmp(setfile, "default") == 0 || strcmp(setfile, "setA") == 0) {
+	if (strcmp(setfile, "default") == 0 || strcmp(setfile, "setA") == 0) { /* KOR */
 		probe_info("%s setfile_A\n", __func__);
 		sensor_imx316_global = sensor_imx316_setfile_A_Global;
 		sensor_imx316_global_size = ARRAY_SIZE(sensor_imx316_setfile_A_Global);
 		sensor_imx316_setfiles = sensor_imx316_setfiles_A;
-		sensor_imx316_uid = sensor_imx316_setfiles_uid;
-		sensor_imx316_max_uid_num = ARRAY_SIZE(sensor_imx316_setfiles_uid);
+		sensor_imx316_uid = sensor_imx316_setfiles_A_uid;
+		sensor_imx316_max_uid_num = ARRAY_SIZE(sensor_imx316_setfiles_A_uid);
 		sensor_imx316_setfile_sizes = sensor_imx316_setfile_A_sizes;
 		sensor_imx316_max_setfile_num = ARRAY_SIZE(sensor_imx316_setfiles_A);
+		sensor_imx316_vcsel_current_setting = sensor_imx316_vcsel_current_setting_A;
+		sensor_imx316_vcsel_current_setting_size = sensor_imx316_vcsel_current_setting_A_size;
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+		sensor_imx316_tx_freq_sensor_mode = sensor_imx316_setfile_A_tof_sensor_mode;
+		sensor_imx316_tx_freq_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_A_tof_sensor_mode);
+		sensor_imx316_verify_sensor_mode = sensor_imx316_setfile_A_verify_sensor_mode;
+		sensor_imx316_verify_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_A_verify_sensor_mode);
+#endif
 	}
-#if 0
-	else if (strcmp(setfile, "setB") == 0) {
+	else if (strcmp(setfile, "setB") == 0) { /* EUR OPEN */
 		probe_info("%s setfile_B\n", __func__);
 		sensor_imx316_global = sensor_imx316_setfile_B_Global;
 		sensor_imx316_global_size = ARRAY_SIZE(sensor_imx316_setfile_B_Global);
 		sensor_imx316_setfiles = sensor_imx316_setfiles_B;
+		sensor_imx316_uid = sensor_imx316_setfiles_B_uid;
+		sensor_imx316_max_uid_num = ARRAY_SIZE(sensor_imx316_setfiles_B_uid);
 		sensor_imx316_setfile_sizes = sensor_imx316_setfile_B_sizes;
 		sensor_imx316_max_setfile_num = ARRAY_SIZE(sensor_imx316_setfiles_B);
-	}
+		sensor_imx316_vcsel_current_setting = sensor_imx316_vcsel_current_setting_B;
+		sensor_imx316_vcsel_current_setting_size = sensor_imx316_vcsel_current_setting_B_size;
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+		sensor_imx316_tx_freq_sensor_mode = sensor_imx316_setfile_B_tof_sensor_mode;
+		sensor_imx316_tx_freq_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_B_tof_sensor_mode);
+		sensor_imx316_verify_sensor_mode = sensor_imx316_setfile_B_verify_sensor_mode;
+		sensor_imx316_verify_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_B_verify_sensor_mode);
 #endif
+
+	}
 	else {
 		err("%s setfile index out of bound, take default (setfile_A)", __func__);
+		probe_info("%s setfile_A\n", __func__);
 		sensor_imx316_global = sensor_imx316_setfile_A_Global;
 		sensor_imx316_global_size = ARRAY_SIZE(sensor_imx316_setfile_A_Global);
 		sensor_imx316_setfiles = sensor_imx316_setfiles_A;
-		sensor_imx316_uid = sensor_imx316_setfiles_uid;
-		sensor_imx316_max_uid_num = ARRAY_SIZE(sensor_imx316_setfiles_uid);
+		sensor_imx316_uid = sensor_imx316_setfiles_A_uid;
+		sensor_imx316_max_uid_num = ARRAY_SIZE(sensor_imx316_setfiles_A_uid);
 		sensor_imx316_setfile_sizes = sensor_imx316_setfile_A_sizes;
 		sensor_imx316_max_setfile_num = ARRAY_SIZE(sensor_imx316_setfiles_A);
+		sensor_imx316_vcsel_current_setting = sensor_imx316_vcsel_current_setting_A;
+		sensor_imx316_vcsel_current_setting_size = sensor_imx316_vcsel_current_setting_A_size;
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+		sensor_imx316_tx_freq_sensor_mode = sensor_imx316_setfile_A_tof_sensor_mode;
+		sensor_imx316_tx_freq_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_A_tof_sensor_mode);
+		sensor_imx316_verify_sensor_mode = sensor_imx316_setfile_A_verify_sensor_mode;
+		sensor_imx316_verify_sensor_mode_size = ARRAY_SIZE(sensor_imx316_setfile_A_verify_sensor_mode);
+#endif
 	}
 
 	/* belows are depend on sensor cis. MUST check sensor spec */
@@ -872,6 +1227,25 @@ static int cis_imx316_probe(struct i2c_client *client,
 	v4l2_set_subdev_hostdata(subdev_cis, device);
 	snprintf(subdev_cis->name, V4L2_SUBDEV_NAME_SIZE, "cis-subdev.%d", cis->id);
 
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+	{
+		int i = 0, j = 0, index = 0;
+		for (i = 0; i < sensor_imx316_verify_sensor_mode_size; i++) {
+			for (j = 0; j < sensor_imx316_max_uid_num; j++) {
+				if (sensor_imx316_verify_sensor_mode[i] == sensor_imx316_uid[j]) {
+					index = j;
+					break;
+				}
+			}
+
+			if (fimc_is_vendor_verify_mipi_channel(sensor_imx316_tx_freq_sensor_mode[index].mipi_channel,
+						sensor_imx316_tx_freq_sensor_mode[index].mipi_channel_size)) {
+				panic("wrong mipi channel");
+				break;
+			}
+		}
+	}
+#endif
 	probe_info("%s done\n", __func__);
 
 p_err:

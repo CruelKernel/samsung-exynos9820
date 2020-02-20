@@ -60,7 +60,7 @@
 #include <soc/samsung/exynos-cpuhp.h>
 
 #ifdef CONFIG_SEC_PM
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #endif
 
 /* Exynos generic registers */

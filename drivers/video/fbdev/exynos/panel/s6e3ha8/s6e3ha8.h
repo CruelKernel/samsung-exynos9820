@@ -112,11 +112,11 @@
 /* for panel dump */
 #define S6E3HA8_RDDPM_REG			0x0A
 #define S6E3HA8_RDDPM_OFS			0
-#define S6E3HA8_RDDPM_LEN			3
+#define S6E3HA8_RDDPM_LEN			(PANEL_RDDPM_LEN)
 
 #define S6E3HA8_RDDSM_REG			0x0E
 #define S6E3HA8_RDDSM_OFS			0
-#define S6E3HA8_RDDSM_LEN			3
+#define S6E3HA8_RDDSM_LEN			(PANEL_RDDSM_LEN)
 
 #define S6E3HA8_ERR_REG				0xEA
 #define S6E3HA8_ERR_OFS				0

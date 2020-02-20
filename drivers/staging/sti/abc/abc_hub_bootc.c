@@ -27,6 +27,8 @@
 
 char boot_stat[BOOT_STATE_LEN];
 
+char bootc_offset_module[BOOTC_OFFSET_DATA_CNT][BOOTC_OFFSET_STR_MAX] = {"fsck"};
+
 static int abc_hub_bootc_get_boot_time(void)
 {
 	int ret = 0;
@@ -41,7 +43,7 @@ static int abc_hub_bootc_get_boot_time(void)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	filep = filp_open(BOOT_STATE_PATH, O_RDONLY, 0666);
+	filep = filp_open(BOOT_STATE_PATH, O_RDONLY, 0);
 	if (IS_ERR(filep)) {
 		ret = PTR_ERR(filep);
 		set_fs(old_fs);
@@ -50,11 +52,12 @@ static int abc_hub_bootc_get_boot_time(void)
 	}
 
 	ret = filep->f_op->read(filep, boot_stat,
-		sizeof(boot_stat), &filep->f_pos);
+		sizeof(boot_stat)-1, &filep->f_pos);
 
 	if (ret < 0) {
 		pr_err("%s: boot_stat read fail\n", __func__);
 		filp_close(filep, current->files);
+		set_fs(old_fs);
 		return -EIO;
 	}
 
@@ -77,15 +80,32 @@ static int abc_hub_bootc_get_boot_time(void)
 	return boot_time;
 }
 
+static int abc_hub_bootc_get_total_offset(struct sub_bootc_pdata *bootc_pdata)
+{
+	int total_offset = 0;
+	int i;
+
+	for (i = 0; i < BOOTC_OFFSET_DATA_CNT; i++) {
+		total_offset += bootc_pdata->offset_data[i].offset;
+	}
+
+	return total_offset;
+}
+
 static void abc_hub_bootc_work_func(struct work_struct *work)
 {
 	struct sub_bootc_pdata *bootc_pdata = container_of(work, struct sub_bootc_pdata, bootc_work.work);
 	int boot_time;
+	int fixed_time_spec;
 
 	boot_time = abc_hub_bootc_get_boot_time();
-	if (boot_time > bootc_pdata->time_spec) {
-		pr_info("%s: booting time is spec out(boot_time : %d, time_spec : %d)\n",
-			__func__, boot_time, bootc_pdata->time_spec);
+	bootc_pdata->time_spec_offset = abc_hub_bootc_get_total_offset(bootc_pdata);
+	fixed_time_spec = bootc_pdata->time_spec + bootc_pdata->time_spec_offset;
+	pr_info("%s: boot_time : %d, time_spec : %d(%d + %d))\n",
+		__func__, boot_time, fixed_time_spec, bootc_pdata->time_spec, bootc_pdata->time_spec_offset);
+
+	if (boot_time > fixed_time_spec) {
+		pr_info("%s: booting time is spec out\n", __func__);
 		abc_hub_send_event("MODULE=bootc@ERROR=boot_time_fail");
 	} else if (boot_time < 0) {
 		pr_err("%s: boot_time_parse fail(%d)\n", __func__, boot_time);
@@ -140,6 +160,12 @@ void abc_hub_bootc_enable(struct device *dev, int enable)
 int abc_hub_bootc_init(struct device *dev)
 {
 	struct abc_hub_info *pinfo = dev_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < BOOTC_OFFSET_DATA_CNT; i++) {
+		strcpy(pinfo->pdata->bootc_pdata.offset_data[i].module, bootc_offset_module[i]);
+		pinfo->pdata->bootc_pdata.offset_data[i].offset = 0;
+	}
 
 	INIT_DELAYED_WORK(&pinfo->pdata->bootc_pdata.bootc_work, abc_hub_bootc_work_func);
 

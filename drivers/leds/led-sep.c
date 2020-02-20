@@ -13,7 +13,7 @@
 #include <linux/of.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include "led-sep.h"
 
 static struct led_sep *led_sep_one;

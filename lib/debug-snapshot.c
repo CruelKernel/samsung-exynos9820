@@ -134,21 +134,6 @@ void sec_debug_get_kevent_info(int type, unsigned long *paddr, unsigned int *nr)
 	}
 }
 
-int dbg_snapshot_set_debug_level(int level)
-{
-	if (level > -1 && level < (int)ARRAY_SIZE(debug_level_val)) {
-		dss_desc.debug_level = level;
-	} else {
-#if !IS_ENABLED(CONFIG_DEBUG_SNAPSHOT_USER_MODE)
-		dss_desc.debug_level = DSS_DEBUG_LEVEL_MID;
-#else
-		dss_desc.debug_level = DSS_DEBUG_LEVEL_LOW;
-#endif
-	}
-	dbg_snapshot_set_debug_level_reg();
-	return 0;
-}
-
 int dbg_snapshot_get_debug_level(void)
 {
 	return dss_desc.debug_level;
@@ -783,14 +768,15 @@ static int __init dbg_snapshot_init_dt(void)
 
 static int __init dbg_snapshot_init_value(void)
 {
-	int val = dbg_snapshot_get_debug_level_reg();
-
-	dbg_snapshot_set_debug_level(val);
+	dss_desc.debug_level = dbg_snapshot_get_debug_level_reg();
 
 	pr_info("debug-snapshot: debug_level [%s]\n",
 		debug_level_val[dss_desc.debug_level]);
 
-	dbg_snapshot_scratch_reg(DSS_SIGN_SCRATCH);
+	if (dss_desc.debug_level != DSS_DEBUG_LEVEL_LOW)
+		dbg_snapshot_scratch_reg(DSS_SIGN_SCRATCH);
+
+	dbg_snapshot_set_sjtag_status();
 
 	/* copy linux_banner, physical address of
 	 * kernel log / platform log / kevents to DSS header */

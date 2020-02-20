@@ -67,7 +67,7 @@ module_param(mif_rps_thresh, uint, S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(mif_rps_thresh, "threshold speed");
 
 int mif_gro_flush_thresh[] = {100, 200, -1};
-long mif_gro_flush_time[] = {0, 10000, 100000};
+long mif_gro_flush_time[] = {10000, 50000, 100000};
 
 static int mif_store_rps_map(struct netdev_rx_queue *queue, char *buf, size_t len)
 {

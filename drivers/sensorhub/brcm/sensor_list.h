@@ -114,14 +114,23 @@ struct sensor_info {
 #define SENSOR_INFO_LIGHT				{"light_sensor", LIGHT_SENSOR, true, REPORT_MODE_ON_CHANGE, 19, 19}
 #endif
 #define SENSOR_INFO_LIGHT_IR			{"light_ir_sensor", LIGHT_IR_SENSOR, true, REPORT_MODE_ON_CHANGE, 13, 13}
+#ifdef CONFIG_SENSORS_SSP_LIGHT_LUX_RAW
+#define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 25, 25}
+#else
 #define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 19, 19}
+#endif
 #else
 #define SENSOR_INFO_LIGHT				{"light_sensor", LIGHT_SENSOR, true, REPORT_MODE_ON_CHANGE, 18, 18}
 #define SENSOR_INFO_LIGHT_IR			{"light_ir_sensor", LIGHT_IR_SENSOR, true, REPORT_MODE_ON_CHANGE, 12, 12}
 #define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 18, 18}
 #endif
 #define SENSOR_INFO_LIGHT_FLICKER			{"light_flicker_sensor", LIGHT_FLICKER_SENSOR, true, REPORT_MODE_ON_CHANGE, 2, 2}
-#define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 3+4, 3+4} // 4 for light data
+
+#ifdef CONFIG_SENSORS_SSP_PROX_LIGHT_DIFF
+#define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 11, 11} 
+#else
+#define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 7, 7}
+#endif
 #define SENSOR_INFO_PROXIMITY_ALERT			{"proximity_alert_sensor", PROXIMITY_ALERT_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
 #define SENSOR_INFO_PROXIMITY_RAW			{"proximity_raw", PROXIMITY_RAW, false, REPORT_MODE_ON_CHANGE, 1, 0}
 #define SENSOR_INFO_PROXIMITY_ADC_CALIB		{"proximity_adc_calib", PROXIMITY_ADC_CALIB, false, REPORT_MODE_ON_CHANGE, 6, 0}

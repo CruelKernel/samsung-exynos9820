@@ -1,0 +1,21 @@
+/*
+ * SAMSUNG EXYNOS9825 SoC device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *             http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS9825 SoC device nodes are listed in this file.
+ * EXYNOS based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "exynos9820.dts"
+
+/ {
+	compatible = "samsung,armv8", "samsung,exynos9825";
+};

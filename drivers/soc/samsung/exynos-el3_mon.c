@@ -48,10 +48,10 @@ static int __init exynos_protect_kernel_text(void)
 	ktext_start_pa = (unsigned long)__pa_symbol(_text);
 	ktext_end_pa = (unsigned long)__pa_symbol(_etext);
 
-	pr_info("%s: Kernel text start VA(%#lx), PA(%#lx)\n",
-			__func__, ktext_start_va, ktext_start_pa);
-	pr_info("%s: Kernel text end VA(%#lx), PA(%#lx)\n",
-			__func__, ktext_end_va, ktext_end_pa);
+	pr_info("%s: Kernel text start VA(%pK), PA(%pK)\n",
+			__func__, (void *)ktext_start_va, (void *)ktext_start_pa);
+	pr_info("%s: Kernel text end VA(%pK), PA(%pK)\n",
+			__func__, (void *)ktext_end_va, (void *)ktext_end_pa);
 
 	/* I-cache flush to the PoC */
 	flush_icache_range_poc(ktext_start_va, ktext_end_va);

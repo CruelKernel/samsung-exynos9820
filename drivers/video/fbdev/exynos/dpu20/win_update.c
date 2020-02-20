@@ -29,6 +29,9 @@ static void win_update_adjust_region(struct decon_device *decon,
 	regs->need_update = false;
 	DPU_FULL_RECT(&regs->up_region, decon->lcd_info);
 
+	/* disable partial update */
+	return;
+
 	if (!decon->win_up.enabled)
 		return;
 

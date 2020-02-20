@@ -78,9 +78,6 @@ void max77705_usbc_opcode_write(struct max77705_usbc_platform_data *usbc_data,
 
 static bool debug_en_vps;
 static void max77705_muic_detect_dev(struct max77705_muic_data *muic_data, int irq);
-#if defined(CONFIG_CCIC_MAX77705)
-static int fw_update_dcd = 1;
-#endif
 
 struct max77705_muic_vps_data {
 	int				adc;
@@ -230,7 +227,7 @@ static const struct max77705_muic_vps_data muic_vps_table[] = {
 #if defined(CONFIG_HICCUP_CHARGER)
 	{
 		.adc		= MAX77705_UIADC_OPEN,
-		.vbvolt		= VB_HIGH,
+		.vbvolt		= VB_DONTCARE,
 		.chgtyp		= CHGTYP_HICCUP_MODE,
 		.muic_switch	= COM_USB_CP,
 		.vps_name	= "Hiccup mode",
@@ -1007,8 +1004,9 @@ static ssize_t hiccup_store(struct device *dev,
 
 	if (!strncasecmp(buf, "DISABLE", 7)) {
 		pr_info("%s\n", __func__);
+		pdic_manual_ccopen_request(0);
 		com_to_open(muic_data);
-		muic_data->is_hiccup_mode = 0;
+		muic_data->is_hiccup_mode = MUIC_HICCUP_MODE_OFF;
 	} else
 		pr_warn("%s invalid com : %s\n", __func__, buf);
 
@@ -1155,6 +1153,7 @@ static int max77705_muic_handle_detach(struct max77705_muic_data *muic_data, int
 	int ret = 0;
 #if defined(CONFIG_MUIC_NOTIFIER)
 	bool noti = true;
+	muic_attached_dev_t attached_dev = muic_data->attached_dev;
 #endif /* CONFIG_MUIC_NOTIFIER */
 
 #if defined(CONFIG_HV_MUIC_MAX77705_AFC)
@@ -1165,7 +1164,7 @@ static int max77705_muic_handle_detach(struct max77705_muic_data *muic_data, int
 		max77705_muic_disable_afc_protocol(muic_data);
 	}
 #if defined(CONFIG_HICCUP_CHARGER)
-	muic_data->is_hiccup_mode = false;
+	muic_data->is_hiccup_mode = MUIC_HICCUP_MODE_OFF;
 #endif
 	muic_data->hv_voltage = 0;
 	muic_data->afc_retry = 0;
@@ -1226,8 +1225,8 @@ static int max77705_muic_handle_detach(struct max77705_muic_data *muic_data, int
 
 #if defined(CONFIG_MUIC_NOTIFIER)
 	if (noti) {
-		muic_notifier_detach_attached_dev(muic_data->attached_dev);
 		muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
+		muic_notifier_detach_attached_dev(attached_dev);
 	}
 #endif /* CONFIG_MUIC_NOTIFIER */
 
@@ -1324,7 +1323,7 @@ static int max77705_muic_handle_attach(struct max77705_muic_data *muic_data,
 		muic_attached_dev_t new_dev, int irq)
 {
 #if defined(CONFIG_MUIC_NOTIFIER)
-	bool logically_notify = false;
+	bool notify_skip = false;
 #endif /* CONFIG_MUIC_NOTIFIER */
 #if defined(CONFIG_CCIC_MAX77705)
 	int fw_update_state = muic_data->usbc_pdata->max77705->fw_update_state;
@@ -1340,7 +1339,7 @@ static int max77705_muic_handle_attach(struct max77705_muic_data *muic_data,
  				MUIC_DEV_NAME, __func__, muic_data->attached_dev);
  			goto handle_attach;
  		}
- 
+
 		if (new_dev == ATTACHED_DEV_HICCUP_MUIC)
 			goto handle_attach;
 
@@ -1379,10 +1378,9 @@ handle_attach:
 		ret = max77705_muic_attach_usb_path(muic_data, new_dev);
 		break;
 	case ATTACHED_DEV_TIMEOUT_OPEN_MUIC:
+		pr_info("%s DCD_TIMEOUT system_state = 0x%x\n", __func__, system_state);
 #if defined(CONFIG_CCIC_MAX77705)
-		if (fw_update_state == FW_UPDATE_END && fw_update_dcd) {
-			fw_update_dcd = 0;
-			pr_info("%s:%s DCD_TIMEOUT is recognized after F/W update\n", MUIC_DEV_NAME, __func__);
+		if (fw_update_state == FW_UPDATE_END && system_state < SYSTEM_RUNNING) {
 			/* TA Reset, D+ gnd */
 			max77705_muic_dp_reset(muic_data);
 
@@ -1395,6 +1393,8 @@ handle_attach:
 #if defined(CONFIG_HICCUP_CHARGER)
 	case ATTACHED_DEV_HICCUP_MUIC:
 		ret = com_to_usb_cp(muic_data);
+		if (!(muic_data->status3 & BC_STATUS_VBUSDET_MASK))
+			notify_skip = true;
 		break;
 #endif /* CONFIG_HICCUP_CHARGER */
 	default:
@@ -1405,7 +1405,7 @@ handle_attach:
 	}
 
 #if defined(CONFIG_MUIC_NOTIFIER)
-	if (logically_notify) {
+	if (notify_skip) {
 		pr_info("%s: noti\n", __func__);
 	} else {
 		muic_notifier_attach_attached_dev(new_dev);
@@ -1552,7 +1552,7 @@ static u8 max77705_resolve_chgtyp(struct max77705_muic_data *muic_data, u8 chgty
 
 #if defined(CONFIG_HICCUP_CHARGER)
 	/* Check hiccup mode */
-	if (muic_data->is_hiccup_mode > 0) {
+	if (muic_data->is_hiccup_mode > MUIC_HICCUP_MODE_OFF) {
 		pr_info("%s is_hiccup_mode(%d)\n", __func__, muic_data->is_hiccup_mode);
 		return CHGTYP_HICCUP_MODE;
 	}
@@ -1783,7 +1783,7 @@ static void max77705_muic_detect_dev(struct max77705_muic_data *muic_data,
 		}
 
 #if defined(CONFIG_HICCUP_CHARGER)
-		if (muic_data->afc_water_disable) {
+		if (muic_data->afc_water_disable && !muic_data->is_hiccup_mode) {
 			if (vbvolt > 0) {
 				pr_info("%s water hiccup mode, Aux USB path\n", __func__);
 				com_to_usb_cp(muic_data);
@@ -2018,8 +2018,9 @@ static int max77705_muic_set_hiccup_mode(int on_off)
 	pr_info("%s (%d)\n", __func__, on_off);
 
 	switch (on_off) {
-	case 0:
-	case 1:
+	case MUIC_HICCUP_MODE_OFF:
+	case MUIC_HICCUP_MODE_ON:
+	case MUIC_HICCUP_MODE_NOTY:
 		if (muic_data->is_hiccup_mode != on_off) {
 			muic_data->is_hiccup_mode = on_off;
 #if defined(CONFIG_HV_MUIC_MAX77705_AFC)

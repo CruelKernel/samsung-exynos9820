@@ -14,7 +14,6 @@
 #include "f2fs.h"
 #include "node.h"
 #include "segment.h"
-#include "xattr.h"
 
 #include <trace/events/f2fs.h>
 
@@ -22,6 +21,9 @@ void f2fs_mark_inode_dirty_sync(struct inode *inode, bool sync)
 {
 	if (is_inode_flag_set(inode, FI_NEW_INODE))
 		return;
+
+	if (IS_I_VERSION(inode))
+		inode_inc_iversion(inode);
 
 	if (f2fs_inode_dirtied(inode, sync))
 		return;
@@ -104,7 +106,7 @@ static void __recover_inline_status(struct inode *inode, struct page *ipage)
 
 	while (start < end) {
 		if (*start++) {
-			f2fs_wait_on_page_writeback(ipage, NODE, true, true);
+			f2fs_wait_on_page_writeback(ipage, NODE, true);
 
 			set_inode_flag(inode, FI_DATA_EXIST);
 			set_raw_inline(inode, F2FS_INODE(ipage));
@@ -119,7 +121,7 @@ static bool f2fs_enable_inode_chksum(struct f2fs_sb_info *sbi, struct page *page
 {
 	struct f2fs_inode *ri = &F2FS_NODE(page)->i;
 
-	if (!f2fs_sb_has_inode_chksum(sbi))
+	if (!f2fs_sb_has_inode_chksum(sbi->sb))
 		return false;
 
 	if (!IS_INODE(page) || !(ri->i_inline & F2FS_EXTRA_ATTR))
@@ -219,11 +221,7 @@ static bool sanity_check_inode(struct inode *inode, struct page *node_page)
 		return false;
 	}
 
-<<<<<<< HEAD
 	if (f2fs_sb_has_flexible_inline_xattr(sbi->sb)
-=======
-	if (f2fs_sb_has_flexible_inline_xattr(sbi)
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 			&& !f2fs_has_extra_attr(inode)) {
 		set_sbi_flag(sbi, SBI_NEED_FSCK);
 		f2fs_msg(sbi->sb, KERN_WARNING,
@@ -233,11 +231,7 @@ static bool sanity_check_inode(struct inode *inode, struct page *node_page)
 	}
 
 	if (f2fs_has_extra_attr(inode) &&
-<<<<<<< HEAD
 			!f2fs_sb_has_extra_attr(sbi->sb)) {
-=======
-			!f2fs_sb_has_extra_attr(sbi)) {
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		set_sbi_flag(sbi, SBI_NEED_FSCK);
 		f2fs_msg(sbi->sb, KERN_WARNING,
 			"%s: inode (ino=%lx) is with extra_attr, "
@@ -257,23 +251,6 @@ static bool sanity_check_inode(struct inode *inode, struct page *node_page)
 		return false;
 	}
 
-<<<<<<< HEAD
-=======
-	if (f2fs_has_extra_attr(inode) &&
-		f2fs_sb_has_flexible_inline_xattr(sbi) &&
-		f2fs_has_inline_xattr(inode) &&
-		(!fi->i_inline_xattr_size ||
-		fi->i_inline_xattr_size > MAX_INLINE_XATTR_SIZE)) {
-		set_sbi_flag(sbi, SBI_NEED_FSCK);
-		f2fs_msg(sbi->sb, KERN_WARNING,
-			"%s: inode (ino=%lx) has corrupted "
-			"i_inline_xattr_size: %d, max: %zu",
-			__func__, inode->i_ino, fi->i_inline_xattr_size,
-			MAX_INLINE_XATTR_SIZE);
-		return false;
-	}
-
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	if (F2FS_I(inode)->extent_tree) {
 		struct extent_info *ei = &F2FS_I(inode)->extent_tree->largest;
 
@@ -346,6 +323,10 @@ static int do_read_inode(struct inode *inode)
 	inode->i_ctime.tv_nsec = le32_to_cpu(ri->i_ctime_nsec);
 	inode->i_mtime.tv_nsec = le32_to_cpu(ri->i_mtime_nsec);
 	inode->i_generation = le32_to_cpu(ri->i_generation);
+
+	if (IS_I_VERSION(inode))
+		inode->i_version++;
+
 	if (S_ISDIR(inode->i_mode))
 		fi->i_current_depth = le32_to_cpu(ri->i_current_depth);
 	else if (S_ISREG(inode->i_mode))
@@ -366,11 +347,7 @@ static int do_read_inode(struct inode *inode)
 	fi->i_extra_isize = f2fs_has_extra_attr(inode) ?
 					le16_to_cpu(ri->i_extra_isize) : 0;
 
-<<<<<<< HEAD
 	if (f2fs_sb_has_flexible_inline_xattr(sbi->sb)) {
-=======
-	if (f2fs_sb_has_flexible_inline_xattr(sbi)) {
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		fi->i_inline_xattr_size = le16_to_cpu(ri->i_inline_xattr_size);
 	} else if (f2fs_has_inline_xattr(inode) ||
 				f2fs_has_inline_dentry(inode)) {
@@ -420,14 +397,14 @@ static int do_read_inode(struct inode *inode)
 	if (fi->i_flags & F2FS_PROJINHERIT_FL)
 		set_inode_flag(inode, FI_PROJ_INHERIT);
 
-	if (f2fs_has_extra_attr(inode) && f2fs_sb_has_project_quota(sbi) &&
+	if (f2fs_has_extra_attr(inode) && f2fs_sb_has_project_quota(sbi->sb) &&
 			F2FS_FITS_IN_INODE(ri, fi->i_extra_isize, i_projid))
 		i_projid = (projid_t)le32_to_cpu(ri->i_projid);
 	else
 		i_projid = F2FS_DEF_PROJID;
 	fi->i_projid = make_kprojid(&init_user_ns, i_projid);
 
-	if (f2fs_has_extra_attr(inode) && f2fs_sb_has_inode_crtime(sbi) &&
+	if (f2fs_has_extra_attr(inode) && f2fs_sb_has_inode_crtime(sbi->sb) &&
 			F2FS_FITS_IN_INODE(ri, fi->i_extra_isize, i_crtime)) {
 		fi->i_crtime.tv_sec = le64_to_cpu(ri->i_crtime);
 		fi->i_crtime.tv_nsec = le32_to_cpu(ri->i_crtime_nsec);
@@ -437,6 +414,13 @@ static int do_read_inode(struct inode *inode)
 	F2FS_I(inode)->i_disk_time[1] = inode->i_ctime;
 	F2FS_I(inode)->i_disk_time[2] = inode->i_mtime;
 	F2FS_I(inode)->i_disk_time[3] = F2FS_I(inode)->i_crtime;
+
+	if (unlikely((inode->i_mode & S_IFMT) == 0)) {
+		print_block_data(sbi->sb, inode->i_ino, page_address(node_page),
+				0, F2FS_BLKSIZE);
+		f2fs_bug_on(sbi, 1);
+	}
+
 	f2fs_put_page(node_page, 1);
 
 	stat_inc_inline_xattr(inode);
@@ -527,7 +511,7 @@ void f2fs_update_inode(struct inode *inode, struct page *node_page)
 	struct f2fs_inode *ri;
 	struct extent_tree *et = F2FS_I(inode)->extent_tree;
 
-	f2fs_wait_on_page_writeback(node_page, NODE, true, true);
+	f2fs_wait_on_page_writeback(node_page, NODE, true);
 	set_page_dirty(node_page);
 
 	f2fs_inode_synced(inode);
@@ -572,11 +556,11 @@ void f2fs_update_inode(struct inode *inode, struct page *node_page)
 	if (f2fs_has_extra_attr(inode)) {
 		ri->i_extra_isize = cpu_to_le16(F2FS_I(inode)->i_extra_isize);
 
-		if (f2fs_sb_has_flexible_inline_xattr(F2FS_I_SB(inode)))
+		if (f2fs_sb_has_flexible_inline_xattr(F2FS_I_SB(inode)->sb))
 			ri->i_inline_xattr_size =
 				cpu_to_le16(F2FS_I(inode)->i_inline_xattr_size);
 
-		if (f2fs_sb_has_project_quota(F2FS_I_SB(inode)) &&
+		if (f2fs_sb_has_project_quota(F2FS_I_SB(inode)->sb) &&
 			F2FS_FITS_IN_INODE(ri, F2FS_I(inode)->i_extra_isize,
 								i_projid)) {
 			projid_t i_projid;
@@ -586,7 +570,7 @@ void f2fs_update_inode(struct inode *inode, struct page *node_page)
 			ri->i_projid = cpu_to_le32(i_projid);
 		}
 
-		if (f2fs_sb_has_inode_crtime(F2FS_I_SB(inode)) &&
+		if (f2fs_sb_has_inode_crtime(F2FS_I_SB(inode)->sb) &&
 			F2FS_FITS_IN_INODE(ri, F2FS_I(inode)->i_extra_isize,
 								i_crtime)) {
 			ri->i_crtime =

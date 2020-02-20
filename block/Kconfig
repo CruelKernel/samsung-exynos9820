@@ -92,6 +92,16 @@ config BLK_DEV_CRYPT
 
 	  If unsure, say Y.
 
+config BLK_DEV_CRYPT_DUN
+	bool "Enable support DUN(data unit number) for inline-crypto device"
+	default y
+	depends on BLK_DEV_CRYPT
+	depends on CRYPTO_DISKCIPHER_DUN || CRYPTO_PFK
+	help
+	  It is needed to support inline encryption with DUN.
+
+	  If unsure, say Y.
+
 config BLK_DEV_CRYPT_DISKCIPHER
 	bool "Disk-cipher support for block crypt"
 	default y
@@ -146,6 +156,20 @@ config BLK_DEV_THROTTLING_LOW
 	utilize disk resource.
 
 	Note, this is an experimental interface and could be changed someday.
+
+config BLK_IO_VOLUME
+	bool "Support for updating block IO volume"
+	default n
+	help
+	  Say Y here if you want to be able to update the block IO volume.
+
+config BLK_TURBO_WRITE
+	bool "Support turbo write"
+	depends on BLK_IO_VOLUME
+	default n
+	---help---
+	  This feature support for turbo write.
+	  Select this option if this feature is needed on working.
 
 config BLK_CMDLINE_PARSER
 	bool "Block device command line partition parser"
@@ -202,6 +226,18 @@ config BLK_SED_OPAL
 	Builds Logic for interfacing with Opal enabled controllers.
 	Enabling this option enables users to setup/unlock/lock
 	Locking ranges for SED devices using the Opal protocol.
+
+config SUBMIT_BH_IO_ACCOUNTING
+	bool "Accounting Per-TASK submit_bh statistic"
+	default n
+	---help---
+	Accounting Per-TASK submit_bh statistic
+
+config SUBMIT_BH_IO_ACCOUNTING_DEBUG
+	bool "Export Per-TASK submit_bh statistic on /proc/<PID>/io"
+	default n
+	---help---
+	Per TASK based submit_bh io statistics exported to /proc/<PID>/io
 
 menu "Partition Types"
 

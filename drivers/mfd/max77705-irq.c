@@ -53,6 +53,7 @@ static struct i2c_client *get_i2c(struct max77705_dev *max77705,
 	case CC_INT:
 	case PD_INT:
 	case VDM_INT:
+	case VIR_INT:
 		return max77705->muic;
 	default:
 		return ERR_PTR(-EINVAL);

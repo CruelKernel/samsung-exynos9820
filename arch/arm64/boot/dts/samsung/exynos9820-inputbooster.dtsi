@@ -1,0 +1,234 @@
+/*
+ * Samsung Mobile Input-Booster device tree
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/ {
+	fragment@inputbooster {
+		target-path = "/";
+		__overlay__ {
+			input_booster {
+				status = "okay";
+				compatible = "input_booster";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				booster_key@1 {
+					input_booster,label = "KEY";
+					input_booster,type = <0>;	/* BOOSTER_DEVICE_KEY */
+
+					input_booster,levels = <1>;
+
+					/* Frequency table */
+					/* for level	:	1_Head */
+					input_booster,cpu2_freqs = <0>;
+					input_booster,cpu1_freqs = <1404000>;
+					input_booster,hmp_boost = <1>;
+					input_booster,kfc_freqs = <0>;
+					input_booster,mif_freqs = <0>;
+					input_booster,int_freqs = <0>;
+					input_booster,dma_latency = <0>;
+
+					/* Time table */
+					input_booster,head_times = <500>;
+					input_booster,tail_times = <500>;
+					input_booster,phase_times = <0>;
+				};
+				booster_key@2 {
+					input_booster,label = "TOUCHKEY";
+					input_booster,type = <1>;	/* BOOSTER_DEVICE_TOUCHKEY */
+
+					input_booster,levels = <1>;
+
+					/* Frequency table */
+					/* for level	:	1_Head */
+					input_booster,cpu2_freqs = <0>;
+					input_booster,cpu1_freqs = <1404000>;
+					input_booster,hmp_boost = <1>;
+					input_booster,kfc_freqs = <0>;
+					input_booster,mif_freqs = <0>;
+					input_booster,int_freqs = <0>;
+					input_booster,dma_latency = <0>;
+
+					/* Time table */
+					input_booster,head_times = <0>;
+					input_booster,tail_times = <200>;
+					input_booster,phase_times = <0>;
+				};
+				booster_key@3 {
+					input_booster,label = "TOUCH";
+					input_booster,type = <2>;	/* BOOSTER_DEVICE_TOUCH */
+
+					input_booster,levels = <1 2 3>;
+
+					/* Frequency table */
+					/* for level	:	1_Head, 2_Head, 2_Tail */
+					input_booster,cpu2_freqs = <819000 819000 624000>;
+					input_booster,cpu1_freqs = <1222000 1222000 962000>;
+					input_booster,hmp_boost = <1 1 1>;
+					input_booster,kfc_freqs = <806000 806000 806000>;
+					input_booster,mif_freqs = <1014000 1014000 1014000>;
+					input_booster,int_freqs = <0 0 0>;
+					input_booster,dma_latency = <0 0 0>;
+
+					/* Time table */
+					input_booster,head_times = <130 130 0>;
+					input_booster,tail_times = <0 0 500>;
+					input_booster,phase_times = <0 0 0>;
+				};
+				booster_key@4 { // Input Booster +
+					input_booster,label = "MULTITOUCH";
+					input_booster,type = <3>;	/* BOOSTER_DEVICE_MULTITOUCH */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <819000 624000>;
+					input_booster,cpu1_freqs = <1222000 962000>;
+					input_booster,hmp_boost = <1 1>;
+					input_booster,kfc_freqs = <806000 806000>;
+					input_booster,mif_freqs = <1014000 1014000>;
+					input_booster,int_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <1000 0>;
+					input_booster,tail_times = <0 500>;
+					input_booster,phase_times = <0 0>;
+				};
+				booster_key@5 {
+					input_booster,label = "KEYBOARD";
+					input_booster,type = <4>;	/* BOOSTER_DEVICE_KEYBOARD */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <0 0>;
+					input_booster,cpu1_freqs = <1404000 1404000>;
+					input_booster,hmp_boost = <1 1>;
+					input_booster,kfc_freqs = <806000 806000>;
+					input_booster,mif_freqs = <0 0>;
+					input_booster,int_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <130 130>;
+					input_booster,tail_times = <0 0>;
+					input_booster,phase_times = <0 0>;
+				};
+				booster_key@6 {
+					input_booster,label = "MOUSE";
+					input_booster,type = <5>;	/* BOOSTER_DEVICE_MOUSE */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <0 0>;			
+					input_booster,cpu1_freqs = <1404000 1222000>;
+					input_booster,hmp_boost = <1 1>;
+					input_booster,kfc_freqs = <806000 806000>;
+					input_booster,mif_freqs = <0 0>;
+					input_booster,int_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <130 0>;
+					input_booster,tail_times = <0 500>;
+					input_booster,phase_times = <0 0>;
+				};
+				booster_key@7 {
+					input_booster,label = "MOUSE WHEEL";
+					input_booster,type = <6>;	/* BOOSTER_DEVICE_MOUSE */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <0 0>;			
+					input_booster,cpu1_freqs = <1404000 0>;
+					input_booster,hmp_boost = <1 0>;
+					input_booster,kfc_freqs = <806000 0>;
+					input_booster,mif_freqs = <0 0>;
+					input_booster,int_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <130 0>;
+					input_booster,tail_times = <0 0>;
+					input_booster,phase_times = <0 0>;
+				};
+				booster_key@8 {
+					input_booster,label = "PEN HOVER";
+					input_booster,type = <7>;	/* BOOSTER_DEVICE_MOUSE */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <0 0>;			
+					input_booster,cpu1_freqs = <1404000 1222000>;
+					input_booster,hmp_boost = <1 1>;
+					input_booster,kfc_freqs = <806000 806000>;
+					input_booster,mif_freqs = <0 0>;
+					input_booster,int_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <130 0>;
+					input_booster,tail_times = <0 500>;
+					input_booster,phase_times = <0 0>;
+				};
+				booster_key@9 {
+					input_booster,label = "PEN";
+					input_booster,type = <8>;	/* BOOSTER_DEVICE_MOUSE */
+
+					input_booster,levels = <1 2>;
+
+					/* Frequency table */
+					/* for level	:	1_Head 2_Tail*/
+					input_booster,cpu2_freqs = <0 0>;			
+					input_booster,cpu1_freqs = <1508000 1222000>;
+					input_booster,hmp_boost = <1 1>;
+					input_booster,kfc_freqs = <806000 806000>;
+					input_booster,bimc_freqs = <0 0>;
+					input_booster,dma_latency = <0 0>;
+
+					/* Time table */
+					input_booster,head_times = <200 0>;
+					input_booster,tail_times = <0 600>;
+				};
+				booster_key@10 {
+					input_booster,label = "KEY_TWO";
+					input_booster,type = <9>;	/* BOOSTER_DEVICE_KEY */
+
+					input_booster,levels = <1>;
+
+					/* Frequency table */
+					/* for level	:	1_Head */
+					input_booster,cpu2_freqs = <0 0>;			
+					input_booster,cpu1_freqs = <1508000>;
+					input_booster,hmp_boost = <1>;
+					input_booster,kfc_freqs = <1053000>;
+					input_booster,mif_freqs = <0>;
+					input_booster,int_freqs = <0>;
+					input_booster,dma_latency = <0>;
+
+					/* Time table */
+					input_booster,head_times = <700>;
+					input_booster,tail_times = <700>;
+					input_booster,phase_times = <0>;
+				}; // Input Booster -
+				/* If you need to add new key type, add it this position */
+			};
+		};
+	};
+};

@@ -54,7 +54,7 @@ struct fscrypt_context;
 int dd_test_and_inherit_context(
 		struct fscrypt_context *ctx,
 		struct inode *parent, struct inode *child,
-		struct fscrypt_info *ci);
+		struct fscrypt_info *ci, void *fs_data);
 
 int update_encryption_context_with_dd_policy(
 		struct inode *inode,

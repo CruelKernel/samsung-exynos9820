@@ -17,6 +17,7 @@
 #include <linux/task_integrity.h>
 #include "five_audit.h"
 #include "five_state.h"
+#include "five_hooks.h"
 
 enum task_integrity_state_cause {
 	STATE_CAUSE_UNKNOWN,
@@ -292,10 +293,9 @@ out:
 	return is_newstate;
 }
 
-int five_state_proceed(struct task_integrity *integrity,
+void five_state_proceed(struct task_integrity *integrity,
 			struct file_verification_result *file_result)
 {
-	int rc = file_result->check;
 	struct integrity_iint_cache *iint = file_result->iint;
 	enum five_hooks fn = file_result->fn;
 	struct task_struct *task = file_result->task;
@@ -303,22 +303,8 @@ int five_state_proceed(struct task_integrity *integrity,
 	bool is_newstate;
 	struct task_verification_result task_result = {};
 
-	if (rc == 0 && !iint)
-		return 0;
-
-	if (rc) {
-		enum task_integrity_value new_tint, prev_tint;
-		enum task_integrity_state_cause cause = STATE_CAUSE_UNKNOWN;
-
-		prev_tint = task_integrity_read(integrity);
-		task_integrity_reset(integrity);
-		new_tint = task_integrity_read(integrity);
-		five_audit_verbose(task, file, five_get_string_fn(fn),
-			prev_tint, new_tint,
-			task_integrity_state_str(cause), rc);
-
-		return -EACCES;
-	}
+	if (!iint)
+		return;
 
 	if (fn == BPRM_CHECK)
 		is_newstate = set_first_state(iint, integrity, &task_result);
@@ -326,11 +312,12 @@ int five_state_proceed(struct task_integrity *integrity,
 		is_newstate = set_next_state(iint, integrity, &task_result);
 
 	if (is_newstate) {
+		if (task_result.new_tint == INTEGRITY_NONE)
+			five_hook_integrity_reset(task);
 		five_audit_verbose(task, file, five_get_string_fn(fn),
 			task_result.prev_tint, task_result.new_tint,
-			task_integrity_state_str(task_result.cause), rc);
+			task_integrity_state_str(task_result.cause),
+			file_result->five_result);
 	}
-
-	return 0;
 }
 

@@ -505,6 +505,8 @@ int ll_back_merge_fn(struct request_queue *q, struct request *req,
 	if (blk_integrity_rq(req) &&
 	    integrity_req_gap_back_merge(req, bio))
 		return 0;
+	if (blk_try_merge(req, bio) != ELEVATOR_BACK_MERGE)
+		return 0;
 	if (blk_rq_sectors(req) + bio_sectors(bio) >
 	    blk_rq_get_max_sectors(req, blk_rq_pos(req))) {
 		req_set_nomerge(q, req);
@@ -526,6 +528,8 @@ int ll_front_merge_fn(struct request_queue *q, struct request *req,
 		return 0;
 	if (blk_integrity_rq(req) &&
 	    integrity_req_gap_front_merge(req, bio))
+		return 0;
+	if (blk_try_merge(req, bio) != ELEVATOR_FRONT_MERGE)
 		return 0;
 	if (blk_rq_sectors(req) + bio_sectors(bio) >
 	    blk_rq_get_max_sectors(req, bio->bi_iter.bi_sector)) {
@@ -748,6 +752,7 @@ static struct request *attempt_merge(struct request_queue *q,
 	 * 'next' is going away, so update stats accordingly
 	 */
 	blk_account_io_merge(next);
+	blk_queue_io_vol_merge(q, next->cmd_flags, -1, 0);
 
 	req->ioprio = ioprio_best(req->ioprio, next->ioprio);
 	if (blk_rq_cpu_valid(next))
@@ -825,8 +830,6 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
 	    !blk_write_same_mergeable(rq->bio, bio))
 		return false;
 
-	if (!blk_crypt_mergeable(rq->bio, bio))
-		return false;
 	/*
 	 * Don't allow merge of different write hints, or for a hint with
 	 * non-hint IO.
@@ -840,11 +843,22 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
 enum elv_merge blk_try_merge(struct request *rq, struct bio *bio)
 {
 	if (req_op(rq) == REQ_OP_DISCARD &&
-	    queue_max_discard_segments(rq->q) > 1)
+	    queue_max_discard_segments(rq->q) > 1) {
 		return ELEVATOR_DISCARD_MERGE;
-	else if (blk_rq_pos(rq) + blk_rq_sectors(rq) == bio->bi_iter.bi_sector)
+	} else if (blk_rq_pos(rq) + blk_rq_sectors(rq) ==
+						bio->bi_iter.bi_sector) {
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+		if (!blk_crypt_mergeable(rq->bio, bio))
+			return ELEVATOR_NO_MERGE;
+#endif
 		return ELEVATOR_BACK_MERGE;
-	else if (blk_rq_pos(rq) - bio_sectors(bio) == bio->bi_iter.bi_sector)
+	} else if (blk_rq_pos(rq) - bio_sectors(bio) ==
+						bio->bi_iter.bi_sector) {
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+		if (!blk_crypt_mergeable(bio, rq->bio))
+			return ELEVATOR_NO_MERGE;
+#endif
 		return ELEVATOR_FRONT_MERGE;
+	}
 	return ELEVATOR_NO_MERGE;
 }

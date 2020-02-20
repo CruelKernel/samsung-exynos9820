@@ -112,7 +112,7 @@ static struct mfc_ctrl_cfg mfc_ctrl_list[] = {
 		.is_volatile = 1,
 		.mode = MFC_CTRL_MODE_SFR,
 		.addr = MFC_REG_E_RC_FRAME_RATE,
-		.mask = 0xFFFFFFFF,
+		.mask = 0x0000FFFF,
 		.shft = 0,
 		.flag_mode = MFC_CTRL_MODE_SFR,
 		.flag_addr = MFC_REG_E_PARAM_CHANGE,
@@ -659,6 +659,18 @@ static struct mfc_ctrl_cfg mfc_ctrl_list[] = {
 		.flag_mode = MFC_CTRL_MODE_SFR,
 		.flag_addr = MFC_REG_E_PARAM_CHANGE,
 		.flag_shft = 13,
+	},
+	{	/* sync the timestamp for drop control */
+		.type = MFC_CTRL_TYPE_SET,
+		.id = V4L2_CID_MPEG_VIDEO_DROP_CONTROL,
+		.is_volatile = 1,
+		.mode = MFC_CTRL_MODE_SFR,
+		.addr = MFC_REG_E_RC_FRAME_RATE,
+		.mask = 0x0000FFFF,
+		.shft = 0,
+		.flag_mode = MFC_CTRL_MODE_NONE,
+		.flag_addr = 0,
+		.flag_shft = 0,
 	}
 };
 
@@ -1128,6 +1140,35 @@ static void __mfc_enc_set_buf_ctrls_exception(struct mfc_ctx *ctx,
 				enc->roi_buf[buf_ctrl->old_val2].daddr,
 				buf_ctrl->val);
 	}
+
+	/* set frame rate change with delta */
+	if (buf_ctrl->id == V4L2_CID_MPEG_MFC51_VIDEO_FRAME_RATE_CH) {
+		p->rc_frame_delta = p->rc_framerate_res / buf_ctrl->val;
+		value = MFC_READL(buf_ctrl->addr);
+		value &= ~(buf_ctrl->mask << buf_ctrl->shft);
+		value |= ((p->rc_frame_delta & buf_ctrl->mask) << buf_ctrl->shft);
+		MFC_WRITEL(value, buf_ctrl->addr);
+	}
+
+	/* set drop control */
+	if (buf_ctrl->id == V4L2_CID_MPEG_VIDEO_DROP_CONTROL) {
+		if (!ctx->ts_last_interval) {
+			p->rc_frame_delta = p->rc_framerate_res / p->rc_framerate;
+			mfc_debug(3, "[DROPCTRL] default delta: %d\n", p->rc_frame_delta);
+		} else {
+			if (IS_H263_ENC(ctx))
+				p->rc_frame_delta = (ctx->ts_last_interval / 100) / p->rc_framerate_res;
+			else
+				p->rc_frame_delta = ctx->ts_last_interval / p->rc_framerate_res;
+		}
+		value = MFC_READL(MFC_REG_E_RC_FRAME_RATE);
+		value &= ~(0xFFFF);
+		value |= (p->rc_frame_delta & 0xFFFF);
+		MFC_WRITEL(value, MFC_REG_E_RC_FRAME_RATE);
+		mfc_debug(3, "[DROPCTRL] fps %d -> %d, delta: %d, reg: %#x\n",
+				p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
+				p->rc_frame_delta, value);
+	}
 }
 
 static int mfc_enc_set_buf_ctrls_val(struct mfc_ctx *ctx, struct list_head *head)
@@ -1245,9 +1286,12 @@ static int mfc_enc_set_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 			param_change = 1;
 			break;
 		case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_RATE_CH:
+			p->rc_frame_delta = p->rc_framerate_res / buf_ctrl->val;
+			pInStr->RcFrameRate &= ~(0xFFFF << 16);
+			pInStr->RcFrameRate |= (p->rc_framerate_res & 0xFFFF) << 16;
 			pInStr->RcFrameRate &= ~(buf_ctrl->mask << buf_ctrl->shft);
 			pInStr->RcFrameRate |=
-				(buf_ctrl->val & buf_ctrl->mask) << buf_ctrl->shft;
+				(p->rc_frame_delta & buf_ctrl->mask) << buf_ctrl->shft;
 			param_change = 1;
 			break;
 		case V4L2_CID_MPEG_MFC51_VIDEO_BIT_RATE_CH:
@@ -1426,6 +1470,25 @@ static int mfc_enc_set_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 			pInStr->RcMode |=
 				(buf_ctrl->val & buf_ctrl->mask) << buf_ctrl->shft;
 			param_change = 1;
+			break;
+		case V4L2_CID_MPEG_VIDEO_DROP_CONTROL:
+			if (!ctx->ts_last_interval) {
+				p->rc_frame_delta = p->rc_framerate_res / p->rc_framerate;
+				mfc_debug(3, "[NALQ][DROPCTRL] default delta: %d\n", p->rc_frame_delta);
+			} else {
+				if (IS_H263_ENC(ctx))
+					p->rc_frame_delta = (ctx->ts_last_interval / 100) / p->rc_framerate_res;
+				else
+					p->rc_frame_delta = ctx->ts_last_interval / p->rc_framerate_res;
+			}
+			pInStr->RcFrameRate &= ~(0xFFFF << 16);
+			pInStr->RcFrameRate |= (p->rc_framerate_res & 0xFFFF) << 16;
+			pInStr->RcFrameRate &= ~(buf_ctrl->mask << buf_ctrl->shft);
+			pInStr->RcFrameRate |=
+				(p->rc_frame_delta & buf_ctrl->mask) << buf_ctrl->shft;
+			mfc_debug(3, "[NALQ][DROPCTRL] fps %d -> %d, delta: %d, reg: %#x\n",
+					p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
+					p->rc_frame_delta, pInStr->RcFrameRate);
 			break;
 		/* If new dynamic controls are added, insert here */
 		default:

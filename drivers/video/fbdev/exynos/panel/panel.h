@@ -34,6 +34,7 @@
 enum {
 	MIPI_DSI_WR_UNKNOWN = 0,
 	MIPI_DSI_WR_GEN_CMD,
+	MIPI_DSI_WR_CMD_NO_WAKE,
 	MIPI_DSI_WR_DSC_CMD,
 	MIPI_DSI_WR_PPS_CMD,
 	MIPI_DSI_WR_GRAM_CMD,
@@ -75,6 +76,8 @@ enum {
 #define PANEL_CODE_LEN		(5)
 #define PANEL_COORD_LEN		(4)
 #define PANEL_DATE_LEN		(7)
+#define PANEL_RDDPM_LEN		(3)
+#define PANEL_RDDSM_LEN		(3)
 
 #define NORMAL_TEMPERATURE			(25)
 #define POWER_IS_ON(pwr)		(pwr <= FB_BLANK_NORMAL)
@@ -162,8 +165,8 @@ enum {
 	CMD_TYPE_PINCTL,
 	CMD_TYPE_TX_PKT_START,
 	CMD_PKT_TYPE_NONE = CMD_TYPE_TX_PKT_START,
-	SPI_PKT_TYPE_WR,
 	DSI_PKT_TYPE_WR,
+	DSI_PKT_TYPE_WR_NO_WAKE,
 	DSI_PKT_TYPE_COMP,
 /*Command to write ddi side ram */
 	DSI_PKT_TYPE_WR_SR,
@@ -177,6 +180,8 @@ enum {
 #endif
 	DSI_PKT_TYPE_RD,
 	CMD_TYPE_RX_PKT_END = DSI_PKT_TYPE_RD,
+	SPI_PKT_TYPE_WR,
+	SPI_PKT_TYPE_SETPARAM,
 	CMD_TYPE_RES,
 	CMD_TYPE_SEQ,
 	CMD_TYPE_KEY,
@@ -635,8 +640,15 @@ enum PANEL_SEQ {
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 	PANEL_FFC_SEQ,
 #endif
+#ifdef CONFIG_DYNAMIC_FREQ
+	PANEL_DYNAMIC_FFC_SEQ,
+#endif
 	PANEL_GAMMA_INTER_CONTROL_SEQ,
+	PANEL_PARTIAL_DISP_ON_SEQ,
+	PANEL_PARTIAL_DISP_OFF_SEQ,
 	PANEL_DUMP_SEQ,
+	PANEL_CHECK_CONDITION_SEQ,
+	PANEL_DIA_ONOFF_SEQ,
 	PANEL_DUMMY_SEQ,
 	MAX_PANEL_SEQ,
 };
@@ -669,6 +681,7 @@ struct brt_map {
 
 struct ddi_properties {
 	u32 gpara;
+	bool support_partial_disp;
 };
 
 struct common_panel_info {
@@ -699,6 +712,15 @@ struct common_panel_info {
 #endif
 #ifdef CONFIG_SUPPORT_DDI_FLASH
 	struct panel_poc_data *poc_data;
+#endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	struct spi_data *spi_data;
+#endif
+#ifdef CONFIG_DYNAMIC_FREQ
+	struct df_freq_tbl_info *df_freq_tbl;
+#endif
+#ifdef CONFIG_SUPPORT_DISPLAY_PROFILER
+	struct profiler_tune *profile_tune;
 #endif
 };
 
@@ -913,6 +935,10 @@ struct panel_properties {
 #ifdef CONFIG_SUPPORT_DSU
 	bool mres_updated;
 #endif
+	int panel_partial_disp;
+	u32 dia_mode;
+	u32 ub_con_cnt;
+	u32 conn_det_enable;
 };
 
 struct panel_info {
@@ -981,7 +1007,9 @@ int get_panel_resource_size(struct resinfo *res);
 int panel_resource_update(struct panel_device *panel, struct resinfo *res);
 int panel_resource_update_by_name(struct panel_device *panel, char *name);
 int panel_dumpinfo_update(struct panel_device *panel, struct dumpinfo *info);
-int panel_rx_nbytes(struct panel_device *panel, u32 type, u8 *buf, u8 addr, u8 pos, u8 len);
+int panel_rx_nbytes(struct panel_device *panel, u32 type, u8 *buf, u8 addr, u8 pos, u32 len);
+int panel_tx_nbytes(struct panel_device *panel,	u32 type, u8 *buf, u8 addr, u8 pos, u32 len);
+
 int panel_verify_tx_packet(struct panel_device *panel, u8 *src, u8 ofs, u8 len);
 
 int panel_set_key(struct panel_device *panel, int level, bool on);

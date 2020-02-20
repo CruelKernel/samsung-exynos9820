@@ -28,7 +28,7 @@ enum exynos_ufc_execution_mode {
 struct exynos_ufc_freq {
 	u32			master_freq;
 	u32			limit_freq;
-	u32			last_freq;	
+	u32			last_freq;
 };
 
 struct exynos_ufc_info {

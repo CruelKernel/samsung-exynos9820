@@ -49,6 +49,8 @@
 #define RADIX_TREE_ENTRY_MASK		3UL
 #define RADIX_TREE_INTERNAL_NODE	1UL
 
+#define RADIX_TREE_INDIRECT_PTR		1
+
 /*
  * Most users of the radix tree store pointers but shmem/tmpfs stores swap
  * entries in the same tree.  They are marked as exceptional entries to
@@ -321,6 +323,10 @@ void radix_tree_clear_tags(struct radix_tree_root *, struct radix_tree_node *,
 			   void __rcu **slot);
 unsigned int radix_tree_gang_lookup(const struct radix_tree_root *,
 			void **results, unsigned long first_index,
+			unsigned int max_items);
+unsigned int
+radix_tree_gang_lookup_index(struct radix_tree_root *root, void **results,
+			unsigned long *indices, unsigned long first_index,
 			unsigned int max_items);
 unsigned int radix_tree_gang_lookup_slot(const struct radix_tree_root *,
 			void __rcu ***results, unsigned long *indices,

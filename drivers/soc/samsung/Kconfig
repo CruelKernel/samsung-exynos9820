@@ -230,6 +230,34 @@ config DEBUG_SNAPSHOT_LOGGING_SMC
 config EXYNOS_CP_RESERVE
 	bool "Exynos CP Reserve"
 
+config EXYNOS_PPMPU_FAIL_DETECTOR
+	bool "Exynos PPMPU Fail Detector"
+	default y
+	help
+	  Support Exynos PPMPU Fail Detector
+
+config EXYNOS_PPMPU_SUPPORT_SMC
+	bool "PPMPU in SMC"
+	depends on EXYNOS_PPMPU_FAIL_DETECTOR
+	help
+	  This SoC supports PPMPU in SMC
+
+config EXYNOS_PPMPU_ILLEGAL_READ_LOGGING
+	bool "Logging PPMPU Read Fail Information"
+	depends on EXYNOS_PPMPU_FAIL_DETECTOR
+	default n
+	help
+	  PPMPU fail information of illegal reads will be printed
+	  by the Kernel logging system.
+
+config EXYNOS_PPMPU_ILLEGAL_ACCESS_PANIC
+	bool "Kernel Panic over PPMPU Illegal Access"
+	depends on EXYNOS_PPMPU_FAIL_DETECTOR
+	default n
+	help
+	  Kernel panic will occur in case that PPMPU illegal
+	  access is detected.
+
 source "drivers/soc/samsung/secure_boot/Kconfig"
 source "drivers/soc/samsung/debug/Kconfig"
 source "drivers/soc/samsung/exynos-hdcp/Kconfig"

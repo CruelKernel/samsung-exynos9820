@@ -72,7 +72,8 @@ const char LOG_LEVEL_MARK[NPU_LOG_INVALID] = {
  */
 int npu_store_log(npu_log_level_e loglevel, const char *fmt, ...)
 {
-	size_t		ret;
+	int		ret;
+	size_t		pr_size;
 	size_t		wr_len = 0;
 	size_t		remain;
 	unsigned long	intr_flags;
@@ -112,40 +113,40 @@ retry:
 
 start:
 	if ((npu_log.line_cnt & NPU_STORE_LOG_SYNC_MARK_INTERVAL_MASK) == 0) {
-		ret = scnprintf(buf + wr_len, remain, NPU_STORE_LOG_SYNC_MARK_MSG, npu_log.line_cnt);
-		if (unlikely(ret < 0)) {
+		pr_size = scnprintf(buf + wr_len, remain, NPU_STORE_LOG_SYNC_MARK_MSG, npu_log.line_cnt);
+		if (unlikely(pr_size < 0)) {
 			ret = -EFAULT;
 			goto err_exit;
 		}
-		remain -= ret;
-		wr_len += ret;
-		if ((remain <= 1) || (ret == 0)) {		/* Underflow on 'remain -= ret' */
+		remain -= pr_size;
+		wr_len += pr_size;
+		if ((remain <= 1) || (pr_size == 0)) {		/* Underflow on 'remain -= pr_size' */
 			goto retry;
 		}
 	}
 
-	ret = scnprintf(buf + wr_len, remain, "%016llu;%c;"
+	pr_size = scnprintf(buf + wr_len, remain, "%016llu;%c;"
 		, sched_clock(), LOG_LEVEL_MARK[loglevel]);
-	if (unlikely(ret < 0)) {
+	if (unlikely(pr_size < 0)) {
 		ret = -EFAULT;
 		goto err_exit;
 	}
-	remain -= ret;
-	wr_len += ret;
-	if ((remain <= 1) || (ret == 0)) {		/* Underflow on 'remain -= ret' */
+	remain -= pr_size;
+	wr_len += pr_size;
+	if ((remain <= 1) || (pr_size == 0)) {		/* Underflow on 'remain -= pr_size' */
 		goto retry;
 	}
 
 	va_start(arg_ptr, fmt);
-	ret = vscnprintf(buf + wr_len, remain, fmt, arg_ptr);
+	pr_size = vscnprintf(buf + wr_len, remain, fmt, arg_ptr);
 	va_end(arg_ptr);
-	if (unlikely(ret < 0)) {
+	if (unlikely(pr_size < 0)) {
 		ret = -EFAULT;
 		goto err_exit;
 	}
-	remain -= ret;
-	wr_len += ret;
-	if ((remain <= 1) || (ret == 0)) {		/* Underflow on 'remain -= ret' */
+	remain -= pr_size;
+	wr_len += pr_size;
+	if ((remain <= 1) || (pr_size == 0)) {		/* Underflow on 'remain -= pr_size' */
 		goto retry;
 	}
 
@@ -157,8 +158,8 @@ start:
 	goto unlock_exit;
 
 err_exit:
-	pr_err("Log store error : remain: %zu wr_len: %zu ret :%zu\n",
-		remain, wr_len, ret);
+	pr_err("Log store error : remain: %zu wr_len: %zu pr_size : %zu ret :%d\n",
+		remain, wr_len, pr_size, ret);
 
 unlock_exit:
 	spin_unlock_irqrestore(&npu_log_lock, intr_flags);
@@ -636,7 +637,7 @@ static int npu_store_log_dump(const size_t dump_size)
 
 	if (total > 0) {
 		/* Print stack back trace - Printed if there is a log to print to avoid duplication */
-		dump_stack();
+		//dump_stack();// removed for kernel pointer leakage issue
 
 		pos = 0;
 		st = dump_buf;

@@ -31,7 +31,7 @@
 
 #include <linux/types.h>
 #include <linux/kfifo.h>
-#include "../modem_v1.h"
+#include "modem_v1.h"
 
 #include "link_device_memory_config.h"
 #include "circ_queue.h"
@@ -387,6 +387,7 @@ struct sbd_link_device {
 	The number of link channels for AP-CP IPC
 	*/
 	unsigned int num_channels;
+	unsigned int ps_channel_start; /* for fast search ps channel */
 
 	/*
 	Table of link attributes
@@ -564,19 +565,51 @@ static inline unsigned int rb_full(struct sbd_ring_buffer *rb)
 		return (rb_space(rb) == 0);
 }
 
+static inline void set_lnk_hdr(struct sbd_ring_buffer *rb, struct sk_buff *skb)
+{
+	skbpriv(skb)->lnk_hdr = rb->lnk_hdr && !rb->more;
+}
+
+static inline void check_more(struct sbd_ring_buffer *rb, struct sk_buff *skb)
+{
+	if (rb->lnk_hdr) {
+		if (!rb->more) {
+			if (sipc5_get_frame_len(skb->data) > rb->buff_size) {
+				rb->more = true;
+				rb->total = sipc5_get_frame_len(skb->data);
+				rb->rcvd = skb->len;
+			}
+		} else {
+			rb->rcvd += skb->len;
+			if (rb->rcvd >= rb->total) {
+				rb->more = false;
+				rb->total = 0;
+				rb->rcvd = 0;
+			}
+		}
+	}
+}
+
 int create_sbd_link_device(struct link_device *ld, struct sbd_link_device *sl,
 			   u8 *shmem_base, unsigned int shmem_size);
 
 int init_sbd_link(struct sbd_link_device *sl);
 
 int sbd_pio_tx(struct sbd_ring_buffer *rb, struct sk_buff *skb);
-struct sk_buff *sbd_pio_rx_zerocopy_adaptor(struct sbd_ring_buffer *rb, int use_memcpy);
 struct sk_buff *sbd_pio_rx(struct sbd_ring_buffer *rb);
-int allocate_data_in_advance(struct zerocopy_adaptor *zdptr);
-extern enum hrtimer_restart datalloc_timer_func(struct hrtimer *timer);
-extern enum hrtimer_restart pcie_datalloc_timer_func(struct hrtimer *timer);
 
 #define SBD_UL_LIMIT		16	/* Uplink burst limit */
+
+#if defined(CONFIG_CP_ZEROCOPY)
+struct sk_buff *sbd_pio_rx_zerocopy_adaptor(struct sbd_ring_buffer *rb, int use_memcpy);
+int allocate_data_in_advance(struct zerocopy_adaptor *zdptr);
+int setup_zerocopy_adaptor(struct sbd_ipc_device *ipc_dev);
+extern enum hrtimer_restart datalloc_timer_func(struct hrtimer *timer);
+#else
+static inline struct sk_buff *sbd_pio_rx_zerocopy_adaptor(struct sbd_ring_buffer *rb, int use_memcpy) { return NULL; }
+static inline int allocate_data_in_advance(struct zerocopy_adaptor *zdptr) { return 0; }
+static inline int setup_zerocopy_adaptor(struct sbd_ipc_device *ipc_dev) { return 0; }
+#endif
 
 /**
 // End of group_mem_link_sbd

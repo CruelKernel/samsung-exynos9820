@@ -70,6 +70,12 @@
 #define bio_sectors(bio)	((bio)->bi_iter.bi_size >> 9)
 #define bio_end_sector(bio)	((bio)->bi_iter.bi_sector + bio_sectors((bio)))
 
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+#define bio_dun(bio)            ((bio)->bi_iter.bi_dun)
+#define bio_duns(bio)           (bio_sectors(bio) >> 3) /* 4KB unit */
+#define bio_end_dun(bio)        (bio_dun(bio) + bio_duns(bio))
+#endif
+
 /*
  * Return the data direction, READ or WRITE.
  */
@@ -172,6 +178,11 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
 				    unsigned bytes)
 {
 	iter->bi_sector += bytes >> 9;
+
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	if (iter->bi_dun)
+		iter->bi_dun += bytes >> 12;
+#endif
 
 	if (bio_no_advance_iter(bio)) {
 		iter->bi_size -= bytes;

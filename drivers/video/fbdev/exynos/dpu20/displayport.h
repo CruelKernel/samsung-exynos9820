@@ -443,6 +443,7 @@ enum phy_tune_info {
 	POST_EMP = 1,
 	PRE_EMP = 2,
 	IDRV = 3,
+	ACCDRV = 4,
 };
 
 typedef enum {
@@ -583,6 +584,11 @@ struct edid_data {
 	u8 max_average_lumi_data;
 	u8 min_lumi_data;
 };
+enum dp_state {
+	DP_DISCONNECT,
+	DP_CONNECT,
+	DP_HDCP_READY,
+};
 enum dex_state {
 	DEX_OFF,
 	DEX_ON,
@@ -629,6 +635,8 @@ struct displayport_device {
 	struct mutex aux_lock;
 	struct mutex training_lock;
 	struct mutex hdcp2_lock;
+	spinlock_t spinlock_sfr;
+
 	wait_queue_head_t dp_wait;
 	int audio_state;
 	int audio_buf_empty_check;
@@ -650,6 +658,7 @@ struct displayport_device {
 	int gpio_usb_dir;
 	int dfp_type;
 	const char *aux_vdd;
+	int phy_tune_set;
 
 	int auto_test_mode;
 	int forced_bist;
@@ -1118,9 +1127,12 @@ static inline void displayport_write(u32 reg_id, u32 val)
 static inline void displayport_write_mask(u32 reg_id, u32 val, u32 mask)
 {
 	struct displayport_device *displayport = get_displayport_drvdata();
-	u32 old = displayport_read(reg_id);
+	u32 old;
 	u32 bit_shift;
+	unsigned long flags;
 
+	spin_lock_irqsave(&displayport->spinlock_sfr, flags);
+	old = displayport_read(reg_id);
 	for (bit_shift = 0; bit_shift < 32; bit_shift++) {
 		if ((mask >> bit_shift) & 0x00000001)
 			break;
@@ -1128,6 +1140,7 @@ static inline void displayport_write_mask(u32 reg_id, u32 val, u32 mask)
 
 	val = ((val<<bit_shift) & mask) | (old & ~mask);
 	writel(val, displayport->res.link_regs + reg_id);
+	spin_unlock_irqrestore(&displayport->spinlock_sfr, flags);
 }
 
 static inline int displayport_phy_enabled(void)

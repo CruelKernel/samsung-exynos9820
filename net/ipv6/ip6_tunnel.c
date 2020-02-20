@@ -863,6 +863,7 @@ static int __ip6_tnl_rcv(struct ip6_tnl *tunnel, struct sk_buff *skb,
 drop:
 	if (tun_dst)
 		dst_release((struct dst_entry *)tun_dst);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR);
 	kfree_skb(skb);
 	return 0;
 }
@@ -928,6 +929,7 @@ static int ipxip6_rcv(struct sk_buff *skb, u8 ipproto,
 
 drop:
 	rcu_read_unlock();
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR1);
 	kfree_skb(skb);
 	return 0;
 }
@@ -1416,6 +1418,7 @@ ip6_tnl_start_xmit(struct sk_buff *skb, struct net_device *dev)
 tx_err:
 	stats->tx_errors++;
 	stats->tx_dropped++;
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR2);
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }

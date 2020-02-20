@@ -119,6 +119,9 @@ struct pmucal_seq cluster0_status[] = {
 struct pmucal_seq cluster1_status[] = {
 	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER0_NONCPU_STATUS", 0x15860000, 0x1204, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
+struct pmucal_seq cluster2_on[] = {
+	PMUCAL_SEQ_DESC(PMUCAL_WRITE, "SYSREG_CPUCL2_BUS_COMPONENT_DRCG_EN", 0x1D100000, 0x0104, (0xffffffff << 0), (0xffffffff << 0), 0, 0, 0xffffffff, 0),
+};
 struct pmucal_seq cluster2_status[] = {
 	PMUCAL_SEQ_DESC(PMUCAL_READ, "CLUSTER2_NONCPU_STATUS", 0x15860000, 0x1604, (0x1 << 0), 0, 0, 0, 0xffffffff, 0),
 };
@@ -254,10 +257,10 @@ struct pmucal_cpu pmucal_cluster_list[PMUCAL_NUM_CLUSTERS] = {
 	},
 	[CPU_CLUSTER2] = {
 		.id = CPU_CLUSTER2,
-		.on = 0,
+		.on = cluster2_on,
 		.off = 0,
 		.status = cluster2_status,
-		.num_on = 0,
+		.num_on = ARRAY_SIZE(cluster2_on),
 		.num_off = 0,
 		.num_status = ARRAY_SIZE(cluster2_status),
 	},

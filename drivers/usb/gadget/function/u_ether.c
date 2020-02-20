@@ -429,15 +429,10 @@ static void rx_fill(struct eth_dev *dev, gfp_t gfp_flags)
 
 	/* fill unused rxq slots with some skb */
 	spin_lock_irqsave(&dev->req_lock, flags);
-<<<<<<< HEAD
-	while(!list_empty(&dev->rx_reqs)) {
+	while (!list_empty(&dev->rx_reqs)) {
 		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
 		if(!dev->port_usb || (++req_cnt > qlen(dev->gadget, dev->qmult)))
 			break;
-=======
-	while (!list_empty(&dev->rx_reqs)) {
-		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		list_del_init(&req->list);
 		spin_unlock_irqrestore(&dev->req_lock, flags);
 
@@ -689,12 +684,14 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 					struct net_device *net)
 {
 	struct eth_dev		*dev = netdev_priv(net);
-	int			retval;
+	int			retval = 0;
 	struct usb_request	*req = NULL;
 	unsigned long		flags;
 	struct usb_ep		*in;
 	u16			cdc_filter;
 	unsigned long	tx_timeout;
+	bool eth_multi_pkt_xfer = 0;
+	bool eth_supports_multi_frame = 0;
 
 	if (dev->en_timer) {
 		hrtimer_cancel(&dev->tx_timer);
@@ -705,6 +702,8 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	if (dev->port_usb) {
 		in = dev->port_usb->in_ep;
 		cdc_filter = dev->port_usb->cdc_filter;
+		eth_multi_pkt_xfer = dev->port_usb->multi_pkt_xfer;
+		eth_supports_multi_frame = dev->port_usb->supports_multi_frame;
 	} else {
 		in = NULL;
 		cdc_filter = 0;
@@ -717,7 +716,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Allocate memory for tx_reqs to support multi packet transfer */
-	if (dev->port_usb->multi_pkt_xfer && !dev->tx_req_bufsize)
+	if (eth_multi_pkt_xfer && !dev->tx_req_bufsize)
 		alloc_tx_buffer(dev);
 
 	/* apply outgoing CDC or RNDIS filters */
@@ -757,7 +756,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	list_del(&req->list);
 
 	/* temporarily stop TX queue when the freelist empties */
-	if (list_empty(&dev->tx_reqs))
+	if (list_empty(&dev->tx_reqs) && (dev->tx_skb_hold_count >= (dev->dl_max_pkts_per_xfer -1)))
 		netif_stop_queue(net);
 	spin_unlock_irqrestore(&dev->req_lock, flags);
 
@@ -776,7 +775,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 			/* Multi frame CDC protocols may store the frame for
 			 * later which is not a dropped frame.
 			 */
-			if (dev->port_usb->supports_multi_frame)
+			if (eth_supports_multi_frame)
 				goto multiframe;
 			goto drop;
 		}
@@ -786,7 +785,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	dev->tx_skb_hold_count++;
 	spin_unlock_irqrestore(&dev->req_lock, flags);
 
-	if (dev->port_usb->multi_pkt_xfer) {
+	if (eth_multi_pkt_xfer) {
 		memcpy(req->buf + req->length, skb->data, skb->len);
 		/* Increment req length by skb data length */
 		req->length = req->length + skb->len;
@@ -817,19 +816,24 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		req->context = skb;
 	}
 
-	retval = tx_task(dev, req);
-	switch (retval) {
-	default:
-		DBG(dev, "tx queue err %d\n", retval);
-		break;
+	if (dev->port_usb) {
+		retval = tx_task(dev, req);
+		switch (retval) {
+		default:
+			DBG(dev, "tx queue err %d\n", retval);
+			break;
 #if 0
-	case 0:
-		net->trans_start = jiffies;
+		case 0:
+			net->trans_start = jiffies;
 #endif
+		}
+	} else {
+		if (!eth_multi_pkt_xfer)
+			dev_kfree_skb_any(skb);
 	}
 
 	if (retval) {
-		if (!dev->port_usb->multi_pkt_xfer)
+		if (!eth_multi_pkt_xfer)
 			dev_kfree_skb_any(skb);
 drop:
 		dev->net->stats.tx_dropped++;
@@ -1406,10 +1410,7 @@ void gether_disconnect(struct gether *link)
 {
 	struct eth_dev		*dev = link->ioport;
 	struct usb_request	*req;
-<<<<<<< HEAD
 	struct sk_buff		*skb;
-=======
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	WARN_ON(!dev);
 	if (!dev)
@@ -1435,11 +1436,7 @@ void gether_disconnect(struct gether *link)
 	spin_unlock(&dev->lock);
 
 	spin_lock(&dev->req_lock);
-<<<<<<< HEAD
-	while(!list_empty(&dev->tx_reqs)) {
-=======
 	while (!list_empty(&dev->tx_reqs)) {
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		req = list_first_entry(&dev->tx_reqs, struct usb_request, list);
 		list_del(&req->list);
 
@@ -1454,11 +1451,7 @@ void gether_disconnect(struct gether *link)
 
 	usb_ep_disable(link->out_ep);
 	spin_lock(&dev->req_lock);
-<<<<<<< HEAD
-	while(!list_empty(&dev->rx_reqs)) {
-=======
 	while (!list_empty(&dev->rx_reqs)) {
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
 		list_del(&req->list);
 

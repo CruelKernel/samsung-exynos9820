@@ -22,7 +22,6 @@
 #include <linux/kthread.h>
 #include <linux/freezer.h>
 #include <linux/page_owner.h>
-#include <linux/psi.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1098,9 +1097,6 @@ static void isolate_freepages(struct compact_control *cc)
 		if (!isolation_suitable(cc, page))
 			continue;
 
-		if (is_migrate_rbin_page(page))
-			continue;
-
 		/* Found a block suitable for isolating free pages from. */
 		isolate_freepages_block(cc, &isolate_start_pfn, block_end_pfn,
 					freelist, false);
@@ -1252,8 +1248,6 @@ static isolate_migrate_t isolate_migratepages(struct zone *zone,
 		if (!isolation_suitable(cc, page))
 			continue;
 
-		if (is_migrate_rbin_page(page))
-			continue;
 		/*
 		 * For async compaction, also only scan in MOVABLE blocks.
 		 * Async compaction is optimistic to see if the minimum amount
@@ -2036,15 +2030,11 @@ static int kcompactd(void *p)
 	pgdat->kcompactd_classzone_idx = pgdat->nr_zones - 1;
 
 	while (!kthread_should_stop()) {
-		unsigned long pflags;
-
 		trace_mm_compaction_kcompactd_sleep(pgdat->node_id);
 		wait_event_freezable(pgdat->kcompactd_wait,
 				kcompactd_work_requested(pgdat));
 
-		psi_memstall_enter(&pflags);
 		kcompactd_do_work(pgdat);
-		psi_memstall_leave(&pflags);
 	}
 
 	return 0;

@@ -138,6 +138,7 @@ static void exynos_show_wakeup_reason_sysint(unsigned int stat,
 
 	for_each_set_bit(bit, &lstat, 32) {
 		name = ws_names->name[bit];
+		pm_system_wakeup_without_irq_num = true;
 
 		if (!name)
 			continue;

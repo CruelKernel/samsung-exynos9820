@@ -333,7 +333,7 @@ retry:
 		 * causes isolated page block remained in isolated state
 		 * forever.
 		 */
-		if (is_migrate_cma_rbin(mt) || is_migrate_isolate(mt)) {
+		if (is_migrate_cma(mt) || is_migrate_isolate(mt)) {
 			/* nr_pages is added before next iteration */
 			pfn = ALIGN(pfn + 1, pageblock_nr_pages) - nr_pages;
 			continue;

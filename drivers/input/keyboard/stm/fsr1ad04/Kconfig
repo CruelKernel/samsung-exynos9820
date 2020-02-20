@@ -1,0 +1,11 @@
+#
+# Samsung Electronics KEY driver configuration
+#
+
+config KEYBOARD_STM_FSR
+        tristate "Samsung Electronics Keyboard"
+        depends on I2C
+        help
+          Say Y here if you want support for FSR key controllers.
+          If unsure, say N.
+

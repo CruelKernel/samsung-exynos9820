@@ -47,6 +47,8 @@
 #include <linux/linkforward.h>
 #endif
 
+#define MIF_TX_QUOTA 64
+
 #if !defined(CONFIG_CP_SECURE_BOOT)
 #define CRC32_XINIT 0xFFFFFFFFL		/* initial value */
 #define CRC32_XOROT 0xFFFFFFFFL		/* final xor value */
@@ -859,7 +861,7 @@ static int tx_frames_to_dev(struct mem_link_device *mld,
 		mif_pkt(skbpriv(skb)->sipc_ch, "LNK-TX", skb);
 #endif
 
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 	}
 
 	return (ret < 0) ? ret : tx_bytes;
@@ -940,15 +942,6 @@ static enum hrtimer_restart tx_timer_func(struct hrtimer *timer)
 			need_schedule = true;
 	}
 
-	if (!need_schedule) {
-		for (i = 0; i < MAX_SIPC_MAP; i++) {
-			if (!txq_empty(mld->dev[i])) {
-				need_schedule = true;
-				break;
-			}
-		}
-	}
-
 	if (mask)
 		send_ipc_irq(mld, mask2int(mask));
 
@@ -961,6 +954,87 @@ exit:
 	spin_unlock_irqrestore(&mc->lock, flags);
 
 	return HRTIMER_NORESTART;
+}
+
+static int tx_func(struct mem_link_device *mld, struct hrtimer *timer,
+					  struct mem_ipc_device *dev, struct sk_buff *skb)
+{
+	struct link_device *ld = &mld->link_dev;
+	struct modem_ctl *mc = ld->mc;
+	struct sk_buff_head *skb_txq = dev->skb_txq;
+	bool need_schedule = false;
+	u16 mask = msg_mask(dev);
+	unsigned long flags;
+	int ret = 0;
+
+	spin_lock_irqsave(&mc->lock, flags);
+
+	if (unlikely(!ipc_active(mld))) {
+		spin_unlock_irqrestore(&mc->lock, flags);
+		dev_kfree_skb_any(skb);
+		goto exit;
+	}
+	spin_unlock_irqrestore(&mc->lock, flags);
+
+#ifdef CONFIG_LINK_POWER_MANAGEMENT_WITH_FSM
+	if (mld->link_active) {
+		if (!mld->link_active(mld)) {
+			skb_queue_tail(skb_txq, skb);
+			need_schedule = true;
+			goto exit;
+		}
+	}
+#endif
+
+	if (unlikely(under_tx_flow_ctrl(mld, dev))) {
+		ret = check_tx_flow_ctrl(mld, dev);
+		if (ret < 0) {
+			if (ret == -EBUSY || ret == -ETIME) {
+				skb_queue_tail(skb_txq, skb);
+				need_schedule = true;
+			} else {
+				shmem_forced_cp_crash(mld, CRASH_REASON_MIF_TX_ERR,
+						"check_tx_flow_ctrl error");
+				need_schedule = false;
+			}
+			goto exit;
+		}
+	}
+
+	ret = txq_write(mld, dev, skb);
+	if (unlikely(ret < 0)) {
+		if (ret == -EBUSY || ret == -ENOSPC) {
+			skb_queue_head(skb_txq, skb);
+			need_schedule = true;
+			txq_stop(mld, dev);
+			/* If txq has 2 or more packet and 2nd packet
+			  has -ENOSPC return, It request irq to consume
+			  the TX ring-buffer from CP */
+			send_ipc_irq(mld, mask2int(mask));
+		} else {
+			shmem_forced_cp_crash(mld, CRASH_REASON_MIF_TX_ERR,
+					"tx_frames_to_dev error");
+			need_schedule = false;
+		}
+		goto exit;
+	}
+	pktlog_tx_bottom_skb(mld, skb);
+	
+#ifdef DEBUG_MODEM_IF_LINK_TX
+	mif_pkt(skbpriv(skb)->sipc_ch, "LNK-TX", skb);
+#endif
+
+	dev_consume_skb_any(skb);
+
+	send_ipc_irq(mld, mask2int(mask));
+
+exit:
+	if (need_schedule) {
+		ktime_t ktime = ktime_set(0, mld->tx_period_ms * NSEC_PER_MSEC);
+		hrtimer_start(timer, ktime, HRTIMER_MODE_REL);
+		return -1;
+	} else
+		return 1;
 }
 
 static inline void start_tx_timer(struct mem_link_device *mld,
@@ -1075,7 +1149,7 @@ static int tx_frames_to_rb(struct sbd_ring_buffer *rb)
 #ifdef DEBUG_MODEM_IF_LINK_TX
 		mif_pkt(rb->ch, "LNK-TX", skb);
 #endif
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 	}
 
 	return (ret < 0) ? ret : tx_bytes;
@@ -1151,18 +1225,6 @@ static enum hrtimer_restart sbd_tx_timer_func(struct hrtimer *timer)
 			need_schedule = true;
 	}
 
-	if (!need_schedule) {
-		for (i = 0; i < sl->num_channels; i++) {
-			struct sbd_ring_buffer *rb;
-
-			rb = sbd_id2rb(sl, i, TX);
-			if (!rb_empty(rb)) {
-				need_schedule = true;
-				break;
-			}
-		}
-	}
-
 	if (mask) {
 		spin_lock_irqsave(&mc->lock, flags);
 		if (unlikely(!ipc_active(mld))) {
@@ -1181,6 +1243,86 @@ exit:
 	}
 
 	return HRTIMER_NORESTART;
+}
+
+static int sbd_tx_func(struct mem_link_device *mld, struct hrtimer *timer,
+		    struct sbd_ring_buffer *rb, struct sk_buff *skb)
+{
+	struct link_device *ld = &mld->link_dev;
+	struct modem_ctl *mc = ld->mc;
+	bool need_schedule = false;
+	u16 mask = MASK_SEND_DATA;
+	unsigned long flags = 0;
+	int ret = 0;
+
+	spin_lock_irqsave(&mc->lock, flags);
+	if (unlikely(!ipc_active(mld))) {
+		spin_unlock_irqrestore(&mc->lock, flags);
+		dev_kfree_skb_any(skb);
+		goto exit;
+	}
+	spin_unlock_irqrestore(&mc->lock, flags);
+
+#ifdef CONFIG_LINK_POWER_MANAGEMENT
+	if (mld->link_active) {
+		if (!mld->link_active(mld)) {
+			skb_queue_tail(&rb->skb_q, skb);
+			need_schedule = true;
+			goto exit;
+		}
+	}
+#endif
+
+	if (unlikely(sbd_under_tx_flow_ctrl(rb))) {
+		ret = sbd_check_tx_flow_ctrl(rb);
+		if (ret < 0) {
+			if (ret == -EBUSY || ret == -ETIME) {
+				skb_queue_tail(&rb->skb_q, skb);
+				need_schedule = true;
+			} else {
+				shmem_forced_cp_crash(mld, CRASH_REASON_MIF_TX_ERR,
+						"check_sbd_tx_flow_ctrl error");
+				need_schedule = false;
+			}
+			goto exit;
+		}
+	}
+
+	ret = sbd_pio_tx(rb, skb);
+	if (unlikely(ret < 0)) {
+		if (ret == -EBUSY || ret == -ENOSPC) {
+			skb_queue_head(&rb->skb_q, skb);
+			need_schedule = true;
+			send_ipc_irq(mld, mask2int(mask));
+		} else {
+			shmem_forced_cp_crash(mld, CRASH_REASON_MIF_TX_ERR,
+					"tx_frames_to_rb error");
+			need_schedule = false;
+		}
+		goto exit;
+	}
+
+#ifdef DEBUG_MODEM_IF_LINK_TX
+	mif_pkt(rb->ch, "LNK-TX", skb);
+#endif
+	dev_consume_skb_any(skb);
+
+	spin_lock_irqsave(&mc->lock, flags);
+	if (unlikely(!ipc_active(mld))) {
+		spin_unlock_irqrestore(&mc->lock, flags);
+		need_schedule = false;
+		goto exit;
+	}
+	send_ipc_irq(mld, mask2int(mask));
+	spin_unlock_irqrestore(&mc->lock, flags);
+
+exit:
+	if (need_schedule) {
+		ktime_t ktime = ktime_set(0, mld->tx_period_ms * NSEC_PER_MSEC);
+		hrtimer_start(timer, ktime, HRTIMER_MODE_REL);
+		return -1;
+	} else
+		return 1;
 }
 
 enum hrtimer_restart datalloc_timer_func(struct hrtimer *timer)
@@ -1217,13 +1359,14 @@ exit:
 static int xmit_ipc_to_rb(struct mem_link_device *mld, enum sipc_ch_id ch,
 			  struct sk_buff *skb)
 {
-	int ret;
+	int ret, ret2;
 	struct link_device *ld = &mld->link_dev;
 	struct io_device *iod = skbpriv(skb)->iod;
 	struct modem_ctl *mc = ld->mc;
 	struct sbd_ring_buffer *rb = sbd_ch2rb_with_skb(&mld->sbd_link_dev, ch, TX, skb);
 	struct sk_buff_head *skb_txq;
-	unsigned long flags;
+	unsigned long flags = 0;
+	int quota = MIF_TX_QUOTA;
 
 	if (!rb) {
 		mif_err("%s: %s->%s: ERR! NO SBD RB {ch:%d}\n",
@@ -1238,8 +1381,6 @@ static int xmit_ipc_to_rb(struct mem_link_device *mld, enum sipc_ch_id ch,
 		mld->forbid_cp_sleep(mld);
 #endif
 
-	spin_lock_irqsave(&rb->lock, flags);
-
 	if (unlikely(skb_txq->qlen >= MAX_SKB_TXQ_DEPTH)) {
 		mif_err_limited("%s: %s->%s: ERR! {ch:%d} "
 				"skb_txq.len %d >= limit %d\n",
@@ -1248,13 +1389,24 @@ static int xmit_ipc_to_rb(struct mem_link_device *mld, enum sipc_ch_id ch,
 		ret = -EBUSY;
 	} else {
 		skb->len = min_t(int, skb->len, rb->buff_size);
-
 		ret = skb->len;
-		skb_queue_tail(skb_txq, skb);
-		start_tx_timer(mld, &mld->sbd_tx_timer);
-	}
 
-	spin_unlock_irqrestore(&rb->lock, flags);
+		skb_queue_tail(skb_txq, skb);
+
+		if (hrtimer_active(&mld->sbd_tx_timer)) {
+			start_tx_timer(mld, &mld->sbd_tx_timer);
+		} else if (spin_trylock_irqsave(&rb->lock, flags)) {
+			do {
+				skb = skb_dequeue(skb_txq);
+				if (!skb) break;
+
+				ret2 = sbd_tx_func(mld, &mld->sbd_tx_timer, rb, skb);
+				if (ret2 < 0) break;
+			} while (--quota);
+
+			spin_unlock_irqrestore(&rb->lock, flags);
+		}
+	}
 
 #ifdef CONFIG_LINK_POWER_MANAGEMENT
 	if (cp_online(mc) && mld->permit_cp_sleep)
@@ -1268,12 +1420,14 @@ static int xmit_ipc_to_rb(struct mem_link_device *mld, enum sipc_ch_id ch,
 static int xmit_ipc_to_dev(struct mem_link_device *mld, enum sipc_ch_id ch,
 			   struct sk_buff *skb)
 {
-	int ret;
+	int ret, ret2;
 	struct link_device *ld = &mld->link_dev;
 	struct io_device *iod = skbpriv(skb)->iod;
 	struct modem_ctl *mc = ld->mc;
 	struct mem_ipc_device *dev = mld->dev[get_mmap_idx(ch, skb)];
 	struct sk_buff_head *skb_txq;
+	unsigned long flags = 0;
+	int quota = MIF_TX_QUOTA;
 
 	if (!dev) {
 		mif_err("%s: %s->%s: ERR! NO IPC DEV {ch:%d}\n",
@@ -1294,8 +1448,22 @@ static int xmit_ipc_to_dev(struct mem_link_device *mld, enum sipc_ch_id ch,
 		ret = -EBUSY;
 	} else {
 		ret = skb->len;
-		skb_queue_tail(dev->skb_txq, skb);
-		start_tx_timer(mld, &mld->tx_timer);
+
+		skb_queue_tail(skb_txq, skb);
+
+		if (hrtimer_active(&mld->tx_timer)) {
+			start_tx_timer(mld, &mld->tx_timer);
+		} else if (spin_trylock_irqsave(&dev->tx_lock, flags)) {
+			do {
+				skb = skb_dequeue(skb_txq);
+				if (!skb) break;
+
+				ret2 = tx_func(mld, &mld->tx_timer, dev, skb);
+				if (ret2 < 0) break;
+			} while (--quota);
+
+			spin_unlock_irqrestore(&dev->tx_lock, flags);
+		}
 	}
 
 #ifdef CONFIG_LINK_POWER_MANAGEMENT
@@ -1407,7 +1575,7 @@ static int xmit_udl(struct mem_link_device *mld, struct io_device *iod,
 	mif_pkt(ch, "LNK-TX", skb);
 #endif
 
-	dev_kfree_skb_any(skb);
+	dev_consume_skb_any(skb);
 
 exit:
 	return ret;
@@ -2060,7 +2228,7 @@ static void shmem_oom_handler_work(struct work_struct *ws)
 	/* try to page reclaim with GFP_KERNEL */
 	skb = alloc_skb(PAGE_SIZE - 512, GFP_KERNEL);
 	if (skb)
-		dev_kfree_skb_any(skb);
+		dev_consume_skb_any(skb);
 
 	/* need to disable the RX irq ?? */
 	msleep(200);
@@ -2466,7 +2634,7 @@ exit:
 }
 
 #ifdef CONFIG_MODEM_IF_NET_GRO
-long gro_flush_time = 0;
+long gro_flush_time = 10000;
 module_param(gro_flush_time, long, 0644);
 
 static void gro_flush_timer(struct link_device *ld)

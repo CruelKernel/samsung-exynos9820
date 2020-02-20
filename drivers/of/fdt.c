@@ -654,6 +654,7 @@ static int __init __fdt_scan_reserved_mem(unsigned long node, const char *uname,
 	static int found;
 	const char *status;
 	int err;
+	int noship;
 
 	if (!found && depth == 1 && strcmp(uname, "reserved-memory") == 0) {
 		if (__reserved_mem_check_root(node) != 0) {
@@ -675,6 +676,15 @@ static int __init __fdt_scan_reserved_mem(unsigned long node, const char *uname,
 	status = of_get_flat_dt_prop(node, "status", NULL);
 	if (status && strcmp(status, "okay") != 0 && strcmp(status, "ok") != 0)
 		return 0;
+
+	noship = of_get_flat_dt_prop(node, "no-ship", NULL) != NULL;
+#ifdef CONFIG_SAMSUNG_PRODUCT_SHIP
+	if (noship) {
+		pr_info("Reserved memory: skip to reserve memory for node '%s'\n",
+			uname);
+		return 0;
+	}
+#endif
 
 	err = __reserved_mem_reserve_reg(node, uname);
 	if (err == -ENOENT && of_get_flat_dt_prop(node, "size", NULL))

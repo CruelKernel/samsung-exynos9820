@@ -102,6 +102,7 @@ struct dbg_snapshot_log_idx {
 #endif
 #ifdef CONFIG_DEBUG_SNAPSHOT_FREQ
 	atomic_t freq_log_idx;
+	atomic_t freq_misc_log_idx;
 #endif
 #ifdef CONFIG_DEBUG_SNAPSHOT_DM
 	atomic_t dm_log_idx;
@@ -167,7 +168,7 @@ static struct dss_reg_list dss_reg_exlist[] = {
 
 #ifdef CONFIG_DEBUG_SNAPSHOT_FREQ
 static char *dss_freq_name[] = {
-	"LIT", "MID", "BIG", "INT", "MIF", "ISP", "DISP", "INTCAM", "AUD", "IVA", "SCORE", "FSYS0", "MFC", "NPU",
+	"LIT", "MID", "BIG", "INT", "MIF", "ISP", "DISP", "INTCAM", "AUD", "IVA", "SCORE", "FSYS0", "MFC", "NPU", "G3D",
 };
 #endif
 
@@ -191,6 +192,7 @@ void __init dbg_snapshot_init_log_idx(void)
 #endif
 #ifdef CONFIG_DEBUG_SNAPSHOT_FREQ
 	atomic_set(&(dss_idx.freq_log_idx), -1);
+	atomic_set(&(dss_idx.freq_misc_log_idx), -1);
 #endif
 #ifdef CONFIG_DEBUG_SNAPSHOT_DM
 	atomic_set(&(dss_idx.dm_log_idx), -1);
@@ -1076,6 +1078,28 @@ void dbg_snapshot_freq(int type, unsigned long old_freq, unsigned long target_fr
 		dss_log->freq[i].en = en;
 	}
 }
+
+void dbg_snapshot_freq_misc(int type, unsigned long old_freq, unsigned long target_freq, int en)
+{
+	struct dbg_snapshot_item *item = &dss_items[dss_desc.kevents_num];
+
+	if (unlikely(!dss_base.enabled || !item->entry.enabled))
+		return;
+	{
+		int cpu = raw_smp_processor_id();
+		unsigned long i = atomic_inc_return(&dss_idx.freq_misc_log_idx) &
+				(ARRAY_SIZE(dss_log->freq_misc) - 1);
+
+		dss_log->freq_misc[i].time = cpu_clock(cpu);
+		dss_log->freq_misc[i].cpu = cpu;
+		dss_log->freq_misc[i].freq_name = dss_freq_name[type];
+		dss_log->freq_misc[i].freq_type = type;
+		dss_log->freq_misc[i].old_freq = old_freq;
+		dss_log->freq_misc[i].target_freq = target_freq;
+		dss_log->freq_misc[i].en = en;
+	}
+}
+
 #endif
 
 #ifndef arch_irq_stat
@@ -1410,6 +1434,58 @@ void dbg_snapshot_printkl(size_t msg, size_t val)
 }
 #endif
 
+#ifdef CONFIG_SEC_PM_DEBUG
+static ssize_t dss_log_work_lookup(char *buf, ssize_t n, int cpu, int idx)
+{
+	char work_fn[KSYM_NAME_LEN];
+	unsigned long sec, msec;
+	u64 ts;
+	int en;
+
+	if (!(dss_log->work[cpu][idx].fn))
+		return n;
+
+	lookup_symbol_name((unsigned long)dss_log->work[cpu][idx].fn, work_fn);
+
+	ts = dss_log->work[cpu][idx].time;
+	sec = ts / NSEC_PER_SEC;
+	msec = (ts % NSEC_PER_SEC) / USEC_PER_MSEC;
+
+	en = dss_log->work[cpu][idx].en;
+
+	n += scnprintf(buf + n, 100,
+			"%d: %10lu.%06lu task:%16s, fn:%32s, %1s\n",
+			cpu, sec, msec, dss_log->work[cpu][idx].task_comm,
+			work_fn, en == DSS_FLAG_IN ? "I" : "O");
+
+	return n;
+}
+
+ssize_t dss_log_work_print(char *buf)
+{
+	int cpu, array_size;
+	ssize_t n = 0;
+
+	if (!dss_log)
+		return 0;
+
+	array_size = ARRAY_SIZE(dss_log->work[0]) - 1;
+
+	for_each_possible_cpu(cpu) {
+		int i, idx;
+
+		idx = atomic_read(&dss_idx.work_log_idx[cpu]);
+
+		for (i = 0; i < 5 && i < array_size; i++, idx--) {
+			idx &= array_size;
+			n = dss_log_work_lookup(buf, n, cpu, idx);
+		}
+	}
+
+	return n;
+}
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 #if defined(CONFIG_DEBUG_SNAPSHOT_THERMAL) && defined(CONFIG_SEC_PM_DEBUG)
 #include <linux/debugfs.h>
 
@@ -1538,7 +1614,7 @@ static inline void dbg_snapshot_get_busiest_irq(struct hardlockup_info *hl_info,
 void dbg_snapshot_get_hardlockup_info(unsigned int cpu,  void *info)
 {
 	struct hardlockup_info *hl_info = info;
-	unsigned int cpuidle_idx, irq_idx, task_idx;
+	unsigned long cpuidle_idx, irq_idx, task_idx;
 	unsigned long long cpuidle_delay_time, irq_delay_time, task_delay_time;
 	unsigned long long curr, thresh;
 
@@ -1601,7 +1677,7 @@ void dbg_snapshot_get_hardlockup_info(unsigned int cpu,  void *info)
 void dbg_snapshot_get_softlockup_info(unsigned int cpu, void *info)
 {
 	struct softlockup_info *sl_info = info;
-	unsigned int task_idx;
+	unsigned long task_idx;
 	unsigned long long task_delay_time;
 	unsigned long long curr, thresh;
 

@@ -683,21 +683,35 @@ int propagate_umount(struct list_head *list)
 	return 0;
 }
 
+/*
+ *  Iterates over all slaves, and slaves of slaves.
+ */
+static struct mount *next_descendent(struct mount *root, struct mount *cur)
+{
+	if (!IS_MNT_NEW(cur) && !list_empty(&cur->mnt_slave_list))
+		return first_slave(cur);
+	do {
+		struct mount *master = cur->mnt_master;
+
+		if (!master || cur->mnt_slave.next != &master->mnt_slave_list) {
+			struct mount *next = next_slave(cur);
+
+			return (next == root) ? NULL : next;
+		}
+		cur = master;
+	} while (cur != root);
+	return NULL;
+}
+
 void propagate_remount(struct mount *mnt)
 {
-<<<<<<< HEAD
 	struct mount *m = mnt;
 #ifdef CONFIG_RKP_NS_PROT
 	struct super_block *sb = mnt->mnt->mnt_sb;
 #else
-=======
-	struct mount *parent = mnt->mnt_parent;
-	struct mount *p = mnt, *m;
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	struct super_block *sb = mnt->mnt.mnt_sb;
 #endif
 
-<<<<<<< HEAD
 	if (sb->s_op->copy_mnt_data) {
 		m = next_descendent(mnt, m);
 		while (m) {
@@ -708,14 +722,5 @@ void propagate_remount(struct mount *mnt)
 #endif
 			m = next_descendent(mnt, m);
 		}
-=======
-	if (!sb->s_op->copy_mnt_data)
-		return;
-	for (p = propagation_next(parent, parent); p;
-				p = propagation_next(p, parent)) {
-		m = __lookup_mnt(&p->mnt, mnt->mnt_mountpoint);
-		if (m)
-			sb->s_op->copy_mnt_data(m->mnt.data, mnt->mnt.data);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	}
 }

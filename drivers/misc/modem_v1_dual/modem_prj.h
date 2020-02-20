@@ -113,6 +113,7 @@
 #define IOCTL_VSS_FULL_DUMP		_IO('o', 0x57)	/* For vss dump */
 #define IOCTL_ACPM_FULL_DUMP		_IO('o', 0x58)  /* for acpm memory dump */
 #define IOCTL_CPLOG_FULL_DUMP		_IO('o', 0x59)  /* for cplog memory dump */
+#define IOCTL_DATABUF_FULL_DUMP		_IO('o', 0x5A)	/* for databuf memory dump */
 
 #ifdef CONFIG_LINK_DEVICE_PCIE
 #define IOCTL_REGISTER_PCIE		_IO('o', 0x65)
@@ -271,6 +272,12 @@ struct skbuff_private {
 	    frm_ctrl:8,	/* Multi-framing control		*/
 	    reserved:15,
 	    lnk_hdr:1;	/* Existence of a link-layer header	*/
+
+#ifdef CONFIG_CP_DIT
+	struct sk_buff *src_skb;
+
+	u8 support_dit;
+#endif
 } __packed;
 
 static inline struct skbuff_private *skbpriv(struct sk_buff *skb)
@@ -475,6 +482,8 @@ struct link_device {
 	/* methods for CP crash dump */
 	int (*shmem_dump)(struct link_device *ld, struct io_device *iod,
 			unsigned long arg);
+	int (*databuf_dump)(struct link_device *ld, struct io_device *iod,
+			unsigned long arg);
 	int (*force_dump)(struct link_device *ld, struct io_device *iod);
 	int (*dump_start)(struct link_device *ld, struct io_device *iod);
 	int (*dump_update)(struct link_device *ld, struct io_device *iod,
@@ -523,10 +532,6 @@ struct link_device {
 	void (*reset_zerocopy)(struct link_device *ld);
 
 #ifdef CONFIG_LINK_DEVICE_NAPI
-	/* Poll function for NAPI */
-	int (*poll_recv_on_iod)(struct link_device *ld, struct io_device *iod,
-			int budget);
-
 	int (*enable_rx_int)(struct link_device *ld);
 	int (*disable_rx_int)(struct link_device *ld);
 #endif /* CONFIG_LINK_DEVICE_NAPI */
@@ -607,9 +612,6 @@ struct modem_shared {
 	/* for IPC Logger */
 	struct mif_storage storage;
 	spinlock_t lock;
-
-	/* CP crash information */
-	char cp_crash_info[530];
 
 	/* loopbacked IP address
 	 * default is 0.0.0.0 (disabled)
@@ -767,12 +769,17 @@ struct modem_ctl {
 
 	int s5100_gpio_ap_wakeup;
 	struct modem_irq s5100_irq_ap_wakeup;
+	atomic_t pcie_pwron;
+	atomic_t pcie_suspend;
+	struct delayed_work nr2ap_wakeup_work;
 
 	int s5100_gpio_phone_active;
 	struct modem_irq s5100_irq_phone_active;
 
 	bool s5100_cp_reset_required;
 	bool s5100_iommu_map_enabled;
+
+	struct notifier_block pm_notifier;
 #endif
 
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
@@ -873,20 +880,27 @@ static inline int cp_runtime_link(struct modem_ctl *mc,
 	if (link_id == LINK_SEND)
 		atomic_inc(&mc->runtime_link_iod_cnt[iod_id]);
 
+	if (!wake_lock_active(&mc->mc_wake_lock))
+		wake_lock(&mc->mc_wake_lock);
+
 	if (in_interrupt())
 		ret = pm_runtime_get(mc->dev);
 	else if (irqs_disabled()) {
-		mif_info("irqs_disabled!! 1\n");
+		mif_debug("irqs_disabled!! 1\n");
 		ret = pm_runtime_get(mc->dev);
-		mif_info("irqs_disabled!! 2\n");
+		mif_debug("irqs_disabled!! 2\n");
 	} else {
-		while (pm_runtime_enabled(mc->dev) == false) {
+		while (pm_runtime_enabled(mc->dev) == false){
 			usleep_range(10000, 11000);
 			cnt++;
+
+			/* Wait 10 seconds */
+			if (cnt == 1000) {
+				mif_err("TIMEOUT ERROR - pm_runtime_enabled:%d\n",
+					pm_runtime_enabled(mc->dev));
+				break;
+			}
 		}
-		if (cnt)
-			mif_err_limited("pm_runtime_enabled wait count:%d\n",
-					cnt);
 
 		ret = pm_runtime_get_sync(mc->dev);
 		if (ret < 0)

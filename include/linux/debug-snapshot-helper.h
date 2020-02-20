@@ -110,4 +110,35 @@ struct dbg_snapshot_mmu_reg {
 	int POTPIDR;
 };
 #endif
+
+
+struct err_variant {
+	u8 fld_end;
+	u8 fld_offset;
+	const char *fld_name;
+};
+
+struct err_variant_data {
+	const struct err_variant *variant;
+	u8 valid_bit;
+	const char *reg_name;
+};
+
+#define ERR_REG(variants, valid, reg)	\
+	{					\
+		.variant	= variants,	\
+		.valid_bit	= valid,	\
+		.reg_name	= reg,		\
+	}
+
+#define ERR_VAR(name, end, offset)	\
+	{					\
+		.fld_end	= end,	\
+		.fld_offset	= offset,	\
+		.fld_name	= name,		\
+	}
+
+
 #endif
+
+extern void exynos_err_parse(u32 reg_idx, u64 reg, struct err_variant_data *exynos_cpu_err);

@@ -220,8 +220,6 @@ static ssize_t store_abc_log(struct device *dev,
 	struct abc_info *pinfo = dev_get_drvdata(sec_abc);
 	struct abc_log_entry *abc_log;
 
-	mutex_lock(&pinfo->log_mutex);
-
 	pinfo->log_list_cnt = 0;
 
 	while (!list_empty(&pinfo->log_list)) {
@@ -229,8 +227,6 @@ static ssize_t store_abc_log(struct device *dev,
 		list_del(&abc_log->node);
 		kfree(abc_log);
 	}
-
-	mutex_unlock(&pinfo->log_mutex);
 
 	return count;
 }
@@ -244,13 +240,9 @@ static ssize_t show_abc_log(struct device *dev,
 	struct abc_log_entry *abc_log;
 	int count = 0;
 
-	mutex_lock(&pinfo->log_mutex);
-
 	list_for_each_entry(abc_log, &pinfo->log_list, node) {
-		count += snprintf(buf + count, PAGE_SIZE - count, "%s\n", abc_log->abc_log_str);
+		count += sprintf(buf + count, "%s\n", abc_log->abc_log_str);
 	}
-
-	mutex_unlock(&pinfo->log_mutex);
 
 	return count;
 }
@@ -367,8 +359,6 @@ static void sec_abc_work_func(struct work_struct *work)
 #endif
 
 	/* Add abc log_list */
-	mutex_lock(&pinfo->log_mutex);
-
 	abc_log = kzalloc(sizeof(*abc_log), GFP_KERNEL);
 	if (abc_log) {
 		snprintf(abc_log->abc_log_str, ABC_LOG_STR_LEN, "[%5lu.%03d][%02d:%02d:%02d.%03lu]%s_%s",
@@ -386,8 +376,6 @@ static void sec_abc_work_func(struct work_struct *work)
 	} else {
 		ABC_PRINT("failed to allocate abc_log\n");
 	}
-
-	mutex_unlock(&pinfo->log_mutex);
 
 	if (abc_enabled == ABC_TYPE1_ENABLED) {
 		pgpu = pinfo->pdata->gpu_items;
@@ -588,8 +576,6 @@ static int sec_abc_probe(struct platform_device *pdev)
 	pinfo->log_list_cnt = 0;
 
 	init_completion(&pinfo->enable_done);
-
-	mutex_init(&pinfo->log_mutex);
 
 	sec_abc = pinfo->dev;
 	pinfo->pdata = pdata;

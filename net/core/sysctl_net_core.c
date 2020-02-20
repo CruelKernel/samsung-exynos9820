@@ -464,7 +464,7 @@ static struct ctl_table net_core_table[] = {
 		.procname	= "support_dropdump",
 		.data		= &netdev_support_dropdump,
 		.maxlen 	= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
 #endif

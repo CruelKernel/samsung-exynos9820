@@ -40,7 +40,7 @@
 #include <linux/ssp_platformdata.h>
 #include <linux/spi/spi.h>
 #include "bbdpl/bbd.h"
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include "sensor_list.h"
 
 #ifdef CONFIG_SENSORS_SSP_HIFI_BATCHING
@@ -378,10 +378,11 @@ enum {
 #define CAMERA_GYROSCOPE_SYNC 7700000ULL /*7.7ms*/
 #define CAMERA_GYROSCOPE_VDIS_SYNC 6600000ULL /*6.6ms*/
 #define CAMERA_GYROSCOPE_SUPER_VDIS_SYNC 5500000ULL /*5.5ms*/
+#define CAMERA_GYROSCOPE_ULTRA_VDIS_SYNC 4400000ULL /*4.4ms*/
 #define CAMERA_GYROSCOPE_SYNC_DELAY 10000000ULL
 #define CAMERA_GYROSCOPE_VDIS_SYNC_DELAY 5000000ULL
 #define CAMERA_GYROSCOPE_SUPER_VDIS_SYNC_DELAY 2000000ULL
-
+#define CAMERA_GYROSCOPE_ULTRA_VDIS_SYNC_DELAY 1000000ULL
 
 /** HIFI Sensor **/
 #define SIZE_TIMESTAMP_BUFFER	1000
@@ -512,6 +513,9 @@ struct sensor_value {
 #ifdef CONFIG_SENSORS_SSP_LIGHT_ADDING_LUMINANCE
 			u8 brightness;
 #endif
+#ifdef CONFIG_SENSORS_SSP_LIGHT_LUX_RAW
+			u32 lux_raw;
+#endif
 #else
 			u16 a_gain;
 			u8 a_time;
@@ -520,7 +524,8 @@ struct sensor_value {
 			u8 a_time;
 			u8 a_gain;
 #endif
-		};
+		} __attribute__((__packed__));
+
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 		struct {
 			u16 irdata;
@@ -530,7 +535,7 @@ struct sensor_value {
 			u16 ir_w;
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
 			u16 ir_a_gain;
-			u8 ir_a_time;
+			u8 ir_a_time; // ir_brightness;
 #else
 			u8 ir_a_time;
 			u8 ir_a_gain;
@@ -551,6 +556,9 @@ struct sensor_value {
 /* CONFIG_SENSORS_SSP_TMD4903, CONFIG_SENSORS_SSP_TMD3782, CONFIG_SENSORS_SSP_TMD4904 */
 			u16 prox_adc;
 			u32 light;
+#endif
+#if defined(CONFIG_SENSORS_SSP_PROX_LIGHT_DIFF)
+			u32 light_diff;
 #endif
 		} __attribute__((__packed__));
 #ifdef CONFIG_SENSORS_SSP_PROX_ADC_CAL

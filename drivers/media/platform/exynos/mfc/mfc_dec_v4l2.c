@@ -1159,7 +1159,7 @@ static int mfc_dec_g_crop(struct file *file, void *priv,
 	mfc_debug_enter();
 
 	if (!ready_to_get_crop(ctx)) {
-		mfc_debug(2, "ready to get crop failed\n");
+		mfc_err_ctx("ready to get crop failed\n");
 		return -EINVAL;
 	}
 

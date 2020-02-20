@@ -150,9 +150,9 @@ int s6e3fa7_getidx_self_mode_pos(struct maptbl *tbl);
 void s6e3fa7_copy_self_move_reset(struct maptbl *tbl, u8 *dst);
 
 #ifdef SUPPORT_NORMAL_SELF_MOVE
-int getidx_self_pattern(struct maptbl *tbl);
-//void copy_self_move_enable(struct maptbl *tbl, u8 *dst);
-void copy_self_move_pattern(struct maptbl *tbl, u8 *dst);
+int s6e3fa7_getidx_self_pattern(struct maptbl *tbl);
+//void s6e3fa7_copy_self_move_enable(struct maptbl *tbl, u8 *dst);
+void s6e3fa7_copy_self_move_pattern(struct maptbl *tbl, u8 *dst);
 #endif
 
 #endif

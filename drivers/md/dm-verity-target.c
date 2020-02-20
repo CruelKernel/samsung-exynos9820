@@ -97,34 +97,43 @@ static sector_t verity_position_at_level(struct dm_verity *v, sector_t block,
 }
 
 /*
- * Wrapper for crypto_shash_init, which handles verity salting.
+ * Callback function for asynchrnous crypto API completion notification
  */
-static int verity_hash_init(struct dm_verity *v, struct shash_desc *desc)
+static void verity_op_done(struct crypto_async_request *base, int err)
 {
-	int r;
+	struct verity_result *res = (struct verity_result *)base->data;
 
-	desc->tfm = v->tfm;
-	desc->flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+	if (err == -EINPROGRESS)
+		return;
 
-	r = crypto_shash_init(desc);
+	res->err = err;
+	complete(&res->completion);
+}
 
-	if (unlikely(r < 0)) {
-		DMERR("crypto_shash_init failed: %d", r);
-		return r;
+/*
+ * Wait for async crypto API callback
+ */
+static inline int verity_complete_op(struct verity_result *res, int ret)
+{
+	switch (ret) {
+	case 0:
+		break;
+
+	case -EINPROGRESS:
+	case -EBUSY:
+		ret = wait_for_completion_interruptible(&res->completion);
+		if (!ret)
+			ret = res->err;
+		reinit_completion(&res->completion);
+		break;
+
+	default:
+		DMERR("verity_wait_hash: crypto op submission failed: %d", ret);
 	}
 
-	if (likely(v->version >= 1)) {
-		r = crypto_shash_update(desc, v->salt, v->salt_size);
+	if (unlikely(ret < 0))
+		DMERR("verity_wait_hash: crypto op failed: %d", ret);
 
-<<<<<<< HEAD
-		if (unlikely(r < 0)) {
-			DMERR("crypto_shash_update failed: %d", r);
-			return r;
-		}
-	}
-
-	return 0;
-=======
 	return ret;
 }
 
@@ -154,56 +163,73 @@ static int verity_hash_update(struct dm_verity *v, struct ahash_request *req,
 		} while (len);
 		return 0;
 	}
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
-static int verity_hash_update(struct dm_verity *v, struct shash_desc *desc,
-			      const u8 *data, size_t len)
+/*
+ * Wrapper for crypto_ahash_init, which handles verity salting.
+ */
+static int verity_hash_init(struct dm_verity *v, struct ahash_request *req,
+				struct verity_result *res)
 {
-	int r = crypto_shash_update(desc, data, len);
+	int r;
 
-	if (unlikely(r < 0))
-		DMERR("crypto_shash_update failed: %d", r);
+	ahash_request_set_tfm(req, v->tfm);
+	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
+					CRYPTO_TFM_REQ_MAY_BACKLOG,
+					verity_op_done, (void *)res);
+	init_completion(&res->completion);
+
+	r = verity_complete_op(res, crypto_ahash_init(req));
+
+	if (unlikely(r < 0)) {
+		DMERR("crypto_ahash_init failed: %d", r);
+		return r;
+	}
+
+	if (likely(v->salt_size && (v->version >= 1)))
+		r = verity_hash_update(v, req, v->salt, v->salt_size, res);
 
 	return r;
 }
 
-static int verity_hash_final(struct dm_verity *v, struct shash_desc *desc,
-			     u8 *digest)
+static int verity_hash_final(struct dm_verity *v, struct ahash_request *req,
+			     u8 *digest, struct verity_result *res)
 {
 	int r;
 
-	if (unlikely(!v->version)) {
-		r = crypto_shash_update(desc, v->salt, v->salt_size);
+	if (unlikely(v->salt_size && (!v->version))) {
+		r = verity_hash_update(v, req, v->salt, v->salt_size, res);
 
 		if (r < 0) {
-			DMERR("crypto_shash_update failed: %d", r);
-			return r;
+			DMERR("verity_hash_final failed updating salt: %d", r);
+			goto out;
 		}
 	}
 
-	r = crypto_shash_final(desc, digest);
-
-	if (unlikely(r < 0))
-		DMERR("crypto_shash_final failed: %d", r);
-
+	ahash_request_set_crypt(req, NULL, digest, 0);
+	r = verity_complete_op(res, crypto_ahash_final(req));
+out:
 	return r;
 }
 
-int verity_hash(struct dm_verity *v, struct shash_desc *desc,
+int verity_hash(struct dm_verity *v, struct ahash_request *req,
 		const u8 *data, size_t len, u8 *digest)
 {
 	int r;
+	struct verity_result res;
 
-	r = verity_hash_init(v, desc);
+	r = verity_hash_init(v, req, &res);
 	if (unlikely(r < 0))
-		return r;
+		goto out;
 
-	r = verity_hash_update(v, desc, data, len);
+	r = verity_hash_update(v, req, data, len, &res);
 	if (unlikely(r < 0))
-		return r;
+		goto out;
 
-	return verity_hash_final(v, desc, digest);
+	r = verity_hash_final(v, req, digest, &res);
+
+out:
+	return r;
 }
 
 static void verity_hash_at_level(struct dm_verity *v, sector_t block, int level,
@@ -322,7 +348,7 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 			goto release_ret_r;
 		}
 
-		r = verity_hash(v, verity_io_hash_desc(v, io),
+		r = verity_hash(v, verity_io_hash_req(v, io),
 				data, 1 << v->hash_dev_block_bits,
 				verity_io_real_digest(v, io));
 		if (unlikely(r < 0))
@@ -333,12 +359,18 @@ static int verity_verify_level(struct dm_verity *v, struct dm_verity_io *io,
 			aux->hash_verified = 1;
 		else if (verity_fec_decode(v, io,
 					   DM_VERITY_BLOCK_TYPE_METADATA,
-					   hash_block, data, NULL) == 0)
+					   hash_block, data, NULL) == 0){
+#ifdef SEC_HEX_DEBUG
+		        add_fec_correct_blks();
+		        add_fc_blks_entry(hash_block,v->data_dev->name);
+#endif
 			aux->hash_verified = 1;
+		}
 #ifdef SEC_HEX_DEBUG
 		else if (verity_handle_err_hex_debug(v,
 					   DM_VERITY_BLOCK_TYPE_METADATA,
 					   hash_block, io, NULL)) {
+		        add_corrupted_blks();
 #else
 		else if (verity_handle_err(v,
 					   DM_VERITY_BLOCK_TYPE_METADATA,
@@ -397,6 +429,49 @@ out:
 }
 
 /*
+ * Calculates the digest for the given bio
+ */
+int verity_for_io_block(struct dm_verity *v, struct dm_verity_io *io,
+			struct bvec_iter *iter, struct verity_result *res)
+{
+	unsigned int todo = 1 << v->data_dev_block_bits;
+	struct bio *bio = dm_bio_from_per_bio_data(io, v->ti->per_io_data_size);
+	struct scatterlist sg;
+	struct ahash_request *req = verity_io_hash_req(v, io);
+
+	do {
+		int r;
+		unsigned int len;
+		struct bio_vec bv = bio_iter_iovec(bio, *iter);
+
+		sg_init_table(&sg, 1);
+
+		len = bv.bv_len;
+
+		if (likely(len >= todo))
+			len = todo;
+		/*
+		 * Operating on a single page at a time looks suboptimal
+		 * until you consider the typical block size is 4,096B.
+		 * Going through this loops twice should be very rare.
+		 */
+		sg_set_page(&sg, bv.bv_page, len, bv.bv_offset);
+		ahash_request_set_crypt(req, &sg, NULL, len);
+		r = verity_complete_op(res, crypto_ahash_update(req));
+
+		if (unlikely(r < 0)) {
+			DMERR("verity_for_io_block crypto op failed: %d", r);
+			return r;
+		}
+
+		bio_advance_iter(bio, iter, len);
+		todo -= len;
+	} while (todo);
+
+	return 0;
+}
+
+/*
  * Calls function process for 1 << v->data_dev_block_bits bytes in the bio_vec
  * starting from iter.
  */
@@ -434,12 +509,6 @@ int verity_for_bv_block(struct dm_verity *v, struct dm_verity_io *io,
 	return 0;
 }
 
-static int verity_bv_hash_update(struct dm_verity *v, struct dm_verity_io *io,
-				 u8 *data, size_t len)
-{
-	return verity_hash_update(v, verity_io_hash_desc(v, io), data, len);
-}
-
 static int verity_bv_zero(struct dm_verity *v, struct dm_verity_io *io,
 			  u8 *data, size_t len)
 {
@@ -468,15 +537,19 @@ static int verity_verify_io(struct dm_verity_io *io)
 	struct dm_verity *v = io->v;
 	struct bvec_iter start;
 	unsigned b;
+	struct verity_result res;
 
 	for (b = 0; b < io->n_blocks; b++) {
 		int r;
-		struct shash_desc *desc = verity_io_hash_desc(v, io);
 		sector_t cur_block = io->block + b;
+		struct ahash_request *req = verity_io_hash_req(v, io);
 
 		if (v->validated_blocks &&
 		    likely(test_bit(cur_block, v->validated_blocks))) {
 			verity_bv_skip_block(v, io, &io->iter);
+#ifdef SEC_HEX_DEBUG
+			add_skipped_blks();
+#endif
 			continue;
 		}
 
@@ -499,16 +572,17 @@ static int verity_verify_io(struct dm_verity_io *io)
 			continue;
 		}
 
-		r = verity_hash_init(v, desc);
+		r = verity_hash_init(v, req, &res);
 		if (unlikely(r < 0))
 			return r;
 
 		start = io->iter;
-		r = verity_for_bv_block(v, io, &io->iter, verity_bv_hash_update);
+		r = verity_for_io_block(v, io, &io->iter, &res);
 		if (unlikely(r < 0))
 			return r;
 
-		r = verity_hash_final(v, desc, verity_io_real_digest(v, io));
+		r = verity_hash_final(v, req, verity_io_real_digest(v, io),
+					&res);
 		if (unlikely(r < 0))
 			return r;
 
@@ -519,16 +593,23 @@ static int verity_verify_io(struct dm_verity_io *io)
 			continue;
 		}
 		else if (verity_fec_decode(v, io, DM_VERITY_BLOCK_TYPE_DATA,
-					   cur_block, NULL, &start) == 0)
+					   cur_block, NULL, &start) == 0){
+#ifdef SEC_HEX_DEBUG
+		        add_fec_correct_blks();
+		        add_fc_blks_entry(cur_block,v->data_dev->name);
+#endif
 			continue;
+		}
 #ifdef SEC_HEX_DEBUG
 		else if (verity_handle_err_hex_debug(v, DM_VERITY_BLOCK_TYPE_DATA,
-					   cur_block, io, &start))
+					   cur_block, io, &start)){
+		        add_corrupted_blks();
 #else
 		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
-					   cur_block))
+					   cur_block)){
 #endif
 			return -EIO;
+		}
 	}
 
 	return 0;
@@ -581,6 +662,7 @@ static void verity_prefetch_io(struct work_struct *work)
 		container_of(work, struct dm_verity_prefetch_work, work);
 	struct dm_verity *v = pw->v;
 	int i;
+	sector_t prefetch_size;
 
 	for (i = v->levels - 2; i >= 0; i--) {
 		sector_t hash_block_start;
@@ -603,8 +685,14 @@ static void verity_prefetch_io(struct work_struct *work)
 				hash_block_end = v->hash_blocks - 1;
 		}
 no_prefetch_cluster:
+		// for emmc, it is more efficient to send bigger read
+		prefetch_size = max((sector_t)CONFIG_DM_VERITY_HASH_PREFETCH_MIN_SIZE,
+			hash_block_end - hash_block_start + 1);
+		if ((hash_block_start + prefetch_size) >= (v->hash_start + v->hash_blocks)) {
+			prefetch_size = hash_block_end - hash_block_start + 1;
+		}
 		dm_bufio_prefetch(v->bufio, hash_block_start,
-				  hash_block_end - hash_block_start + 1);
+				  prefetch_size);
 	}
 
 	kfree(pw);
@@ -659,6 +747,15 @@ int verity_map(struct dm_target *ti, struct bio *bio)
 	io->orig_bi_end_io = bio->bi_end_io;
 	io->block = bio->bi_iter.bi_sector >> (v->data_dev_block_bits - SECTOR_SHIFT);
 	io->n_blocks = bio->bi_iter.bi_size >> v->data_dev_block_bits;
+
+#ifdef SEC_HEX_DEBUG
+	add_total_blks(io->n_blocks);
+
+	if (get_total_blks() - get_prev_total_blks() > 0x4000){
+	    set_prev_total_blks(get_total_blks());
+	    print_blks_cnt(v->data_dev->name);
+	}
+#endif
 
 	bio->bi_end_io = verity_end_io;
 	bio->bi_private = io;
@@ -790,7 +887,7 @@ void verity_dtr(struct dm_target *ti)
 	kfree(v->zero_digest);
 
 	if (v->tfm)
-		crypto_free_shash(v->tfm);
+		crypto_free_ahash(v->tfm);
 
 	kfree(v->alg_name);
 
@@ -828,7 +925,7 @@ static int verity_alloc_most_once(struct dm_verity *v)
 static int verity_alloc_zero_digest(struct dm_verity *v)
 {
 	int r = -ENOMEM;
-	struct shash_desc *desc;
+	struct ahash_request *req;
 	u8 *zero_data;
 
 	v->zero_digest = kmalloc(v->digest_size, GFP_KERNEL);
@@ -836,9 +933,9 @@ static int verity_alloc_zero_digest(struct dm_verity *v)
 	if (!v->zero_digest)
 		return r;
 
-	desc = kmalloc(v->shash_descsize, GFP_KERNEL);
+	req = kmalloc(v->ahash_reqsize, GFP_KERNEL);
 
-	if (!desc)
+	if (!req)
 		return r; /* verity_dtr will free zero_digest */
 
 	zero_data = kzalloc(1 << v->data_dev_block_bits, GFP_KERNEL);
@@ -846,11 +943,11 @@ static int verity_alloc_zero_digest(struct dm_verity *v)
 	if (!zero_data)
 		goto out;
 
-	r = verity_hash(v, desc, zero_data, 1 << v->data_dev_block_bits,
+	r = verity_hash(v, req, zero_data, 1 << v->data_dev_block_bits,
 			v->zero_digest);
 
 out:
-	kfree(desc);
+	kfree(req);
 	kfree(zero_data);
 
 	return r;
@@ -1034,34 +1131,21 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 		goto bad;
 	}
 
-	v->tfm = crypto_alloc_shash(v->alg_name, 0, 0);
+	v->tfm = crypto_alloc_ahash(v->alg_name, 0, 0);
 	if (IS_ERR(v->tfm)) {
 		ti->error = "Cannot initialize hash function";
 		r = PTR_ERR(v->tfm);
 		v->tfm = NULL;
 		goto bad;
 	}
-<<<<<<< HEAD
-	v->digest_size = crypto_shash_digestsize(v->tfm);
-=======
-
-	/*
-	 * dm-verity performance can vary greatly depending on which hash
-	 * algorithm implementation is used.  Help people debug performance
-	 * problems by logging the ->cra_driver_name.
-	 */
-	DMINFO("%s using implementation \"%s\"", v->alg_name,
-	       crypto_hash_alg_common(v->tfm)->base.cra_driver_name);
-
 	v->digest_size = crypto_ahash_digestsize(v->tfm);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	if ((1 << v->hash_dev_block_bits) < v->digest_size * 2) {
 		ti->error = "Digest size too big";
 		r = -EINVAL;
 		goto bad;
 	}
-	v->shash_descsize =
-		sizeof(struct shash_desc) + crypto_shash_descsize(v->tfm);
+	v->ahash_reqsize = sizeof(struct ahash_request) +
+		crypto_ahash_reqsize(v->tfm);
 
 	v->root_digest = kmalloc(v->digest_size, GFP_KERNEL);
 	if (!v->root_digest) {
@@ -1104,6 +1188,10 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 		if (r < 0)
 			goto bad;
 	}
+
+#ifdef SEC_HEX_DEBUG
+	get_b_info(v->data_dev->name);
+#endif
 
 #ifdef CONFIG_DM_ANDROID_VERITY_AT_MOST_ONCE_DEFAULT_ENABLED
 	if (!v->validated_blocks) {
@@ -1169,7 +1257,7 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 	}
 
 	ti->per_io_data_size = sizeof(struct dm_verity_io) +
-				v->shash_descsize + v->digest_size * 2;
+				v->ahash_reqsize + v->digest_size * 2;
 
 	r = verity_fec_ctr(v);
 	if (r)
@@ -1178,9 +1266,19 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 	ti->per_io_data_size = roundup(ti->per_io_data_size,
 				       __alignof__(struct dm_verity_io));
 
+#ifdef SEC_HEX_DEBUG
+	if (!verity_fec_is_enabled(v))
+	    add_fec_off_cnt(v->data_dev->name);
+#endif
+
 	return 0;
 
 bad:
+
+#ifdef SEC_HEX_DEBUG
+	add_fec_off_cnt("bad");
+#endif
+
 	verity_dtr(ti);
 
 	return r;

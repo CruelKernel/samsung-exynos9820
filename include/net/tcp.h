@@ -378,12 +378,6 @@ extern struct proto tcp_prot;
 #define TCP_DEC_STATS(net, field)	SNMP_DEC_STATS((net)->mib.tcp_statistics, field)
 #define TCP_ADD_STATS(net, field, val)	SNMP_ADD_STATS((net)->mib.tcp_statistics, field, val)
 
-#ifdef CONFIG_NET_SUPPORT_DROPDUMP
-#define TCP_DUMP_STATS(skb, field)	dev_queue_mib(skb, 3, field)
-#else
-#define TCP_DUMP_STATS(skb, field)
-#endif
-
 #ifdef CONFIG_MPTCP
 /**** START - Exports needed for MPTCP ****/
 extern const struct tcp_request_sock_ops tcp_request_sock_ipv4_ops;

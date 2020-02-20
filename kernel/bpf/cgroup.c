@@ -200,6 +200,8 @@ int __cgroup_bpf_run_filter_skb(struct sock *sk,
 
 	rcu_read_unlock();
 
+	if (ret)
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_IP_BPF);
 	return ret;
 }
 EXPORT_SYMBOL(__cgroup_bpf_run_filter_skb);

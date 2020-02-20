@@ -266,7 +266,7 @@ bool sec_bat_get_value_by_adc(
 	unsigned int temp_adc_table_size = 0;
 
 	temp_adc = sec_bat_get_adc_data(battery, channel, battery->pdata->adc_check_count);
-	if ((temp_adc < 0) || (check_type == SEC_BATTERY_TEMP_CHECK_NONE))
+	if (temp_adc < 0)
 		return false;
 
 	switch (channel) {

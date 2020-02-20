@@ -288,7 +288,7 @@ static ssize_t show_detect_conn_available_pins(struct device *dev,
 	return sprintf(buf, "%s\n", sec_detect_available_pins_string);
 }
 
-static DEVICE_ATTR(available_pins, 0644, show_detect_conn_available_pins, NULL);
+static DEVICE_ATTR(available_pins, 0444, show_detect_conn_available_pins, NULL);
 
 #ifdef CONFIG_OF
 /**

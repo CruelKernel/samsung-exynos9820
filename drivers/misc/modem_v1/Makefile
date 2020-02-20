@@ -46,3 +46,5 @@ ifeq ($(CONFIG_ARGOS), y)
 obj-y += modem_argos_notifier.o
 endif
 endif
+
+obj-$(CONFIG_KLAT) += modem_klat.o

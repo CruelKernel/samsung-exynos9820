@@ -22,7 +22,9 @@
 #include <linux/scatterlist.h>
 #include <uapi/linux/keyctl.h>
 #include <crypto/hash.h>
+#ifdef CONFIG_CRYPTO_KBKDF_CTR_HMAC_SHA512
 #include <crypto/kbkdf.h>
+#endif
 #include "crypto_sec.h"
 
 /*
@@ -175,6 +177,7 @@ static inline int generate_fek(char *raw_key)
  * fscrypt_sec_get_key_aes() - Get a key using AES-256-CBC
  * Return: Zero on success; non-zero otherwise.
  */
+#ifdef CONFIG_CRYPTO_KBKDF_CTR_HMAC_SHA512
 int fscrypt_sec_get_key_aes(const u8 *master_key, const struct fscrypt_context *ctx,
 										u8 *derived_key, unsigned int derived_keysize, u8 *iv_key)
 {
@@ -218,6 +221,13 @@ out:
 	memzero_explicit(derived_key_output, SEC_FS_DERIVED_KEY_OUTPUT_SIZE);
 	return res;
 }
+#else
+int fscrypt_sec_get_key_aes(const u8 *master_key, const struct fscrypt_context *ctx,
+										u8 *derived_key, unsigned int derived_keysize, u8 *iv_key)
+{
+	return 0;
+}
+#endif
 
 /**
  * fscrypt_sec_set_key_aes() - Generate and save a random key for AES-256.

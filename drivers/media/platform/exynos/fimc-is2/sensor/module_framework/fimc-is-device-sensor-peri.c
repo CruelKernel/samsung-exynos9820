@@ -1691,7 +1691,7 @@ int fimc_is_sensor_peri_s_stream(struct fimc_is_device_sensor *device,
 #endif
 
 		/* For dual camera project to  reduce power consumption of ois */
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 		if (sensor_peri->mcu && sensor_peri->mcu->ois) {
 			ret = CALL_OISOPS(sensor_peri->mcu->ois, ois_set_power_mode, sensor_peri->subdev_mcu);
 			if (ret < 0)
@@ -1723,10 +1723,8 @@ int fimc_is_sensor_peri_s_stream(struct fimc_is_device_sensor *device,
 #ifdef USE_AF_SLEEP_MODE
 		if (sensor_peri->actuator && sensor_peri->actuator->actuator_ops) {
 			ret = CALL_ACTUATOROPS(sensor_peri->actuator, set_active, sensor_peri->subdev_actuator, 1);
-			if (ret) {
+			if (ret)
 				err("[SEN:%d] actuator set active fail\n", module->sensor_id);
-				goto p_err;
-			}
 		}
 #endif
 		/* stream on sequence */

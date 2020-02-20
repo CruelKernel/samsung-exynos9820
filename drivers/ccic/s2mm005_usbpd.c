@@ -24,7 +24,7 @@
 #include <linux/ccic/s2mm005_usbpd_fw.h>
 #include <linux/ccic/usbpd_sysfs.h>
 #include <linux/usb_notify.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 static struct usbpd_dev *s2mm005_usbpd_desc_register(struct s2mm005_data *usbpd_data,
 								   char *name)

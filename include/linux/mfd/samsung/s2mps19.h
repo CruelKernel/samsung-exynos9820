@@ -115,7 +115,7 @@ struct s2mps19_platform_data {
 	bool			ocp_warn2_dvs_mask;
 	int				ocp_warn1_lv;
 	int				ocp_warn2_lv;
-
+	bool			support_vdd_pll_1p7;
 	/* adc_mode
 	 * 0 : not use
 	 * 1 : current meter

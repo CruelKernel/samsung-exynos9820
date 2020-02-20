@@ -19,11 +19,13 @@
 #include <linux/sched/clock.h>
 #include <linux/notifier.h>
 #include <linux/kallsyms.h>
+#include <linux/debug-snapshot.h>
 #include <asm/core_regs.h>
 #include <asm/io.h>
 #include <soc/samsung/exynos-pmu.h>
 #include <soc/samsung/exynos-ehld.h>
-#include <linux/sec_debug.h>
+
+//#define DEBUG
 
 #ifdef DEBUG
 #define ehld_printk(f, str...) printk(str)
@@ -154,7 +156,7 @@ void exynos_ehld_event_raw_update_allcpu(void)
 	unsigned long flags, count;
 	int cpu;
 
-	if (sec_debug_check_sj())
+	if (dbg_snapshot_get_sjtag_status() == true)
 		return;
 
 	raw_spin_lock_irqsave(&ehld_main.lock, flags);
@@ -175,7 +177,6 @@ void exynos_ehld_event_raw_update_allcpu(void)
 			} else {
 				ehld_printk(0, "%s: cpu%d is turned on : running:%x, power:%x, offline:%x\n",
 					__func__, cpu, ctrl->ehld_running, exynos_cpu.power_state(cpu), cpu_is_offline(cpu));
-
 				DBG_UNLOCK(ctrl->dbg_base + PMU_OFFSET);
 				val = __raw_readq(ctrl->dbg_base + PMU_OFFSET + PMUPCSR);
 				if (MSB_MASKING == (MSB_MASKING & val))
@@ -199,6 +200,9 @@ void exynos_ehld_event_raw_dump_allcpu(void)
 	unsigned long flags, count;
 	int cpu, i;
 	char symname[KSYM_NAME_LEN];
+
+	if (dbg_snapshot_get_sjtag_status() == true)
+		return;
 
 	symname[KSYM_NAME_LEN - 1] = '\0';
 	raw_spin_lock_irqsave(&ehld_main.lock, flags);
@@ -311,9 +315,6 @@ static int exynos_ehld_hardlockup_handler(struct notifier_block *nb,
 					   unsigned long l, void *p)
 {
 	int i;
-	
-	if (sec_debug_check_sj())
-		return 0;
 
 	for (i = 0; i < NUM_TRACE_HARDLOCKUP; i++)
 		exynos_ehld_event_raw_update_allcpu();
@@ -339,9 +340,6 @@ static int exynos_ehld_panic_handler(struct notifier_block *nb,
 					   unsigned long l, void *p)
 {
 	int i;
-
-	if (sec_debug_check_sj())
-		return 0;
 
 	for (i = 0; i < NUM_TRACE_HARDLOCKUP; i++)
 		exynos_ehld_event_raw_update_allcpu();

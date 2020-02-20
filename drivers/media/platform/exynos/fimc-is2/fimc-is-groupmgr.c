@@ -49,6 +49,10 @@
 /* sysfs variable for debug */
 extern struct fimc_is_sysfs_debug sysfs_debug;
 
+#ifdef CHAIN_SKIP_GFRAME_FOR_VRA
+static struct fimc_is_group_frame dummy_gframe;
+#endif
+
 static inline void smp_shot_init(struct fimc_is_group *group, u32 value)
 {
 	atomic_set(&group->smp_shot_count, value);
@@ -791,7 +795,7 @@ static void fimc_is_group_set_torch(struct fimc_is_group *group,
 
 	if (group->aeflashMode != ldr_frame->shot->ctl.aa.vendor_aeflashMode) {
 		group->aeflashMode = ldr_frame->shot->ctl.aa.vendor_aeflashMode;
-		fimc_is_vender_set_torch(group->aeflashMode);
+		fimc_is_vender_set_torch(ldr_frame->shot);
 	}
 
 	return;
@@ -2320,6 +2324,17 @@ int fimc_is_group_stop(struct fimc_is_groupmgr *groupmgr,
 	if (!retry) {
 		mgerr(" waiting(until request empty) is fail(pc %d)", device, group, group->pcount);
 		errcnt++;
+
+		/*
+		 * Extinctionize pending works in worker to avoid the work_list corruption.
+		 * When user calls 'vb2_stop_streaming()' that calls 'group_stop()',
+		 * 'v4l2_reqbufs()' can be called for another stream
+		 * and it means every work in frame is going to be initialized.
+		 */
+		spin_lock_irqsave(&gtask->worker.lock, flags);
+		INIT_LIST_HEAD(&gtask->worker.work_list);
+		INIT_LIST_HEAD(&gtask->worker.delayed_work_list);
+		spin_unlock_irqrestore(&gtask->worker.lock, flags);
 	}
 
 	/* ensure that request cancel work is complete fully */
@@ -2540,7 +2555,8 @@ int fimc_is_group_buffer_queue(struct fimc_is_groupmgr *groupmgr,
 #ifdef SENSOR_REQUEST_DELAY
 		if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state) &&
 			(frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_GED
-			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK)) {
+			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK
+			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_CAMERAX)) {
 			int req_cnt = 0;
 			struct fimc_is_frame *prev;
 			list_for_each_entry_reverse(prev, &framemgr->queued_list[FS_REQUEST], list) {
@@ -2798,6 +2814,8 @@ static int fimc_is_group_check_pre(struct fimc_is_groupmgr *groupmgr,
 				incrop->w = subdev->input.width;
 				incrop->h = subdev->input.height;
 			}
+
+			gframe = &dummy_gframe;
 		} else
 #endif
 		{

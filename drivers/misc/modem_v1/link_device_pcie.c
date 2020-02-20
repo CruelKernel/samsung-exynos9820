@@ -3236,11 +3236,8 @@ static int shmem_register_pcie(struct link_device *ld)
 
 	msleep(200);
 
-#ifdef CONFIG_PM
 	cp_runtime_link(ld->mc, LINK_REGISTER_PCI, 0);
-#else
-	exynos_pcie_host_v1_poweron(mc->pcie_ch_num);
-#endif
+
 	if (is_registered == 0) {
 		s5100pcie_init(mc->pcie_ch_num);
 		mc->s5100_pdev = s5100pcie_get_pcidev();
@@ -3249,13 +3246,11 @@ static int shmem_register_pcie(struct link_device *ld)
 			return -EINVAL;
 		}
 		/* DBG: mif_info("%s:call l1ss_ctrl(ENABLE) when is_registered = 0\n", __func__); */
-		exynos_pcie_host_v1_l1ss_ctrl(1, PCIE_L1SS_CTRL_MODEM_IF);
+		/* exynos_pcie_host_v1_l1ss_ctrl(1, PCIE_L1SS_CTRL_MODEM_IF); */
 
 		is_registered = 1;
 		request_pcie_msi_int(ld, pdev);
 	} else {
-		exynos_pcie_host_v1_poweron(mc->pcie_ch_num);
-		restore_s5100_state();
 		if (mc->phone_state == STATE_CRASH_RESET) {
 			print_msi_register();
 			enable_irq(mld->msi_irq_base);

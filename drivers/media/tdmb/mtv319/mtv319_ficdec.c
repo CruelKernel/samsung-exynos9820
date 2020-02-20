@@ -744,13 +744,13 @@ static INLINE void update_ens_desc_type0_ext4(
 	if (C_N) {
 		for (k = 0; k < next->svr_comp_num; k++) {
 			if (type0_ext4->M_F) {
-				if ((next->svr_comp[k].FIDCid
-					== type0_ext4->FIDCid))
+				if (next->svr_comp[k].FIDCid
+					== type0_ext4->FIDCid)
 					next->svr_comp[k].CA_Org
 						= type0_ext4->CA_Org;
 			} else {
-				if ((next->svr_comp[k].SubChid
-					== type0_ext4->SubChid))
+				if (next->svr_comp[k].SubChid
+					== type0_ext4->SubChid)
 					next->svr_comp[k].CA_Org
 						= type0_ext4->CA_Org;
 			}
@@ -758,13 +758,13 @@ static INLINE void update_ens_desc_type0_ext4(
 	} else {
 		for (k = 0; k < cur->svr_comp_num; k++) {
 			if (type0_ext4->M_F) {
-				if ((cur->svr_comp[k].FIDCid
-					== type0_ext4->FIDCid))
+				if (cur->svr_comp[k].FIDCid
+					== type0_ext4->FIDCid)
 					cur->svr_comp[k].CA_Org
 						= type0_ext4->CA_Org;
 			} else {
-				if ((cur->svr_comp[k].SubChid
-					== type0_ext4->SubChid))
+				if (cur->svr_comp[k].SubChid
+					== type0_ext4->SubChid)
 					cur->svr_comp[k].CA_Org
 						= type0_ext4->CA_Org;
 			}

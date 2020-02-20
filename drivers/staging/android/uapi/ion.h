@@ -47,7 +47,7 @@ enum ion_heap_type {
 };
 
 /* Samsung specific ION heap types */
-#define ION_HEAP_TYPE_RBIN	ION_HEAP_TYPE_CUSTOM2
+#define ION_HEAP_TYPE_RBIN		ION_HEAP_TYPE_CUSTOM2
 
 #define ION_NUM_HEAP_IDS		(sizeof(unsigned int) * 8)
 

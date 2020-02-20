@@ -103,7 +103,7 @@ static int exynos_enter_idle(struct cpuidle_device *dev,
 	struct freqvariant_idlefactor *pfv_factor = &per_cpu(fv_ifactor, dev->cpu);
 	struct cpuidle_info *idle_info = this_cpu_ptr(&cpuidle_inf);
 
-	if (idle_info->bUse_GovDecision == 1)
+	if (idle_info->bUse_GovDecision == 1 || pfv_factor->init != 0xdead)
 		goto skip_moce;
 	/* Fetch the criteria for idle state without spinlock
 	 * with the way of Read-Copy-No update
@@ -217,6 +217,9 @@ static int exynos_cpuidle_cpufreq_trans_notifier(struct notifier_block *nb,
 
 	leader_cpu = per_cpu(clhead_cpu, freq->cpu);
 	pfv_factor = &per_cpu(fv_ifactor, leader_cpu);
+
+	if (pfv_factor->init != 0xdead)
+		return NOTIFY_OK;
 
 	spin_lock_irqsave(&pfv_factor->freqvar_if_lock, flags);
 
@@ -367,8 +370,8 @@ static int __init exynos_idle_init(void)
 		pfv_factor->bias_target_res= exynos_idle_driver[cpu].states[1].target_residency;
 		pfv_factor->bias_exit_lat= exynos_idle_driver[cpu].states[1].exit_latency;
 		spin_lock_init(&pfv_factor->freqvar_if_lock);
-		pfv_factor->init = 1;
 		pfv_factor->bias_index = 0x2;	// We only focusing on state index 1 (C2)
+		pfv_factor->init = 0xdead;
 	}
 
 	cpuidle_profile_cpu_idle_register(&exynos_idle_driver[0]);

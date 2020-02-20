@@ -319,6 +319,7 @@ struct exynos_context {
 	int gpu_set_pmu_duration_val;
 	bool gpu_bts_support;
 	char g3d_genpd_name[30];
+	int gpu_dss_freq_id;
 };
 
 struct kbase_device *gpu_get_device_structure(void);

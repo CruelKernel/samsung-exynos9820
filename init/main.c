@@ -170,6 +170,11 @@ void (*__initdata late_time_init)(void);
 char __initdata boot_command_line[COMMAND_LINE_SIZE];
 /* Untouched saved command line (eg. for /proc) */
 char *saved_command_line;
+
+#if defined(CONFIG_SEC_DEBUG_HIDING)
+char *erased_command_line;
+#endif
+
 /* Command line for parameter parsing */
 static char *static_command_line;
 /* Command line for per-initcall parameter parsing */
@@ -420,10 +425,17 @@ static void __init setup_command_line(char *command_line)
 {
 	saved_command_line =
 		memblock_virt_alloc(strlen(boot_command_line) + 1, 0);
+#if defined(CONFIG_SEC_DEBUG_HIDING)
+	erased_command_line =
+		memblock_virt_alloc(strlen(boot_command_line) + 1, 0);
+#endif
 	initcall_command_line =
 		memblock_virt_alloc(strlen(boot_command_line) + 1, 0);
 	static_command_line = memblock_virt_alloc(strlen(command_line) + 1, 0);
 	strcpy(saved_command_line, boot_command_line);
+#if defined(CONFIG_SEC_DEBUG_HIDING)
+	strcpy(erased_command_line, boot_command_line);
+#endif
 	strcpy(static_command_line, command_line);
 }
 
@@ -568,6 +580,7 @@ static void __init mm_init(void)
 	 */
 	page_ext_init_flatmem();
 	mem_init();
+	set_memsize_kernel_type(MEMSIZE_KERNEL_STOP);
 	kmem_cache_init();
 	pgtable_init();
 	vmalloc_init();
@@ -576,7 +589,6 @@ static void __init mm_init(void)
 	init_espfix_bsp();
 	/* Should be run after espfix64 is set up. */
 	pti_init();
-	set_memsize_kernel_type(MEMSIZE_KERNEL_OTHERS);
 }
 #ifdef CONFIG_UH_RKP
 rkp_init_t rkp_init_data __rkp_ro = {
@@ -668,6 +680,13 @@ asmlinkage __visible void __init start_kernel(void)
 	char *command_line;
 	char *after_dashes;
 
+#if defined(CONFIG_SAMSUNG_PRODUCT_SHIP) && defined(CONFIG_SEC_DEBUG_HIDING)
+	char *erase_cmd_start, *erase_cmd_end;
+	char *erase_string[] = {"ap_serial=0x", "serialno=", "androidboot.em.did="};
+	size_t len, value_len;
+	unsigned int i, j;
+#endif
+
 	set_memsize_kernel_type(MEMSIZE_KERNEL_OTHERS);
 	set_task_stack_end_magic(&init_task);
 	smp_setup_processor_id();
@@ -706,7 +725,26 @@ asmlinkage __visible void __init start_kernel(void)
 	build_all_zonelists(NULL);
 	page_alloc_init();
 
+#if defined(CONFIG_SAMSUNG_PRODUCT_SHIP) && defined(CONFIG_SEC_DEBUG_HIDING)
+	for (i = 0; i < ARRAY_SIZE(erase_string); i++) {
+		len = strlen(erase_string[i]);
+		erase_cmd_start = strstr(erased_command_line, erase_string[i]);
+		erase_cmd_end = strstr(erase_cmd_start, " ");
+
+		if ((erase_cmd_end != NULL) &&
+				(erase_cmd_start != NULL) &&
+				(erase_cmd_end > erase_cmd_start)) {
+			value_len = (size_t)(erase_cmd_end - erase_cmd_start) - len;
+
+			for (j = 0; j < value_len; j++)
+				erase_cmd_start[len + j] = '0';
+		}
+	}
+	pr_notice("Kernel command line: %s\n", erased_command_line);
+#else
 	pr_notice("Kernel command line: %s\n", boot_command_line);
+#endif
+
 	parse_early_param();
 	after_dashes = parse_args("Booting kernel",
 				  static_command_line, __start___param,
@@ -871,7 +909,6 @@ asmlinkage __visible void __init start_kernel(void)
 		efi_free_boot_services();
 	}
 
-	set_memsize_kernel_type(MEMSIZE_KERNEL_STOP);
 	/* Do the rest non-__init'ed, we're now alive */
 	rest_init();
 }

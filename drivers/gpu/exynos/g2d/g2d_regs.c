@@ -15,6 +15,7 @@
 
 #include <linux/kernel.h>
 #include <linux/io.h>
+#include <linux/property.h>
 
 #include <asm/cacheflush.h>
 
@@ -82,6 +83,10 @@ void g2d_hw_push_task(struct g2d_device *g2d_dev, struct g2d_task *task)
 			       g2d_dev->reg +
 			       G2D_JOBn_LAYER_SECURE_REG(task->sec.job_id));
 	}
+
+	if (device_get_dma_attr(g2d_dev->dev) != DEV_DMA_COHERENT)
+		__flush_dcache_area(page_address(task->cmd_page),
+				    G2D_CMD_LIST_SIZE);
 
 	writel_relaxed(G2D_JOB_HEADER_DATA(task->sec.priority,
 					   task->sec.job_id),

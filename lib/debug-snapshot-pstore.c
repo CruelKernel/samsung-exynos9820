@@ -160,10 +160,7 @@ static int dbg_snapshot_combine_pmsg(char *buffer, size_t count, unsigned int le
 				if (count > 5 && strncmp(buffer, "!@Boot", 6) == 0)
 					sec_bootstat_add(buffer);
 #endif /* CONFIG_SEC_BOOTSTAT */
-#ifdef CONFIG_SEC_DEBUG_PCPRWSEM
-				if (count > 27 && !strncmp(buffer, "!@Sending shutdown broadcast", 28))
-					sec_debug_pcprwsem_log_enable(true);
-#endif /* CONFIG_SEC_DEBUG_PCPRWSEM */
+
 			}
 #endif /* CONFIG_SEC_EXT */
 		}

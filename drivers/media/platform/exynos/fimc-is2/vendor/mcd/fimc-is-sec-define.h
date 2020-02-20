@@ -105,6 +105,7 @@
 /* Rear setfile */
 #define FIMC_IS_2L4_SETF			"setfile_2l4.bin"
 #define FIMC_IS_3M3_SETF			"setfile_3m3.bin"
+#define FIMC_IS_3M5_SETF			"setfile_3m5.bin"
 
 /* Front setfile */
 #define FIMC_IS_3J1_SETF			"setfile_3j1.bin"
@@ -152,8 +153,8 @@
 #define FIMC_IS_MAX_TUNNING_BUFFER_SIZE (15 * 1024)
 
 #if defined(CAMERA_REAR_TOF_CAL) || defined(CAMERA_FRONT_TOF_CAL)
-#define FIMC_IS_TOF_CAL_SIZE_LEN	4
-#define FIMC_IS_TOF_CAL_SIZE_ONCE	4096
+#define FIMC_IS_TOF_CAL_SIZE_ONCE	4095
+#define FIMC_IS_TOF_CAL_CAL_RESULT_OK	0x11
 #endif
 
 #define FROM_VERSION_V002 '2'
@@ -174,6 +175,13 @@ enum {
         CC_BIN6,
         CC_BIN7,
         CC_BIN_MAX,
+};
+
+enum fnumber_index {
+	FNUMBER_1ST = 0,
+	FNUMBER_2ND,
+	FNUMBER_3RD,
+	FNUMBER_MAX
 };
 
 enum fimc_is_rom_state {
@@ -223,6 +231,10 @@ struct fimc_is_rom_info {
 	u32		rom_dualcal_slave0_tilt_list_len;
 	u32		rom_dualcal_slave1_tilt_list[FIMC_IS_ROM_DUAL_TILT_MAX_LIST];
 	u32		rom_dualcal_slave1_tilt_list_len;
+	u32		rom_dualcal_slave2_tilt_list[FIMC_IS_ROM_DUAL_TILT_MAX_LIST];
+	u32		rom_dualcal_slave2_tilt_list_len;
+	u32		rom_dualcal_slave3_tilt_list[FIMC_IS_ROM_DUAL_TILT_MAX_LIST];
+	u32		rom_dualcal_slave3_tilt_list_len;
 	u32		rom_ois_list[FIMC_IS_ROM_OIS_MAX_LIST];
 	u32		rom_ois_list_len;
 
@@ -236,6 +248,7 @@ struct fimc_is_rom_info {
 	int32_t		rom_header_sensor_id_addr;
 	int32_t		rom_header_mtf_data_addr;
 	int32_t		rom_header_f2_mtf_data_addr;
+	int32_t		rom_header_f3_mtf_data_addr;
 	int32_t		rom_awb_master_addr;
 	int32_t		rom_awb_module_addr;
 	int32_t		rom_af_cal_macro_addr;
@@ -255,10 +268,17 @@ struct fimc_is_rom_info {
 	int32_t		rom_dualcal_slave0_size;
 	int32_t		rom_dualcal_slave1_start_addr;
 	int32_t		rom_dualcal_slave1_size;
+	int32_t		rom_dualcal_slave2_start_addr;
+	int32_t		rom_dualcal_slave2_size;
 
-	int32_t		rom_tof_cal_size_addr;
+	int32_t		rom_tof_cal_size_addr[TOF_CAL_SIZE_MAX];
+	int32_t		rom_tof_cal_size_addr_len;
 	int32_t		rom_tof_cal_start_addr;
-	int32_t		rom_tof_cal_uid_addr;
+	int32_t		rom_tof_cal_uid_addr[TOF_CAL_UID_MAX];
+	int32_t		rom_tof_cal_uid_addr_len;
+	int32_t		rom_tof_cal_result_addr;
+	int32_t		rom_tof_cal_validation_addr[TOF_CAL_VALID_MAX];
+	int32_t		rom_tof_cal_validation_addr_len;
 
 	u32		bin_start_addr;		/* DDK */
 	u32		bin_end_addr;
@@ -296,7 +316,6 @@ struct fimc_is_rom_info {
 	char		rom_sensor_id[FIMC_IS_SENSOR_ID_SIZE + 1];
 	char		rom_sensor2_id[FIMC_IS_SENSOR_ID_SIZE + 1];
 	u8		rom_module_id[FIMC_IS_MODULE_ID_SIZE + 1];
-	u8		rom_front_module_id[FIMC_IS_MODULE_ID_SIZE + 1];
 	unsigned long		fw_size;
 #ifdef USE_RTA_BINARY
 	unsigned long		rta_fw_size;
@@ -331,6 +350,7 @@ int fimc_is_sec_set_camid(int id);
 int fimc_is_sec_get_pixel_size(char *header_ver);
 int fimc_is_sec_sensorid_find(struct fimc_is_core *core);
 int fimc_is_sec_sensorid_find_front(struct fimc_is_core *core);
+int fimc_is_sec_sensorid_find_rear_tof(struct fimc_is_core *core);
 int fimc_is_sec_fw_find(struct fimc_is_core *core);
 int fimc_is_sec_run_fw_sel(struct device *dev, int rom_id);
 
@@ -363,4 +383,6 @@ int fimc_is_sec_rom_power_on(struct fimc_is_core *core, int position);
 int fimc_is_sec_rom_power_off(struct fimc_is_core *core, int position);
 void remove_dump_fw_file(void);
 int fimc_is_get_dual_cal_buf(int slave_position, char **buf, int *size);
+int fimc_is_sec_sensor_find_front_tof_uid(struct fimc_is_core *core, char *buf);
+int fimc_is_sec_sensor_find_rear_tof_uid(struct fimc_is_core *core, char *buf);
 #endif /* FIMC_IS_SEC_DEFINE_H */

@@ -218,6 +218,300 @@ void blk_dump_rq_flags(struct request *rq, char *msg)
 }
 EXPORT_SYMBOL(blk_dump_rq_flags);
 
+#ifdef CONFIG_BLK_IO_VOLUME
+/* should be called with lock of queue_lock */
+void blk_queue_reset_io_vol(struct request_queue *q)
+{
+	int idx;
+
+	for (idx = 0; idx < BLK_MAX_IO_VOLS; idx++) {
+		struct block_io_volume *vol = &(q->blk_io_vol[idx]);
+
+		vol->queuing_rqs = 0;
+		vol->queuing_bytes= 0;
+
+		vol->peak_rqs = 0;
+		vol->peak_mb = 0;
+
+		vol->peak_rqs_cnt[0] = 0;
+		vol->peak_rqs_cnt[1] = 0;
+		vol->peak_rqs_cnt[2] = 0;
+		vol->peak_rqs_cnt[3] = 0;
+
+		vol->peak_mb_cnt[0] = 0;
+		vol->peak_mb_cnt[1] = 0;
+		vol->peak_mb_cnt[2] = 0;
+		vol->peak_mb_cnt[3] = 0;
+	}
+}
+
+/* should be called with lock of queue_lock */
+void blk_queue_io_vol_add(struct request_queue *q, int opf, long long bytes)
+{
+	if (bytes > 0) {
+		int op = opf & REQ_OP_MASK;
+
+		if ((op == REQ_OP_READ) || (op == REQ_OP_WRITE)) {
+			struct block_io_volume *vol = &(q->blk_io_vol[op]);
+
+			vol->queuing_rqs++;
+			vol->queuing_bytes += bytes;
+
+			vol->peak_rqs |= vol->queuing_rqs;
+			vol->peak_mb |= vol->queuing_bytes >> 20;
+		}
+	}
+}
+
+/* should be called with lock of queue_lock */
+void blk_queue_io_vol_del(struct request_queue *q, int opf, long long bytes)
+{
+	if (bytes > 0) {
+		int op = opf & REQ_OP_MASK;
+
+		if ((op == REQ_OP_READ) || (op == REQ_OP_WRITE)) {
+			struct block_io_volume *vol = &(q->blk_io_vol[op]);
+
+			vol->queuing_rqs--;
+			vol->queuing_bytes -= bytes;
+
+			if (vol->queuing_rqs == 0) {
+				unsigned int	rqs = vol->peak_rqs;
+				unsigned int	mb = vol->peak_mb;
+				unsigned char	cnt_idx;
+
+				vol->peak_rqs = 0;
+				vol->peak_mb = 0;
+
+				cnt_idx = 0;
+				cnt_idx += !!(rqs >> 5);
+				cnt_idx += !!(rqs >> 6);
+				cnt_idx += !!(rqs >> 7);
+				vol->peak_rqs_cnt[cnt_idx] += !!(rqs >> 4);
+
+				cnt_idx = 0;
+				cnt_idx += !!(mb >> 4);
+				cnt_idx += !!(mb >> 5);
+				cnt_idx += !!(mb >> 6);
+				vol->peak_mb_cnt[cnt_idx] += !!(mb >> 3);
+			}
+		}
+	}
+}
+
+/* should be called with lock of queue_lock */
+void blk_queue_io_vol_merge(struct request_queue *q, int opf, int rqs, long long bytes)
+{
+	int op = opf & REQ_OP_MASK;
+
+	if ((op == REQ_OP_READ) || (op == REQ_OP_WRITE)) {
+		struct block_io_volume *vol = &(q->blk_io_vol[op]);
+
+		vol->queuing_rqs += rqs;
+		vol->queuing_bytes += bytes;
+
+		vol->peak_rqs |= vol->queuing_rqs;
+		vol->peak_mb |= vol->queuing_bytes >> 20;
+	}
+}
+#endif /* CONFIG_BLK_IO_VOLUME */
+
+#ifdef CONFIG_BLK_TURBO_WRITE
+static void blk_free_turbo_write_work(struct work_struct *work)
+{
+	struct blk_turbo_write *tw = container_of(work, struct blk_turbo_write, release.work);
+
+	if (refcount_read(&tw->refs) > 1) {
+		schedule_delayed_work(&tw->release, msecs_to_jiffies(100));
+	} else {
+		kfree(tw);
+	}
+}
+
+int blk_alloc_turbo_write(struct request_queue *q)
+{
+	struct blk_turbo_write	*new;
+
+	new = kmalloc(sizeof(struct blk_turbo_write), GFP_KERNEL);
+	if (!new)
+		return -ENOMEM;
+
+	refcount_set(&new->refs, 1);
+	spin_lock_init(&new->lock);
+
+	new->state = TW_OFF;
+	new->state_ts = jiffies;
+
+	new->up_threshold_bytes = (20 * 1024 * 1024);
+	new->down_threshold_bytes = (4 * 1024);
+	new->off_delay_ms = 5000;
+
+	new->try_on = NULL;
+	new->try_off = NULL;
+
+	INIT_DELAYED_WORK(&new->release, blk_free_turbo_write_work);
+
+	new->curr_issued_kb = 0;
+	new->total_issued_mb = 0;
+	new->issued_size_cnt[0] = 0;
+	new->issued_size_cnt[1] = 0;
+	new->issued_size_cnt[2] = 0;
+	new->issued_size_cnt[3] = 0;
+
+	if (q->tw) {
+		kfree(new);
+		return -EEXIST;
+	} else {
+		q->tw = new;
+	}
+
+	return 0;
+}
+
+void blk_free_turbo_write(struct request_queue *q)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return;
+
+	refcount_inc(&tw->refs);
+
+	q->tw = NULL;
+
+	refcount_dec(&tw->refs);
+
+	schedule_delayed_work(&tw->release, msecs_to_jiffies(100));
+}
+
+int blk_register_tw_try_on_fn(struct request_queue *q, blk_tw_try_on_fn *fn)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return -ENODEV;
+
+	refcount_inc(&tw->refs);
+
+	tw->try_on = fn;
+
+	refcount_dec(&tw->refs);
+
+	return 0;
+}
+
+int blk_register_tw_try_off_fn(struct request_queue *q, blk_tw_try_off_fn *fn)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return -ENODEV;
+
+	refcount_inc(&tw->refs);
+
+	tw->try_off = fn;
+
+	refcount_dec(&tw->refs);
+
+	return 0;
+}
+
+int blk_reset_tw_state(struct request_queue *q)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return -ENODEV;
+
+	refcount_inc(&tw->refs);
+	spin_lock_irq(&tw->lock);
+
+	tw->state = TW_OFF;
+	tw->state_ts = jiffies;
+
+	spin_unlock_irq(&tw->lock);
+	refcount_dec(&tw->refs);
+
+	return 0;
+}
+
+void blk_update_tw_state(struct request_queue *q, long long write_bytes)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return;
+
+	refcount_inc(&tw->refs);
+	spin_lock_irq(&tw->lock);
+
+	if (write_bytes > tw->up_threshold_bytes) {
+		if (tw->state == TW_OFF) {
+			tw->state = TW_ON;
+			tw->state_ts = jiffies;
+			if (tw->try_on) {
+				spin_unlock_irq(&tw->lock);
+				tw->try_on(q);
+				spin_lock_irq(&tw->lock);
+			}
+		} else if (tw->state == TW_OFF_READY) {
+			tw->state = TW_ON;
+			tw->state_ts = jiffies;
+		}
+	} else if (write_bytes < tw->down_threshold_bytes) {
+		if (tw->state == TW_ON) {
+			tw->state = TW_OFF_READY;
+			tw->state_ts = jiffies;
+		}
+	}
+
+	if (tw->state == TW_OFF_READY &&
+	    jiffies_to_msecs(jiffies - tw->state_ts) >= tw->off_delay_ms) {
+		tw->state = TW_OFF;
+		tw->state_ts = jiffies;
+		if (tw->try_off) {
+			spin_unlock_irq(&tw->lock);
+			tw->try_off(q);
+			spin_lock_irq(&tw->lock);
+		}
+	}
+
+	spin_unlock_irq(&tw->lock);
+	refcount_dec(&tw->refs);
+}
+
+void blk_account_tw_io(struct request_queue *q, int opf, int bytes)
+{
+	struct blk_turbo_write	*tw = q->tw;
+
+	if (!tw)
+		return;
+
+	refcount_inc(&tw->refs);
+
+	if (tw->state) {
+		if ((bytes > 0) && ((opf & REQ_OP_MASK) == REQ_OP_WRITE))
+			tw->curr_issued_kb += bytes >> 10;
+	} else {
+		if (tw->curr_issued_kb > 0) {
+			unsigned int	issued_mb = tw->curr_issued_kb >> 10;
+			unsigned char	cnt_idx = 0;
+
+			tw->curr_issued_kb = 0;
+
+			cnt_idx += !!(issued_mb >> 12);
+			cnt_idx += !!(issued_mb >> 13);
+			cnt_idx += !!(issued_mb >> 14);
+			tw->issued_size_cnt[cnt_idx]++;
+
+			tw->total_issued_mb += issued_mb;
+		}
+	}
+
+	refcount_dec(&tw->refs);
+}
+#endif
+
 static void blk_delay_work(struct work_struct *work)
 {
 	struct request_queue *q;
@@ -638,6 +932,9 @@ void blk_cleanup_queue(struct request_queue *q)
 	blk_set_queue_dying(q);
 	spin_lock_irq(lock);
 
+	blk_queue_reset_io_vol(q);
+	blk_free_turbo_write(q);
+
 	/*
 	 * A dying queue is permanently in bypass mode till released.  Note
 	 * that, unlike blk_queue_bypass_start(), we aren't performing
@@ -905,6 +1202,8 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 
 	if (blkcg_init_queue(q))
 		goto fail_ref;
+
+	blk_queue_reset_io_vol(q);
 
 	return q;
 
@@ -1429,6 +1728,9 @@ static struct request *blk_old_get_request(struct request_queue *q,
 	/* q->queue_lock is unlocked at this point */
 	rq->__data_len = 0;
 	rq->__sector = (sector_t) -1;
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	rq->__dun = 0;
+#endif
 	rq->bio = rq->biotail = NULL;
 	return rq;
 }
@@ -1652,6 +1954,9 @@ bool bio_attempt_front_merge(struct request_queue *q, struct request *req,
 	bio->bi_next = req->bio;
 	req->bio = bio;
 
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	req->__dun = bio->bi_iter.bi_dun;
+#endif
 	req->__sector = bio->bi_iter.bi_sector;
 	req->__data_len += bio->bi_iter.bi_size;
 	req->ioprio = ioprio_best(req->ioprio, bio_prio(bio));
@@ -1794,6 +2099,9 @@ void blk_init_request_from_bio(struct request *req, struct bio *bio)
 		req->cmd_flags |= REQ_FAILFAST_MASK;
 
 	req->__sector = bio->bi_iter.bi_sector;
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	req->__dun = bio->bi_iter.bi_dun;
+#endif
 	if (ioprio_valid(bio_prio(bio)))
 		req->ioprio = bio_prio(bio);
 	else if (ioc)
@@ -1848,6 +2156,7 @@ static blk_qc_t blk_queue_bio(struct request_queue *q, struct bio *bio)
 		if (!bio_attempt_back_merge(q, req, bio))
 			break;
 		elv_bio_merged(q, req, bio);
+		blk_queue_io_vol_merge(q, bio->bi_opf, 0, bio->bi_iter.bi_size);
 		free = attempt_back_merge(q, req);
 		if (free)
 			__blk_put_request(q, free);
@@ -1858,6 +2167,7 @@ static blk_qc_t blk_queue_bio(struct request_queue *q, struct bio *bio)
 		if (!bio_attempt_front_merge(q, req, bio))
 			break;
 		elv_bio_merged(q, req, bio);
+		blk_queue_io_vol_merge(q, bio->bi_opf, 0, bio->bi_iter.bi_size);
 		free = attempt_front_merge(q, req);
 		if (free)
 			__blk_put_request(q, free);
@@ -2130,6 +2440,7 @@ generic_make_request_checks(struct bio *bio)
 
 	if (!bio_flagged(bio, BIO_TRACE_COMPLETION)) {
 		trace_block_bio_queue(q, bio);
+		blk_update_tw_state(q, blk_io_vol_bytes(q, REQ_OP_WRITE));
 		/* Now that enqueuing has been traced, we need to trace
 		 * completion as well.
 		 */
@@ -2437,18 +2748,74 @@ unsigned int blk_rq_err_bytes(const struct request *rq)
 }
 EXPORT_SYMBOL_GPL(blk_rq_err_bytes);
 
+static int rw_size_group(unsigned int bytes)
+{
+	int sg;
+
+	if (bytes <= 4 * 1024)
+		sg = 0;
+	else if (bytes <= 8 * 1024)
+		sg = 1;
+	else if (bytes <= 16 * 1024)
+		sg = 2;
+	else if (bytes <= 32 * 1024)
+		sg = 3;
+	else if (bytes <= 64 * 1024)
+		sg = 4;
+	else if (bytes <= 128 * 1024)
+		sg = 5;
+	else if (bytes <= 256 * 1024)
+		sg = 6;
+	else
+		sg = 7;
+
+	return sg;
+}
+
+static int discard_size_group(unsigned int bytes)
+{
+	int sg;
+
+	if (bytes <= 32 * 1024)
+		sg = 0;
+	else if (bytes <= 64 * 1024)
+		sg = 1;
+	else if (bytes <= 128 * 1024)
+		sg = 2;
+	else if (bytes <= 256 * 1024)
+		sg = 3;
+	else if (bytes <= 512 * 1024)
+		sg = 4;
+	else if (bytes <= 1024 * 1024)
+		sg = 5;
+	else if (bytes <= 2 * 1024 * 1024)
+		sg = 6;
+	else
+		sg = 7;
+
+	return sg;
+}
+
 void blk_account_io_completion(struct request *req, unsigned int bytes)
 {
 	if (blk_do_io_stat(req)) {
 		const int rw = rq_data_dir(req);
 		struct hd_struct *part;
 		int cpu;
+		int sg;
 
 		cpu = part_stat_lock();
 		part = req->part;
 		part_stat_add(cpu, part, sectors[rw], bytes >> 9);
-		if (req_op(req) == REQ_OP_DISCARD)
+		if (req_op(req) == REQ_OP_DISCARD) {
+			sg = discard_size_group(bytes);
+			part_stat_inc(cpu, part, size_cnt[2][sg]);
 			part_stat_add(cpu, part, discard_sectors, bytes >> 9);
+		} else {
+			sg = rw_size_group(bytes);
+			part_stat_inc(cpu, part, size_cnt[rw][sg]);
+		}
+
 		part_stat_unlock();
 	}
 }
@@ -2587,6 +2954,7 @@ struct request *blk_peek_request(struct request_queue *q)
 			 * not be passed by new incoming requests
 			 */
 			rq->rq_flags |= RQF_STARTED;
+			blk_account_tw_io(q, rq->cmd_flags, blk_rq_bytes(rq));
 			trace_block_rq_issue(q, rq);
 		}
 
@@ -2671,6 +3039,8 @@ static void blk_dequeue_request(struct request *rq)
 		q->in_flight[rq_is_sync(rq)]++;
 		set_io_start_time_ns(rq);
 	}
+
+	blk_queue_io_vol_del(q, rq->cmd_flags, blk_rq_bytes(rq));
 }
 
 /**
@@ -2798,8 +3168,13 @@ bool blk_update_request(struct request *req, blk_status_t error,
 	req->__data_len -= total_bytes;
 
 	/* update sector only for requests with clear definition of sector */
-	if (!blk_rq_is_passthrough(req))
+	if (!blk_rq_is_passthrough(req)) {
 		req->__sector += total_bytes >> 9;
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+		if (req->__dun)
+			req->__dun += total_bytes >> 12;
+#endif
+	}
 
 	/* mixed attributes always follow the first bio */
 	if (req->rq_flags & RQF_MIXED_MERGE) {
@@ -3163,6 +3538,9 @@ static void __blk_rq_prep_clone(struct request *dst, struct request *src)
 	dst->cpu = src->cpu;
 	dst->__sector = blk_rq_pos(src);
 	dst->__data_len = blk_rq_bytes(src);
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	dst->__dun = blk_rq_dun(src);
+#endif
 	if (src->rq_flags & RQF_SPECIAL_PAYLOAD) {
 		dst->rq_flags |= RQF_SPECIAL_PAYLOAD;
 		dst->special_vec = src->special_vec;

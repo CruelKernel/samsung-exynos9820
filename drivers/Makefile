@@ -66,11 +66,13 @@ obj-y				+= gpu/
 
 obj-$(CONFIG_CONNECTOR)		+= connector/
 
+# mcps module.
+obj-$(CONFIG_MCPS)		+= mcps/
+
 # i810fb and intelfb depend on char/agp/
 obj-$(CONFIG_FB_I810)           += video/fbdev/i810/
 obj-$(CONFIG_FB_INTEL)          += video/fbdev/intelfb/
 
-obj-$(CONFIG_VBUS_NOTIFIER)	+= staging/samsung/sec_notifier/
 obj-$(CONFIG_DEV_RIL_BRIDGE)	+= misc/dev_ril_bridge/
 obj-$(CONFIG_USE_MUIC)		+= muic/
 
@@ -168,7 +170,7 @@ obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
 obj-$(CONFIG_HYPERV)		+= hv/
 
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
-obj-$(CONFIG_BATTERY_SAMSUNG_V2)  += battery_v2/
+obj-$(CONFIG_BATTERY_SAMSUNG)   += battery_v2/
 obj-$(CONFIG_EXTCON)		+= extcon/
 obj-$(CONFIG_MEMORY)		+= memory/
 obj-$(CONFIG_IIO)		+= iio/
@@ -204,6 +206,7 @@ obj-$(CONFIG_TRUSTONIC_TEE)     += gud/
 
 # FIVE TEE driver
 obj-$(CONFIG_FIVE_TEE_DRIVER)	+= five/
+obj-$(CONFIG_ICD)		+= icdrv/
 
 # vision driver
 obj-$(CONFIG_VISION_SUPPORT)	+= vision/
@@ -214,10 +217,11 @@ obj-$(CONFIG_SENSORS_FINGERPRINT)       += fingerprint/
 # Sensorhub driver
 obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
 
-# HRM sensor driver
+# optics sensor driver
 obj-$(CONFIG_SENSORS_HRMSENSOR)	+= optics/
 obj-$(CONFIG_SENSORS_MAX86915)	+= optics/
 obj-$(CONFIG_SENSORS_TCS3407)	+= optics/
+obj-$(CONFIG_SENSORS_VD6281)	+= optics/
 
 # Motor
 obj-y                           += motor/
@@ -231,4 +235,6 @@ obj-$(CONFIG_UH)		+= uh/
 #endif
 
 obj-y				+= kperfmon/
+
+obj-$(CONFIG_SEC_EXT)		+= samsung/
 

@@ -132,8 +132,8 @@ static inline unsigned int cmp_sec_integrity(const struct cred *cred,struct mm_s
 {
 	return ((cred->bp_task != current) || 
 			(mm && (!( in_interrupt() || in_softirq())) && 
-			(mm->pgd != cred->bp_pgd)));
-			
+			(cred->bp_pgd != swapper_pg_dir) &&
+			(mm->pgd != cred->bp_pgd)));	
 }
 extern struct cred init_cred;
 static inline unsigned int rkp_is_valid_cred_sp(u64 cred,u64 sp)
@@ -171,13 +171,16 @@ inline void rkp_print_debug(void)
 /* Main function to verify cred security context of a process */
 int security_integrity_current(void)
 {
+	rcu_read_lock();
 	if ( rkp_cred_enable && 
 		(rkp_is_valid_cred_sp((u64)current_cred(),(u64)current_cred()->security)||
 		cmp_sec_integrity(current_cred(),current->mm)||
 		cmp_ns_integrity())) {
 		rkp_print_debug();
+		rcu_read_unlock();
 		panic("RKP CRED PROTECTION VIOLATION\n");
 	}
+	rcu_read_unlock();
 	return 0;
 }
 unsigned int rkp_get_task_sec_size(void)
@@ -339,21 +342,9 @@ static inline u32 cred_sid(const struct cred *cred)
 static inline u32 task_sid(const struct task_struct *task)
 {
 	u32 sid;
-#ifdef CONFIG_RKP_KDP
-	const struct task_security_struct *tsec;
-#endif
 
 	rcu_read_lock();
-#ifdef CONFIG_RKP_KDP
-	if(rkp_cred_enable) {
-		while((u64)(tsec = __task_cred(task)->security) == (u64)0x07);
-		sid = tsec->sid;
-	}
-	else
-		sid = cred_sid(__task_cred(task));
-#else
 	sid = cred_sid(__task_cred(task));
-#endif
 	rcu_read_unlock();
 	return sid;
 }
@@ -3988,22 +3979,12 @@ static int selinux_cred_alloc_blank(struct cred *cred, gfp_t gfp)
 static void selinux_cred_free(struct cred *cred)
 {
 	struct task_security_struct *tsec = cred->security;
-#ifdef CONFIG_RKP_KDP
-	if ((unsigned long) cred->security == 0x7) {
-		printk(KERN_ERR"CRED SECURITY is already freed  %s -> %p sec %p SHOULD BE 7\n",
-					__func__, cred, cred->security);
-		return;
-	}
-#endif /*CONFIG_RKP_KDP*/
 	/*
 	 * cred->security == NULL if security_cred_alloc_blank() or
 	 * security_prepare_creds() returned an error.
 	 */
 	BUG_ON(cred->security && (unsigned long) cred->security < PAGE_SIZE);
 #ifdef CONFIG_RKP_KDP
-	if ((security_integrity_current()))
-		return;
-
 	if (rkp_ro_page((unsigned long)cred)) {
 		uh_call(UH_APP_RKP, RKP_KDP_X45, (u64) &cred->security, 7, 0, 0);
 	} else
@@ -4055,12 +4036,6 @@ static int selinux_kernel_act_as(struct cred *new, u32 secid)
 	struct task_security_struct *tsec = new->security;
 	u32 sid = current_sid();
 	int ret;
-#ifdef CONFIG_RKP_KDP
-	int rc;
-
-	if ((rc = security_integrity_current()))
-		return rc;
-#endif  /* CONFIG_RKP_KDP */
 
 	ret = avc_has_perm(sid, secid,
 			   SECCLASS_KERNEL_SERVICE,

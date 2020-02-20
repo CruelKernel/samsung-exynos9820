@@ -2569,24 +2569,6 @@ static int alg_test_null(const struct alg_test_desc *desc,
 /* Please keep this list sorted by algorithm name. */
 static const struct alg_test_desc alg_test_descs[] = {
 	{
-		.alg = "adiantum(xchacha12,aes)",
-		.test = alg_test_skcipher,
-		.suite = {
-			.cipher = {
-				.enc = __VECS(adiantum_xchacha12_aes_enc_tv_template),
-				.dec = __VECS(adiantum_xchacha12_aes_dec_tv_template)
-			}
-		},
-	}, {
-		.alg = "adiantum(xchacha20,aes)",
-		.test = alg_test_skcipher,
-		.suite = {
-			.cipher = {
-				.enc = __VECS(adiantum_xchacha20_aes_enc_tv_template),
-				.dec = __VECS(adiantum_xchacha20_aes_dec_tv_template)
-			}
-		},
-	}, {
 		.alg = "ansi_cprng",
 		.test = alg_test_cprng,
 		.suite = {
@@ -3272,6 +3254,24 @@ static const struct alg_test_desc alg_test_descs[] = {
 			}
 		}
 	}, {
+		.alg = "ecb(speck128)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = {
+				.enc = __VECS(speck128_enc_tv_template),
+				.dec = __VECS(speck128_dec_tv_template)
+			}
+		}
+	}, {
+		.alg = "ecb(speck64)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = {
+				.enc = __VECS(speck64_enc_tv_template),
+				.dec = __VECS(speck64_dec_tv_template)
+			}
+		}
+	}, {
 		.alg = "ecb(tea)",
 		.test = alg_test_skcipher,
 		.suite = {
@@ -3535,12 +3535,6 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.hash = __VECS(michael_mic_tv_template)
 		}
 	}, {
-		.alg = "nhpoly1305",
-		.test = alg_test_hash,
-		.suite = {
-			.hash = __VECS(nhpoly1305_tv_template)
-		}
-	}, {
 		.alg = "ofb(aes)",
 		.test = alg_test_skcipher,
 		.fips_allowed = 1,
@@ -3792,24 +3786,6 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.hash = __VECS(aes_xcbc128_tv_template)
 		}
 	}, {
-		.alg = "xchacha12",
-		.test = alg_test_skcipher,
-		.suite = {
-			.cipher = {
-				.enc = __VECS(xchacha12_tv_template),
-				.dec = __VECS(xchacha12_tv_template)
-			}
-		},
-	}, {
-		.alg = "xchacha20",
-		.test = alg_test_skcipher,
-		.suite = {
-			.cipher = {
-				.enc = __VECS(xchacha20_tv_template),
-				.dec = __VECS(xchacha20_tv_template)
-			}
-		},
-	}, {
 		.alg = "xts(aes)",
 		.test = alg_test_skcipher,
 		.fips_allowed = 1,
@@ -3847,6 +3823,24 @@ static const struct alg_test_desc alg_test_descs[] = {
 			}
 		}
 	}, {
+		.alg = "xts(speck128)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = {
+				.enc = __VECS(speck128_xts_enc_tv_template),
+				.dec = __VECS(speck128_xts_dec_tv_template)
+			}
+		}
+	}, {
+		.alg = "xts(speck64)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = {
+				.enc = __VECS(speck64_xts_enc_tv_template),
+				.dec = __VECS(speck64_xts_dec_tv_template)
+			}
+		}
+	}, {
 		.alg = "xts(twofish)",
 		.test = alg_test_skcipher,
 		.suite = {
@@ -3863,16 +3857,6 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.comp = {
 				.comp = __VECS(zlib_deflate_comp_tv_template),
 				.decomp = __VECS(zlib_deflate_decomp_tv_template)
-			}
-		}
-	}, {
-		.alg = "zstd",
-		.test = alg_test_comp,
-		.fips_allowed = 1,
-		.suite = {
-			.comp = {
-				.comp = __VECS(zstd_comp_tv_template),
-				.decomp = __VECS(zstd_decomp_tv_template)
 			}
 		}
 	}

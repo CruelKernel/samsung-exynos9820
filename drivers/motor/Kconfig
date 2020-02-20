@@ -22,9 +22,17 @@ config MOTOR_DRV_MAX77705
 config SEC_HAPTIC
 	tristate "sec haptic"
 	default n
-	depends on SEC_SYSFS
+	depends on DRV_SAMSUNG
 	help
 	  If you say yes here you will get support for the
 	  sec haptic driver.
-	  To enable this driver, SEC_SYSFS should be enabled and
+	  To enable this driver, DRV_SAMSUNG should be enabled and
 	  motor driver calls this driver.
+
+config VIB_NOTIFIER
+	bool "VIB notifier support"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the VBUS status change notification.
+

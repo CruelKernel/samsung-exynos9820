@@ -24,5 +24,14 @@ enum sensor_imx316_mode_enum {
 	SENSOR_IMX316_480X180_120FPS,
 };
 
+#ifdef USE_CAMERA_FRONT_TOF_TX_FREQ_VARIATION
+/* merge into sensor driver */
+enum {
+	CAM_IMX316_FRONT_DEFAULT_TX_CLOCK = 0, /* Default - 80Mhz */
+	CAM_IMX316_FRONT_TX_80_20_MHZ = 0,	/* 80Mhz */
+	CAM_IMX316_FRONT_TX_83_20_MHZ = 1,	/* 83Mhz */
+};
+#endif
+
 #endif
 

@@ -1008,17 +1008,11 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 			 * status. usb_ep_dequeue API should guarantee no race
 			 * condition with req->complete callback.
 			 */
-<<<<<<< HEAD
 			if (epfile->ep == ep) {
 				usb_ep_dequeue(ep->ep, req);
 				interrupted = ep->status < 0;
 			} else
 				interrupted = 1;
-=======
-			usb_ep_dequeue(ep->ep, req);
-			wait_for_completion(&done);
-			interrupted = ep->status < 0;
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		}
 
 		if (interrupted || (epfile->ep != ep))

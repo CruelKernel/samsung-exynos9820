@@ -39,16 +39,11 @@
 #include "fimc-is-device-module-base.h"
 
 static struct fimc_is_sensor_cfg config_module_imx316[] = {
-FIMC_IS_SENSOR_CFG(480, 180*8, 240, 0, 0, CSI_DATA_LANES_2, 1196, CSI_MODE_DT_ONLY, PD_NONE,
-  VC_IN(0, HW_FORMAT_RAW12, 480, 180*8), VC_OUT(HW_FORMAT_RAW12, VC_NOTHING, 480, 180*8),
+FIMC_IS_SENSOR_CFG(480, 1440, 30, 0, 0, CSI_DATA_LANES_2, 598, CSI_MODE_DT_ONLY, PD_NONE,
+  VC_IN(0, HW_FORMAT_RAW12, 480, 1440), VC_OUT(HW_FORMAT_RAW12, VC_NOTHING, 480, 1440),
   VC_IN(1, HW_FORMAT_UNKNOWN, 0, 0), VC_OUT(HW_FORMAT_UNKNOWN, VC_NOTHING, 0, 0),
   VC_IN(2, HW_FORMAT_UNKNOWN, 0, 0), VC_OUT(HW_FORMAT_UNKNOWN, VC_NOTHING, 0, 0),
   VC_IN(0, HW_FORMAT_EMBEDDED_8BIT, 198, 2*8), VC_OUT(HW_FORMAT_EMBEDDED_8BIT, VC_EMBEDDED, 198, 2*8)),
-FIMC_IS_SENSOR_CFG(480, 180*4, 120, 0, 1, CSI_DATA_LANES_2, 1196, CSI_MODE_DT_ONLY, PD_NONE,
-  VC_IN(0, HW_FORMAT_RAW12, 480, 180*4), VC_OUT(HW_FORMAT_RAW12, VC_NOTHING, 480, 180*4),
-  VC_IN(1, HW_FORMAT_UNKNOWN, 0, 0), VC_OUT(HW_FORMAT_UNKNOWN, VC_NOTHING, 0, 0),
-  VC_IN(2, HW_FORMAT_UNKNOWN, 0, 0), VC_OUT(HW_FORMAT_UNKNOWN, VC_NOTHING, 0, 0),
-  VC_IN(0, HW_FORMAT_EMBEDDED_8BIT, 198, 2*4), VC_OUT(HW_FORMAT_EMBEDDED_8BIT, VC_EMBEDDED, 198, 2*4)),
 };
 
 static int sensor_module_imx316_s_routing(struct v4l2_subdev *sd,
@@ -68,8 +63,6 @@ int sensor_imx316_s_shutterspeed(struct v4l2_subdev *subdev, u64 shutterspeed)
 	struct ae_param exposure;
 
 	FIMC_BUG(!subdev);
-
-	pr_info("%s(%d)\n", __func__, (u32)shutterspeed);
 
 	sensor = (struct fimc_is_module_enum *)v4l2_get_subdevdata(subdev);
 	if (unlikely(!sensor)) {
@@ -94,8 +87,44 @@ p_err:
 	return ret;
 }
 
+int sensor_imx316_s_duration(struct v4l2_subdev *subdev, u64 duration)
+{
+	int ret = 0;
+
+	struct fimc_is_module_enum *sensor;
+	struct i2c_client *client;
+	struct fimc_is_device_sensor_peri *sensor_peri;
+	u64 frame_duration;
+
+	FIMC_BUG(!subdev);
+
+	pr_info("%s(%lld)\n", __func__, duration);
+	frame_duration = duration;
+
+	sensor = (struct fimc_is_module_enum *)v4l2_get_subdevdata(subdev);
+	if (unlikely(!sensor)) {
+		err("sensor is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	sensor_peri = (struct fimc_is_device_sensor_peri*)sensor->private_data;
+	client = sensor_peri->cis.client;
+	if (unlikely(!client)) {
+		err("client is NULL");
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	CALL_CISOPS(&sensor_peri->cis, cis_set_frame_duration, sensor_peri->subdev_cis, (u32)frame_duration);
+
+p_err:
+	return ret;
+}
+
 struct fimc_is_sensor_ops module_imx316_ops = {
 	.s_shutterspeed = sensor_imx316_s_shutterspeed,
+	.s_duration = sensor_imx316_s_duration,
 };
 
 static const struct v4l2_subdev_core_ops core_ops = {
@@ -195,7 +224,7 @@ static int sensor_module_imx316_power_setpin(struct device *dev,
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDA_2.7V_TOF", PIN_REGULATOR, 1, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDIO_1.8V_TOF", PIN_REGULATOR, 1, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDD_1.2V_TOF", PIN_REGULATOR, 1, 0);
-	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDD_3.3V_TOF", PIN_REGULATOR, 1, 200);
+	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDD_3.3V_TOF", PIN_REGULATOR, 1, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "on_i2c", PIN_I2C, 1, 0);
 	if (power_seq_id == 1) { /* front tof */
 		SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "VDDIO_1.8V_WIDESUB", PIN_REGULATOR, 1, 0);
@@ -206,7 +235,7 @@ static int sensor_module_imx316_power_setpin(struct device *dev,
 	/* Mclock enable */
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "pin", PIN_FUNCTION, 2, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_none, "MCLK", PIN_MCLK, 1, 100);
-	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_reset, "rst_high", PIN_OUTPUT, 1, 0);
+	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_ON, gpio_reset, "rst_high", PIN_OUTPUT, 1, 1000);
 
 	/*********** REAR TOF CAMERA  - POWER OFF **********/
 	SET_PIN(pdata, SENSOR_SCENARIO_VISION, GPIO_SCENARIO_OFF, gpio_none, "off_i2c", PIN_I2C, 0, 0);
@@ -236,7 +265,6 @@ static int sensor_module_imx316_power_setpin(struct device *dev,
 
 	/******************** READ_ROM - POWER ON ********************/
 	SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_ON, gpio_none, "VDDIO_1.8V_TOF", PIN_REGULATOR, 1, 0);
-	SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_ON, gpio_none, "VDDIO_1.8V_CAM", PIN_REGULATOR, 1, 0);
 	if (power_seq_id == 1) { /* front tof */
 		SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_ON, gpio_none, "VDDIO_1.8V_WIDESUB", PIN_REGULATOR, 1, 0);
 	} else {
@@ -251,7 +279,6 @@ static int sensor_module_imx316_power_setpin(struct device *dev,
 	} else {
 		SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_OFF, gpio_none, "VDDIO_1.8V_VT", PIN_REGULATOR, 0, 0);
 	}
-	SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_OFF, gpio_none, "VDDIO_1.8V_CAM", PIN_REGULATOR, 0, 0);
 	SET_PIN(pdata, SENSOR_SCENARIO_READ_ROM, GPIO_SCENARIO_OFF, gpio_none, "VDDIO_1.8V_TOF", PIN_REGULATOR, 0, 0);
 
 	/******************** ADDITIONAL - POWER ON ********************/
@@ -313,11 +340,7 @@ static int __init sensor_module_imx316_probe(struct platform_device *pdev)
 	module->margin_bottom = 0;
 	module->pixel_width = module->active_width;
 	module->pixel_height = module->active_height;
-	if (pdata->position == SENSOR_POSITION_REAR_TOF) {
-		module->max_framerate = 240;
-	} else {
-		module->max_framerate = 120;
-	}
+	module->max_framerate = 30;
 	module->position = pdata->position;
 	module->bitwidth = 12;
 	module->sensor_maker = "SONY";

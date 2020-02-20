@@ -126,7 +126,7 @@ enum abox_dai {
 	ABOX_NSRC6, /* Virtual DAI */
 };
 
-#define ABOX_DAI_COUNT (ABOX_DSIF - ABOX_UAIF0 + 1)
+#define ABOX_DAI_COUNT (ABOX_RSRC0 - ABOX_UAIF0)
 
 enum calliope_state {
 	CALLIOPE_DISABLED,
@@ -251,6 +251,7 @@ struct abox_data {
 	void *ipc_rx_addr;
 	size_t ipc_rx_size;
 	struct abox2host_hndshk_tag *hndshk_tag;
+	int clk_diff_ppb;
 	int ipc_version;
 	unsigned int if_count;
 	unsigned int rdma_count;

@@ -16,7 +16,7 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/combo_redriver/ptn36502.h>
 
 struct ptn36502_data *redrv_data;
@@ -24,12 +24,23 @@ struct device *combo_redriver_device;
 
 int ptn36502_config(int config, int is_DFP)
 {
+	struct device_node *np_ptn36502;
 	int is_front = 0;
 	u8 value;
 
 	if (!redrv_data) {
+		np_ptn36502 = of_find_node_by_name(NULL, "ptn36502");
+		if (!np_ptn36502) {
+			pr_err("%s: HW does not support redriver.\n", __func__);			
+			return -ENODEV;
+		}
 		pr_err("%s: Invalid redrv_data\n", __func__);
 		return -2;
+	}
+
+	if (!redrv_data->is_supported) {
+		pr_err("%s: HW does not support redriver.\n", __func__);			
+		return -ENODEV;
 	}
 	
 	if (!redrv_data->i2c) {
@@ -311,6 +322,7 @@ static int ptn36502_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "Failed to allocate driver data\n");
 		return -ENOMEM;
 	}
+	redrv_data->is_supported = 1;
 
 	if (i2c->dev.of_node)
 		ptn36502_set_gpios(&i2c->dev);
@@ -386,26 +398,40 @@ const struct attribute_group ptn36502_sysfs_group = {
 
 static int __init ptn36502_init(void)
 {
+	struct device_node *np_ptn36502;
 	int ret = 0;
 
-	ret = i2c_add_driver(&ptn36502_driver);
-	pr_info("%s ret is %d\n", __func__, ret);
+	np_ptn36502 = of_find_node_by_name(NULL, "ptn36502");
+	if (!np_ptn36502) {
+		pr_err("%s: Could not find node for ptn36502\n", __func__);
+		redrv_data = kzalloc(sizeof(*redrv_data), GFP_KERNEL);	
+		if (!redrv_data) {
+			pr_err("%s: Failed to allocate driver data\n", __func__);
+			return -ENOMEM;
+		}		
+		redrv_data->is_supported = 0;
+	} else {
+		ret = i2c_add_driver(&ptn36502_driver);
+		pr_info("%s ret is %d\n", __func__, ret);
 
-	combo_redriver_device = sec_device_create(NULL, "combo");
-	if (IS_ERR(combo_redriver_device))
-		pr_err("%s Failed to create device(combo)!\n", __func__);
+		combo_redriver_device = sec_device_create(NULL, "combo");
+		if (IS_ERR(combo_redriver_device))
+			pr_err("%s Failed to create device(combo)!\n", __func__);
 
-	ret = sysfs_create_group(&combo_redriver_device->kobj, &ptn36502_sysfs_group);
-	if (ret)
-		pr_err("%s: sysfs_create_group fail, ret %d", __func__, ret);
-
+		ret = sysfs_create_group(&combo_redriver_device->kobj, &ptn36502_sysfs_group);
+		if (ret)
+			pr_err("%s: sysfs_create_group fail, ret %d", __func__, ret);
+	}
 	return ret;
 }
 module_init(ptn36502_init);
 
 static void __exit ptn36502_exit(void)
 {
-	i2c_del_driver(&ptn36502_driver);
+	if (redrv_data && !redrv_data->is_supported)
+		kfree(redrv_data);
+	else
+		i2c_del_driver(&ptn36502_driver);
 }
 module_exit(ptn36502_exit);
 

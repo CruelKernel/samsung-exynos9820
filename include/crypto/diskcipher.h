@@ -144,7 +144,7 @@ struct crypto_diskcipher *crypto_diskcipher_get(struct bio *bio);
  * This functions set thm to bio->bi_aux_private to pass it to host driver.
  *
  */
-void crypto_diskcipher_set(struct bio *bio, struct crypto_diskcipher *tfm);
+void crypto_diskcipher_set(struct bio *bio, struct crypto_diskcipher *tfm, u64 dun);
 
 /**
  * crypto_diskcipher_setkey() - set key for cipher
@@ -232,15 +232,20 @@ enum diskcipher_dbg {
 	DISKC_API_ALLOC, DISKC_API_FREE, DISKC_API_FREEREQ, DISKC_API_SETKEY,
 	DISKC_API_SET, DISKC_API_GET, DISKC_API_CRYPT, DISKC_API_CLEAR,
 	DISKC_API_MAX, FS_PAGEIO, FS_READP, FS_DIO, FS_BLOCK_WRITE,
-	FS_ZEROPAGE, BLK_BH, DMCRYPT, DISKC_MERGE, DISKC_CHECK_ERR,
+	FS_ZEROPAGE, BLK_BH, DMCRYPT, DISKC_MERGE, DISKC_MERGE_ERR_INODE, DISKC_MERGE_ERR_DISKC,
 	FS_DEC_WARN, FS_ENC_WARN, DISKC_MERGE_DIO, DISKC_FREE_REQ_WARN,
-	DISKC_FREE_WQ_WARN, DISKC_CRYPT_WARN, DISKC_USER_MAX
+	DISKC_FREE_WQ_WARN, DISKC_CRYPT_WARN,
+	DM_CRYPT_NONENCRYPT, DM_CRYPT_CTR, DM_CRYPT_DTR, DM_CRYPT_OVER,
+	F2FS_gc, F2FS_gc_data_page, F2FS_gc_data_page_key, F2FS_gc_data_page_key_FC,
+	F2FS_gc_data_page_FC, F2FS_gc_data_block, F2FS_gc_data_block_key,
+	F2FS_gc_data_block_err1, F2FS_gc_data_block_err2, F2FS_gc_data_block_err3, F2FS_gc_skip,
+	DISKC_ERR, DISKC_NO_KEY_ERR, DISKC_NO_SYNC_ERR, DISKC_NO_CRYPT_ERR, DISKC_NO_DISKC_ERR,
+	DISKC_USER_MAX
 };
+
 #ifdef CONFIG_CRYPTO_DISKCIPHER_DEBUG
 void crypto_diskcipher_debug(enum diskcipher_dbg dbg, int idx);
-void crypto_diskcipher_check(struct bio *bio);
 #else
-#define crypto_diskcipher_check(a) ((void)0)
 #define crypto_diskcipher_debug(a, b) ((void)0)
 #endif
 #else
@@ -248,10 +253,9 @@ void crypto_diskcipher_check(struct bio *bio);
 #define crypto_free_diskcipher(a) ((void)0)
 #define crypto_free_req_diskcipher(a) ((void)0)
 #define crypto_diskcipher_get(a) ((void *)NULL)
-#define crypto_diskcipher_set(a, b) ((void)0)
+#define crypto_diskcipher_set(a, b, c, d) ((void)0)
 #define crypto_diskcipher_clearkey(a) ((void)0)
 #define crypto_diskcipher_setkey(a, b, c, d) (-1)
-#define crypto_diskcipher_check(a) ((void)0)
 #define crypto_diskcipher_debug(a, b) ((void)0)
 #endif
 #endif /* _DISKCIPHER_H_ */

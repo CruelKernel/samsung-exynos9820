@@ -696,6 +696,25 @@ TRACE_EVENT(ems_select_service_cpu,
 /*
  * Tracepoint for frequency variant boost
  */
+
+TRACE_EVENT(ems_freqvar_st_boost,
+
+	TP_PROTO(int cpu, int ratio),
+
+	TP_ARGS(cpu, ratio),
+
+	TP_STRUCT__entry(
+		__field( int,		cpu			)
+		__field( int,		ratio			)
+	),
+
+	TP_fast_assign(
+		__entry->cpu			= cpu;
+		__entry->ratio			= ratio;
+	),
+
+	TP_printk("cpu=%d ratio=%d", __entry->cpu, __entry->ratio)
+);
 TRACE_EVENT(ems_freqvar_boost,
 
 	TP_PROTO(int cpu, int ratio, unsigned long step_max_util,

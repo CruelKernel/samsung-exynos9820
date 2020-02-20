@@ -44,6 +44,9 @@ struct bvec_iter {
 
 	unsigned int            bi_bvec_done;	/* number of bytes completed in
 						   current bvec */
+#ifdef CONFIG_BLK_DEV_CRYPT_DUN
+	u64                     bi_dun;
+#endif
 };
 
 /*

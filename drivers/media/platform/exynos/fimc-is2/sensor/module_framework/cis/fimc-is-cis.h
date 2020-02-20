@@ -54,6 +54,7 @@ enum i2c_write {
 
 int sensor_cis_set_registers(struct v4l2_subdev *subdev, const u32 *regs, const u32 size);
 int sensor_cis_set_registers_addr8(struct v4l2_subdev *subdev, const u32 *regs, const u32 size);
+int sensor_cis_check_rev_on_init(struct v4l2_subdev *subdev);
 int sensor_cis_check_rev(struct fimc_is_cis *cis);
 
 u32 sensor_cis_calc_again_code(u32 permile);
@@ -67,6 +68,8 @@ int sensor_cis_compensate_gain_for_extremely_br(struct v4l2_subdev *subdev, u32 
 int sensor_cis_dump_registers(struct v4l2_subdev *subdev, const u32 *regs, const u32 size);
 
 u32 sensor_cis_do_div64(u64 num, u32 den);
+
+int sensor_cis_parse_dt(struct device *dev, struct v4l2_subdev *subdev);
 
 int sensor_cis_wait_streamoff(struct v4l2_subdev *subdev);
 int sensor_cis_wait_streamon(struct v4l2_subdev *subdev);

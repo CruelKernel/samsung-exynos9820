@@ -233,8 +233,7 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
 	child_ci = child->i_crypt_info;
 
 	if (parent_ci && child_ci) {
-		return memcmp(parent_ci->ci_master_key_descriptor,
-			      child_ci->ci_master_key_descriptor,
+		return memcmp(parent_ci->ci_master_key, child_ci->ci_master_key,
 			      FS_KEY_DESCRIPTOR_SIZE) == 0 &&
 			(parent_ci->ci_data_mode == child_ci->ci_data_mode) &&
 			(parent_ci->ci_filename_mode ==
@@ -289,7 +288,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 	ctx.contents_encryption_mode = ci->ci_data_mode;
 	ctx.filenames_encryption_mode = ci->ci_filename_mode;
 	ctx.flags = ci->ci_flags;
-	memcpy(ctx.master_key_descriptor, ci->ci_master_key_descriptor,
+	memcpy(ctx.master_key_descriptor, ci->ci_master_key,
 	       FS_KEY_DESCRIPTOR_SIZE);
 	res = set_nonce(ctx.nonce);
 	if (res) {
@@ -304,7 +303,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 #endif
 
 #ifdef CONFIG_DDAR
-	res = dd_test_and_inherit_context(&ctx, parent, child, ci);
+	res = dd_test_and_inherit_context(&ctx, parent, child, ci, fs_data);
 	if(res) {
 		dd_error("failed to inherit dd policy\n");
 		return res;
@@ -312,7 +311,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 #endif
 
 #ifdef CONFIG_FSCRYPT_SDP
-	res = fscrypt_sdp_inherit_context(parent, child, &ctx);
+	res = fscrypt_sdp_inherit_context(parent, child, &ctx, fs_data);
 	if (res) {
 		printk_once(KERN_WARNING
 				"%s: Failed to set sensitive ongoing flag (err:%d)\n", __func__, res);

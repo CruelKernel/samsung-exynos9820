@@ -311,6 +311,12 @@ int decon_get_out_sd(struct decon_device *decon)
 		.data = decon,
 	};
 #endif
+
+#ifdef CONFIG_DYNAMIC_FREQ
+	int ret = 0;
+	struct df_status_info *status;
+#endif
+
 	decon->out_sd[0] = decon->dsim_sd[decon->dt.out_idx[0]];
 	if (IS_ERR_OR_NULL(decon->out_sd[0])) {
 		decon_err("failed to get dsim%d sd\n", decon->dt.out_idx[0]);
@@ -334,6 +340,21 @@ int decon_get_out_sd(struct decon_device *decon)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_DYNAMIC_FREQ
+	ret = v4l2_subdev_call(decon->panel_sd, core, ioctl,
+		PANEL_IOC_GET_DF_STATUS, NULL);
+	if (ret < 0) {
+		decon_err("DECON:ERR:%s:failed to get df status\n", __func__);
+		goto err_get_df;
+	}
+	status = (struct df_status_info*)v4l2_get_subdev_hostdata(decon->panel_sd);
+	if (status != NULL)
+		decon->df_status = status;
+
+	decon_info("[DYN_FREQ]:INFO:%s:req,tar,cur:%d,%d:%d\n", __func__,
+		decon->df_status->request_df, decon->df_status->target_df, decon->df_status->current_df);
+err_get_df:
+#endif
 	decon_info("lcd_info: hfp %d hbp %d hsa %d vfp %d vbp %d vsa %d",
 			decon->lcd_info->hfp, decon->lcd_info->hbp,
 			decon->lcd_info->hsa, decon->lcd_info->vfp,
@@ -1745,7 +1766,140 @@ void dpu_update_freq_hop(struct decon_device *decon)
 #endif
 }
 
-void dpu_set_freq_hop(struct decon_device *decon, bool en)
+#ifdef CONFIG_DYNAMIC_FREQ
+
+int decon_panel_ioc_update_ffc(struct decon_device *decon)
+{
+	int ret = 0;
+
+	ret = v4l2_subdev_call(decon->panel_sd, core, ioctl,
+		PANEL_IOC_DYN_FREQ_FFC, NULL);
+
+	return ret;
+}
+
+int dpu_finish_df_update(struct decon_device *decon)
+{
+	int ret = 0;
+	struct df_status_info *status = decon->df_status;
+
+	if (status->current_df == status->target_df)
+		panel_info("[DYN_FREQ]:WARN:%s: cur_df:%d, tar_df:%d\n", __func__,
+			status->current_df, status->target_df);
+
+	status->current_df = status->target_df;
+	status->context = 0;
+
+	return ret;
+}
+
+static int dpu_check_df_update(struct decon_device *decon)
+{
+	int ret = 0;
+
+	if (decon->df_status != NULL) {
+		if ((decon->df_status->request_df != decon->df_status->target_df) ||
+			(decon->df_status->request_df != decon->df_status->ffc_df)) {
+			decon->df_status->target_df = decon->df_status->request_df;
+			ret = MAGIC_DF_UPDATED;
+		}
+	}
+	return ret;
+}
+
+static int dpu_set_pre_df_dsim(struct decon_device *decon)
+{
+	int ret = 0;
+	struct df_param param;
+	struct df_setting_info *df_set;
+	struct df_status_info *status = decon->df_status;
+
+	/* copy default value */
+	memcpy(&param.pms, &decon->lcd_info->dphy_pms,
+		sizeof(struct stdphy_pms));
+
+	param.context = status->context;
+
+	df_set = &decon->lcd_info->df_set_info.setting_info[status->target_df];
+	if (df_set == NULL) {
+		decon_err("[DYN_FREQ]:ERR:%s:df setting value is null\n",
+			__func__);
+		return -EINVAL;
+	}
+	if (df_set->hs == 0) {
+		decon_err("[DYN_FREQ]:ERR:%s:df index : %d hs is 0 : %d\n",
+			__func__, status->target_df);
+		return -EINVAL;
+	}
+
+	/* update value for freq hop */
+	param.pms.m = df_set->dphy_pms.m;
+	param.pms.k = df_set->dphy_pms.k;
+
+	if (status->context)
+		dsim_info("[DYN_FREQ]:INFO:%s:target hs : %d, m : %d, k:%d\n", 
+			__func__, df_set->hs, param.pms.m, param.pms.k);
+
+	ret = v4l2_subdev_call(decon->out_sd[0], core, ioctl,
+			DSIM_IOC_SET_PRE_FREQ_HOP, &param);
+
+	return ret;
+}
+
+static int dpu_set_post_df_dsim(struct decon_device *decon)
+{
+	int ret = 0;
+	struct df_param param;
+
+	/* copy default value */
+	memcpy(&param.pms, &decon->lcd_info->dphy_pms,
+		sizeof(struct stdphy_pms));
+
+	if (decon->df_status->context)
+		dsim_info("[DYN_FREQ]:INFO:%s:m : %d, k:%d\n", 
+			__func__, param.pms.m, param.pms.k);
+
+	ret = v4l2_subdev_call(decon->out_sd[0], core, ioctl,
+			DSIM_IOC_SET_POST_FREQ_HOP, &param);
+
+	return ret;
+}
+
+void dpu_set_freq_hop(struct decon_device *decon, struct decon_reg_data *regs, bool en)
+{
+#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
+	return;
+#endif
+
+	if ((decon->dt.out_type != DECON_OUT_DSI) || (!decon->freq_hop.enabled))
+		return;
+
+	if (en) {
+		regs->df_update = dpu_check_df_update(decon);
+
+		if (regs->df_update == MAGIC_DF_UPDATED) {
+#if defined(CONFIG_EXYNOS_PLL_SLEEP)
+			/* wakeup PLL if sleeping... */
+			decon_reg_set_pll_wakeup(decon->id, true);
+			decon_reg_set_pll_sleep(decon->id, false);
+#endif
+			dpu_set_pre_df_dsim(decon);
+		}
+	} else {
+		if (regs->df_update == MAGIC_DF_UPDATED) {
+			dpu_set_post_df_dsim(decon);
+#if defined(CONFIG_EXYNOS_PLL_SLEEP)
+			decon_reg_set_pll_sleep(decon->id, true);
+#endif
+			decon_panel_ioc_update_ffc(decon);
+
+			dpu_finish_df_update(decon);
+		}
+	}
+}
+
+#else
+void dpu_set_freq_hop(struct decon_device *decon, struct decon_reg_data *regs, bool en)
 {
 #if !defined(CONFIG_SOC_EXYNOS9820_EVT0)
 	struct stdphy_pms *pms;
@@ -1783,3 +1937,4 @@ void dpu_set_freq_hop(struct decon_device *decon, bool en)
 	}
 #endif
 }
+#endif

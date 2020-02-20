@@ -100,8 +100,6 @@ static dma_addr_t __ion_iovmm_map(struct dma_buf_attachment *attachment,
 
 	if (!ion_buffer_cached(buffer))
 		prop &= ~IOMMU_CACHE;
-	else if (device_get_dma_attr(attachment->dev) == DEV_DMA_COHERENT)
-		prop |= IOMMU_CACHE;
 
 	list_for_each_entry(iovm_map, &buffer->iovas, list) {
 		if ((domain == iovm_map->domain) && (prop == iovm_map->prop)) {

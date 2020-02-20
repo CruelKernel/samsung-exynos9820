@@ -1,0 +1,39 @@
+#
+# Integrity Check Driver configuration
+#
+
+config ICD
+    bool "IC Driver"
+    depends on FIVE
+    default y
+    ---help---
+      Enable Integrity Check Driver support.
+      It's used to set FUSE for tampered processes.
+
+choice
+    prompt "IC Secure OS"
+    depends on ICD
+    default ICD_USE_QSEECOM if QSEECOM
+    default ICD_USE_TZDEV if TZDEV
+    default ICD_USE_TRUSTONIC
+    ---help---
+      Select Secure OS for ICD
+
+    config ICD_USE_TRUSTONIC
+        bool "Integrity TEE Driver based on Trustonic Secure OS"
+        depends on TRUSTONIC_TEE
+        ---help---
+          Use Trustonic as base Trusted Execution Environment
+
+    config ICD_USE_TZDEV
+        bool "Integrity TEE Driver based on TEEgris Secure OS"
+        depends on TZDEV
+        ---help---
+          Use TEEgris as base Trusted Execution Environment
+
+    config ICD_USE_QSEECOM
+        bool "Integrity TEE Driver based on Qualcomm Secure OS"
+        depends on QSEECOM
+        ---help---
+          Use Qualcomm as base Trusted Execution Environment
+endchoice

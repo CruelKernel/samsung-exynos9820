@@ -194,6 +194,8 @@ struct mem_ipc_device {
 	struct sk_buff_head *skb_rxq;
 
 	unsigned int req_ack_cnt[MAX_DIR];
+
+	spinlock_t tx_lock;
 };
 
 #endif

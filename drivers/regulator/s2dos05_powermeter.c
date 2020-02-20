@@ -430,7 +430,8 @@ static DEVICE_ATTR(adc_ctrl1, 0644, adc_ctrl1_show, adc_ctrl1_store);
 static DEVICE_ATTR(adc_validity, 0444, adc_validity_show, NULL);
 #endif /* CONFIG_SEC_PM */
 
-void s2dos05_powermeter_init(struct s2dos05_dev *s2dos05)
+void s2dos05_powermeter_init(struct s2dos05_dev *s2dos05,
+				struct device *sec_disp_pmic_dev)
 {
 	int ret;
 

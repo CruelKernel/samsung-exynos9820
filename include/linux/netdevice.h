@@ -3356,13 +3356,6 @@ static __always_inline int ____dev_forward_skb(struct net_device *dev,
 	return 0;
 }
 
-#ifdef CONFIG_NET_SUPPORT_DROPDUMP
-void dev_queue_nit(struct sk_buff *skb, u8 pkt_type, u16 drop_type);
-void dev_queue_mib(struct sk_buff *skb, u8 proto, u8 drop_type);
-#else
-static inline void dev_queue_nit(struct sk_buff *skb, u8 pkt_type, u16 drop_type) {}
-static inline void dev_queue_mib(struct sk_buff *skb, u8 proto, u8 drop_type) {}
-#endif
 
 void dev_queue_xmit_nit(struct sk_buff *skb, struct net_device *dev);
 
@@ -4499,5 +4492,7 @@ do {								\
  */
 #define PTYPE_HASH_SIZE	(16)
 #define PTYPE_HASH_MASK	(PTYPE_HASH_SIZE - 1)
+
+#include <uapi/linux/net_dropdump.h>
 
 #endif	/* _LINUX_NETDEVICE_H */

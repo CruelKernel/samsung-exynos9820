@@ -307,7 +307,6 @@ p_err:
 int _undo_s_graph_each_state(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 	u32 i = 0;
 	u32 IMB_cnt;
 	struct npu_memory *memory;
@@ -319,16 +318,15 @@ int _undo_s_graph_each_state(struct npu_session *session)
 	memory = session->memory;
 	IMB_cnt = session->IMB_cnt;
 
-	ss_state = session->ss_state;
-	if (ss_state <= BIT(NPU_SESSION_STATE_GRAPH_ION_MAP))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_GRAPH_ION_MAP))
 		goto graph_ion_unmap;
-	if (ss_state <= BIT(NPU_SESSION_STATE_WGT_KALLOC))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_WGT_KALLOC))
 		goto wgt_kfree;
-	if (ss_state <= BIT(NPU_SESSION_STATE_IOFM_KALLOC))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_IOFM_KALLOC))
 		goto iofm_kfree;
-	if (ss_state <= BIT(NPU_SESSION_STATE_IOFM_ION_ALLOC))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_IOFM_ION_ALLOC))
 		goto iofm_ion_unmap;
-	if (ss_state <= BIT(NPU_SESSION_STATE_IMB_ION_ALLOC))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_IMB_ION_ALLOC))
 		goto imb_ion_unmap;
 
 imb_ion_unmap:
@@ -385,18 +383,15 @@ graph_ion_unmap:
 int _undo_s_format_each_state(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 
 	BUG_ON(!session);
 
-	ss_state = session->ss_state;
-
-	if (ss_state < BIT(NPU_SESSION_STATE_IMB_ION_ALLOC)) {
+	if (session->ss_state < BIT(NPU_SESSION_STATE_IMB_ION_ALLOC)) {
 		ret = -EINVAL;
 		goto p_err;
 	}
 
-	if (ss_state <= BIT(NPU_SESSION_STATE_FORMAT_OT)) {
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_FORMAT_OT)) {
 		goto init_format;
 	}
 
@@ -409,18 +404,15 @@ p_err:
 int _undo_streamon_each_state(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 
 	BUG_ON(!session);
 
-	ss_state = session->ss_state;
-
-	if (ss_state < BIT(NPU_SESSION_STATE_FORMAT_OT)) {
+	if (session->ss_state < BIT(NPU_SESSION_STATE_FORMAT_OT)) {
 		ret = -EINVAL;
 		goto p_err;
 	}
 
-	if (ss_state <= BIT(NPU_SESSION_STATE_START))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_START))
 		goto release_streamon;
 
 release_streamon:
@@ -432,17 +424,15 @@ p_err:
 int _undo_streamoff_each_state(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 
 	BUG_ON(!session);
 
-	ss_state = session->ss_state;
-	if (ss_state < BIT(NPU_SESSION_STATE_START)) {
+	if (session->ss_state < BIT(NPU_SESSION_STATE_START)) {
 		ret = -EINVAL;
 		goto p_err;
 	}
 
-	if (ss_state <= BIT(NPU_SESSION_STATE_STOP))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_STOP))
 		goto release_streamoff;
 
 release_streamoff:
@@ -454,17 +444,15 @@ p_err:
 int _undo_close_each_state(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 
 	BUG_ON(!session);
 
-	ss_state = session->ss_state;
-	if (ss_state < BIT(NPU_SESSION_STATE_STOP)) {
+	if (session->ss_state < BIT(NPU_SESSION_STATE_STOP)) {
 		ret = -EINVAL;
 		goto p_err;
 	}
 
-	if (ss_state <= BIT(NPU_SESSION_STATE_CLOSE))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_CLOSE))
 		goto session_close;
 
 session_close:
@@ -1620,18 +1608,15 @@ int npu_session_execute_undo_cb(struct npu_session *session)
 int npu_session_undo_open(struct npu_session *session)
 {
 	int ret = 0;
-	u32 ss_state;
 
 	BUG_ON(!session);
 
-	ss_state = session->ss_state;
-
-	if (ss_state < BIT(NPU_SESSION_STATE_OPEN)) {
+	if (session->ss_state < BIT(NPU_SESSION_STATE_OPEN)) {
 		ret = -EINVAL;
 		goto p_err;
 	}
 
-	if (ss_state <= BIT(NPU_SESSION_STATE_OPEN))
+	if (session->ss_state <= BIT(NPU_SESSION_STATE_OPEN))
 		goto session_free;
 
 	npu_sessionmgr_unregID(session->cookie, session);

@@ -1,0 +1,423 @@
+/*
+ * SAMSUNG S5000AP SIPC device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *             http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+#include "exynos9820-rmem_s5000ap.dtsi"
+
+/ {
+	fragment@modemif {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			/* Modem interface information */
+			mif_pdata: mif_pdata {
+				/* modem binary start offset, DIT, SYSREG_BUSC */
+				reg = <0 0x10000 0x0>, <0x0 0x1A2A0000 0x10000>, <0x0 0x1A220000 0x2000>;
+				reg-names = "offset", "dit", "sysreg_busc";
+
+				compatible = "sec_modem,modem_pdata";
+				status = "okay";
+
+				/* HW revision : CP, AP
+				 * XGPIO27-CP_REV0, XGPIO26-CP_REV1, XGPIO25-CP_REV2, XGPIO24-CP_REV3
+				 * XGPIO13-HW_REV0, XGPIO12-HW_REV1, XGPIO11-HW_REV2, XGPIO10-HW_REV3
+				 */
+				gpios = <&gpg3 4 0>, <&gpg3 3 0>, <&gpg3 2 0>, <&gpg3 1 0>,
+					<&gpg1 5 0>, <&gpg1 4 0>, <&gpg1 3 0>, <&gpg1 2 0>;
+				pinctrl-names = "default";
+
+				/* INTREQ__CP2AP_WAKEUP, INTREQ__DIT_BusErr, INTREQ__DIT_RxEnd, INTREQ__DIT_TxEnd */
+				interrupts = <0 375 0>, <0 68 0>, <0 67 0>, <0 66 0>;
+				interrupt-names = "CP2AP_WAKEUP", "DIT_BUS_ERR", "DIT_RX_DONE", "DIT_TX_DONE";
+
+				ap2cp_cfg_addr = <0x15020000>;	/* AP2CP_CFG */
+
+				/* */
+				mif,name = "s5000ap";
+				mif,modem_net = <0>;		/* UMTS_NETWORK */
+				mif,modem_type = <11>;		/* SEC_S5000AP */
+				mif,use_handover = <0>;		/* Not used */
+				mif,ipc_version = <50>;		/* SIPC 5.0 */
+				mif,link_types = <0x200>;	/* LINKDEV_SHMEM */
+				mif,link_name = "shmem";
+				mif,link_attrs = <0x7C9>;	/* XMIT_BTDLR(0x400) | DUMP_ALIGNED (0x200) | BOOT_ALIGNED (0x100) | MEM_DUMP (0x80) | MEM_BOOT (0x40) | DPRAM_MAGIC (0x08) | SBD_IPC (0x01) */
+
+				/* Mailbox interrupt number from AP to CP */
+				mif,int_ap2cp_msg = <0>;
+				mif,int_ap2cp_wakeup = <1>;
+				mif,int_ap2cp_status = <2>;
+				mif,int_ap2cp_active = <3>;
+
+				/* Mailbox interrupt number from CP to AP */
+				mif,irq_cp2ap_msg = <0>;
+				mif,irq_cp2ap_status = <2>;
+				mif,irq_cp2ap_active = <3>;
+				mif,irq_cp2ap_perf_req_cpu = <5>;
+				mif,irq_cp2ap_perf_req_mif = <6>;
+				mif,irq_cp2ap_perf_req_int = <7>;
+				mif,irq_cp2ap_wakelock = <8>;
+				mif,irq_cp2ap_ratmode = <9>;
+
+				/* Mailbox shared data number */
+				mbx_ap2cp_msg = <0>;
+				mbx_cp2ap_msg = <1>;
+				mbx_ap2cp_united_status = <2>;
+				mbx_cp2ap_united_status = <3>;
+				mbx_cp2ap_dvfsreq_cpu = <5>;
+				mbx_cp2ap_dvfsreq_mif = <6>;
+				mbx_cp2ap_dvfsreq_int = <7>;
+				mbx_ap2cp_kerneltime = <9>;
+
+				/* Status bit info for mbx_ap2cp_united_status */
+				sbi_crash_type_mask = <0xf>;
+				sbi_crash_type_pos = <23>;
+				sbi_device_type_mask = <0x1f>;
+				sbi_device_type_pos = <18>;
+				sbi_ext_backtrace_mask = <0x1>;
+				sbi_ext_backtrace_pos = <17>;
+				sbi_ds_det_mask = <0x3>;
+				sbi_ds_det_pos = <14>;
+				sbi_sys_rev_mask = <0xff>;
+				sbi_sys_rev_pos = <6>;
+				sbi_pda_active_mask = <0x1>;
+				sbi_pda_active_pos = <5>;
+				sbi_ap_status_mask = <0xf>;
+				sbi_ap_status_pos = <1>;
+
+				/* Status bit info for mbx_cp2ap_united_status */
+				sbi_cp_rat_mode_mask = <0x3f>;
+				sbi_cp_rat_mode_pos = <26>;
+				sbi_cp_evs_mode_mask = <0x1>;
+				sbi_cp_evs_mode_pos = <7>;
+				sbi_cp2ap_wakelock_mask = <0x1>;
+				sbi_cp2ap_wakelock_pos = <6>;
+				sbi_lte_active_mask = <0x1>;
+				sbi_lte_active_pos = <5>;
+				sbi_cp_status_mask = <0xf>;
+				sbi_cp_status_pos = <1>;
+
+				/* Status bit info for mbx_ap2cp_kerneltime */
+				sbi_ap2cp_kerneltime_sec_mask = <0xfff>;
+				sbi_ap2cp_kerneltime_sec_pos = <20>;
+				sbi_ap2cp_kerneltime_usec_mask = <0xfffff>;
+				sbi_ap2cp_kerneltime_usec_pos = <0>;
+
+				/* IO devices */
+				mif,num_iodevs = <22>;
+				iodevs {
+					io_device_0 {
+						iod,name = "umts_cass";
+						iod,id = <35>;
+						iod,format = <1>;
+						iod,io_type = <0>;
+						iod,links = <0x200>;
+						iod,attrs = <0x2082>;
+						iod,max_tx_size = <2048>;
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <16>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_1 {
+						iod,name = "umts_ipc0";
+						iod,id = <235>;
+						iod,format = <0>;		/* IPC_FMT */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;		/* LINKDEV_SHMEM */
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "RIL";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <4096>;
+						iod,dl_num_buffers = <32>;
+						iod,dl_buffer_size = <4096>;
+					};
+					io_device_2 {
+						iod,name = "umts_ipc1";
+						iod,id = <236>;
+						iod,format = <0>;		/* IPC_FMT */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "RIL";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <4096>;
+						iod,dl_num_buffers = <32>;
+						iod,dl_buffer_size = <4096>;
+					};
+					io_device_3 {
+						iod,name = "umts_rfs0";
+						iod,id = <245>;
+						iod,format = <2>;		/* IPC_RFS */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "RFS";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <512>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_4 {
+						iod,name = "umts_csd";
+						iod,id = <1>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "CSVT";
+						iod,ul_num_buffers = <32>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <64>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_5 {
+						iod,name = "umts_router";
+						iod,id = <25>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "Data Router";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <16>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_6 {
+						iod,name = "umts_dm0";
+						iod,id = <28>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "DIAG";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <128>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_7 {
+						iod,name = "ipc_loopback0";
+						iod,id = <244>;
+						iod,format = <0>;		/* IPC_FMT */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x82>;		/* ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,app = "CLD";
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <32>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_8 {
+						iod,name = "rmnet0";
+						iod,id = <10>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "NET";
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_9 {
+						iod,name = "rmnet1";
+						iod,id = <11>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "NET";
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_10 {
+						iod,name = "rmnet2";
+						iod,id = <12>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "NET";
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_11 {
+						iod,name = "rmnet3";
+						iod,id = <13>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "NET";
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_12 {
+						iod,name = "rmnet4";
+						iod,id = <14>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_13 {
+						iod,name = "rmnet5";
+						iod,id = <15>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_14 {
+						iod,name = "rmnet6";
+						iod,id = <16>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_15 {
+						iod,name = "rmnet7";
+						iod,id = <17>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <1>;		/* IODEV_NET */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,ul_num_buffers = <0>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <0>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_16 {
+						iod,name = "multipdp_hiprio";
+						iod,id = <0>;
+						iod,format = <3>;		/* IPC_MULTI_RAW */
+						iod,io_type = <2>;		/* IODEV_DUMMY */
+						iod,links = <0x200>;
+						iod,attrs = <0x180>;		/* ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "RIL";
+						iod,ul_num_buffers = <256>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <256>;
+						iod,dl_buffer_size = <2048>;
+					};
+					io_device_17 {
+						iod,name = "multipdp";
+						iod,id = <0>;
+						iod,format = <3>;		/* IPC_MULTI_RAW */
+						iod,io_type = <2>;		/* IODEV_DUMMY */
+						iod,links = <0x200>;
+						iod,attrs = <0x1180>;		/* ATTR_ZEROCOPY | ATTR_NO_LINK_HDR | ATTR_SBD_IPC */
+						iod,app = "RIL";
+						iod,ul_num_buffers = <512>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <1024>;
+						iod,dl_buffer_size = <8>;
+					};
+					io_device_18 {
+						iod,name = "umts_boot0";
+						iod,id = <215>;
+						iod,format = <4>;		/* IPC_BOOT */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x02>;		/* ATTR_SIPC5 */
+						iod,app = "CBD";
+					};
+					io_device_19 {
+						iod,name = "umts_ramdump0";
+						iod,id = <225>;
+						iod,format = <5>;		/* IPC_DUMP */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x202>;		/* ATTR_NO_CHECK_MAXQ | ATTR_SIPC5 */
+						iod,app = "CBD";
+					};
+					io_device_20 {
+						iod,name = "smd4";
+						iod,id = <33>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x882>;		/* ATTR_OPTION_REGION | ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <128>;
+						iod,dl_buffer_size = <2048>;
+						iod,option_region = "kor_skt";
+					};
+					io_device_21 {
+						iod,name = "umts_ciq0";
+						iod,id = <26>;
+						iod,format = <1>;		/* IPC_RAW */
+						iod,io_type = <0>;		/* IODEV_MISC */
+						iod,links = <0x200>;
+						iod,attrs = <0x882>;		/* ATTR_OPTION_REGION | ATTR_SBD_IPC | ATTR_SIPC5 */
+						iod,ul_num_buffers = <16>;
+						iod,ul_buffer_size = <2048>;
+						iod,dl_num_buffers = <128>;
+						iod,dl_buffer_size = <2048>;
+						iod,option_region = "usa_spr";
+					};
+				}; /* end of iodevs */
+			}; /* end of mif_pdata */
+
+			/* Mailbox information */
+			mailbox_cp: mailbox_cp {
+				compatible = "samsung,exynos-shd-ipc-mailbox";
+
+				reg = <0x0 0x15920000 0x180>;
+				mcu,name = "mcu_ipc_cp";
+				mcu,id = <0>;
+				interrupts = <0 41 0 >;
+				mcu,irq_affinity_mask = <3>;
+			};
+
+			/* Shared memory information*/
+			shmem: shmem {
+				compatible = "samsung,exynos-shm_ipc";
+
+				/* Legacy */
+				shmem,cp_size = <0x7800000>;
+				shmem,vss_offset = <0x7800000>;		/* base + cp_size */
+				shmem,vss_size = <0x800000>;
+				shmem,l2b_offset = <0x8000000>;		/* cp_size + vss_size */
+				shmem,l2b_size = <0x3200000>;
+				shmem,ipc_offset = <0xB200000>;		/* cp_size + vss_size + l2_buff */
+				shmem,ipc_size = <0x500000>;
+				shmem,zmb_offset = <0x0>;		/* cp_size + vss_size + l2_buff + ipc_size */
+				shmem,zmb_size = <0x0>;
+				shmem,vparam_offset = <0xB700000>;	/* cp_size + vss_size + l2_buff + ipc_size + zmb_size */
+				shmem,vparam_size = <0x200000>;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+}; /* end of root */

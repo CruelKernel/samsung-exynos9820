@@ -1590,7 +1590,7 @@ static int kcryptd_io_read(struct dm_crypt_io *io, gfp_t gfp)
 	clone_init(io, clone);
 
 	if (crypt_mode_diskcipher(cc))
-		crypto_diskcipher_set(clone, cc->cipher_tfm.tfms_diskc[0]);
+		crypto_diskcipher_set(clone, cc->cipher_tfm.tfms_diskc[0], 0);
 
 	clone->bi_iter.bi_sector = cc->start + io->sector;
 
@@ -1931,13 +1931,6 @@ static int crypt_alloc_tfms_skcipher(struct crypt_config *cc, char *ciphermode)
 	}
 	set_bit(CRYPT_MODE_SKCIPHER, &cc->cipher_flags);
 
-	/*
-	 * dm-crypt performance can vary greatly depending on which crypto
-	 * algorithm implementation is used.  Help people debug performance
-	 * problems by logging the ->cra_driver_name.
-	 */
-	DMINFO("%s using implementation \"%s\"", ciphermode,
-	       crypto_skcipher_alg(any_tfm(cc))->base.cra_driver_name);
 	return 0;
 }
 
@@ -1956,8 +1949,6 @@ static int crypt_alloc_tfms_aead(struct crypt_config *cc, char *ciphermode)
 		return err;
 	}
 
-	DMINFO("%s using implementation \"%s\"", ciphermode,
-	       crypto_aead_alg(any_tfm_aead(cc))->base.cra_driver_name);
 	return 0;
 }
 
@@ -2570,19 +2561,11 @@ static int crypt_ctr_cipher_old(struct dm_target *ti, char *cipher_in, char *key
 		goto bad_mem;
 
 	chainmode = strsep(&tmp, "-");
-<<<<<<< HEAD
-	*ivopts = strsep(&tmp, "-");
-	*ivmode = strsep(&*ivopts, ":");
+	*ivmode = strsep(&tmp, ":");
+	*ivopts = tmp;
 
 	if (*ivmode && (!strcmp(*ivmode, "disk") || !strcmp(*ivmode, "fmp")))
 		set_bit(CRYPT_MODE_DISKCIPHER, &cc->cipher_flags);
-
-	if (tmp)
-		DMWARN("Ignoring unexpected additional cipher options");
-=======
-	*ivmode = strsep(&tmp, ":");
-	*ivopts = tmp;
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	/*
 	 * For compatibility with the original dm-crypt mapping format, if

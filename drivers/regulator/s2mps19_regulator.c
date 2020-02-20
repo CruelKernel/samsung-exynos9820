@@ -43,7 +43,7 @@
 #include <linux/sec_hqm_device.h>
 #endif /* CONFIG_SEC_PM_BIGDATA */
 #ifdef CONFIG_SEC_PM
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/soc/samsung/exynos-soc.h>
 
 #define STATUS1_ACOKB	BIT(2)
@@ -621,6 +621,10 @@ static int s2mps19_pmic_dt_parse_pdata(struct s2mps19_dev *iodev,
 	ret = of_property_read_u32(pmic_np, "adc_sync_mode", &val);
 
 	pdata->adc_sync_mode = val;
+
+	pdata->support_vdd_pll_1p7 = of_property_read_bool(pmic_np, "support_vdd_pll_1p7");
+
+	dev_info(iodev->dev, "support_vdd_pll_1p7 : %d\n", pdata->support_vdd_pll_1p7);
 
 	regulators_np = of_find_node_by_name(pmic_np, "regulators");
 	if (!regulators_np) {
@@ -1207,16 +1211,17 @@ static int s2mps19_pmic_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_SEC_PM
 	if (pdata->smpl_warn_en_by_evt) {
-		if (exynos_soc_info.sub_rev != 0) {
-			dev_info(&pdev->dev,
-				"Enable SMPL_WARN for EVT 1.1\n");
-			pdata->smpl_warn_en = true;
-			pdata->smpl_warn_dev2 = true;
-		} else {
-			dev_info(&pdev->dev,
-				"Disable SMPL_WARN for EVT 1.0\n");
+		if (exynos_soc_info.main_rev == 1
+				&& exynos_soc_info.sub_rev == 0) {
+			dev_info(&pdev->dev, "Disable SMPL_WARN for EVT 1.0\n");
 			pdata->smpl_warn_en = false;
 			pdata->smpl_warn_dev2 = false;
+		} else {
+			dev_info(&pdev->dev, "Enable SMPL_WARN for EVT %u.%u\n",
+					exynos_soc_info.main_rev,
+					exynos_soc_info.sub_rev);
+			pdata->smpl_warn_en = true;
+			pdata->smpl_warn_dev2 = true;
 		}
 	}
 #endif /* CONFIG_SEC_PM */
@@ -1317,6 +1322,8 @@ static int s2mps19_pmic_probe(struct platform_device *pdev)
 	s2mps19_write_reg(s2mps19->i2c, S2MPS19_PMIC_REG_B3M_OUT2, 0x20);
 	s2mps19_write_reg(s2mps19->i2c, S2MPS19_PMIC_REG_B4M_OUT2, 0x20);
 	s2mps19_write_reg(s2mps19->i2c, S2MPS19_PMIC_REG_B5M_OUT2, 0x20);
+	if (pdata->support_vdd_pll_1p7)
+		s2mps19_write_reg(s2mps19->i2c, S2MPS19_PMIC_REG_L4CTRL, 0x68);
 #endif
 	/* set BUCK10M output2 as 1.1V --> 0.95V */
 	s2mps19_write_reg(s2mps19->i2c, S2MPS19_PMIC_REG_B10M_OUT2, 0x68);

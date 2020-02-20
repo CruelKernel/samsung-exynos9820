@@ -7194,7 +7194,8 @@ p_err:
 #ifdef SENSOR_REQUEST_DELAY
 		if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state) &&
 			(frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_GED
-			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK)) {
+			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK
+			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_CAMERAX)) {
 			if (framemgr->queued_count[FS_REQUEST] < SENSOR_REQUEST_DELAY)
 				mgrwarn(" late sensor control shot", device, group, frame);
 		}

@@ -54,6 +54,7 @@
 #include <linux/kernel.h>
 #include <linux/file.h>
 #include <linux/configfs.h>
+#include <linux/reboot.h>
 #include "f_mtp.h"
 #include "configfs.h"
 
@@ -175,6 +176,20 @@ struct mtpg_dev {
 /* Global mtpg_dev Structure
 * the_mtpg variable be used between mtpg_open() and mtpg_function_bind() */
 static struct mtpg_dev    *the_mtpg;
+
+static int mtp_reboot_callback(struct notifier_block *nb,
+						unsigned long reason, void *arg)
+{
+	struct mtpg_dev *dev = the_mtpg;
+	printk(KERN_DEBUG "[%s]\tline = [%d]\n", __func__, __LINE__);
+	dev->cancel_io = 1;
+	wake_up(&dev->write_wq);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block mtp_reboot_notifier = {
+	.notifier_call = mtp_reboot_callback
+};
 
 /* Three full-speed and high-speed endpoint descriptors: bulk-in, bulk-out,
  * and interrupt-in. */
@@ -618,6 +633,7 @@ static int mtpg_open(struct inode *ip, struct file *fp)
 	}
 
 	fp->private_data = the_mtpg;
+	register_reboot_notifier(&mtp_reboot_notifier);
 
 	/* clear the error latch */
 
@@ -1258,6 +1274,7 @@ static int mtpg_release_device(struct inode *ip, struct file *fp)
 	printk(KERN_DEBUG "[%s]\tline = [%d]\n", __func__, __LINE__);
 	if (the_mtpg != NULL)
 		_unlock(&the_mtpg->open_excl);
+	unregister_reboot_notifier(&mtp_reboot_notifier);
 	return 0;
 }
 

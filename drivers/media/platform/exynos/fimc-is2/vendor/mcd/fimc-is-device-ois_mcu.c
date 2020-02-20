@@ -91,6 +91,7 @@ extern struct fimc_is_ois_info ois_minfo;
 extern struct fimc_is_ois_info ois_pinfo;
 extern struct fimc_is_ois_info ois_uinfo;
 extern struct fimc_is_ois_exif ois_exif_data;
+static struct mcu_default_data mcu_init;
 
 struct i2c_client *fimc_is_mcu_i2c_get_client(struct fimc_is_core *core)
 {
@@ -818,7 +819,7 @@ empty_check_status_fail:
 	return -1;
 }
 
-int fimc_is_mcu_empty_check_clear(struct v4l2_subdev *subdev)
+int fimc_is_mcu_empty_check_clear(struct v4l2_subdev *subdev, struct fimc_is_core *core)
 {
 	int ret = 0;
 	uint32_t optionbyte = 0;
@@ -850,7 +851,35 @@ int fimc_is_mcu_empty_check_clear(struct v4l2_subdev *subdev)
 	}
 
 	/* Put little delay for Target program option byte and self-reset */
-	mdelay(BOOT_I2C_SYNC_RETRY_INTVL);
+	mdelay(5);
+
+	/* Option byte read for checking protection status ------------------------ */
+	/* 1> Re-connect to the target */
+	ret = fimc_is_mcu_connect(subdev, core);
+	if (ret) {
+		err("[INF] Cannot connect to the target for RDP check (%d)", ret);
+		goto empty_check_clear_fail;
+	}
+
+	info("[INF] Re-Connection OK");
+
+	/* 2> Read from target for status checking and recover it if needed */
+	ret = fimc_is_mcu_i2c_read(client, memory_map.optionbyte, (uint8_t *)&optionbyte, sizeof(optionbyte));
+	if ((ret < 0) || ((optionbyte & 0x000000FF) != 0xAA)) {
+		err("[INF]  Failed to read option byte from target (%d)", ret);
+
+		/* Tryout the RDP level to 0 */
+		ret = fimc_is_mcu_read_unprotect(client);
+		if (ret) {
+			info("[INF] Readout unprotect KO ... Host restart and try again");
+		} else {
+			info("[INF] Readout unprotect OK ... Host restart and try again");
+		}
+
+		/* Put little delay for Target erase all of pages */
+		msleep(50);
+		goto empty_check_clear_fail;
+	}
 
 	return 0;
 
@@ -885,7 +914,7 @@ optionbyte_update_entry:
 
 	/* Option Byte read ------------------------------------------------------- */
 	ret = fimc_is_mcu_i2c_read(client, memory_map.optionbyte, (u8 *)&optionbyte, sizeof(optionbyte));
-	if (ret < 0) {
+	if ((ret < 0) ||((optionbyte & 0x000000ff) != 0xaa)) {
 		info("mcu read fail. read unprotest.");
 		/* Tryout the RDP level to 0 */
 		ret = fimc_is_mcu_read_unprotect(client);
@@ -896,7 +925,7 @@ optionbyte_update_entry:
 		}
 
 		/* Put little delay for Target erase all of pages */
-		msleep(BOOT_I2C_SYNC_RETRY_INTVL);
+		msleep(60);
 
 		/* Re-connect to the target */
 		ret = fimc_is_mcu_connect(subdev, core);
@@ -1255,6 +1284,8 @@ void fimc_is_mcu_fw_update(struct fimc_is_core *core)
 		}
 	}
 
+	msleep(50);
+
 retry:
 	ret = fimc_is_mcu_validation(subdev, core);
 	if (ret) {
@@ -1314,10 +1345,22 @@ retry:
 
 	info("mcu end write fw data");
 
-	if (empty_check > 0)
-		fimc_is_mcu_empty_check_clear(subdev);
-	else
+	if (empty_check > 0) {
+		if (fimc_is_mcu_empty_check_clear(subdev, core) < 0) {
+			if (retry_count > 0) {
+				retry_count--;
+				goto retry;
+			} else {
+				goto p_err;
+			}
+		} else {			
+			fimc_is_mcu_disconnect(subdev, core);
+		}
+	} else {
 		fimc_is_mcu_disconnect(subdev, core);
+	}
+
+	msleep(100);
 
 	info("%s mcu fw update completed.", __func__);
 
@@ -1548,7 +1591,7 @@ int fimc_is_mcu_set_aperture(struct v4l2_subdev *subdev, int onoff)
 
 	mcu->aperture->step = APERTURE_STEP_STATIONARY;
 
-	msleep(15);
+	msleep(mcu_init.aperture_delay_list[0]);
 
 	return true;
 
@@ -1608,7 +1651,7 @@ int fimc_is_mcu_deinit_aperture(struct v4l2_subdev *subdev, int onoff)
 
 	mcu->aperture->cur_value = F1_5;
 
-	msleep(15);
+	msleep(mcu_init.aperture_delay_list[0]);
 
 	return true;
 
@@ -1663,7 +1706,7 @@ void fimc_is_mcu_set_aperture_onboot(struct fimc_is_core *core)
 
 	device->mcu->aperture->cur_value = F1_5;
 
-	msleep(20);
+	msleep(mcu_init.aperture_delay_list[1]);
 
 	info("%s : X\n", __func__);
 }
@@ -1987,12 +2030,10 @@ int fimc_is_ois_init_mcu(struct v4l2_subdev *subdev)
 	u8 read_gyrocalcen = 0;
 #endif
 	u8 val = 0;
-#if defined(CONFIG_CAMERA_BEYOND0) || defined(CONFIG_CAMERA_BEYOND1) || defined(CONFIG_CAMERA_BEYOND2)
 	u8 gyro_orientation = 0;
 	u8 wx_pole = 0;
 	u8 wy_pole = 0;
-#endif
-#if defined(CONFIG_CAMERA_BEYOND1) || defined(CONFIG_CAMERA_BEYOND2)
+#ifdef CAMERA_2ND_OIS
 	u8 tx_pole = 0;
 	u8 ty_pole = 0;
 #endif
@@ -2042,7 +2083,7 @@ int fimc_is_ois_init_mcu(struct v4l2_subdev *subdev)
 	ois->initial_centering_mode = false;
 	ois->af_pos_wide = 0;
 	ois->af_pos_tele = 0;
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 	ois->ois_power_mode = -1;
 #endif
 	ois_pinfo.reset_check = false;
@@ -2112,39 +2153,21 @@ int fimc_is_ois_init_mcu(struct v4l2_subdev *subdev)
 			if (ret < 0)
 				err("ois dual shift is fail");
 
-#if defined(CONFIG_CAMERA_BEYOND0)
-			{
-				wx_pole = 0x01;
-				wy_pole = 0x0;
-				gyro_orientation = 0x21;
-				info("%s [B0] hw version is 0x%08x\n", __func__, sec_hw_rev);
-			}
-#elif defined(CONFIG_CAMERA_BEYOND1) || defined(CONFIG_CAMERA_BEYOND2)
-			if (sec_hw_rev > 0x11) {
-				wx_pole = 0x01;
-				wy_pole = 0x01;
-				gyro_orientation = 0x20;
-				tx_pole = 0x0;
-				ty_pole = 0x0;
-			} else {
-				wx_pole = 0x01;
-				wy_pole = 0x0;
-				gyro_orientation = 0x21;
-				tx_pole = 0x01;
-				ty_pole = 0x0;
-			}
-			info("%s [B1/B2] hw version is 0x%08x\n", __func__, sec_hw_rev);
+			wx_pole = mcu_init.ois_gyro_list[0];
+			wy_pole = mcu_init.ois_gyro_list[1];
+			gyro_orientation = mcu_init.ois_gyro_list[2];
+#ifdef CAMERA_2ND_OIS
+			tx_pole = mcu_init.ois_gyro_list[3];
+			ty_pole = mcu_init.ois_gyro_list[4];
 #endif
-
-#if defined(CONFIG_CAMERA_BEYOND0) || defined(CONFIG_CAMERA_BEYOND1) || defined(CONFIG_CAMERA_BEYOND2)
 			ret = fimc_is_ois_i2c_write(client, 0x0240, wx_pole);
 			ret |= fimc_is_ois_i2c_write(client, 0x0241, wy_pole);
 			ret |= fimc_is_ois_i2c_write(client, 0x0242, gyro_orientation);
-#if defined(CONFIG_CAMERA_BEYOND1) || defined(CONFIG_CAMERA_BEYOND2)
+#ifdef CAMERA_2ND_OIS
 			ret |= fimc_is_ois_i2c_write(client, 0x0552, tx_pole);
 			ret |= fimc_is_ois_i2c_write(client, 0x0553, ty_pole);
 #endif
-#endif
+			info("%s gyro init data applied\n", __func__);
 		}
 
 		I2C_MUTEX_UNLOCK(ois->i2c_lock);
@@ -2235,7 +2258,7 @@ int fimc_is_ois_set_ggfadeupdown_mcu(struct v4l2_subdev *subdev, int up, int dow
 
 	I2C_MUTEX_LOCK(ois->i2c_lock);
 
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 	if (ois->ois_power_mode < OIS_POWER_MODE_SINGLE) {
 		ret = fimc_is_ois_i2c_write(client, 0x00BE, 0x03);
 		if (ret < 0) {
@@ -2541,7 +2564,7 @@ int fimc_is_ois_self_test_mcu(struct fimc_is_core *core)
 	return (int)val;
 }
 
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 bool fimc_is_ois_sine_wavecheck_rear2_mcu(struct fimc_is_core *core,
 					int threshold, int *sinx, int *siny, int *result,
 					int *sinx_2nd, int *siny_2nd)
@@ -2639,10 +2662,10 @@ bool fimc_is_ois_sine_wavecheck_rear2_mcu(struct fimc_is_core *core,
 		goto exit;
 	}
 
-	dbg_ois("threshold = %d, sinx = %d, siny = %d, sinx_count = %d, syny_count = %d\n",
+	info("threshold = %d, sinx = %d, siny = %d, sinx_count = %d, syny_count = %d\n",
 		threshold, *sinx, *siny, sinx_count, siny_count);
 
-	dbg_ois("threshold = %d, sinx_2nd = %d, siny_2nd = %d, sinx_count_2nd = %d, syny_count_2nd = %d\n",
+	info("threshold = %d, sinx_2nd = %d, siny_2nd = %d, sinx_count_2nd = %d, syny_count_2nd = %d\n",
 		threshold, *sinx_2nd, *siny_2nd, sinx_count_2nd, siny_count_2nd);
 
 	if (buf == 0x0) {
@@ -3478,7 +3501,7 @@ static struct fimc_is_ois_ops ois_ops_mcu = {
 	.ois_fw_update = fimc_is_mcu_fw_update,
 	.ois_self_test = fimc_is_ois_self_test_mcu,
 	.ois_auto_test = fimc_is_ois_auto_test_mcu,
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 	.ois_auto_test_rear2 = fimc_is_ois_auto_test_rear2_mcu,
 	.ois_set_power_mode = fimc_is_ois_set_power_mode_mcu,
 #endif
@@ -3536,6 +3559,8 @@ int fimc_is_mcu_probe(struct i2c_client *client,
 	struct v4l2_subdev *subdev_aperture = NULL;
 	u32 sensor_id_len;
 	const u32 *sensor_id_spec;
+	const u32 *ois_gyro_spec;
+	const u32 *aperture_delay_spec;
 	u32 sensor_id[FIMC_IS_SENSOR_COUNT] = {0, };
 	int i = 0;
 	int gpio_mcu_reset = 0;
@@ -3570,6 +3595,24 @@ int fimc_is_mcu_probe(struct i2c_client *client,
 	if (ret) {
 		err("sensor_id read is fail(%d)", ret);
 		goto p_err;
+	}
+
+	ois_gyro_spec = of_get_property(dnode, "ois_gyro_list", &mcu_init.ois_gyro_list_len);
+	if (ois_gyro_spec) {
+		mcu_init.ois_gyro_list_len /= (unsigned int)sizeof(*ois_gyro_spec);
+		ret = of_property_read_u32_array(dnode, "ois_gyro_list",
+		        mcu_init.ois_gyro_list, mcu_init.ois_gyro_list_len);
+		if (ret)
+		        info("ois_gyro_list read is fail(%d)", ret);
+	}
+
+	aperture_delay_spec = of_get_property(dnode, "aperture_control_delay", &mcu_init.aperture_delay_list_len);
+	if (aperture_delay_spec) {
+		mcu_init.aperture_delay_list_len /= (unsigned int)sizeof(*aperture_delay_spec);
+		ret = of_property_read_u32_array(dnode, "aperture_control_delay",
+		        mcu_init.aperture_delay_list, mcu_init.aperture_delay_list_len);
+		if (ret)
+		        info("aperture_control_delay read is fail(%d)", ret);
 	}
 
 	for (i = 0; i < sensor_id_len; i++) {

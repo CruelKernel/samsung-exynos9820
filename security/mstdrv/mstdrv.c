@@ -147,6 +147,11 @@ static void of_mst_hw_onoff(bool on)
 
 	printk("mst-drv : mst_power_onoff : %d\n", on);
 
+	if (nfc_state == 1) {
+		printk("[MST] %s : nfc_state is on!!!\n", __func__);
+		return;
+	}
+
 	if (on) {
 #if defined(CONFIG_MFC_CHARGER)
 		printk("%s : MST_MODE_ON notify start\n", __func__);

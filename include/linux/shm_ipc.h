@@ -71,7 +71,21 @@ unsigned long shm_get_s5100_cp2cp_base(void);
 unsigned int shm_get_s5100_cp2cp_size(void);
 unsigned int shm_get_s5100_cp2cp_offset(void);
 #endif
+#if defined(CONFIG_CP_PKTPROC)
+unsigned int shm_get_pktproc_base(void);
+unsigned int shm_get_pktproc_size(void);
 #else
+static inline unsigned int shm_get_pktproc_base(void) { return 0; }
+static inline unsigned int shm_get_pktproc_size(void) { return 0; }
+#endif
+#if defined(CONFIG_CP_PKTPROC_V2)
+unsigned int shm_get_pktproc_v2_base(void);
+unsigned int shm_get_pktproc_v2_size(void);
+#else
+static inline unsigned int shm_get_pktproc_v2_base(void) { return 0; }
+static inline unsigned int shm_get_pktproc_v2_size(void) { return 0; }
+#endif
+#else /* CONFIG_SHM_IPC */
 static inline unsigned long shm_get_phys_base(void) { return 0; }
 static inline unsigned shm_get_phys_size(void) { return 0; }
 static inline unsigned shm_get_boot_size(void) { return 0; }
@@ -134,6 +148,11 @@ static unsigned long shm_get_s5100_cp2cp_base(void) { return 0; };
 static unsigned int shm_get_s5100_cp2cp_size(void) { return 0; };
 static unsigned int shm_get_s5100_cp2cp_offset(void) { return 0; };
 #endif
-#endif
+
+static inline unsigned int shm_get_pktproc_base(void) { return 0; }
+static inline unsigned int shm_get_pktproc_size(void) { return 0; }
+static inline unsigned int shm_get_pktproc_v2_base(void) { return 0; }
+static inline unsigned int shm_get_pktproc_v2_size(void) { return 0; }
+#endif /* CONFIG_SHM_IPC */
 
 #endif

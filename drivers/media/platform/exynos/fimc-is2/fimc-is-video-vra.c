@@ -218,12 +218,13 @@ const struct v4l2_file_operations fimc_is_vra_video_fops = {
 static int fimc_is_vra_video_querycap(struct file *file, void *fh,
 					struct v4l2_capability *cap)
 {
-	struct fimc_is_core *core = video_drvdata(file);
+	struct fimc_is_video *video = video_drvdata(file);
 
 	FIMC_BUG(!cap);
+	FIMC_BUG(!video);
 
-	snprintf(cap->driver, sizeof(cap->driver), "%s", core->pdev->name);
-	snprintf(cap->card, sizeof(cap->card), "%s", core->pdev->name);
+	snprintf(cap->driver, sizeof(cap->driver), "%s", video->vd.name);
+	snprintf(cap->card, sizeof(cap->card), "%s", video->vd.name);
 	cap->bus_info[0] = 0;
 	cap->version = KERNEL_VERSION(1, 0, 0);
 	cap->capabilities = V4L2_CAP_STREAMING

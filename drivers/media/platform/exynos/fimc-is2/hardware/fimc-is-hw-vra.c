@@ -729,6 +729,7 @@ new_frame:
 		hw_ip->mframe = frame;
 	}
 	msdbg_hw(2, "[F:%d]lib_vra_new_frame\n", instance, hw_ip, frame->fcount);
+	lib_vra->fr_index = frame->fcount;
 	ret = fimc_is_lib_vra_new_frame(lib_vra, buffer_kva, buffer_dva, instance);
 	if (ret) {
 		mserr_hw("lib_vra_new_frame is fail (%d)", instance, hw_ip, ret);

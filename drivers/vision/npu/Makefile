@@ -1,6 +1,7 @@
 obj-y		                        += npu-util-autosleepthr.o
 obj-y					+= npu-util-liststatemgr.o
 obj-y					+= npu-util-msgidgen.o
+obj-y					+= npu-util-regs.o
 obj-y					+= npu-util-llq.o
 obj-y					+= npu-log.o
 obj-y					+= npu-ver.o
@@ -27,9 +28,16 @@ obj-$(CONFIG_NPU_GOLDEN_MATCH)	        += npu-util-comparator.o
 obj-$(CONFIG_FIRMWARE_SRAM_DUMP_DEBUGFS)	        += npu-util-memdump.o
 
 obj-y					+= generated/
-
-ifdef CONFIG_NPU_LOOPBACK
-EXTRA_CFLAGS += -Idrivers/vision/include -Idrivers/vision/npu/include -Idrivers/vision/npu/interface/loopback
-else
-EXTRA_CFLAGS += -Idrivers/vision/include -Idrivers/vision/npu/include -Idrivers/vision/npu/interface/hardware
+ifdef CONFIG_EXYNOS_SOC_NAME
+obj-y					+= soc/$(CONFIG_EXYNOS_SOC_NAME)/
 endif
+
+ccflags-y += -Idrivers/vision/include -Idrivers/vision/npu/include -Idrivers/vision/npu
+ifdef CONFIG_NPU_LOOPBACK
+ccflags-y += -Idrivers/vision/npu/interface/loopback
+else
+ccflags-y += -Idrivers/vision/npu/interface/hardware
+endif
+
+# SoC specific inclusion
+ccflags-y += -Idrivers/vision/npu/soc/$(CONFIG_EXYNOS_SOC_NAME)/include
