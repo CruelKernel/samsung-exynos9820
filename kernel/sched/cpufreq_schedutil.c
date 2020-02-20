@@ -997,9 +997,6 @@ static void sugov_exit(struct cpufreq_policy *policy)
 	if (!count)
 		sugov_tunables_free(tunables);
 
-	if (sugov_save_policy(sg_policy))
-		goto out;
-
 #ifdef CONFIG_SCHED_KAIR_GLUE
 	if (sg_cpu->util_vessel) {
 		sg_cpu->util_vessel->finalizer(sg_cpu->util_vessel);
@@ -1008,6 +1005,10 @@ static void sugov_exit(struct cpufreq_policy *policy)
 	}
 	sg_policy->be_stochastic = false;
 #endif
+
+	if (sugov_save_policy(sg_policy))
+		goto out;
+
 	sugov_kthread_stop(sg_policy);
 	sugov_policy_free(sg_policy);
 
@@ -1039,29 +1040,41 @@ static int sugov_start(struct cpufreq_policy *policy)
 	for_each_cpu(cpu, policy->cpus) {
 		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
 
-		memset(sg_cpu, 0, sizeof(*sg_cpu));
-		sg_cpu->cpu = cpu;
-		sg_cpu->sg_policy = sg_policy;
-		sg_cpu->flags = 0;
-		sugov_start_slack(cpu);
-		sg_cpu->iowait_boost_max = policy->cpuinfo.max_freq;
-
 #ifdef CONFIG_SCHED_KAIR_GLUE
-		if (cpu == policy->cpu && !sg_policy->be_stochastic) {
+		if (cpu != policy->cpu) {
+			memset(sg_cpu, 0, sizeof(*sg_cpu));
+			goto skip_subcpus;
+		}
+
+		if (!sg_policy->be_stochastic) {
 			memset(alias, 0, KAIR_ALIAS_LEN);
 			sprintf(alias, "govern%d", cpu);
-			sg_cpu->util_vessel = kair_obj_creator(alias,
-							       UTILAVG_KAIR_VARIANCE,
-							       policy->cpuinfo.max_freq,
-							       policy->cpuinfo.min_freq,
-							       &kairistic_cpufreq);
+			memset(sg_cpu, 0, sizeof(*sg_cpu));
+			sg_cpu->util_vessel =
+				kair_obj_creator(alias,
+						 UTILAVG_KAIR_VARIANCE,
+						 policy->cpuinfo.max_freq,
+						 policy->cpuinfo.min_freq,
+						 &kairistic_cpufreq);
 			if (sg_cpu->util_vessel->initializer(sg_cpu->util_vessel) < 0) {
 				sg_cpu->util_vessel->finalizer(sg_cpu->util_vessel);
 				kair_obj_destructor(sg_cpu->util_vessel);
 				sg_cpu->util_vessel = NULL;
 			}
+		} else {
+			struct kair_class *vptr = sg_cpu->util_vessel;
+			memset(sg_cpu, 0, sizeof(*sg_cpu));
+			sg_cpu->util_vessel = vptr;
 		}
+skip_subcpus:
+#else
+		memset(sg_cpu, 0, sizeof(*sg_cpu));
 #endif
+		sg_cpu->cpu = cpu;
+		sg_cpu->sg_policy = sg_policy;
+		sg_cpu->flags = 0;
+		sugov_start_slack(cpu);
+		sg_cpu->iowait_boost_max = policy->cpuinfo.max_freq;
 	}
 
 #ifdef CONFIG_SCHED_KAIR_GLUE

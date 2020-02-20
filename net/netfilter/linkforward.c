@@ -499,11 +499,11 @@ int __linkforward_manip_skb(struct sk_buff *skb, enum linkforward_dir dir)
 		}
 
 		*((u32 *)&skb->cb) = dir ? SIGNATURE_LINK_FORWRD_REPLY : SIGNATURE_LINK_FORWRD_ORIGN;
+
+		return 1;
 	}
 
-	/* ToDo : proto field - distinguish IPv6, IPv4 */
-
-	return 1;
+	return 0;
 }
 
 /* Device core functions */

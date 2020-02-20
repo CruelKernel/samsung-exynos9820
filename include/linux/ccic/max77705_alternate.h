@@ -613,6 +613,7 @@ void max77705_set_enable_alternate_mode(int mode);
 void max77705_vdm_process_set_samsung_alternate_mode(void *data, int mode);
 int max77705_process_check_accessory(void *data);
 extern void max77705_vdm_process_set_identity_req(void *data);
+extern void max77705_vdm_process_set_DP_configure_mode_req(void *data, uint8_t W_DATA);
 extern void max77705_vdm_process_set_Dex_enter_mode_req(void *data);
 extern int max77705_sec_uvdm_in_request_message(void *data);
 extern int max77705_sec_uvdm_out_request_message(void *data, int size);

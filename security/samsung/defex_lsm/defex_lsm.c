@@ -50,7 +50,7 @@ asmlinkage int defex_syscall_enter(long int syscallno, struct pt_regs *regs)
 }
 
 //INIT/////////////////////////////////////////////////////////////////////////
-static __init int defex_lsm_init(void)
+static int __init defex_lsm_init(void)
 {
 	int ret;
 
@@ -70,6 +70,10 @@ static __init int defex_lsm_init(void)
 	}
 
 	printk(KERN_INFO "DEFEX_LSM started");
+#ifdef DEFEX_LP_ENABLE
+	printk(KERN_INFO "[DEFEX] ADB LP Enabled");
+#endif /* DEFEX_LP_ENABLE */
+
 	return 0;
 }
 

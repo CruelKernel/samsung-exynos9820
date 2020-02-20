@@ -125,7 +125,9 @@ bool dropdump_queue_skb(struct sk_buff *skb)
 
 queueing:
 	rcu_read_lock_bh();
+
 	skb->dev = dev;
+	skb->dropmask |= PACKET_LOGED;
 
 	list_for_each_entry_rcu(ptype, ptype_list, list) {
 		if (pt_prev) {
@@ -335,19 +337,22 @@ int skb_validate(struct sk_buff *skb)
 	/* how to more smart.. */
 	struct iphdr *ip4hdr = (struct iphdr *)skb_network_header(skb);
 
+	if (unlikely(!skb->dropmask))
+		return -1;
 	if (unlikely((ip4hdr->version != 4 && ip4hdr->version != 6)
 			|| ip4hdr->id == 0x6b6b))
 		return -1;
 	if (unlikely(!skb->len))
-		return -2;
+		return -1;
 	if (unlikely(skb->len > skb->tail))
-		return -3;
+		return -1;
 	if (unlikely(skb->data < skb->head))
-		return -4;
+		return -1;
 	if (unlikely(skb->tail > skb->end))
-		return -5;
-	if (unlikely(skb->dev->type) == ARPHRD_LOOPBACK)
-		return -6;
+		return -1;
+	if (unlikely(skb->dropmask & (PACKET_LOGED | PACKET_DUMMY)))
+		return -1;
+
 	return 0;
 }
 
@@ -356,12 +361,7 @@ void dropdump_queue(struct sk_buff *skb)
 	struct sk_buff *dmy;
 	static bool logging = false;
 
-	if (unlikely(!skb))
-		return;
 	if (unlikely(skb_validate(skb)))
-		return;
-
-	if (unlikely(!skb->dropmask && !skb->dropid))
 		return;
 
 #if 0

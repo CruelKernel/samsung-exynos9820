@@ -320,6 +320,7 @@
 #define SEC_TS_VENDOR_ACK_LOWPOWER_SELF_TEST_DONE	0x58
 #define SEC_TS_VENDOR_STATE_CHANGED			0x61
 #define SEC_TS_VENDOR_ACK_NOISE_STATUS_NOTI		0x64
+#define SEC_TS_VENDOR_ACK_PRE_NOISE_STATUS_NOTI		0x6D
 
 /* SEC_TS_ERROR : Error event */
 #define SEC_TS_ERR_EVNET_CORE_ERR	0x0
@@ -670,7 +671,8 @@ struct sec_ts_event_coordinate {
 	u8 noise_level;
 	u8 max_strength;
 	u8 hover_id_num:4;
-	u8 reserved10:4;
+	u8 noise_status:2;
+	u8 reserved10:2;
 	u8 reserved11;
 	u8 reserved12;
 	u8 reserved13;
@@ -702,6 +704,7 @@ struct sec_ts_coordinate {
 	u8 noise_level;
 	u8 max_strength;
 	u8 hover_id_num;
+	u8 noise_status;
 };
 
 
@@ -727,6 +730,7 @@ struct sec_ts_data {
 	u8 touchable_area;
 	u8 external_noise_mode;
 	volatile u8 touch_noise_status;
+	volatile u8 touch_pre_noise_status;
 	volatile bool input_closed;
 	long prox_power_off;
 

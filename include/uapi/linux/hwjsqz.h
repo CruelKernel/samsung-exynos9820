@@ -70,10 +70,10 @@ struct hwJSQZ_img_info {
 /**
  * @brief the type of the buffer sent to the driver
  */
-enum hwJSQZ_buffer_type {
-	HWJSQZ_BUFFER_NONE,		/**< no buffer is set */
-	HWJSQZ_BUFFER_DMABUF,	/**< DMA buffer */
-	HWJSQZ_BUFFER_USERPTR	/**< a pointer to user memory */
+enum hwSQZ_buffer_type {
+	HWSQZ_BUFFER_NONE,		/**< no buffer is set */
+	HWSQZ_BUFFER_DMABUF,	/**< DMA buffer */
+	HWSQZ_BUFFER_USERPTR	/**< a pointer to user memory */
 };
 
 /**
@@ -83,7 +83,7 @@ enum hwJSQZ_buffer_type {
  * to user memory. The len must be initialized with the size of the buffer,
  * and the type must be set to the correct type.
  */
-struct hwJSQZ_buffer {
+struct hwSQZ_buffer {
 	union {
 		__s32 fd;				/**< the DMA file descriptor, if the buffer is a DMA buffer. This is in a union with userptr, only one should be set. */
 		unsigned long userptr;	/**< the ptr to user memory, if the buffer is in user memory. This is in a union with fd, only one should be set. */
@@ -113,11 +113,12 @@ struct hwJSQZ_config {
  * to the driver through the IOCTL.
  */
 struct hwJSQZ_task {
-	struct hwJSQZ_img_info info_out;	/**< info related to the image sent to the HW for processing */
-	struct hwJSQZ_buffer buf_out[2];		/**< info related to the buffer sent to the HW for processing */
-	struct hwJSQZ_config config;		/**< the configuration for HW IP */
-	unsigned int buf_q[32];				/**< q table that are result of jpeg squeezer */
-	int num_of_buf;
+	struct hwJSQZ_img_info info_out;    /**< info related to the image sent to the HW for processing */
+	struct hwSQZ_buffer buf_out[2];    /**< info related to the buffer sent to the HW for processing */
+	struct hwJSQZ_config config;        /**< the configuration for HW IP */
+	unsigned int buf_q[32];             /**< q table that are result of jpeg squeezer */
+	unsigned int buf_init_q[32];        /**< q table that are initial Q */
+	int num_of_buf;                     /**< number of buf_out count */
 };
 
 

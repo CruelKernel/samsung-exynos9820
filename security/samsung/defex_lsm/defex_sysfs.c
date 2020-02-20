@@ -6,64 +6,156 @@
  * as published by the Free Software Foundation.
  */
 
-#include <linux/init.h>
-#include <linux/fs.h>
+#include <linux/async.h>
+#include <linux/delay.h>
+#include <linux/fcntl.h>
 #include <linux/file.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/initrd.h>
+#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/syscalls.h>
 #include <linux/sysfs.h>
+#include <linux/version.h>
 #include "include/defex_debug.h"
 #include "include/defex_internal.h"
 #include "include/defex_rules.h"
 
-#ifdef DEFEX_USE_PACKED_RULES
-#if defined(DEFEX_KERNEL_ONLY) && defined(DEFEX_INTEGRITY_ENABLE)
-#else
-#include "defex_packed_rules.inc"
-#endif
+#define DEFEX_RULES_FILE "/dpolicy"
+
+#ifndef DEFEX_USE_PACKED_RULES
+/*
+ * Variant 1: Use the static, unpacked rules array
+ */
+#ifdef DEFEX_INTEGRITY_ENABLE
+#error "Packed rules required for Integrity feature"
 #endif
 
+#else
+
+/*
+ * Variant 2: Platform build, use static packed rules array
+ */
+#include "defex_packed_rules.inc"
+
+#ifdef DEFEX_RAMDISK_ENABLE
+/*
+ * Variant 3: Platform build, load rules from kernel ramdisk or system partition
+ */
+#ifdef DEFEX_SIGN_ENABLE
+#include "include/defex_sign.h"
+#endif
+#if (DEFEX_RULES_ARRAY_SIZE < 8)
+#undef DEFEX_RULES_ARRAY_SIZE
+#define DEFEX_RULES_ARRAY_SIZE sizeof(struct rule_item_struct)
+#endif
+static unsigned char defex_packed_rules[DEFEX_RULES_ARRAY_SIZE] __ro_after_init = {0};
+#endif /* DEFEX_RAMDISK_ENABLE */
+
+#endif /* DEFEX_USE_PACKED_RULES */
+
 #ifdef DEFEX_INTEGRITY_ENABLE
+
 #include <linux/fs.h>
 #include <crypto/hash.h>
 #include <crypto/public_key.h>
 #include <crypto/internal/rsa.h>
 #include "../../integrity/integrity.h"
 #define SHA256_DIGEST_SIZE 32
-#ifdef DEFEX_KERNEL_ONLY
-#define RULES "/system/etc/defex_packed_rules.bin"
-unsigned char *defex_packed_rules;
-#endif /* DEFEX_KERNEL_ONLY */
 #endif /* DEFEX_INTEGRITY_ENABLE */
 
 static struct kset *defex_kset;
+static int is_recovery = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+#include <linux/uaccess.h>
 
-int check_system_mount(void)
+static inline ssize_t __vfs_read(struct file *file, char __user *buf,
+				 size_t count, loff_t *pos)
+{
+	ssize_t ret;
+
+	if (file->f_op->read)
+		ret = file->f_op->read(file, buf, count, pos);
+	else if (file->f_op->aio_read)
+		ret = do_sync_read(file, buf, count, pos);
+	else if (file->f_op->read_iter)
+		ret = new_sync_read(file, buf, count, pos);
+	else
+		ret = -EINVAL;
+
+	return ret;
+}
+#endif
+
+static int __init bootmode_setup(char *str)
+{
+	if (str && *str == '2') {
+		is_recovery = 1;
+		printk(KERN_ALERT "[DEFEX] recovery mode setup\n");
+	}
+	return 0;
+}
+__setup("bootmode=", bootmode_setup);
+
+static struct file *local_fopen(const char *fname, int flags, umode_t mode)
+{
+	struct file *f;
+	mm_segment_t old_fs;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	f = filp_open(fname, flags, mode);
+	set_fs(old_fs);
+	return f;
+}
+
+static int local_fread(struct file *f, loff_t offset, void *ptr, unsigned long bytes)
+{
+	mm_segment_t old_fs;
+	char __user *buf = (char __user *)ptr;
+	ssize_t ret;
+
+	if (!(f->f_mode & FMODE_READ))
+		return -EBADF;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	ret = __vfs_read(f, buf, bytes, &offset);
+	set_fs(old_fs);
+	return (int)ret;
+}
+
+static int check_system_mount(void)
 {
 	static int mount_system_root = -1;
 	struct file *fp;
 
 	if (mount_system_root < 0) {
-		fp = filp_open("/sbin/recovery", O_RDONLY, 0);
-		if (IS_ERR(fp)) {
-			printk(KERN_ALERT "[DEFEX] normal mode\n");
-			mount_system_root = 0;
-		} else {
+		fp = local_fopen("/sbin/recovery", O_RDONLY, 0);
+		if (IS_ERR(fp))
+			fp = local_fopen("/system/bin/recovery", O_RDONLY, 0);
+
+		if (!IS_ERR(fp)) {
 			printk(KERN_ALERT "[DEFEX] recovery mode\n");
 			filp_close(fp, NULL);
-			fp = filp_open("/system_root", O_DIRECTORY | O_PATH, 0);
-			if (IS_ERR(fp)) {
-				printk(KERN_ALERT "[DEFEX] system_root=FALSE\n");
-				mount_system_root = 0;
-			} else {
-				printk(KERN_ALERT "[DEFEX] system_root=TRUE\n");
-				filp_close(fp, NULL);
-				mount_system_root = 1;
-			}
+			is_recovery = 1;
+		} else {
+			printk(KERN_ALERT "[DEFEX] normal mode\n");
+		}
+
+		mount_system_root = 0;
+		fp = local_fopen("/system_root", O_DIRECTORY | O_PATH, 0);
+		if (!IS_ERR(fp)) {
+			filp_close(fp, NULL);
+			mount_system_root = 1;
+			printk(KERN_ALERT "[DEFEX] system_root=TRUE\n");
+		} else {
+			printk(KERN_ALERT "[DEFEX] system_root=FALSE\n");
 		}
 	}
 	return (mount_system_root > 0);
@@ -108,44 +200,34 @@ static void parse_static_rules(const struct static_rule *rules, size_t max_len, 
 #endif /* DEFEX_IMMUTABLE_ENABLE */
 		}
 	}
-	printk(KERN_INFO "DEFEX_LSM started");
 }
 
-#ifdef DEFEX_USE_PACKED_RULES
-struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const char *name, int l)
-{
-	struct rule_item_struct *item = NULL;
-	unsigned int offset;
-
-	if (!base || !base->next_level)
-		return item;
-	item = GET_ITEM_PTR(base->next_level);
-	do {
-		if (item->size == l && !memcmp(name, item->name, l)) return item;
-		offset = item->next_file;
-		item = GET_ITEM_PTR(offset);
-	} while(offset);
-	return NULL;
-}
 
 #ifdef DEFEX_INTEGRITY_ENABLE
-int defex_check_integrity(struct file *f, unsigned char *hash)
+static int defex_check_integrity(struct file *f, unsigned char *hash)
 {
 	struct crypto_shash *handle = NULL;
 	struct shash_desc* shash = NULL;
+	static const unsigned char buff_zero[SHA256_DIGEST_SIZE] = {0};
 	unsigned char hash_sha256[SHA256_DIGEST_SIZE];
 	unsigned char *buff = NULL;
 	size_t buff_size = PAGE_SIZE;
 	loff_t file_size = 0;
 	int ret = 0, err = 0, read_size = 0;
-	int i = 0; //TEST
+
+	// A saved hash is zero, skip integrity check
+	if (!memcmp(buff_zero, hash, SHA256_DIGEST_SIZE))
+		return ret;
 
 	if (IS_ERR(f))
 		goto hash_error;
 
 	handle = crypto_alloc_shash("sha256", 0, 0);
-	if (IS_ERR(handle))
-		goto hash_error;
+	if (IS_ERR(handle)) {
+		err = PTR_ERR(handle);
+		pr_err("[DEFEX] Can't alloc sha256, error : %d", err);
+		return -1;
+	}
 
 	shash = kzalloc(sizeof(struct shash_desc) + crypto_shash_descsize(handle), GFP_KERNEL);
 	if (NULL == shash)
@@ -164,7 +246,7 @@ int defex_check_integrity(struct file *f, unsigned char *hash)
 
 
 	while(1) {
-		read_size = integrity_kernel_read(f, file_size, (char*)buff, buff_size);
+		read_size = local_fread(f, file_size, (char*)buff, buff_size);
 		if (0 > read_size)
 			goto hash_error;
 		if (0 == read_size)
@@ -181,12 +263,6 @@ int defex_check_integrity(struct file *f, unsigned char *hash)
 
 	ret = memcmp(hash_sha256, hash, SHA256_DIGEST_SIZE);
 
-	/* TEST */
-	if (ret){
-		for (i = 0; i < 32; i++){
-			printk("%02x%02x : %d", hash_sha256[i], hash[i], ret);
-		}
-	}
 	goto hash_exit;
 
   hash_error:
@@ -202,7 +278,7 @@ int defex_check_integrity(struct file *f, unsigned char *hash)
 
 }
 
-int defex_integrity_default(const char *file_path)
+static int defex_integrity_default(const char *file_path)
 {
 	static const char integrity_default[] = "/system/bin/install-recovery.sh";
 	return strncmp(integrity_default, file_path, sizeof(integrity_default));
@@ -210,54 +286,27 @@ int defex_integrity_default(const char *file_path)
 
 #endif /* DEFEX_INTEGRITY_ENABLE */
 
-#if defined DEFEX_INTEGRITY_ENABLE && defined DEFEX_KERNEL_ONLY
-int defex_read_rules(const char *path, unsigned char **data)
+#ifdef DEFEX_USE_PACKED_RULES
+static struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const char *name, int l, int for_recovery)
 {
-	struct file *file;
-	loff_t size;
-	unsigned char *buf;
-	int rc = -EINVAL;
-	mm_segment_t old_fs;
+	struct rule_item_struct *item = NULL;
+	unsigned int offset;
 
-	if (!path || !*path)
-		return -EINVAL;
-
-	old_fs = get_fs();
-	set_fs(get_ds());
-	file = filp_open(path, O_RDONLY, 0);
-	set_fs(old_fs);
-	if (IS_ERR(file)) {
-		rc = PTR_ERR(file);
-		pr_err("[DEFEX] Unable to open file: %s (%d)", path, rc);
-		return rc;
-	}
-
-	size = i_size_read(file_inode(file));
-	if (size <= 0)
-		goto out;
-
-	buf = kmalloc(size, GFP_KERNEL);
-	if (!buf) {
-		rc = -ENOMEM;
-		goto out;
-	}
-
-	rc = integrity_kernel_read(file, 0, buf, size);
-	if (rc == size) {
-		*data = buf;
-	} else {
-		kfree(buf);
-		if (rc >= 0)
-			rc = -EIO;
-	}
-  out:
-	fput(file);
-	return rc;
+	if (!base || !base->next_level)
+		return item;
+	item = GET_ITEM_PTR(base->next_level);
+	do {
+		if ((!(item->feature_type & feature_is_file)
+			|| (!!(item->feature_type & feature_for_recovery)) == for_recovery)
+			&& item->size == l
+			&& !memcmp(name, item->name, l)) return item;
+		offset = item->next_file;
+		item = GET_ITEM_PTR(offset);
+	} while(offset);
+	return NULL;
 }
 
-#endif /* defined DEFEX_INTEGRITY_ENABLE && defined DEFEX_KERNEL_ONLY */
-
-int lookup_tree(const char *file_path, int attribute, struct file *f)
+static int lookup_tree(const char *file_path, int attribute, struct file *f)
 {
 	const char *ptr, *next_separator;
 	struct rule_item_struct *base, *cur_item = NULL;
@@ -266,22 +315,17 @@ int lookup_tree(const char *file_path, int attribute, struct file *f)
 	if (!file_path || *file_path != '/')
 		return 0;
 
-
-	/* load packed binary rules during the first-time access */
-#if defined DEFEX_INTEGRITY_ENABLE && defined DEFEX_KERNEL_ONLY
-	if (!defex_packed_rules) {
-		defex_read_rules(RULES, &defex_packed_rules);
-		if (!defex_packed_rules) {
-			printk("[DEFEX] Rules loading Failed, process: %s\n", file_path);
-			/* allow all while filesystem is not ready */
-			return 1;
-		} else {
-			printk("[DEFEX] Rules loading OK, process: %s\n", file_path);
-		}
-	}
-#endif /* defined DEFEX_INTEGRITY_ENABLE && defined DEFEX_KERNEL_ONLY */
-
 	base = (struct rule_item_struct *)defex_packed_rules;
+	if (!base || !base->data_size) {
+#ifdef DEFEX_KERNEL_ONLY
+		/* allow all requests if rules were not loaded for Recovery mode */
+		if (is_recovery)
+			return (attribute == feature_ped_exception || attribute == feature_safeplace_path)?1:0;
+#endif /* DEFEX_KERNEL_ONLY */
+		/* block all requests if rules were not loaded instead */
+		return 0;
+	}
+
 	ptr = file_path + 1;
 	do {
 		next_separator = strchr(ptr, '/');
@@ -291,7 +335,10 @@ int lookup_tree(const char *file_path, int attribute, struct file *f)
 			l = next_separator - ptr;
 		if (!l)
 			return 0;
-		cur_item = lookup_dir(base, ptr, l);
+		cur_item = lookup_dir(base, ptr, l, is_recovery);
+		if (!cur_item)
+			cur_item = lookup_dir(base, ptr, l, !is_recovery);
+
 		if (!cur_item)
 			break;
 		if (cur_item->feature_type & attribute) {
@@ -367,7 +414,7 @@ int rules_lookup(const struct path *dpath, int attribute, struct file *f)
 	return ret;
 }
 
-int defex_init_sysfs(void)
+int __init defex_init_sysfs(void)
 {
 	defex_kset = kset_create_and_add("defex", NULL, NULL);
 	if (!defex_kset)
@@ -419,4 +466,77 @@ immutable_error:
 	defex_kset = NULL;
 #endif /* DEFEX_DEBUG_ENABLE && DEFEX_SYSFS_ENABLE */
 	return -ENOMEM;
+}
+
+
+#if defined(DEFEX_RAMDISK_ENABLE)
+
+static int __init do_load_rules(void)
+{
+	struct file *f;
+	int res = -1, rc, data_size, rules_size;
+	unsigned char *data_buff;
+
+	memset(defex_packed_rules, 0, sizeof(defex_packed_rules));
+	printk(KERN_INFO "[DEFEX] Load rules file: %s.\n", DEFEX_RULES_FILE);
+	f = local_fopen(DEFEX_RULES_FILE, O_RDONLY, 0);
+	if (IS_ERR(f)) {
+		rc = PTR_ERR(f);
+		pr_err("[DEFEX] Failed to open rules file (%d)\n", rc);
+#ifdef DEFEX_KERNEL_ONLY
+		if (is_recovery)
+			res = 0;
+#endif /* DEFEX_KERNEL_ONLY */
+		return res;
+	}
+
+	data_size = i_size_read(file_inode(f));
+	if (data_size <= 0)
+		return res;
+	data_buff = kzalloc(data_size, GFP_KERNEL);
+	if (!data_buff)
+		return res;
+
+	rules_size = local_fread(f, 0, data_buff, data_size);
+	printk(KERN_INFO "[DEFEX] Readed %d bytes.\n", rules_size);
+	filp_close(f, NULL);
+
+#ifdef DEFEX_SIGN_ENABLE
+	res = defex_rules_signature_check(data_buff, rules_size, &rules_size);
+	if (!res && rules_size > sizeof(defex_packed_rules))
+		res = -1;
+
+	if (!res) {
+		printk("[DEFEX] Rules signature verified successfully.\n");
+	} else
+		pr_err("[DEFEX] Rules signature verified error!!!\n");
+#else
+	res = 0;
+#endif
+
+	if (!res)
+		memcpy(defex_packed_rules, data_buff, rules_size);
+	kfree(data_buff);
+
+#ifdef DEFEX_KERNEL_ONLY
+	if (is_recovery && res != 0) {
+		res = 0;
+		printk("[DEFEX] Kernel Only & recovery mode, rules loading is passed.\n");
+	}
+#endif
+
+	return res;
+}
+
+#endif /* DEFEX_RAMDISK_ENABLE */
+
+void __init defex_load_rules(void)
+{
+#if defined(DEFEX_RAMDISK_ENABLE)
+	if ( !boot_state_unlocked && do_load_rules() != 0) {
+#if !defined(DEFEX_DEBUG_ENABLE)
+		panic("[DEFEX] Signature mismatch.\n");
+#endif
+	}
+#endif /* DEFEX_RAMDISK_ENABLE */
 }

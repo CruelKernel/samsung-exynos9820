@@ -1,0 +1,12 @@
+ARCH=arm64
+CROSS_COMPILE=aarch64-linux-android-
+CLANG_TRIPLE=aarch64-linux-gnu-
+DEFCONFIG=universal9820_5g_defconfig
+CLANG_VERSION=clang-4691093
+TARGET_SOC=exynos9820
+FILES="
+arch/arm64/boot/Image:kernel
+arch/arm64/boot/dts/exynos/exynos9820.dtb:dtb.img
+dtbo.img:dtbo.img
+vmlinux:vmlinux
+"

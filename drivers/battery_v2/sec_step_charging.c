@@ -56,7 +56,7 @@ void sec_bat_exit_step_charging(struct sec_battery_info *battery)
  */
 bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 {
-	int i = 0, value = 0, soc_condition = 0;
+	int i = 0, value = 0, step_condition = 0;
 	static int curr_cnt = 0;
 
 	pr_info("%s\n", __func__);
@@ -89,9 +89,7 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 	if (battery->step_charging_type & STEP_CHARGING_CONDITION_CHARGE_POWER) {
 		if (battery->max_charge_power < battery->step_charging_charge_power) {
 			/* In case of max_charge_power falling by AICL during step-charging ongoing */
-			if (battery->step_charging_status >= 0 &&
-				battery->step_charging_status < battery->step_charging_step)
-				sec_bat_exit_step_charging(battery);
+			sec_bat_exit_step_charging(battery);
 			return false;
 		}
 	}
@@ -101,14 +99,14 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 	else
 		i = battery->step_charging_status;
 
-	soc_condition = battery->pdata->step_charging_condition[i];
+	step_condition = battery->pdata->step_charging_condition[i];
 
 	if (battery->step_charging_type & STEP_CHARGING_CONDITION_VOLTAGE) {
 		value = battery->voltage_avg;
 	} else if (battery->step_charging_type & STEP_CHARGING_CONDITION_SOC) {
 		value = battery->capacity;
 		if (battery->siop_level < 100 || battery->lcd_status) {
-			soc_condition = battery->pdata->step_charging_condition[i] + 15;
+			step_condition = battery->pdata->step_charging_condition[i] + 15;
 			curr_cnt = 0;
 		}
 	} else {
@@ -116,10 +114,15 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 	}
 
 	while(i < battery->step_charging_step - 1) {
-		if (value < soc_condition) {
+		if (value < step_condition) {
 			break;
 		}
 		i++;
+		if ((battery->step_charging_type & STEP_CHARGING_CONDITION_SOC) &&
+			(battery->siop_level < 100 || battery->lcd_status))
+			step_condition = battery->pdata->step_charging_condition[i] + 15;
+		else
+			step_condition = battery->pdata->step_charging_condition[i];
 		if(battery->step_charging_status != -1)
 			break;
 	}

@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 825815 2019-06-17 12:33:43Z $
+ * $Id: dhd_msgbuf.c 834104 2019-08-12 13:17:33Z $
  */
 
 #include <typedefs.h>
@@ -10629,7 +10629,7 @@ dhd_prot_ringupd_dump(dhd_pub_t *dhd, struct bcmstrbuf *b)
 
 		bcm_bprintf(b, "\n max_tx_queues %d\n", max_h2d_queues);
 
-		bcm_bprintf(b, "\nRPTR block H2D common rings, 0x%04x\n", ptr);
+		bcm_bprintf(b, "\nRPTR block H2D common rings, 0x%4p\n", ptr);
 		value = ltoh32(*ptr);
 		bcm_bprintf(b, "\tH2D CTRL: value 0x%04x\n", value);
 		ptr++;
@@ -10637,7 +10637,7 @@ dhd_prot_ringupd_dump(dhd_pub_t *dhd, struct bcmstrbuf *b)
 		bcm_bprintf(b, "\tH2D RXPOST: value 0x%04x\n", value);
 
 		ptr++;
-		bcm_bprintf(b, "RPTR block Flow rings , 0x%04x\n", ptr);
+		bcm_bprintf(b, "RPTR block Flow rings , 0x%4p\n", ptr);
 		for (i = BCMPCIE_H2D_COMMON_MSGRINGS; i < max_h2d_queues; i++) {
 			value = ltoh32(*ptr);
 			bcm_bprintf(b, "\tflowring ID %d: value 0x%04x\n", i, value);
@@ -10651,7 +10651,7 @@ dhd_prot_ringupd_dump(dhd_pub_t *dhd, struct bcmstrbuf *b)
 
 		ptr = (uint32 *)(dhd->prot->h2d_dma_indx_rd_buf.va);
 
-		bcm_bprintf(b, "\nWPTR block D2H common rings, 0x%04x\n", ptr);
+		bcm_bprintf(b, "\nWPTR block D2H common rings, 0x%4p\n", ptr);
 		value = ltoh32(*ptr);
 		bcm_bprintf(b, "\tD2H CTRLCPLT: value 0x%04x\n", value);
 		ptr++;

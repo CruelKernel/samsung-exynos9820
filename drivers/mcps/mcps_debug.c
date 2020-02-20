@@ -154,6 +154,8 @@ void mcps_drop_packet(unsigned int hash)
         return;
     }
     atomic_inc_return_relaxed(&flow->drop_num);
+
+    atomic_inc_return_relaxed(&flow->output_num);
     rcu_read_unlock();
 }
 
@@ -386,6 +388,15 @@ void dump(struct eye * flow)
             mig_last_time_sec, mig_last_time_ms);
 }
 
+#ifdef CONFIG_MCPS_DEBUG_SYSTRACE
+void tracing_mark_writev(char sig, int pid, char *func, int value)
+{
+    char buf[40];
+    snprintf(buf, 40, "%c|%d|%s|%d", sig, pid, func, value);
+    trace_puts(buf);
+}
+#endif
+
 static int mcps_single_show (struct seq_file *s , void *unsed)
 {
     do_dump(s);
@@ -416,7 +427,7 @@ int init_mcps_debug_manager(void)
         return -1;
     }
 
-    mcps_proc_log_file = proc_create(MCPS_PROC_LOG_FILE , 0644 , mcps_proc_dir , &mcps_proc_ops);
+    mcps_proc_log_file = proc_create(MCPS_PROC_LOG_FILE , 0640 , mcps_proc_dir , &mcps_proc_ops);
     if(mcps_proc_log_file == NULL) {
         MCPS_DEBUG("Fail to create /proc/%s/%s \n", MCPS_PROC_DIR, MCPS_PROC_LOG_FILE);
         remove_proc_entry(MCPS_PROC_DIR , NULL);

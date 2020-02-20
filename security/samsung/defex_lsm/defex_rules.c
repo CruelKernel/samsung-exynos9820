@@ -14,8 +14,9 @@ const struct static_rule defex_static_rules[] = {
 	{feature_immutable_status,"1"},
 	{feature_ped_status,"1"},
 #ifndef DEFEX_USE_PACKED_RULES
-	{feature_ped_exception,"/system/bin/run-as"},
+	{feature_ped_exception,"/system/bin/run-as"},	/* DEFAULT */
 	{feature_safeplace_path,"/init"},
+	{feature_safeplace_path,"/system/bin/init"},
 	{feature_safeplace_path,"/system/bin/app_process32"},
 	{feature_safeplace_path,"/system/bin/app_process64"},
 	{feature_safeplace_path,"/system/bin/blkid"},
@@ -59,7 +60,6 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/system/bin/grep"},
 	{feature_safeplace_path,"/system/bin/e2fsck"},
 	{feature_safeplace_path,"/system/bin/scs"},
-	{feature_safeplace_path,"/system/bin/auditd"},
 	{feature_safeplace_path,"/system/bin/vdc"},
 	{feature_safeplace_path,"/system/bin/vaultkeeperd"},
 	{feature_safeplace_path,"/system/bin/prepare_param.sh"},
@@ -142,17 +142,30 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/vendor/bin/hvdcp_opti"},
 	{feature_safeplace_path,"/sbin/mkfs.f2fs"},
 	{feature_safeplace_path,"/sbin/sload.f2fs"},
-	{feature_safeplace_path,"/vendor/bin/init.class_late.sh"},
-	{feature_safeplace_path,"/system/bin/defrag_f2fs"},
+	{feature_safeplace_path,"/system/bin/secilc"},
+	{feature_safeplace_path,"/system/bin/apexd"},
+	{feature_safeplace_path,"/system/bin/fsverity_init"},
+	{feature_safeplace_path,"/system/bin/mini-keyctl"},
+	{feature_safeplace_path,"/system/bin/art_apex_boot_integrity"},
+	{feature_safeplace_path,"/system/bin/gsid"},
+	{feature_safeplace_path,"/system/bin/idmap2"},
+	{feature_safeplace_path,"/system/bin/charger"},
+	{feature_safeplace_path,"/system/bin/recovery"},
+	{feature_safeplace_path,"/system/bin/watchdogd"},
+	{feature_safeplace_path,"/vendor/bin/hw/vendor.qti.hardware.perf@2.0-service"},
+	{feature_safeplace_path,"/system/bin/netutils-wrapper-1.0"},
+	{feature_safeplace_path,"/system/bin/bugreport"},
+	{feature_safeplace_path,"/system/bin/minadbd"},
+	{feature_safeplace_path,"/system/bin/migrate_legacy_obb_data.sh"},
 	{feature_safeplace_path,"/tmp/update_binary"},
 	{feature_safeplace_path,"/system/bin/install-recovery.sh"},
+	{feature_safeplace_path,"/system/bin/install-recovery.sh"},	/* DEFAULT */
 	{feature_immutable_path_write,"/system/"},	/* DEFAULT */
 	{feature_immutable_path_write,"/vendor/"},	/* DEFAULT */
 	{feature_immutable_path_open,"/system/bin/"},	/* DEFAULT */
 	{feature_immutable_path_open,"/vendor/bin/"},	/* DEFAULT */
-	{feature_immutable_src_exception,"/system/bin/icd_tz_drm"},
-	{feature_immutable_src_exception,"/system/bin/icd_cc"},
-	{feature_immutable_src_exception,"/system/bin/icd_fido"},
+	{feature_immutable_src_exception,"/system/bin/icd"},
+	{feature_immutable_src_exception,"/system/bin/iof"},
 	{feature_immutable_src_exception,"/system/bin/sh"},
 	{feature_immutable_src_exception,"/system/bin/app_process64"},
 	{feature_immutable_src_exception,"/system/bin/crash_dump32"},
@@ -162,7 +175,10 @@ const struct static_rule defex_static_rules[] = {
 	{feature_immutable_src_exception,"/vendor/bin/hw/android.hardware.media.omx@1.0-service"},
 	{feature_immutable_src_exception,"/vendor/bin/snap_utility_32"},
 	{feature_immutable_src_exception,"/vendor/bin/snap_utility_64"},
+	{feature_immutable_src_exception,"/vendor/bin/icd_vendor"},
+	{feature_immutable_src_exception,"/vendor/bin/iof_vendor"},
 	{feature_immutable_src_exception,"/init"},
+	{feature_immutable_src_exception,"/system/bin/init"},
 	/* Rules will be added here */
 	/* Never modify the above line. Rules will be added for buildtime */
 #endif /* DEFEX_USE_PACKED_RULES */

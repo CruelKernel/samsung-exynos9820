@@ -456,7 +456,7 @@ DECLARE_STATE_FUNC(idle)
 	glGage = HEADGAGE;
 	if (input_booster_event == BOOSTER_ON) {
 		int i;
-		pr_booster("[Input Booster] %s      State0 : Idle  index : %d, hmp : %d, dma_latency : %d, cpu2 : %d, cpu1 : %d, time : %d, input_booster_event : %d\n", glGage, _this->index, _this->param[_this->index].hmp_boost, _this->param[_this->index].dma_latency, _this->param[_this->index].cpu2_freq, _this->param[_this->index].cpu1_freq, _this->param[_this->index].time, input_booster_event);
+		pr_booster("[Input Booster] %s      State0 : Idle  index : %d, hmp : %d, ucc_requested_val : %d, cpu2 : %d, cpu1 : %d, time : %d, input_booster_event : %d\n", glGage, _this->index, _this->param[_this->index].hmp_boost, _this->param[_this->index].ucc_requested_val, _this->param[_this->index].cpu2_freq, _this->param[_this->index].cpu1_freq, _this->param[_this->index].time, input_booster_event);
 		_this->index = 0;
 		_this->level = -1;
 		for (i = 0; i < 2; i++) {
@@ -470,7 +470,7 @@ DECLARE_STATE_FUNC(idle)
 		_this->index++;
 		CHANGE_STATE_TO(press);
 	} else if (input_booster_event == BOOSTER_OFF) {
-		pr_booster("[Input Booster] %s      Skipped  index : %d, hmp : %d , dma_latency : %d, cpu2 : %d, cpu1 : %d, input_booster_event : %d\n", glGage, _this->index, _this->param[_this->index].hmp_boost, _this->param[_this->index].dma_latency, _this->param[_this->index].cpu2_freq, _this->param[_this->index].cpu1_freq, input_booster_event);
+		pr_booster("[Input Booster] %s      Skipped  index : %d, hmp : %d , ucc_requested_val : %d, cpu2 : %d, cpu1 : %d, input_booster_event : %d\n", glGage, _this->index, _this->param[_this->index].hmp_boost, _this->param[_this->index].ucc_requested_val, _this->param[_this->index].cpu2_freq, _this->param[_this->index].cpu1_freq, input_booster_event);
 		pr_booster("\n");
 	}
 }
@@ -753,7 +753,7 @@ void input_booster_init(void)
 				err |= of_property_read_u32_index(cnp, "input_booster,mif_freqs", i, &dt_infor->param_tables[i].mif_freq);
 				err |= of_property_read_u32_index(cnp, "input_booster,int_freqs", i, &dt_infor->param_tables[i].int_freq);
 				err |= of_property_read_u32_index(cnp, "input_booster,hmp_boost", i, &temp); dt_infor->param_tables[i].hmp_boost = (u8)temp;
-				err |= of_property_read_u32_index(cnp, "input_booster,dma_latency", i, &dt_infor->param_tables[i].dma_latency);
+				err |= of_property_read_u32_index(cnp, "input_booster,ucc_requested_val", i, &temp); dt_infor->param_tables[i].ucc_requested_val = (u8)temp;
 				err |= of_property_read_u32_index(cnp, "input_booster,head_times", i, &temp); dt_infor->param_tables[i].head_time = (u16)temp;
 				err |= of_property_read_u32_index(cnp, "input_booster,tail_times", i, &temp); dt_infor->param_tables[i].tail_time = (u16)temp;
 				err |= of_property_read_u32_index(cnp, "input_booster,phase_times", i, &temp); dt_infor->param_tables[i].phase_time = (u16)temp;
@@ -761,14 +761,14 @@ void input_booster_init(void)
 					printk("Failed to get [%d] param table property\n", i);
 				}
 
-				printk("[Input Booster] Level %d : frequency[%d,%d,%d,%d,%d] hmp_boost[%d] dma_latency[%d] times[%d,%d,%d]\n", i,
+				printk("[Input Booster] Level %d : frequency[%d,%d,%d,%d,%d] hmp_boost[%d] ucc_requested_val[%d] times[%d,%d,%d]\n", i,
 					dt_infor->param_tables[i].cpu2_freq,
 					dt_infor->param_tables[i].cpu1_freq,
 					dt_infor->param_tables[i].kfc_freq,
 					dt_infor->param_tables[i].mif_freq,
 					dt_infor->param_tables[i].int_freq,
 					dt_infor->param_tables[i].hmp_boost,
-					dt_infor->param_tables[i].dma_latency,
+					dt_infor->param_tables[i].ucc_requested_val,
 					dt_infor->param_tables[i].head_time,
 					dt_infor->param_tables[i].tail_time,
 					dt_infor->param_tables[i].phase_time);

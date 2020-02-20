@@ -147,6 +147,7 @@ typedef struct kdp_init_struct {
 	u32 rp_task;
 	u32 comm_task;
 	u32 bp_cred_secptr;
+	u32 task_threadinfo;
 	u64 verifiedbootstate;
 } kdp_init_t;
 #endif  /* CONFIG_RKP_KDP */

@@ -151,6 +151,9 @@ struct fimc_is_resourcemgr {
 	struct mutex				rsc_lock;
 	/* for sysreg setting */
 	struct mutex				sysreg_lock;
+
+	u32					shot_timeout;
+	int					shot_timeout_tick;
 };
 
 int fimc_is_resourcemgr_probe(struct fimc_is_resourcemgr *resourcemgr, void *private_data, struct platform_device *pdev);

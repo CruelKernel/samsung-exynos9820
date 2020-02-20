@@ -16,6 +16,7 @@
 #include <linux/file.h>
 
 #include "dd_common.h"
+#include "../../fs/crypto/sdp/sdp_crypto.h"
 
 #define DD_XTS_TWEAK_SIZE       16
 
@@ -76,7 +77,9 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 
 		dd_dump("ddar master key", master_key.raw, master_key.size);
 
-		get_random_bytes(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		rc = sdp_crypto_generate_key(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		if (rc)
+			memset(file_encryption_key, 0, DD_AES_256_XTS_KEY_SIZE);
 
 		dd_dump("ddar file key", file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
 

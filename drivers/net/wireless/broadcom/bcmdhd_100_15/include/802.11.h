@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: 802.11.h 827803 2019-06-28 04:44:55Z $
  */
 
 #ifndef _802_11_H_
@@ -61,6 +59,10 @@
 #define DOT11_IV_TKIP_LEN		8	/* d11 IV TKIP length */
 #define DOT11_IV_AES_OCB_LEN		4	/* d11 IV/AES/OCB length */
 #define DOT11_IV_AES_CCM_LEN		8	/* d11 IV/AES/CCM length */
+#define DOT11_IV_WAPI_LEN		18	/* d11 IV WAPI length */
+/* TODO: Need to change DOT11_IV_MAX_LEN to 18, but currently unable to change as the old
+ * branches are still referencing to this component.
+ */
 #define DOT11_IV_MAX_LEN		8	/* maximum iv len for any encryption */
 
 /* Includes MIC */
@@ -1386,12 +1388,11 @@ typedef struct ccx_qfl_ie ccx_qfl_ie_t;
 
 #define DOT11_SC_ANTICLOG_TOCKEN_REQUIRED	76	/* Anti-clogging tocken required */
 #define DOT11_SC_INVALID_FINITE_CYCLIC_GRP	77	/* Invalid contents of RSNIE */
-
+#define DOT11_SC_TRANSMIT_FAILURE	79	/* transmission failure */
 #define DOT11_SC_ASSOC_VHT_REQUIRED	104	/* Association denied because the requesting
 						 * station does not support VHT features.
 						 */
-
-#define DOT11_SC_TRANSMIT_FAILURE	79	/* transmission failure */
+#define DOT11_SC_UNKNOWN_PASSWORD_IDENTIFIER	123 /* mismatch of password id */
 
 /* Info Elts, length of INFORMATION portion of Info Elts */
 #define DOT11_MNG_DS_PARAM_LEN			1	/* d11 management DS parameter length */
@@ -1532,6 +1533,9 @@ typedef struct ccx_qfl_ie ccx_qfl_ie_t;
 #define DOT11_MNG_ID_EXT_ID			255	/* Element ID Extension 11mc D4.3 */
 #define EXT_MNG_OWE_DH_PARAM_ID			32u	/* OWE DH Param ID - RFC 8110 */
 #define DOT11_MNG_OWE_DH_PARAM_ID		(DOT11_MNG_ID_EXT_ID + EXT_MNG_OWE_DH_PARAM_ID)
+#define EXT_MSG_PASSWORD_IDENTIFIER_ID		33u	/* Password ID EID */
+#define DOT11_MSG_PASSWORD_IDENTIFIER_ID \
+	(DOT11_MNG_ID_EXT_ID + EXT_MSG_PASSWORD_IDENTIFIER_ID)
 #define EXT_MNG_HE_CAP_ID			35u	/* HE Capabilities, 11ax */
 #define DOT11_MNG_HE_CAP_ID			(DOT11_MNG_ID_EXT_ID + EXT_MNG_HE_CAP_ID)
 #define EXT_MNG_HE_OP_ID			36u	/* HE Operation IE, 11ax */
@@ -1664,60 +1668,63 @@ typedef struct ccx_qfl_ie ccx_qfl_ie_t;
 
 /* Extended capabilities IE bitfields */
 /* 20/40 BSS Coexistence Management support bit position */
-#define DOT11_EXT_CAP_OBSS_COEX_MGMT		0
+#define DOT11_EXT_CAP_OBSS_COEX_MGMT		0u
 /* Extended Channel Switching support bit position */
-#define DOT11_EXT_CAP_EXT_CHAN_SWITCHING	2
+#define DOT11_EXT_CAP_EXT_CHAN_SWITCHING	2u
 /* scheduled PSMP support bit position */
-#define DOT11_EXT_CAP_SPSMP			6
+#define DOT11_EXT_CAP_SPSMP			6u
 /*  Flexible Multicast Service */
-#define DOT11_EXT_CAP_FMS			11
+#define DOT11_EXT_CAP_FMS			11u
 /* proxy ARP service support bit position */
-#define DOT11_EXT_CAP_PROXY_ARP			12
+#define DOT11_EXT_CAP_PROXY_ARP			12u
 /* Civic Location */
-#define DOT11_EXT_CAP_CIVIC_LOC			14
+#define DOT11_EXT_CAP_CIVIC_LOC			14u
 /* Geospatial Location */
-#define DOT11_EXT_CAP_LCI			15
+#define DOT11_EXT_CAP_LCI			15u
 /* Traffic Filter Service */
-#define DOT11_EXT_CAP_TFS			16
+#define DOT11_EXT_CAP_TFS			16u
 /* WNM-Sleep Mode */
-#define DOT11_EXT_CAP_WNM_SLEEP			17
+#define DOT11_EXT_CAP_WNM_SLEEP			17u
 /* TIM Broadcast service */
-#define DOT11_EXT_CAP_TIMBC			18
+#define DOT11_EXT_CAP_TIMBC			18u
 /* BSS Transition Management support bit position */
-#define DOT11_EXT_CAP_BSSTRANS_MGMT		19
+#define DOT11_EXT_CAP_BSSTRANS_MGMT		19u
 /* Multiple BSSID support position */
-#define DOT11_EXT_CAP_MULTIBSSID		22
+#define DOT11_EXT_CAP_MULTIBSSID		22u
 /* Direct Multicast Service */
-#define DOT11_EXT_CAP_DMS			26
+#define DOT11_EXT_CAP_DMS			26u
 /* Interworking support bit position */
-#define DOT11_EXT_CAP_IW			31
+#define DOT11_EXT_CAP_IW			31u
 /* QoS map support bit position */
-#define DOT11_EXT_CAP_QOS_MAP		32
+#define DOT11_EXT_CAP_QOS_MAP			32u
 /* service Interval granularity bit position and mask */
-#define DOT11_EXT_CAP_SI			41
+#define DOT11_EXT_CAP_SI			41u
 #define DOT11_EXT_CAP_SI_MASK			0x0E
 /* Location Identifier service */
-#define DOT11_EXT_CAP_IDENT_LOC			44
+#define DOT11_EXT_CAP_IDENT_LOC			44u
 /* WNM notification */
-#define DOT11_EXT_CAP_WNM_NOTIF			46
+#define DOT11_EXT_CAP_WNM_NOTIF			46u
 /* Operating mode notification - VHT (11ac D3.0 - 8.4.2.29) */
-#define DOT11_EXT_CAP_OPER_MODE_NOTIF		62
+#define DOT11_EXT_CAP_OPER_MODE_NOTIF		62u
 /* Fine timing measurement - D3.0 */
-#define DOT11_EXT_CAP_FTM_RESPONDER		70
-#define DOT11_EXT_CAP_FTM_INITIATOR		71 /* tentative 11mcd3.0 */
-#define DOT11_EXT_CAP_FILS			72 /* FILS Capability */
+#define DOT11_EXT_CAP_FTM_RESPONDER		70u
+#define DOT11_EXT_CAP_FTM_INITIATOR		71u /* tentative 11mcd3.0 */
+#define DOT11_EXT_CAP_FILS			72u /* FILS Capability */
 /* TWT support */
-#define DOT11_EXT_CAP_TWT_REQUESTER		77
-#define DOT11_EXT_CAP_TWT_RESPONDER		78
-#define DOT11_EXT_CAP_OBSS_NB_RU_OFDMA		79
-#define DOT11_EXT_CAP_EMBSS_ADVERTISE		80
+#define DOT11_EXT_CAP_TWT_REQUESTER		77u
+#define DOT11_EXT_CAP_TWT_RESPONDER		78u
+#define DOT11_EXT_CAP_OBSS_NB_RU_OFDMA		79u
+#define DOT11_EXT_CAP_EMBSS_ADVERTISE		80u
+/* SAE password ID */
+#define DOT11_EXT_CAP_SAE_PWD_ID_INUSE		81u
+#define DOT11_EXT_CAP_SAE_PWD_ID_USED_EXCLUSIVE	82u
 /* TODO: Update DOT11_EXT_CAP_MAX_IDX to reflect the highest offset.
  * Note: DOT11_EXT_CAP_MAX_IDX must only be used in attach path.
  *       It will cause ROM invalidation otherwise.
  */
-#define DOT11_EXT_CAP_MAX_IDX	80
+#define DOT11_EXT_CAP_MAX_IDX			82u
 
-#define DOT11_EXT_CAP_MAX_BIT_IDX		95	/* !!!update this please!!! */
+#define DOT11_EXT_CAP_MAX_BIT_IDX		95u	/* !!!update this please!!! */
 
 /* extended capability */
 #ifndef DOT11_EXTCAP_LEN_MAX
@@ -4527,6 +4534,8 @@ typedef struct vht_features_ie_hdr vht_features_ie_hdr_t;
 #define RSN_AKM_PSK_SHA384		20
 /* OSEN authenticated key managment suite */
 #define OSEN_AKM_UNSPECIFIED	RSN_AKM_UNSPECIFIED	/* Over 802.1x */
+/* WFA DPP RSN authenticated key managment */
+#define RSN_AKM_DPP			02u	/* DPP RSN */
 
 /* Key related defines */
 #define DOT11_MAX_DEFAULT_KEYS	4	/* number of default keys */

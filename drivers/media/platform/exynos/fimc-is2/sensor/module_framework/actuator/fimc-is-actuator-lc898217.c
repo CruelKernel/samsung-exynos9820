@@ -395,10 +395,10 @@ static int sensor_lc898217_actuator_probe(struct i2c_client *client,
 	return ret;
 
 p_err:
-	if (!actuator)
+	if (actuator)
 		kzfree(actuator);
 
-	if (!subdev_actuator)
+	if (subdev_actuator)
 		kzfree(subdev_actuator);
 
 	return ret;

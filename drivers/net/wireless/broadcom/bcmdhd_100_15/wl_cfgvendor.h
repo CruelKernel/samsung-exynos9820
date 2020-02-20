@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.h 828073 2019-07-01 09:33:21Z $
+ * $Id: wl_cfgvendor.h 837542 2019-08-26 10:22:28Z $
  */
 
 #ifndef _wl_cfgvendor_h_
@@ -42,7 +42,8 @@ enum brcm_vendor_attr {
 	BRCM_ATTR_DRIVER_CMD		= 0,
 	BRCM_ATTR_DRIVER_KEY_PMK	= 1,
 	BRCM_ATTR_DRIVER_FEATURE_FLAGS	= 2,
-	BRCM_ATTR_DRIVER_MAX		= 3
+	BRCM_ATTR_DRIVER_RAND_MAC	= 3,
+	BRCM_ATTR_DRIVER_MAX		= 4
 };
 
 enum brcm_wlan_vendor_features {
@@ -420,6 +421,8 @@ typedef enum {
 	DUMP_LEN_ATTR_SSSR_C0_D11_AFTER,
 	DUMP_LEN_ATTR_SSSR_C1_D11_BEFORE,
 	DUMP_LEN_ATTR_SSSR_C1_D11_AFTER,
+	DUMP_LEN_ATTR_SSSR_C2_D11_BEFORE,
+	DUMP_LEN_ATTR_SSSR_C2_D11_AFTER,
 	DUMP_LEN_ATTR_SSSR_DIG_BEFORE,
 	DUMP_LEN_ATTR_SSSR_DIG_AFTER,
 	DUMP_LEN_ATTR_TIMESTAMP,
@@ -433,19 +436,25 @@ typedef enum {
 	DUMP_LEN_ATTR_COOKIE,
 	DUMP_LEN_ATTR_FLOWRING_DUMP,
 	DUMP_LEN_ATTR_PKTLOG,
+	DUMP_LEN_ATTR_PKTLOG_DEBUG,
 	DUMP_FILENAME_ATTR_DEBUG_DUMP,
 	DUMP_FILENAME_ATTR_MEM_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_CORE_0_BEFORE_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_CORE_0_AFTER_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_CORE_1_BEFORE_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_CORE_1_AFTER_DUMP,
+	DUMP_FILENAME_ATTR_SSSR_CORE_2_BEFORE_DUMP,
+	DUMP_FILENAME_ATTR_SSSR_CORE_2_AFTER_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_DIG_BEFORE_DUMP,
 	DUMP_FILENAME_ATTR_SSSR_DIG_AFTER_DUMP,
 	DUMP_FILENAME_ATTR_PKTLOG_DUMP,
+	DUMP_FILENAME_ATTR_PKTLOG_DEBUG_DUMP,
 	DUMP_LEN_ATTR_STATUS_LOG,
 	DUMP_LEN_ATTR_AXI_ERROR,
 	DUMP_FILENAME_ATTR_AXI_ERROR_DUMP,
-	DUMP_LEN_ATTR_RTT_LOG
+	DUMP_LEN_ATTR_RTT_LOG,
+	/* XXX: Please add new attributes from here to sync up old HAL */
+	DUMP_EVENT_ATTR_MAX
 } EWP_DUMP_EVENT_ATTRIBUTE;
 
 /* Attributes associated with DEBUG_GET_DUMP_BUF */
@@ -456,6 +465,8 @@ typedef enum {
 	DUMP_BUF_ATTR_SSSR_C0_D11_AFTER,
 	DUMP_BUF_ATTR_SSSR_C1_D11_BEFORE,
 	DUMP_BUF_ATTR_SSSR_C1_D11_AFTER,
+	DUMP_BUF_ATTR_SSSR_C2_D11_BEFORE,
+	DUMP_BUF_ATTR_SSSR_C2_D11_AFTER,
 	DUMP_BUF_ATTR_SSSR_DIG_BEFORE,
 	DUMP_BUF_ATTR_SSSR_DIG_AFTER,
 	DUMP_BUF_ATTR_TIMESTAMP,
@@ -469,9 +480,12 @@ typedef enum {
 	DUMP_BUF_ATTR_COOKIE,
 	DUMP_BUF_ATTR_FLOWRING_DUMP,
 	DUMP_BUF_ATTR_PKTLOG,
+	DUMP_BUF_ATTR_PKTLOG_DEBUG,
 	DUMP_BUF_ATTR_STATUS_LOG,
 	DUMP_BUF_ATTR_AXI_ERROR,
-	DUMP_BUF_ATTR_RTT_LOG
+	DUMP_BUF_ATTR_RTT_LOG,
+	/* XXX: Please add new attributes from here to sync up old HAL */
+	DUMP_BUF_ATTR_MAX
 } EWP_DUMP_CMD_ATTRIBUTE;
 
 enum mkeep_alive_attributes {
@@ -704,6 +718,20 @@ int wl_cfgvendor_notify_supp_event_str(const char *evt_name, const char *fmt, ..
 #endif /* WL_SUPP_EVENT && (kernel > (3, 13, 0)) || WL_VENDOR_EXT_SUPPORT */
 
 #ifdef CONFIG_COMPAT
+#define COMPAT_STRUCT_IFACE(normal_structure, value)	\
+	compat_ ## normal_structure compat_ ## iface;	\
+	int compat_task_state = is_compat_task();			\
+	normal_structure value;
+
+#define COMPAT_BZERO_IFACE(normal_structure, value)	\
+	do { \
+		if (compat_task_state) {	\
+			bzero(&compat_ ## value, sizeof(compat_ ## normal_structure));	\
+		} else { \
+			bzero(&value, sizeof(normal_structure));	\
+		} \
+	} while (0)
+
 #define COMPAT_ASSIGN_VALUE(normal_structure, member, value)	\
 	do { \
 		if (compat_task_state) {	\
@@ -712,9 +740,29 @@ int wl_cfgvendor_notify_supp_event_str(const char *evt_name, const char *fmt, ..
 			normal_structure.member = value; \
 		} \
 	} while (0)
+
+#define COMPAT_MEMCOPY_IFACE(output, total_len, normal_structure, value, wifi_rate_stat)	\
+	do { \
+		if (compat_task_state) {	\
+			memcpy(output, &compat_ ## value, sizeof(compat_ ## normal_structure));	\
+			output += (sizeof(compat_ ## value) - sizeof(wifi_rate_stat));	\
+			total_len += sizeof(compat_ ## normal_structure);	\
+		} else { \
+			memcpy(output, &value, sizeof(normal_structure));	\
+			output += (sizeof(value) - sizeof(wifi_rate_stat));	\
+			total_len += sizeof(normal_structure);	\
+		} \
+	} while (0)
 #else
-#define COMPAT_ASSIGN_VALUE(normal_structure, member, value) \
-	normal_structure.member = value;
+#define COMPAT_STRUCT_IFACE(normal_structure, value)	normal_structure value;
+#define COMPAT_BZERO_IFACE(normal_structure, value)	bzero(&value, sizeof(normal_structure));
+#define COMPAT_ASSIGN_VALUE(normal_structure, member, value)	normal_structure.member = value;
+#define COMPAT_MEMCOPY_IFACE(output, total_len, normal_structure, value, rate_stat)	\
+	do { \
+		memcpy(output, &value, sizeof(normal_structure));	\
+		output += (sizeof(value) - sizeof(wifi_rate_stat));	\
+		total_len += sizeof(normal_structure);	\
+	} while (0)
 #endif /* CONFIG_COMPAT */
 
 #if (defined(CONFIG_ARCH_MSM) && defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC)) || \

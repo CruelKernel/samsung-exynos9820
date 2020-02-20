@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_bam.c 810060 2019-03-18 07:06:18Z $
+ * $Id$
  */
 #include <bcmiov.h>
 #include <linux/time.h>
@@ -115,7 +115,7 @@ wl_bad_ap_mngr_update(struct bcm_cfg80211 *cfg, wl_bad_ap_info_t *bad_ap_info)
 		return;
 	}
 
-	spin_lock_irqsave(&cfg->bad_ap_mngr.lock, flags);
+	WL_CFG_BAM_LOCK(&cfg->bad_ap_mngr.lock, flags);
 	/* sort by timestamp */
 	list_sort(NULL, &cfg->bad_ap_mngr.list, wl_bad_ap_mngr_timecmp);
 
@@ -131,7 +131,7 @@ wl_bad_ap_mngr_update(struct bcm_cfg80211 *cfg, wl_bad_ap_info_t *bad_ap_info)
 	if (entry != NULL) {
 		memcpy(&entry->bad_ap, bad_ap_info, sizeof(entry->bad_ap));
 	}
-	spin_unlock_irqrestore(&cfg->bad_ap_mngr.lock, flags);
+	WL_CFG_BAM_UNLOCK(&cfg->bad_ap_mngr.lock, flags);
 }
 #if defined(STRICT_GCC_WARNINGS) && defined(__GNUC__)
 #pragma GCC diagnostic pop
@@ -414,7 +414,7 @@ wl_bad_ap_mngr_deinit(struct bcm_cfg80211 *cfg)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif // endif
-	spin_lock_irqsave(&cfg->bad_ap_mngr.lock, flags);
+	WL_CFG_BAM_LOCK(&cfg->bad_ap_mngr.lock, flags);
 	while (!list_empty(&cfg->bad_ap_mngr.list)) {
 		entry = list_entry(cfg->bad_ap_mngr.list.next, wl_bad_ap_info_entry_t, list);
 		if (entry) {
@@ -422,7 +422,7 @@ wl_bad_ap_mngr_deinit(struct bcm_cfg80211 *cfg)
 			MFREE(cfg->osh, entry, sizeof(*entry));
 		}
 	}
-	spin_unlock_irqrestore(&cfg->bad_ap_mngr.lock, flags);
+	WL_CFG_BAM_UNLOCK(&cfg->bad_ap_mngr.lock, flags);
 #if defined(STRICT_GCC_WARNINGS) && defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif // endif
@@ -445,6 +445,7 @@ wl_bad_ap_mngr_init(struct bcm_cfg80211 *cfg)
 #else
 	g_bad_ap_mngr = &cfg->bad_ap_mngr;
 #endif	/* !DHD_ADPS_BAM_EXPORT */
+	cfg->bad_ap_mngr.disconnected = FALSE;
 }
 
 static int
@@ -507,6 +508,9 @@ wl_event_adps_bad_ap_mngr(struct bcm_cfg80211 *cfg, void *data)
 	memcpy(temp.bssid.octet, &bad_ap_data->ea.octet, ETHER_ADDR_LEN);
 	ret = wl_bad_ap_mngr_add(&cfg->bad_ap_mngr, &temp);
 #endif	/* !DHD_ADPS_BAM_EXPORT */
+
+	cfg->bad_ap_mngr.disconnected = TRUE;
+	WL_INFORM_MEM(("Detect ADPS BAD AP and Register to list\n"));
 
 	return ret;
 }

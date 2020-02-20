@@ -102,8 +102,39 @@ static int read_xattr(struct dentry *dentry, const char *name,
 	return ret;
 }
 
+static bool is_cert_relevant_to_task(
+				const struct proca_certificate *parsed_cert,
+				struct task_struct *task)
+{
+	const char system_server_app_name[] = "/system/framework/services.jar";
+	const char system_server[] = "system_server";
+	const size_t max_app_name = 1024;
+	char cmdline[max_app_name + 1];
+	int cmdline_size;
+
+	cmdline_size = get_cmdline(task, cmdline, max_app_name);
+	cmdline[cmdline_size] = 0;
+
+	// Special case for system_server
+	if (!strncmp(parsed_cert->app_name, system_server_app_name,
+			parsed_cert->app_name_size)) {
+		if (strncmp(cmdline, system_server, sizeof(system_server)))
+			return false;
+	} else if (parsed_cert->app_name[0] != '/') {
+		// Case for Android applications
+		PROCA_DEBUG_LOG("Task %d has cmdline : %s\n",
+			task->pid, cmdline);
+		if (strncmp(cmdline, parsed_cert->app_name,
+				parsed_cert->app_name_size))
+			return false;
+	}
+
+	return true;
+}
+
 static struct proca_task_descr *prepare_proca_task_descr(
 				struct task_struct *task, struct file *file,
+				const enum task_integrity_value tint_value,
 				void *xattr, size_t xattr_size,
 				char **out_five_xattr_value)
 {
@@ -114,68 +145,61 @@ static struct proca_task_descr *prepare_proca_task_descr(
 	char *five_sign_xattr_value = NULL;
 	size_t five_sign_xattr_size;
 	struct proca_task_descr *task_descr = NULL;
-	const char system_server_app_name[] = "/system/framework/services.jar";
-	const char system_server[] = "system_server";
-	const size_t max_app_name = 1024;
-	char cmdline[max_app_name + 1];
-	int cmdline_size;
 
 	pa_xattr_size = read_xattr(file->f_path.dentry,
 				XATTR_NAME_PA, &pa_xattr_value);
-	if (!pa_xattr_value)
-		return task_descr;
 
-	PROCA_DEBUG_LOG("%s xattr was found for task %d\n", XATTR_NAME_PA,
-			task->pid);
-
-	if (parse_proca_certificate(pa_xattr_value, pa_xattr_size,
-				    &parsed_cert))
-		goto xattr_cleanup;
-
-	cmdline_size = get_cmdline(task, cmdline, max_app_name);
-	cmdline[cmdline_size] = 0;
-
-	// Special case for system_server
-	if (strncmp(parsed_cert.app_name, system_server_app_name,
-			parsed_cert.app_name_size) == 0) {
-		if (strncmp(cmdline, system_server, sizeof(system_server)))
-			goto proca_cert_cleanup;
-	} else if (parsed_cert.app_name[0] != '/') {
-		// Case for Android applications
-		PROCA_DEBUG_LOG("Task %d has cmdline : %s\n",
-			task->pid, cmdline);
-		if (memcmp(cmdline, parsed_cert.app_name,
-				parsed_cert.app_name_size) != 0)
-			goto proca_cert_cleanup;
-	}
+	if (!pa_xattr_value && !task_integrity_value_allow_sign(tint_value))
+		return NULL;
 
 	if (xattr) {
-		five_sign_xattr_value = kmemdup(xattr, xattr_size, GFP_KERNEL);
+		five_sign_xattr_value = kmemdup(
+					xattr, xattr_size, GFP_KERNEL);
 		five_sign_xattr_size = xattr_size;
 	} else {
 		five_sign_xattr_size = read_xattr(file->f_path.dentry,
-					  XATTR_NAME_FIVE,
-					  &five_sign_xattr_value);
+					XATTR_NAME_FIVE,
+					&five_sign_xattr_value);
 	}
 
 	if (!five_sign_xattr_value) {
-		PROCA_INFO_LOG(
-			"Failed to read five xattr from file with pa xattr\n");
-		goto proca_cert_cleanup;
+		PROCA_INFO_LOG("Failed to read five xattr\n");
+		goto pa_xattr_cleanup;
 	}
+
+	if (!pa_xattr_value) {
+		// in this case task is allowed to sign
+		task_descr = create_unsigned_proca_task_descr(task);
+		if (task_descr) {
+			*out_five_xattr_value = five_sign_xattr_value;
+			return task_descr;
+		} else {
+			goto five_xattr_cleanup;
+		}
+	}
+
+	if (parse_proca_certificate(pa_xattr_value, pa_xattr_size,
+				    &parsed_cert))
+		goto five_xattr_cleanup;
+
+	if (!is_cert_relevant_to_task(&parsed_cert, task))
+		goto proca_cert_cleanup;
+
+	PROCA_DEBUG_LOG("%s xattr was found for task %d\n", XATTR_NAME_PA,
+			task->pid);
 
 	if (!compare_with_five_signature(&parsed_cert, five_sign_xattr_value,
 					 five_sign_xattr_size)) {
 		PROCA_INFO_LOG(
 			"Comparison with five signature for %s failed.\n",
 			parsed_cert.app_name);
-		goto five_xattr_cleanup;
+		goto proca_cert_cleanup;
 	}
 
 	if (init_proca_identity(&ident, file,
 			pa_xattr_value, pa_xattr_size,
 			&parsed_cert))
-		goto five_xattr_cleanup;
+		goto proca_cert_cleanup;
 
 	task_descr = create_proca_task_descr(task, &ident);
 	if (!task_descr)
@@ -188,13 +212,13 @@ static struct proca_task_descr *prepare_proca_task_descr(
 proca_identity_cleanup:;
 	deinit_proca_identity(&ident);
 
-five_xattr_cleanup:;
-	kfree(five_sign_xattr_value);
-
 proca_cert_cleanup:;
 	deinit_proca_certificate(&parsed_cert);
 
-xattr_cleanup:;
+five_xattr_cleanup:;
+	kfree(five_sign_xattr_value);
+
+pa_xattr_cleanup:;
 	kfree(pa_xattr_value);
 
 	return NULL;
@@ -244,9 +268,10 @@ static void proca_hook_file_processed(struct task_struct *task,
 	}
 
 	if (!target_task_descr) {
-		target_task_descr = prepare_proca_task_descr(task, file,
-							xattr, xattr_size,
-							&five_xattr_value);
+		target_task_descr = prepare_proca_task_descr(
+						task, file, tint_value,
+						xattr, xattr_size,
+						&five_xattr_value);
 		if (target_task_descr)
 			proca_table_add_task_descr(&g_proca_table,
 						target_task_descr);
@@ -415,3 +440,4 @@ late_initcall(proca_module_init);
 
 MODULE_DESCRIPTION("PROCA LSM module");
 MODULE_LICENSE("GPL");
+

@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pno.c 812762 2019-04-02 09:36:26Z $
+ * $Id: dhd_pno.c 848267 2019-10-31 09:19:57Z $
  */
 
 #if defined(GSCAN_SUPPORT) && !defined(PNO_SUPPORT)
@@ -589,12 +589,14 @@ _dhd_pno_set(dhd_pub_t *dhd, const dhd_pno_params_t *pno_params, dhd_pno_mode_t 
 		}
 	}
 
+#if !defined(WL_USE_RANDOMIZED_SCAN)
 	err = dhd_set_rand_mac_oui(dhd);
 	/* Ignore if chip doesnt support the feature */
 	if (err < 0 && err != BCME_UNSUPPORTED) {
 		DHD_ERROR(("%s : failed to set random mac for PNO scan, %d\n", __FUNCTION__, err));
 		goto exit;
 	}
+#endif /* !defined(WL_USE_RANDOMIZED_SCAN */
 
 #ifdef GSCAN_SUPPORT
 	if (mode == DHD_PNO_BATCH_MODE ||
@@ -4373,6 +4375,7 @@ int dhd_pno_init(dhd_pub_t *dhd)
 			FALSE);
 	if (err == BCME_UNSUPPORTED) {
 		_pno_state->wls_supported = FALSE;
+		DHD_ERROR(("Android Location Service, UNSUPPORTED\n"));
 		DHD_INFO(("Current firmware doesn't support"
 			" Android Location Service\n"));
 	} else {

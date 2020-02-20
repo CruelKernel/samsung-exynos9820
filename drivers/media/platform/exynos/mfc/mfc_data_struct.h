@@ -196,6 +196,13 @@ enum mfc_vb_flag {
 	MFC_FLAG_LAST_FRAME		= 31,
 };
 
+enum mfc_idle_mode {
+	MFC_IDLE_MODE_NONE	= 0,
+	MFC_IDLE_MODE_RUNNING	= 1,
+	MFC_IDLE_MODE_IDLE	= 2,
+	MFC_IDLE_MODE_CANCEL	= 3,
+};
+
 struct mfc_ctx;
 
 enum mfc_debug_cause {
@@ -846,6 +853,14 @@ struct mfc_dev {
 	struct workqueue_struct *watchdog_wq;
 	struct work_struct watchdog_work;
 
+	atomic_t hw_run_cnt;
+	atomic_t queued_cnt;
+	struct mutex idle_qos_mutex;
+	enum mfc_idle_mode idle_mode;
+	struct timer_list mfc_idle_timer;
+	struct workqueue_struct *mfc_idle_wq;
+	struct work_struct mfc_idle_work;
+
 	/* for DRM */
 	int curr_ctx_is_drm;
 	int num_drm_inst;
@@ -857,7 +872,6 @@ struct mfc_dev {
 
 #ifdef CONFIG_MFC_USE_BUS_DEVFREQ
 	struct list_head qos_queue;
-	spinlock_t qos_lock;
 	atomic_t qos_req_cur;
 	struct pm_qos_request qos_req_mfc;
 	struct pm_qos_request qos_req_int;

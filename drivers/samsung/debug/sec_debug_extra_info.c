@@ -29,6 +29,8 @@
 
 #include "sec_debug_extra_info_keys.c"
 
+static bool exin_ready;
+
 static struct sec_debug_shared_buffer *sh_buf;
 static void *slot_end_addr;
 
@@ -104,8 +106,8 @@ static void *search_item_by_key(const char *key, int start, int end)
 	char *keyname;
 	unsigned int max;
 
-	if (!sh_buf) {
-		pr_info("%s: extra_info is not ready\n");
+	if (!sh_buf || !exin_ready) {
+		pr_info("%s: (%s) extra_info is not ready\n", __func__, key);
 
 		return NULL;
 	}
@@ -391,6 +393,11 @@ static void dump_slot(int type, void *ptr)
 	else
 		m = NULL;
 
+	if (!exin_ready) {
+		pr_crit("%s: EXIN is not ready\n", __func__);
+		return;
+	}
+
 	/* temporally for backup slot */
 	cnt = sh_buf->sec_debug_sbidx[type].cnt;
 
@@ -422,6 +429,12 @@ static void dump_all_keys(void)
 	void *p;
 	int s, i;
 	unsigned int cnt;
+
+	if (!exin_ready) {
+		pr_crit("%s: EXIN is not ready\n", __func__);
+
+		return;
+	}
 
 	for (s = 0; s < NR_SLOT; s++) {
 		cnt = sh_buf->sec_debug_sbidx[s].cnt;
@@ -546,14 +559,11 @@ static void sec_debug_extra_info_dump_sb_index(void)
 
 static void sec_debug_init_extra_info_sbidx(int type, struct sec_debug_sb_index idx, bool mflag)
 {
-	if ((sh_buf->sec_debug_sbidx[type].paddr != idx.paddr)
-			|| (mflag == false)) {
-		sh_buf->sec_debug_sbidx[type].paddr = idx.paddr;
-		sh_buf->sec_debug_sbidx[type].size = idx.size;
-		sh_buf->sec_debug_sbidx[type].nr = idx.nr;
-		sh_buf->sec_debug_sbidx[type].cnt = idx.cnt;
-		sh_buf->sec_debug_sbidx[type].blmark = 0;
-	}
+	sh_buf->sec_debug_sbidx[type].paddr = idx.paddr;
+	sh_buf->sec_debug_sbidx[type].size = idx.size;
+	sh_buf->sec_debug_sbidx[type].nr = idx.nr;
+	sh_buf->sec_debug_sbidx[type].cnt = idx.cnt;
+	sh_buf->sec_debug_sbidx[type].blmark = 0;
 
 	pr_crit("%s: slot: %d / paddr: 0x%x / size: %d / nr: %d\n",
 					__func__, type,
@@ -1144,6 +1154,28 @@ static void test_v3(void *seqm)
 	dump_slots(SLOT_BK_32, NR_SLOT, m);
 }
 /*********** TEST V3 **************************************/
+static int set_debug_reset_rwc_proc_show(struct seq_file *m, void *v)
+{
+	char *rstcnt;
+
+	rstcnt = get_bk_item_val("RSTCNT");
+	seq_printf(m, "%s", rstcnt);
+
+	return 0;
+}
+
+static int sec_debug_reset_rwc_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, set_debug_reset_rwc_proc_show, NULL);
+}
+
+static const struct file_operations sec_debug_reset_rwc_proc_fops = {
+	.open = sec_debug_reset_rwc_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 static int set_debug_reset_extra_info_proc_show(struct seq_file *m, void *v)
 {
 	char buf[SZ_1K];
@@ -1171,6 +1203,11 @@ static const struct file_operations sec_debug_reset_extra_info_proc_fops = {
 
 void simulate_extra_info_force_error(unsigned int magic)
 {
+	if (!exin_ready) {
+		pr_crit("%s: EXIN is not ready\n", __func__);
+		return;
+	}
+
 	sh_buf->magic[0] = magic;
 }
 
@@ -1188,12 +1225,20 @@ static int __init sec_debug_extra_info_init(void)
 		sh_buf->magic[3] = SEC_DEBUG_SHARED_MAGIC3;
 	}
 
+	exin_ready = true;
+
 	entry = proc_create("reset_reason_extra_info",
-			    0644, NULL, &sec_debug_reset_extra_info_proc_fops);
+				0644, NULL, &sec_debug_reset_extra_info_proc_fops);
 	if (!entry)
 		return -ENOMEM;
 
 	proc_set_size(entry, SZ_1K);
+
+	entry = proc_create("reset_rwc", S_IWUGO, NULL,
+				&sec_debug_reset_rwc_proc_fops);
+
+	if (!entry)
+		return -ENOMEM;
 
 	sec_debug_set_extra_info_id();
 

@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 797683 2019-01-03 07:14:13Z $
+ * $Id: wl_cfg80211.h 829701 2019-07-11 11:48:45Z $
  */
 
 /**
@@ -1222,9 +1222,6 @@ struct bcm_cfg80211 {
 	nan_ranging_inst_t nan_ranging_info[NAN_MAX_RANGING_INST];
 #endif /* WL_NAN_DISC_CACHE  */
 #endif /* WL_NAN */
-#ifdef WL_CFG80211_P2P_DEV_IF
-	bool down_disc_if;
-#endif /* WL_CFG80211_P2P_DEV_IF */
 #ifdef P2PLISTEN_AP_SAMECHN
 	bool p2p_resp_apchn_status;
 #endif /* P2PLISTEN_AP_SAMECHN */
@@ -1314,6 +1311,9 @@ struct bcm_cfg80211 {
 	uint8 static_ndev_state;
 	uint8 scanmac_enabled;
 	bool hal_started;
+#ifdef SUPPORT_AP_BWCTRL
+	u32 bw_cap_5g;
+#endif /* SUPPORT_AP_BWCTRL */
 };
 
 #define WL_STATIC_IFIDX	(DHD_MAX_IFS + DHD_MAX_STATIC_IFS - 1)
@@ -2318,4 +2318,15 @@ extern void wl_scan_timeout_dbg_set(void);
 extern void wl_scan_timeout_dbg_clear(void);
 #endif /* CUSTOMER_HW4_DEBUG */
 extern void wl_print_verinfo(struct bcm_cfg80211 *cfg);
+#ifdef SUPPORT_SOFTAP_ELNA_BYPASS
+int wl_set_softap_elna_bypass(struct net_device *dev, char *ifname, int enable);
+int wl_get_softap_elna_bypass(struct net_device *dev, char *ifname, void *param);
+#endif /* SUPPORT_SOFTAP_ELNA_BYPASS */
+#ifdef SUPPORT_AP_SUSPEND
+extern int wl_set_ap_suspend(struct net_device *dev, bool enable, char *ifname);
+#endif /* SUPPORT_AP_SUSPEND */
+#ifdef SUPPORT_AP_BWCTRL
+extern int wl_set_ap_bw(struct net_device *dev, u32 bw, char *ifname);
+extern int wl_get_ap_bw(struct net_device *dev, char* command, char *ifname, int total_len);
+#endif /* SUPPORT_AP_BWCTRL */
 #endif /* _wl_cfg80211_h_ */

@@ -15,6 +15,7 @@
 #include <sound/samsung/abox.h>
 #include <linux/miscdevice.h>
 #include <linux/dma-direction.h>
+#include <linux/completion.h>
 #include "abox_qos.h"
 #include "abox_soc.h"
 
@@ -517,6 +518,7 @@ struct abox_platform_data {
 	struct snd_soc_dai_driver *dai_drv;
 	const struct abox_dma_of_data *of_data;
 	struct miscdevice misc_dev;
+	struct completion closed;
 };
 
 /**

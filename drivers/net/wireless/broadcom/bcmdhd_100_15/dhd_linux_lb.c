@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_lb.c 805819 2019-02-20 10:49:35Z $
+ * $Id: dhd_linux_lb.c 842211 2019-09-20 10:52:20Z $
  */
 
 #include <dhd_linux_priv.h>
@@ -977,7 +977,6 @@ dhd_napi_poll(struct napi_struct *napi, int budget)
 	unsigned long flags;
 	struct dhd_info *dhd;
 	int processed = 0;
-	struct sk_buff_head rx_process_queue;
 
 #if defined(STRICT_GCC_WARNINGS) && defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -990,14 +989,22 @@ dhd_napi_poll(struct napi_struct *napi, int budget)
 
 	DHD_INFO(("%s napi_queue<%d> budget<%d>\n",
 		__FUNCTION__, skb_queue_len(&dhd->rx_napi_queue), budget));
-		__skb_queue_head_init(&rx_process_queue);
 
-	/* extract the entire rx_napi_queue into local rx_process_queue */
+	/*
+	 * Extract the entire rx_napi_queue into another rx_process_queue
+	 * and process only 'budget' number of skbs from rx_process_queue.
+	 * If there are more items to be processed, napi poll will be rescheduled
+	 * During the next iteration, next set of skbs from
+	 * rx_napi_queue will be extracted and attached to the tail of rx_process_queue.
+	 * Again budget number of skbs will be processed from rx_process_queue.
+	 * If there are less than budget number of skbs in rx_process_queue,
+	 * call napi_complete to stop rescheduling napi poll.
+	 */
 	spin_lock_irqsave(&dhd->rx_napi_queue.lock, flags);
-	skb_queue_splice_tail_init(&dhd->rx_napi_queue, &rx_process_queue);
+	skb_queue_splice_tail_init(&dhd->rx_napi_queue, &dhd->rx_process_queue);
 	spin_unlock_irqrestore(&dhd->rx_napi_queue.lock, flags);
 
-	while ((skb = __skb_dequeue(&rx_process_queue)) != NULL) {
+	while ((processed < budget) && (skb = __skb_dequeue(&dhd->rx_process_queue)) != NULL) {
 		OSL_PREFETCH(skb->data);
 
 		ifid = DHD_PKTTAG_IFID((dhd_pkttag_fr_t *)PKTTAG(skb));
@@ -1012,9 +1019,12 @@ dhd_napi_poll(struct napi_struct *napi, int budget)
 	DHD_LB_STATS_UPDATE_NAPI_HISTO(&dhd->pub, processed);
 
 	DHD_INFO(("%s processed %d\n", __FUNCTION__, processed));
-	napi_complete(napi);
 
-	return budget - 1;
+	if (processed < budget) {
+		napi_complete(napi);
+	}
+
+	return processed;
 }
 
 /**

@@ -19,6 +19,7 @@
 #include <linux/usb/quirks.h>
 #include <linux/usb/hcd.h>	/* for usbcore internals */
 #include <asm/byteorder.h>
+#include <linux/usb_notify.h>
 
 #include "usb.h"
 
@@ -1967,6 +1968,11 @@ free_interfaces:
 			continue;
 		}
 		create_intf_ep_devs(intf);
+		if (dev->bus->root_hub != dev) {
+			store_usblog_notify(NOTIFY_PORT_CLASS,
+				(void *)&dev->descriptor.bDeviceClass,
+				(void *)&intf->cur_altsetting->desc.bInterfaceClass);
+		}
 	}
 
 	usb_autosuspend_device(dev);

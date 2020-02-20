@@ -78,9 +78,8 @@ static int fimc_is_ischain_mxp_cfg(struct fimc_is_subdev *subdev,
 		msinfo("CRange:W\n", device, subdev);
 	} else {
 		crange = SCALER_OUTPUT_YUV_RANGE_NARROW;
-		if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+		if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id))
 			msinfo("CRange:N\n", device, subdev);
-		}
 	}
 
 	mcs_output = fimc_is_itf_g_param(device, frame, subdev->param_dma_ot);
@@ -263,9 +262,8 @@ static int fimc_is_ischain_mxp_start(struct fimc_is_device_ischain *device,
 		mdbg_pframe("CRange:W\n", device, subdev, frame);
 	} else {
 		crange = SCALER_OUTPUT_YUV_RANGE_NARROW;
-		if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+		if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id))
 			mdbg_pframe("CRange:N\n", device, subdev, frame);
-		}
 	}
 
 	if (node->pixelformat && format->pixelformat != node->pixelformat) { /* per-frame control for RGB */
@@ -572,7 +570,7 @@ static int fimc_is_ischain_mxp_tag(struct fimc_is_subdev *subdev,
 				goto p_err;
 			}
 
-			if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+			if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id)) {
 				mdbg_pframe("in_crop[%d, %d, %d, %d]\n", device, subdev, ldr_frame,
 					incrop->x, incrop->y, incrop->w, incrop->h);
 				mdbg_pframe("ot_crop[%d, %d, %d, %d]\n", device, subdev, ldr_frame,
@@ -624,9 +622,8 @@ static int fimc_is_ischain_mxp_tag(struct fimc_is_subdev *subdev,
 				goto p_err;
 			}
 
-			if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+			if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id))
 				mdbg_pframe(" off\n", device, subdev, ldr_frame);
-			}
 		}
 
 		if ((node->vid - FIMC_IS_VIDEO_M0P_NUM)

@@ -546,17 +546,15 @@ int dbg_snapshot_post_reboot(char *cmd)
 	dbg_snapshot_report_reason(DSS_SIGN_NORMAL_REBOOT);
 
 	if (!cmd)
-		dbg_snapshot_scratch_reg(DSS_SIGN_RESERVED);
+		dbg_snapshot_scratch_reg(DSS_SIGN_RESET);
 	else if (strcmp((char *)cmd, "bootloader") && strcmp((char *)cmd, "ramdump"))
-		dbg_snapshot_scratch_reg(DSS_SIGN_RESERVED);
+		dbg_snapshot_scratch_reg(DSS_SIGN_RESET);
 
 	pr_emerg("debug-snapshot: normal reboot done\n");
 
-	dbg_snapshot_save_context(NULL);
-
 	/* clear DSS_SIGN_PANIC when normal reboot */
 	for_each_possible_cpu(cpu) {
-		dbg_snapshot_set_core_panic_stat(DSS_SIGN_RESERVED, cpu);
+		dbg_snapshot_set_core_panic_stat(DSS_SIGN_RESET, cpu);
 	}
 
 	dss_soc_ops->soc_post_reboot_exit(NULL);

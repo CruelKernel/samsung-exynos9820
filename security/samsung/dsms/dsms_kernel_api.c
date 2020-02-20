@@ -20,6 +20,7 @@
 #include "dsms_access_control.h"
 #include "dsms_debug.h"
 #include "dsms_init.h"
+#include "dsms_rate_limit.h"
 
 #define MAX_ALLOWED_DETAIL_LENGTH (1024)
 #define VALUE_STRLEN (22)
@@ -187,7 +188,7 @@ int noinline dsms_send_message(const char *feature_code,
 	}
 
 	len = strnlen(detail, MAX_ALLOWED_DETAIL_LENGTH);
-	dsms_log_debug(TRACE, "{'%s', '%s' (%zu bytes), %lld}",
+	dsms_log_write(LOG_DEBUG, "{'%s', '%s' (%zu bytes), %lld}",
 			   feature_code, detail, len, value);
 
 	if (!dsms_is_initialized()) {
@@ -195,6 +196,10 @@ int noinline dsms_send_message(const char *feature_code,
 		ret = -EACCES;
 		goto exit_send;
 	}
+
+	ret = dsms_check_message_rate_limit();
+	if (ret != DSMS_SUCCESS)
+		goto exit_send;
 
 	address = __builtin_return_address(CALLER_FRAME);
 	ret = dsms_verify_access(address);

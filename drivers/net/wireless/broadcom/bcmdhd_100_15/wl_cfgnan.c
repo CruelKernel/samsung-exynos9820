@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.c 840095 2019-09-10 08:21:07Z $
+ * $Id: wl_cfgnan.c 830995 2019-07-19 05:49:30Z $
  */
 
 #ifdef WL_NAN
@@ -3419,6 +3419,14 @@ wl_cfgnan_ranging_clear_publish(struct bcm_cfg80211 *cfg,
 	}
 
 	wl_cfgnan_terminate_ranging_session(cfg, ranging_inst);
+#ifdef RTT_SUPPORT
+	{
+		dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
+		/* Attempt RTT for current geofence target */
+		wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd,
+			RTT_SCHED_RNG_TERM_PUB_RNG_CLEAR);
+	}
+#endif /* RTT_SUPPORT */
 
 done:
 	return ret;
@@ -3484,24 +3492,20 @@ wl_cfgnan_suspend_geofence_rng_session(struct net_device *ndev,
 	}
 	peer_addr = &geofence_target_info->peer_addr;
 
+	if (peer && memcmp(peer_addr, peer, ETHER_ADDR_LEN)) {
+		WL_DBG(("Geofencing Ranging not in progress with given peer,"
+			" suspend req dropped\n"));
+		goto exit;
+	}
+
 	ranging_inst = wl_cfgnan_check_for_ranging(cfg, peer_addr);
 	if (dhd_rtt_get_geofence_rtt_state(dhd) == FALSE) {
 		WL_DBG(("Geofencing Ranging not in progress, suspend req dropped\n"));
 		goto exit;
 	}
 
-	if (peer && memcmp(peer_addr, peer, ETHER_ADDR_LEN)) {
-		if (suspend_reason == RTT_GEO_SUSPN_HOST_NDP_TRIGGER ||
-			suspend_reason == RTT_GEO_SUSPN_PEER_NDP_TRIGGER) {
-			/* NDP and Ranging can coexist with different Peers */
-			WL_DBG(("Geofencing Ranging not in progress with given peer,"
-				" suspend req dropped\n"));
-			goto exit;
-		}
-	}
 #endif /* RTT_SUPPORT */
 
-	ASSERT((ranging_inst != NULL));
 	if (ranging_inst) {
 		if (ranging_inst->range_status != NAN_RANGING_IN_PROGRESS) {
 			WL_DBG(("Ranging Inst with peer not in progress, "
@@ -4798,12 +4802,12 @@ wl_cfgnan_subscribe_handler(struct net_device *ndev,
 	nan_svc_info_t *svc_info;
 	uint8 upd_ranging_required;
 #endif /* WL_NAN_DISC_CACHE */
-#ifdef RTT_GEOFENCE_CONT
 #ifdef RTT_SUPPORT
 	dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
+#ifdef RTT_GEOFENCE_CONT
 	rtt_status_info_t *rtt_status = GET_RTTSTATE(dhd);
-#endif /* RTT_SUPPORT */
 #endif /* RTT_GEOFENCE_CONT */
+#endif /* RTT_SUPPORT */
 
 	NAN_DBG_ENTER();
 	NAN_MUTEX_LOCK();
@@ -4827,6 +4831,11 @@ wl_cfgnan_subscribe_handler(struct net_device *ndev,
 			wl_cfgnan_clear_svc_from_all_ranging_inst(cfg, cmd_data->sub_id);
 			/* terminate ranging sessions for this svc, avoid clearing svc cache */
 			wl_cfgnan_terminate_all_obsolete_ranging_sessions(cfg);
+#ifdef RTT_SUPPORT
+			/* Attempt RTT for current geofence target */
+			wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd,
+				RTT_SCHED_RNG_TERM_SUB_SVC_UPD);
+#endif /* RTT_SUPPORT */
 			WL_DBG(("Ranging sessions handled for svc update\n"));
 			upd_ranging_required = !!(cmd_data->sde_control_flag &
 					NAN_SDE_CF_RANGING_REQUIRED);
@@ -4846,8 +4855,8 @@ wl_cfgnan_subscribe_handler(struct net_device *ndev,
 #endif /* WL_NAN_DISC_CACHE */
 	}
 
-#ifdef RTT_GEOFENCE_CONT
 #ifdef RTT_SUPPORT
+#ifdef RTT_GEOFENCE_CONT
 	/* Override ranging Indication */
 	if (rtt_status->geofence_cfg.geofence_cont) {
 		if (cmd_data->ranging_indication !=
@@ -4855,8 +4864,8 @@ wl_cfgnan_subscribe_handler(struct net_device *ndev,
 			cmd_data->ranging_indication = NAN_RANGE_INDICATION_CONT;
 		}
 	}
-#endif /* RTT_SUPPORT */
 #endif /* RTT_GEOFENCE_CONT */
+#endif /* RTT_SUPPORT */
 	ret = wl_cfgnan_svc_handler(ndev, cfg, WL_NAN_CMD_SD_SUBSCRIBE, cmd_data);
 	if (ret < 0) {
 		WL_ERR(("%s: fail to handle svc, ret=%d\n", __FUNCTION__, ret));
@@ -5014,6 +5023,14 @@ wl_cfgnan_cancel_sub_handler(struct net_device *ndev,
 	/* terminate ranging sessions for this svc */
 	wl_cfgnan_clear_svc_from_all_ranging_inst(cfg, cmd_data->sub_id);
 	wl_cfgnan_terminate_all_obsolete_ranging_sessions(cfg);
+#ifdef RTT_SUPPORT
+	{
+		dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
+		/* Attempt RTT for current geofence target */
+		wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd,
+			RTT_SCHED_RNG_TERM_SUB_SVC_CANCEL);
+	}
+#endif /* RTT_SUPPORT */
 	/* clear svc cache for the service */
 	wl_cfgnan_clear_svc_cache(cfg, cmd_data->sub_id);
 	wl_cfgnan_remove_disc_result(cfg, cmd_data->sub_id);
@@ -7179,6 +7196,32 @@ wl_cfgnan_reset_geofence_ranging(struct bcm_cfg80211 *cfg,
 
 	/* schedule RTT */
 	dhd_rtt_schedule_rtt_work_thread(dhd, sched_reason);
+
+exit:
+	return;
+}
+
+void
+wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd_pub_t *dhd, int sched_reason)
+{
+	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
+	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
+	rtt_geofence_target_info_t  *geofence_target = NULL;
+	nan_ranging_inst_t *ranging_inst = NULL;
+
+	geofence_target = dhd_rtt_get_geofence_current_target(dhd);
+	if (!geofence_target) {
+		WL_DBG(("reset ranging request dropped: geofence target null\n"));
+		goto exit;
+	}
+
+	ranging_inst = wl_cfgnan_check_for_ranging(cfg,
+			&geofence_target->peer_addr);
+	if (!ranging_inst) {
+		WL_DBG(("reset ranging request dropped: ranging instance null\n"));
+		goto exit;
+	}
+	wl_cfgnan_reset_geofence_ranging(cfg, ranging_inst, sched_reason);
 
 exit:
 	return;

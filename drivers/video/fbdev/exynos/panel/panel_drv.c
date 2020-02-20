@@ -2662,9 +2662,9 @@ static irqreturn_t panel_work_isr(int irq, void *dev_id)
 
 int panel_register_isr(struct panel_device *panel)
 {
-	int i, iw, ret;
+	int i, iw, ret = 0;
 	struct panel_gpio *gpio = panel->gpio;
-	char name[64];
+	char* name = NULL;
 
 	if (panel->state.connect_panel == PANEL_DISCONNECT)
 		return -ENODEV;
@@ -2680,7 +2680,14 @@ int panel_register_isr(struct panel_device *panel)
 
 		if (iw == PANEL_WORK_MAX)
 			continue;
+		name = kzalloc(sizeof(char) * 64, GFP_KERNEL);
+		if (!name) {
+			panel_err("PANEL:ERR:%s:failed to alloc name buffer(%d)\n",
+				__func__, iw);
+			ret = -ENOMEM;
+			break;
 
+		}
 		snprintf(name, 64, "panel%d:%s",
 				panel->id, panel_work_names[iw]);
 		ret = devm_request_irq(panel->dev, gpio[i].irq, panel_work_isr,
@@ -2688,11 +2695,10 @@ int panel_register_isr(struct panel_device *panel)
 		if (ret < 0) {
 			panel_err("PANEL:ERR:%s:failed to register irq(%s:%d)\n",
 					__func__, name, gpio[i].irq);
-			return ret;
+			break;
 		}
 	}
-
-	return 0;
+	return ret;
 }
 
 #ifdef CONFIG_EXYNOS_COMMON_PANEL

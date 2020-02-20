@@ -60,7 +60,7 @@ int dsms_verify_access(const void *address)
 	char function_name[KSYM_NAME_LEN+1];
 	int index;
 
-	dsms_log_debug(WHITELIST, "dsms_verify_access: "
+	dsms_log_write(LOG_DEBUG, "dsms_verify_access: "
 		       "Caller function is %pS (%pF)", address, address);
 
 	if (!address) {
@@ -76,7 +76,7 @@ int dsms_verify_access(const void *address)
 	}
 
 	function_name[KSYM_NAME_LEN] = 0;
-	dsms_log_debug(WHITELIST, "kallsyms caller modname = %s, function_name = '%s',"
+	dsms_log_write(LOG_DEBUG, "kallsyms caller modname = %s, function_name = '%s',"
 		       " offset = 0x%lx", modname, function_name, offset);
 
 	if (modname != NULL) {

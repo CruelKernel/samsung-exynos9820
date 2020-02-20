@@ -189,6 +189,7 @@ struct exynos_usbdrd_phy {
 	int irq_conn;
 	int is_conn;
 	int is_irq_enabled;
+	int idle_ip_idx;
 	u32 phy_port;
 	u32 reverse_phy_port;
 	spinlock_t lock;

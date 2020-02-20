@@ -481,7 +481,6 @@ static void sensor_3j1_cis_set_paf_stat_enable(u32 mode, cis_shared_data *cis_da
 	case SENSOR_3J1_3216X1528_30FPS:
 	case SENSOR_3J1_2208X2208_30FPS:
 	case SENSOR_3J1_1824X1368_30FPS:
-	case SENSOR_3J1_1988X1120_120FPS:
 	case SENSOR_3J1_1472X1104_30FPS:
 	case SENSOR_3J1_1616X904_30FPS:
 	case SENSOR_3J1_1616X768_30FPS:
@@ -1112,6 +1111,10 @@ int sensor_3j1_cis_adjust_frame_duration(struct v4l2_subdev *subdev,
 
 	vt_pic_clk_freq_mhz = cis_data->pclk / (1000 * 1000);
 	line_length_pck = cis_data->line_length_pck;
+	if ((cis_data->stream_on == false) && (input_exposure_time > SENSOR_3J1_EXPOSURE_TIME_MAX)) {
+		err("input_exposure_time is out of bound (%d -> %d)", input_exposure_time, SENSOR_3J1_EXPOSURE_TIME_MAX);
+		input_exposure_time = SENSOR_3J1_EXPOSURE_TIME_MAX;
+	}
 	frame_length_lines = ((vt_pic_clk_freq_mhz * input_exposure_time) / line_length_pck);
 	frame_length_lines += cis_data->max_margin_coarse_integration_time;
 

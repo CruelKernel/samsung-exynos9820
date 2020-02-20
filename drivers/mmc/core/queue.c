@@ -344,7 +344,7 @@ int mmc_queue_suspend(struct mmc_queue *mq, int wait)
 
 			while ((req = blk_fetch_request(q)) != NULL) {
 				req->rq_flags |= RQF_QUIET;
-				__blk_end_request_all(req, -EIO);
+				__blk_end_request_all(req, BLK_STS_IOERR);
 			}
 
 			spin_unlock_irqrestore(q->queue_lock, flags);

@@ -623,7 +623,7 @@ static int argos_pm_qos_notify(struct notifier_block *nfb,
 					pr_debug("%s: Call argos notifier(%s lev:%d)\n",
 						 __func__, cnode->desc, level);
 					blocking_notifier_call_chain(&cnode->argos_notifier,
-								     speed, NULL);
+								     speed, &level);
 				}
 				argos_freq_unlock(type);
 				argos_task_affinity_apply(type, 0);
@@ -646,7 +646,7 @@ static int argos_pm_qos_notify(struct notifier_block *nfb,
 					pr_debug("%s: Call argos notifier(%s lev:%d)\n",
 						 __func__, cnode->desc, level);
 					blocking_notifier_call_chain(&cnode->argos_notifier,
-								     speed, NULL);
+								     speed, &level);
 				}
 			}
 

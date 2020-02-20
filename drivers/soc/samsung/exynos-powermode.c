@@ -66,7 +66,7 @@ static void exynos_set_wakeupmask(enum sys_powerdown mode)
 	for (i = 0; i < pm_info->num_wakeup_mask; i++) {
 		exynos_pmu_write(pm_info->wakeup_stat_offset[i], 0);
 
-		if ((mode == SYS_SLEEP_USBL2) && (otg_is_connect() != 1) && (i == 1))
+		if ((mode == SYS_SICD || ((mode == SYS_SLEEP_USBL2) && (otg_is_connect() != 1))) && (i == 1))
 			exynos_pmu_write(pm_info->wakeup_mask_offset[1], 0);
 		else
 			exynos_pmu_write(pm_info->wakeup_mask_offset[i],

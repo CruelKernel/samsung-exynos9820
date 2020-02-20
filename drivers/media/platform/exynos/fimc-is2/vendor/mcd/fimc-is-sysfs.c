@@ -897,8 +897,8 @@ static ssize_t camera_tilt_show(char *buf, enum fimc_is_cam_info_index cam_index
 	int rom_type;
 	int rom_dualcal_id;
 	int rom_dualcal_index;
-	s32 *x = NULL, *y = NULL, *z = NULL, *sx = NULL, *sy = NULL;
-	s32 *range = NULL, *max_err = NULL, *avg_err = NULL, *dll_version = NULL;
+	char tempbuf[25] = {0, };
+	int i = 0;
 
 	fimc_is_get_cam_info_from_index(&cam_info, cam_index);
 
@@ -930,6 +930,8 @@ static ssize_t camera_tilt_show(char *buf, enum fimc_is_cam_info_index cam_index
 		goto err_tilt;
 	}
 
+	strcat(buf, "1");
+
 	switch (rom_dualcal_index)
 	{
 	case ROM_DUALCAL_SLAVE0:
@@ -938,55 +940,96 @@ static ssize_t camera_tilt_show(char *buf, enum fimc_is_cam_info_index cam_index
 			err(" NG, invalid ROM dual tilt value, dualcal_index[%d]", rom_dualcal_index);
 			goto err_tilt;
 		}
-		x = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[0]];
-		y = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[1]];
-		z = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[2]];
-		sx = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[3]];
-		sy = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[4]];
-		range = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[5]];
-		max_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[6]];
-		avg_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[7]];
-		dll_version = (s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[8]];
 
-		return sprintf(buf, "1 %d %d %d %d %d %d %d %d %d\n",
-							*x, *y, *z, *sx, *sy, *range, *max_err, *avg_err, *dll_version);
+		for (i = 0; i < FIMC_IS_ROM_DUAL_TILT_MAX_LIST - 1; i++) {
+			sprintf(tempbuf, " %d", *((s32 *)&cal_buf[finfo->rom_dualcal_slave0_tilt_list[i]]));
+			strncat(buf, tempbuf, strlen(tempbuf));
+			memset(tempbuf, 0, sizeof(tempbuf));
+		}
+
+		if (finfo->rom_dualcal_slave0_tilt_list_len == FIMC_IS_ROM_DUAL_TILT_MAX_LIST) {
+			strcat(buf, " ");
+			memcpy(tempbuf, &cal_buf[finfo->rom_dualcal_slave0_tilt_list[i]], FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE);
+			tempbuf[FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE] = '\0';
+			for (i = 0; i < FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE; i++) {
+				if (tempbuf[i] == 0xFF && i == 0) {
+					sprintf(tempbuf, "NONE");
+					break;
+				}
+				if (tempbuf[i] == 0) {
+					tempbuf[i] = '\0';
+					break;
+				}
+			}
+			strncat(buf, tempbuf, strlen(tempbuf));
+		}
+		strncat(buf, "\n", strlen("\n"));
+
+		return strlen(buf);
 	case ROM_DUALCAL_SLAVE1:
 		if (finfo->rom_dualcal_slave1_tilt_list_len < 0
 			|| finfo->rom_dualcal_slave1_tilt_list_len > FIMC_IS_ROM_DUAL_TILT_MAX_LIST) {
 			err(" NG, invalid ROM dual tilt value, dualcal_index[%d]", rom_dualcal_index);
 			goto err_tilt;
 		}
-		x = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[0]];
-		y = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[1]];
-		z = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[2]];
-		sx = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[3]];
-		sy = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[4]];
-		range = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[5]];
-		max_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[6]];
-		avg_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[7]];
-		dll_version = (s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[8]];
 
-		return sprintf(buf, "1 %d %d %d %d %d %d %d %d %d\n",
-							*x, *y, *z, *sx, *sy, *range, *max_err, *avg_err, *dll_version);
+		for (i = 0; i < FIMC_IS_ROM_DUAL_TILT_MAX_LIST - 1; i++) {
+			sprintf(tempbuf, " %d", *((s32 *)&cal_buf[finfo->rom_dualcal_slave1_tilt_list[i]]));
+			strncat(buf, tempbuf, strlen(tempbuf));
+			memset(tempbuf, 0, sizeof(tempbuf));
+		}
+
+		if (finfo->rom_dualcal_slave1_tilt_list_len == FIMC_IS_ROM_DUAL_TILT_MAX_LIST) {
+			strcat(buf, " ");
+			memcpy(tempbuf, &cal_buf[finfo->rom_dualcal_slave1_tilt_list[i]], FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE);
+			tempbuf[FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE] = '\0';
+			for (i = 0; i < FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE; i++) {
+				if (tempbuf[i] == 0xFF && i == 0) {
+					sprintf(tempbuf, "NONE");
+					break;
+				}
+				if (tempbuf[i] == 0) {
+					tempbuf[i] = '\0';
+					break;
+				}
+			}
+			strncat(buf, tempbuf, strlen(tempbuf));
+		}
+		strncat(buf, "\n", strlen("\n"));
+
+		return strlen(buf);
 	case ROM_DUALCAL_SLAVE2:
 		if (finfo->rom_dualcal_slave2_tilt_list_len < 0
 			|| finfo->rom_dualcal_slave2_tilt_list_len > FIMC_IS_ROM_DUAL_TILT_MAX_LIST) {
 			err(" NG, invalid ROM dual tilt value, dualcal_index[%d]", rom_dualcal_index);
 			goto err_tilt;
 		}
-		x = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[0]];
-		y = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[1]];
-		z = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[2]];
-		sx = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[3]];
-		sy = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[4]];
-		range = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[5]];
-		max_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[6]];
-		avg_err = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[7]];
-		dll_version = (s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[8]];
 
-		return sprintf(buf, "1 %d %d %d %d %d %d %d %d %d\n",
-							*x, *y, *z, *sx, *sy, *range, *max_err, *avg_err, *dll_version);
+		for (i = 0; i < FIMC_IS_ROM_DUAL_TILT_MAX_LIST - 1; i++) {
+			sprintf(tempbuf, " %d", *((s32 *)&cal_buf[finfo->rom_dualcal_slave2_tilt_list[i]]));
+			strncat(buf, tempbuf, strlen(tempbuf));
+			memset(tempbuf, 0, sizeof(tempbuf));
+		}
 
+		if (finfo->rom_dualcal_slave2_tilt_list_len == FIMC_IS_ROM_DUAL_TILT_MAX_LIST) {
+			strcat(buf, " ");
+			memcpy(tempbuf, &cal_buf[finfo->rom_dualcal_slave2_tilt_list[i]], FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE);
+			tempbuf[FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE] = '\0';
+			for (i = 0; i < FIMC_IS_DUAL_TILT_PROJECT_NAME_SIZE; i++) {
+				if (tempbuf[i] == 0xFF && i == 0) {
+					sprintf(tempbuf, "NONE");
+					break;
+				}
+				if (tempbuf[i] == 0) {
+					tempbuf[i] = '\0';
+					break;
+				}
+			}
+			strncat(buf, tempbuf, strlen(tempbuf));
+		}
+		strncat(buf, "\n", strlen("\n"));
+
+		return strlen(buf);
 	default:
 		err("not defined tilt cal values");
 		break;
@@ -1872,6 +1915,45 @@ static ssize_t camera_rear_tof_moduleid_show(struct device *dev,
 #endif
 
 #ifdef CAMERA_REAR_TOF_CAL
+static ssize_t camera_rear_tof_get_validation_data_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fimc_is_rom_info *finfo;
+	struct fimc_is_cam_info *cam_info;
+	int position;
+	int rom_type;
+	int rom_id;
+	int rom_cal_index;
+	char *cal_buf;
+	u16 val_data[2];
+
+	fimc_is_get_cam_info_from_index(&cam_info, CAM_INFO_REAR_TOF);
+
+	position = cam_info->internal_id;
+	fimc_is_vendor_get_rom_info_from_position(position, &rom_type, &rom_id, &rom_cal_index);
+
+	if (rom_type == CAM_INFO_CAL_MEM_TYPE_NONE) {
+		err("%s: not support, no rom for camera[%d][%d]", __func__, CAM_INFO_REAR_TOF, position);
+		goto err;
+	} else if (rom_id == ROM_ID_NOTHING) {
+		err("%s: invalid ROM ID [%d][%d]", __func__, position, rom_id);
+		goto err;
+	}
+
+	read_from_firmware_version(rom_id);
+
+	fimc_is_sec_get_sysfs_finfo(&finfo, rom_id);
+	fimc_is_sec_get_cal_buf(&cal_buf, rom_id);
+
+	val_data[0] = *(u16*)&cal_buf[finfo->rom_tof_cal_validation_addr[1]]; 		/* 2Byte from 121E (300mm validation) */
+	val_data[1] = *(u16*)&cal_buf[finfo->rom_tof_cal_validation_addr[0]];		/* 2Byte from 1200 (500mm validation) */
+
+	return sprintf(buf, "%d,%d", val_data[0]/100, val_data[1]/100);
+
+err:
+	return 0;
+}
+
 static ssize_t camera_rear_tofcal_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4160,6 +4242,7 @@ static DEVICE_ATTR(rear_tofcal_size, S_IRUGO, camera_rear_tofcal_size_show, NULL
 static DEVICE_ATTR(rear_tofcal_uid, S_IRUGO, camera_rear_tofcal_uid_show, NULL);
 static DEVICE_ATTR(rear_tof_dual_cal, S_IRUGO, camera_rear_tof_dual_cal_show, NULL);
 static DEVICE_ATTR(rear_tof_cal_result, S_IRUGO, camera_rear_tof_cal_result_show, NULL);
+static DEVICE_ATTR(rear_tof_get_validation, S_IRUGO, camera_rear_tof_get_validation_data_show, NULL);
 #endif
 #ifdef CAMERA_REAR_TOF_TILT
 static DEVICE_ATTR(rear_tof_tilt, S_IRUGO, camera_rear_tof_tilt_show, NULL);
@@ -4893,6 +4976,10 @@ int fimc_is_create_sysfs(struct fimc_is_core *core)
 			pr_err("failed to create rear device file, %s\n",
 					dev_attr_rear_tof_cal_result.attr.name);
 		}
+		if (device_create_file(camera_rear_dev, &dev_attr_rear_tof_get_validation) < 0) {
+			pr_err("failed to create rear device file, %s\n",
+					dev_attr_rear_tof_cal_result.attr.name);
+		}
 #endif
 #ifdef CAMERA_REAR_TOF_TILT
 		if (device_create_file(camera_rear_dev, &dev_attr_rear_tof_tilt) < 0) {
@@ -5308,6 +5395,7 @@ int fimc_is_destroy_sysfs(struct fimc_is_core *core)
 		device_remove_file(camera_rear_dev, &dev_attr_rear_tofcal_uid);
 		device_remove_file(camera_rear_dev, &dev_attr_rear_tof_dual_cal);
 		device_remove_file(camera_rear_dev, &dev_attr_rear_tof_cal_result);
+		device_remove_file(camera_rear_dev, &dev_attr_rear_tof_get_validation);
 #endif
 #ifdef CAMERA_REAR_TOF_TILT
 		device_remove_file(camera_rear_dev, &dev_attr_rear_tof_tilt);

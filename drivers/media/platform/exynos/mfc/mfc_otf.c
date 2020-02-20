@@ -476,7 +476,7 @@ int mfc_otf_run_enc_frame(struct mfc_ctx *ctx)
 
 	/* Change timestamp usec -> nsec */
 	mfc_qos_update_last_framerate(ctx, handle->otf_time_stamp * 1000);
-	mfc_qos_update_framerate(ctx, 0);
+	mfc_qos_update_framerate(ctx, 0, 0);
 
 	/* Set stream buffer size to handle buffer full */
 	mfc_clean_ctx_int_flags(ctx);

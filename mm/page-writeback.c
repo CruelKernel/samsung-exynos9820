@@ -1809,14 +1809,16 @@ pause:
 					  period,
 					  pause,
 					  start_time);
+
+		/* IOPP-prevent_infinite_writeback-v1.0.4.4 */
+		/* Do not sleep if the backing device is removed */
+		if (unlikely(!bdi->dev))
+			return;
+
 		/* Collecting approximate value. No lock required. */
 		bdi->last_thresh = thresh;
 		bdi->last_nr_dirty = dirty;
 		bdi->paused_total += pause;
-
-		/* Do not sleep if the backing device is removed */
-		if (unlikely(!bdi->dev))
-			return;
 
 		__set_current_state(TASK_KILLABLE);
 		wb->dirty_sleep = now;

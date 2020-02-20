@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_debug.h 783721 2018-10-08 13:05:26Z $
+ * $Id: dhd_debug.h 843815 2019-10-01 12:48:01Z $
  */
 
 #ifndef _dhd_debug_h_
@@ -849,4 +849,11 @@ extern void dhd_iov_li_delete(dhd_pub_t *dhd, dll_t *list_head);
 #ifdef DHD_DEBUG
 extern void dhd_mw_list_delete(dhd_pub_t *dhd, dll_t *list_head);
 #endif /* DHD_DEBUG */
+
+typedef void (*print_roam_enhance_log_func)(prcd_event_log_hdr_t *plog_hdr);
+typedef struct _pr_roam_tbl {
+	uint8 version;
+	uint8 id;
+	print_roam_enhance_log_func pr_func;
+} pr_roam_tbl_t;
 #endif /* _dhd_debug_h_ */

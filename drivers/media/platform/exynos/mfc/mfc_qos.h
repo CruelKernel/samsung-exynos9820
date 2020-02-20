@@ -34,11 +34,13 @@ void mfc_qos_off(struct mfc_ctx *ctx);
 #else
 #define mfc_perf_boost_enable(dev)	do {} while (0)
 #define mfc_perf_boost_disable(dev)	do {} while (0)
-#define mfc_qos_on(ctx)		do {} while (0)
+#define mfc_qos_on(ctx)				do {} while (0)
 #define mfc_qos_off(ctx)		do {} while (0)
 #endif
 
-void mfc_qos_update_framerate(struct mfc_ctx *ctx, u32 bytesused);
+void mfc_qos_idle_worker(struct work_struct *work);
+void mfc_qos_update_framerate(struct mfc_ctx *ctx, u32 bytesused,
+		int idle_trigger_only);
 void mfc_qos_update_last_framerate(struct mfc_ctx *ctx, u64 timestamp);
 
 static inline void mfc_qos_reset_framerate(struct mfc_ctx *ctx)

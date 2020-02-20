@@ -283,7 +283,7 @@ static int fimc_is_ischain_3aa_tag(struct fimc_is_subdev *subdev,
 #ifdef ENABLE_DVFS
 		scenario_id = device->resourcemgr->dvfs_ctrl.static_ctrl->cur_scenario_id;
 #endif
-		if (scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_120FPS && scenario_id != FIMC_IS_SN_VIDEO_HIGH_SPEED_240FPS) {
+		if (!FIMC_IS_SKIP_PERFRAME_LOG(scenario_id)) {
 			msrinfo("in_crop[%d, %d, %d, %d]\n", device, subdev, frame,
 				incrop->x, incrop->y, incrop->w, incrop->h);
 			msrinfo("ot_crop[%d, %d, %d, %d]\n", device, subdev, frame,

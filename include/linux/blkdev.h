@@ -413,10 +413,15 @@ struct block_io_volume {
 	int			queuing_rqs;
 	long long		queuing_bytes;
 
+	/*
+	 * volume count of I/O amount(rqs, bytes) per I/O session.
+	 * I/O session starts when first I/O is incomming into queue,
+	 * and finishes when last I/O is outgoing from queue.
+	 */
 	unsigned int		peak_rqs;
 	unsigned int		peak_rqs_cnt[4];
-	unsigned int		peak_mb;
-	unsigned int		peak_mb_cnt[4];
+	unsigned int		peak_bytes;
+	unsigned int		peak_bytes_cnt[4];
 };
 
 // WRITE : 1, READ : 0
@@ -441,9 +446,6 @@ enum blk_tw_state{
 };
 
 struct blk_turbo_write {
-	refcount_t		refs;
-	spinlock_t		lock;
-
 	enum blk_tw_state	state;
 	unsigned long		state_ts;
 
@@ -454,11 +456,12 @@ struct blk_turbo_write {
 	blk_tw_try_on_fn	*try_on;
 	blk_tw_try_off_fn	*try_off;
 
-	struct delayed_work	release;
-
-	unsigned int		curr_issued_kb;		/* current issued turbo write size */
-	unsigned int		total_issued_mb;	/* total issued turbo write size */
-	unsigned int		issued_size_cnt[4];	/* count issued turbo write size per one tw ON */
+	/* issued write amount during current TW session */
+	int			curr_issued_kb;
+	/* accumulated write amount in TW sessions */
+	unsigned int		total_issued_mb;
+	/* volume count of write amount per TW session */
+	unsigned int		issued_size_cnt[4];
 };
 
 int blk_alloc_turbo_write(struct request_queue *q);

@@ -736,6 +736,8 @@ enum aa_capture_intent {
 	AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_CANCEL,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_NORMAL_FLASH,
+	AA_CAPTURE_INTENT_STILL_CAPTURE_REMOSAIC_SINGLE,
+	AA_CAPTURE_INTENT_STILL_CAPTURE_REMOSAIC_MFHDR_DYNAMIC_SHOT,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_VEHDR_DYNAMIC_SHOT,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_VENR_DYNAMIC_SHOT,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_LLS_FLASH,
@@ -1207,7 +1209,8 @@ struct camera2_aa_dm {
 	int32_t				vendor_aeStats4VO[8];
 	int32_t				vendor_multiFrameEv;
 	int32_t				vendor_faceToneWeight;
-	uint32_t			vendor_reserved[8];
+	float				vendor_noiseIndex;
+	uint32_t			vendor_reserved[7];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;
@@ -1977,6 +1980,12 @@ enum camera_client_index {
 	CAMERA_APP_CATEGORY_INSTAGRAM = 5,
 	CAMERA_APP_CATEGORY_3P_VT = 6,
 	CAMERA_APP_CATEGORY_MAX
+};
+
+enum remosaic_oper_mode {
+	REMOSAIC_OPER_MODE_NONE = 0,
+	REMOSAIC_OPER_MODE_SINGLE = 1,
+	REMOSAIC_OPER_MODE_MFHDR = 2,
 };
 
 /** \brief

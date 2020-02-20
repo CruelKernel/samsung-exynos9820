@@ -4907,6 +4907,19 @@ static void cs40l2x_vibe_pbq_worker(struct work_struct *work)
 				cs40l2x->pbq_state);
 		goto err_mutex;
 	}
+	
+	ret = regmap_read(regmap,
+			cs40l2x_dsp_reg(cs40l2x, "STATUS",
+				CS40L2X_XM_UNPACKED_TYPE,
+				CS40L2X_ALGO_ID_VIBE),
+			&val);
+	if (ret) {
+		dev_err(dev, "Failed to capture playback status\n");
+		goto err_mutex;
+	}
+
+	if (val != CS40L2X_STATUS_IDLE)
+		goto err_mutex;
 
 	ret = cs40l2x_pbq_pair_launch(cs40l2x);
 	if (ret)

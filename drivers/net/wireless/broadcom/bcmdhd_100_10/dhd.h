@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 823752 2019-06-05 11:08:24Z $
+ * $Id: dhd.h 829689 2019-07-11 10:49:40Z $
  */
 
 /****************
@@ -499,6 +499,8 @@ enum dhd_hang_reason {
 	HANG_REASON_D3_ACK_TIMEOUT_SCHED_ERROR		= 0x800D,
 	HANG_REASON_SEQUENTIAL_PRIVCMD_ERROR		= 0x800E,
 	HANG_REASON_SCAN_BUSY				= 0x800F,
+	HANG_REASON_BSS_UP_FAILURE			= 0x8010,
+	HANG_REASON_BSS_DOWN_FAILURE			= 0x8011,
 	HANG_REASON_PCIE_LINK_DOWN_RC_DETECT		= 0x8805,
 	HANG_REASON_INVALID_EVENT_OR_DATA		= 0x8806,
 	HANG_REASON_UNKNOWN				= 0x8807,
@@ -2063,6 +2065,7 @@ extern int net_os_rxfilter_add_remove(struct net_device *dev, int val, int num);
 #define MAX_PKTFLT_FIXED_PATTERN_SIZE	32
 #define MAX_PKTFLT_FIXED_BUF_SIZE	\
 	(WL_PKT_FILTER_FIXED_LEN + MAX_PKTFLT_FIXED_PATTERN_SIZE * 2)
+#define MAXPKT_ARG	16
 #endif /* PKT_FILTER_SUPPORT */
 
 #if defined(BCMPCIE)

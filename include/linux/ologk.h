@@ -6,8 +6,9 @@
 
 #define OLOG_CPU_FREQ_FILTER   1500000
 
-
-#define ologk(...) perflog(PERFLOG_UNKNOWN, __VA_ARGS__)
-extern void perflog(int type, const char *fmt, ...);
+#define ologk(...) _perflog(PERFLOG_LOG, PERFLOG_UNKNOWN, __VA_ARGS__)
+#define perflog(...) _perflog(PERFLOG_LOG, __VA_ARGS__)
+extern void _perflog(int type, int logid, const char *fmt, ...);
+extern void perflog_evt(int logid, int arg1);
 
 #endif

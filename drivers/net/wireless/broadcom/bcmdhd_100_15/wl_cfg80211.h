@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 840111 2019-09-10 08:44:18Z $
+ * $Id: wl_cfg80211.h 848264 2019-10-31 09:09:19Z $
  */
 
 /**
@@ -82,6 +82,10 @@ struct wl_ibss;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) && !defined(WL_SAE))
 #define WL_SAE
 #endif // endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)) && !defined(WL_FILS)
+#define WL_FILS
+#endif /* WL_FILS */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0) && !defined(WL_FILS_ROAM_OFFLD))
 #define WL_FILS_ROAM_OFFLD
@@ -804,10 +808,6 @@ typedef enum wl_bcnrecv_attr_type {
 	BCNRECV_ATTR_BCNINFO
 } wl_bcnrecv_attr_type_t;
 #endif /* WL_BCNRECV */
-#ifdef WL_CHAN_UTIL
-#define CU_ATTR_PERCENTAGE 1
-#define CU_ATTR_HDR_LEN 30
-#endif /* WL_CHAN_UTIL */
 
 /* association inform */
 #define MAX_REQ_LINE 1024u
@@ -1398,7 +1398,12 @@ struct bcm_cfg80211 {
 #ifdef SUPPORT_AP_BWCTRL
 	u32 bw_cap_5g;
 #endif /* SUPPORT_AP_BWCTRL */
+	int roamscan_mode;
+	int wes_mode;
+	int ncho_mode;
+	int ncho_band;
 	struct wl_pmk_list *spmk_info_list;	/* single pmk info list */
+	int mfp_curcap;
 };
 #define WL_STATIC_IFIDX	(DHD_MAX_IFS + DHD_MAX_STATIC_IFS - 1)
 enum static_ndev_states {
@@ -2162,6 +2167,8 @@ extern s32 wl_cfg80211_get_best_channels(struct net_device *dev, char* command,
 #endif /* WL_SUPPORT_AUTO_CHANNEL */
 extern int wl_cfg80211_ether_atoe(const char *a, struct ether_addr *n);
 extern int wl_cfg80211_hang(struct net_device *dev, u16 reason);
+extern bool wl_cfg80211_macaddr_sync_reqd(struct net_device *dev);
+void wl_cfg80211_generate_mac_addr(struct ether_addr *ea_addr);
 extern s32 wl_mode_to_nl80211_iftype(s32 mode);
 int wl_cfg80211_do_driver_init(struct net_device *net);
 void wl_cfg80211_enable_trace(bool set, u32 level);
@@ -2381,6 +2388,9 @@ extern uint8 *wl_get_up_table(void);
 #define P2PO_COOKIE     65535
 u64 wl_cfg80211_get_new_roc_id(struct bcm_cfg80211 *cfg);
 
+#define ROAMSCAN_MODE_NORMAL	0
+#define ROAMSCAN_MODE_WES	1
+
 #ifdef SUPPORT_AP_HIGHER_BEACONRATE
 int wl_set_ap_beacon_rate(struct net_device *dev, int val, char *ifname);
 int wl_get_ap_basic_rate(struct net_device *dev, char* command, char *ifname, int total_len);
@@ -2478,4 +2488,16 @@ bool wl_cfg80211_check_in_progress(struct net_device *dev);
 #ifdef WL_GET_RCC
 extern int wl_android_get_roam_scan_chanlist(struct bcm_cfg80211 *cfg);
 #endif /* WL_GET_RCC */
+#ifdef WES_SUPPORT
+extern int wl_android_set_ncho_mode(struct net_device *dev, int mode);
+#endif /* WES_SUPPORT */
+
+#define WL_CHANNEL_ARRAY_INIT(band_chan_arr)	\
+do {	\
+	u32 arr_size, k;	\
+	arr_size = ARRAYSIZE(band_chan_arr);	\
+	for (k = 0; k < arr_size; k++) {	\
+	    band_chan_arr[k].flags = IEEE80211_CHAN_DISABLED;	\
+	}	\
+} while (0)
 #endif /* _wl_cfg80211_h_ */

@@ -24,7 +24,8 @@ menuconfig MALI_DDK_VERSION
 choice
 	prompt "version Configuration"
 	depends on MALI_DDK_VERSION
-	default MALI_BIFROST_R16P0
+	default MALI_BIFROST_R19P0_Q if ANDROID_VERSION >= "100000"
+	default MALI_BIFROST_R16P0 if ANDROID_VERSION < "100000"
 	help
 	  Select the gpu support version.
 
@@ -44,6 +45,10 @@ config MALI_BIFROST_R16P0
 	depends on MALI_DDK_VERSION
 	bool "Bifrost r16p0 driver"
 
+config MALI_BIFROST_R19P0_Q
+	depends on MALI_DDK_VERSION
+	bool "Bifrost r19p0 driver for Android Q"
+
 endchoice
 
 if MALI_BIFROST_R10P0
@@ -61,4 +66,9 @@ endif
 if MALI_BIFROST_R16P0
 source "drivers/gpu/arm/b_r16p0/Kconfig"
 endif
+
+if MALI_BIFROST_R19P0_Q
+source "drivers/gpu/arm/b_r19p0/Kconfig"
+endif
+
 endmenu

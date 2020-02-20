@@ -1558,6 +1558,8 @@ int fimc_is_resource_get(struct fimc_is_resourcemgr *resourcemgr, u32 rsc_type)
 			atomic_set(&core->i2c_rsccount[i], 0);
 
 		resourcemgr->global_param.state = 0;
+		resourcemgr->shot_timeout = FIMC_IS_SHOT_TIMEOUT;
+		resourcemgr->shot_timeout_tick = 0;
 
 #ifdef ENABLE_DYNAMIC_MEM
 		ret = fimc_is_resourcemgr_init_dynamic_mem(resourcemgr);

@@ -32,6 +32,10 @@
 #define MST_LDO3_0 "MST_LEVEL_3.0V"
 #define MST_NOT_SUPPORT		(0x1 << 3)
 
+#if defined(CONFIG_MST_SUPPORT_GPIO)
+static int mst_support_check;
+#endif
+
 static int mst_pwr_en;
 static struct class *mst_drv_class;
 struct device *mst_drv_dev;
@@ -394,6 +398,7 @@ static ssize_t store_mst_drv(struct device *dev,
 #if !defined(CONFIG_MFC_CHARGER)
 			of_mst_hw_onoff(1);
 #endif
+			trace_printk("tracing mark write: MST transmission Start\n");
 #if defined(CONFIG_MST_TEEGRIS)
 			printk("MST_LDO_DRV]]] Call to Blowfish ta_mst for TRACK1\n");
 			result = transmit_mst_teegris(CMD_TRACK1);
@@ -407,6 +412,7 @@ static ssize_t store_mst_drv(struct device *dev,
 			result = exynos_smc(r0, r1, r2, r3);
 			printk(KERN_INFO "MST_LDO_DRV]]] Track1 data sent : %d\n", result);
 #endif
+			trace_printk("tracing mark write: MST transmission End\n");
 #if !defined(CONFIG_MFC_CHARGER)
 			of_mst_hw_onoff(0);
 #endif
@@ -416,6 +422,7 @@ static ssize_t store_mst_drv(struct device *dev,
 #if !defined(CONFIG_MFC_CHARGER)
 			of_mst_hw_onoff(1);
 #endif
+			trace_printk("tracing mark write: MST transmission Start\n");
 #if defined(CONFIG_MST_TEEGRIS)
 			printk("MST_LDO_DRV]]] Call to Blowfish ta_mst for TRACK2\n");
 			result = transmit_mst_teegris(CMD_TRACK2);
@@ -429,6 +436,7 @@ static ssize_t store_mst_drv(struct device *dev,
 			result = exynos_smc(r0, r1, r2, r3);
 			printk(KERN_INFO "MST_LDO_DRV]]] Track2 data sent : %d\n", result);
 #endif
+			trace_printk("tracing mark write: MST transmission End\n");
 #if !defined(CONFIG_MFC_CHARGER)
 			of_mst_hw_onoff(0);
 #endif
@@ -477,6 +485,40 @@ static ssize_t store_mst_drv(struct device *dev,
 }
 
 static DEVICE_ATTR(transmit, 0770, show_mst_drv, store_mst_drv);
+
+/* MST support node */
+static ssize_t show_support(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+#if defined(CONFIG_MST_SUPPORT_GPIO)
+	uint8_t is_mst_support = 0;
+#endif
+
+	if (!dev)
+		return -ENODEV;
+
+#if defined(CONFIG_MST_SUPPORT_GPIO)
+	is_mst_support = gpio_get_value(mst_support_check);
+	if (is_mst_support == 1) {
+		printk(KERN_ERR "MST_DRV]]] This device supports MST, %d\n", is_mst_support);
+		return sprintf(buf, "%d\n", 1);
+	} else {
+		printk(KERN_ERR "MST_DRV]]] This device doesn't supports MST, %d\n", is_mst_support);
+		return sprintf(buf, "%d\n", 0);
+	}
+#else
+	printk("%s no support gpio, bug MST_LDO is enabled, supports MST\n", __func__);
+	return sprintf(buf, "%d\n", 1);
+#endif
+}
+
+static ssize_t store_support(struct device *dev,
+		struct device_attribute *attr, const char *buf,
+		size_t count)
+{
+	return count;
+}
+static DEVICE_ATTR(support, 0444, show_support, store_support);
 
 #if defined(CONFIG_MFC_CHARGER)
 static ssize_t show_mfc(struct device *dev,
@@ -549,8 +591,51 @@ static int sec_mst_gpio_init(struct device *dev)
 static int mst_ldo_device_probe(struct platform_device *pdev)
 {
 	int retval = 0;
+#if defined(CONFIG_MST_SUPPORT_GPIO)
+	struct device *dev = &pdev->dev; 
+	uint8_t is_mst_support = 0;
+#endif
 
 	printk("%s init start\n", __func__);
+
+#if defined(CONFIG_MST_SUPPORT_GPIO)
+	/* MST support/non-support node check gpio */
+	mst_support_check = of_get_named_gpio(dev->of_node, "sec-mst,mst-support-gpio", 0);
+	printk("[MST] mst_support_check Value : %d\n", mst_support_check);
+	if (mst_support_check < 0) {
+		printk(KERN_ERR "%s : Cannot create the gpio\n", __func__);
+		return -1;
+	}
+	printk(KERN_ERR "MST_DRV]]] gpio support_check inited\n");	
+
+	is_mst_support = gpio_get_value(mst_support_check);
+	if (is_mst_support == 1) {
+		printk(KERN_ERR "MST_DRV]]] This device supports MST, %d\n", is_mst_support);
+	} else {
+		printk(KERN_ERR "MST_DRV]]] This device doesn't supports MST, %d\n", is_mst_support);
+
+		mst_drv_class = class_create(THIS_MODULE, "mstldo");
+		if (IS_ERR(mst_drv_class)) {
+			retval = PTR_ERR(mst_drv_class);
+			goto error;
+		}
+
+		mst_drv_dev = device_create(mst_drv_class,
+				NULL /* parent */, 0 /* dev_t */,
+				NULL /* drvdata */,
+				MST_DRV_DEV);
+		if (IS_ERR(mst_drv_dev)) {
+			retval = PTR_ERR(mst_drv_dev);
+			goto error_destroy;
+		}
+
+		retval = device_create_file(mst_drv_dev, &dev_attr_support);
+		if (retval)
+			goto error_destroy;
+
+		return -1;
+	}
+#endif
 
 	if (sec_mst_gpio_init(&pdev->dev))
 		return -1;
@@ -574,6 +659,10 @@ static int mst_ldo_device_probe(struct platform_device *pdev)
 
 	/* register this mst device with the driver core */
 	retval = device_create_file(mst_drv_dev, &dev_attr_transmit);
+	if (retval)
+		goto error_destroy;
+
+	retval = device_create_file(mst_drv_dev, &dev_attr_support);
 	if (retval)
 		goto error_destroy;
 

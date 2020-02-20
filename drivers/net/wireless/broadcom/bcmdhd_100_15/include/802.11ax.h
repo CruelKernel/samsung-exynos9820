@@ -24,8 +24,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: 802.11ax.h 827803 2019-06-28 04:44:55Z $
  */
 
 #ifndef _802_11ax_h_
@@ -895,6 +893,25 @@ typedef struct he_bsscolor_change_ie he_bsscolor_change_ie_t;
 #define HE_SU_RE_SIGA_TXOP_PLCP0_MASK		0xFC000000u
 #define HE_SU_RE_SIGA_TXOP_PLCP0_SHIFT		26u
 
+/* For HE SU SIG EXT : PLCP0 bit fields [32bit] */
+#define HE_SU_SIG_EXT_GI_LTF_MASK         0x00000003u
+#define HE_SU_SIG_EXT_1xLTF_GI8us_VAL     0x00000000u
+#define HE_SU_SIG_EXT_2xLTF_GI8us_VAL     0x00000001u
+#define HE_SU_SIG_EXT_2xLTF_GI16us_VAL    0x00000002u
+#define HE_SU_SIG_EXT_4xLTF_GI32us_VAL    0x00000003u
+#define HE_SU_SIG_EXT_STBC_MASK           0x00000040u
+#define HE_SU_SIG_EXT_STBC_SHIFT          6u
+#define HE_SU_SIG_EXT_LDPC_MASK           0x00000080u
+#define HE_SU_SIG_EXT_LDPC_SHIFT          7u
+#define HE_SU_SIG_EXT_MCS_MASK            0x0000f000u
+#define HE_SU_SIG_EXT_MCS_SHIFT           12u
+#define HE_SU_SIG_EXT_DCM_MASK            0x00010000u
+#define HE_SU_SIG_EXT_DCM_SHIFT           16u
+#define HE_SU_SIG_EXT_NSTS_MASK           0x000e0000u
+#define HE_SU_SIG_EXT_NSTS_SHIFT          17u
+#define HE_SU_SIG_EXT_CODING_MASK         0x00800000u
+#define HE_SU_SIG_EXT_CODING_SHIFT        23u
+
 /* HE mu ppdu - bit position and field width */
 #define HE_MU_PPDU_DL_UL_IDX                    0u
 #define HE_MU_PPDU_DL_UL_FSZ                    1u
@@ -987,6 +1004,8 @@ typedef struct he_bsscolor_change_ie he_bsscolor_change_ie_t;
 #define HE_SU_RE_SIGA_TXOP_PLCP1_SHIFT	0
 #define HE_SU_RE_SIGA_CODING_MASK	0x0002
 #define HE_SU_RE_SIGA_CODING_SHIFT	1
+#define HE_SU_RE_SIGA_LDPC_EXTRA_MASK	0x0004
+#define HE_SU_RE_SIGA_LDPC_EXTRA_SHIFT	2
 #define HE_SU_RE_SIGA_STBC_MASK		0x0008
 #define HE_SU_RE_SIGA_STBC_SHIFT	3
 #define HE_SU_RE_SIGA_BEAMFORM_MASK	0x0010

@@ -2591,10 +2591,10 @@ static int abox_modem_notifier(struct notifier_block *nb,
 	switch (action) {
 	case MODEM_EVENT_RESET:
 		system_msg->msgtype = ABOX_RESET_VSS;
-		break;
 #ifdef CONFIG_SND_SOC_SAMSUNG_AUDIO
 		abox_debug_string_update(TYPE_MODEM_CPCRASH, NULL);
 #endif
+		break;
 	case MODEM_EVENT_EXIT:
 		system_msg->msgtype = ABOX_STOP_VSS;
 		abox_dbg_print_gpr(dev, data);

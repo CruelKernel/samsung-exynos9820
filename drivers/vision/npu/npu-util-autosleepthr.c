@@ -19,6 +19,7 @@
 #include "npu-log.h"
 
 #include "npu-util-autosleepthr.h"
+#include "npu-util-common.h"
 
 const char *DEFAULT_THREAD_PRINT_NAME = "Anon. auto_sleep_thread";
 const int DEFAULT_NO_ACTIVITY_THRESHOLD = 4;
@@ -99,9 +100,10 @@ static inline int wakeup_check(struct auto_sleep_thread *thrctx)
 
 static int auto_sleep_thread_thrfunc(void *data)
 {
-	int num_activity;
+	int	num_activity;
+	s64	idle_duration_ns;
+	int	no_activity_cnt = 0;
 	struct auto_sleep_thread *thrctx = (struct auto_sleep_thread *)data;
-	int no_activity_cnt = 0;
 
 	npu_info("ASThread[%s] thrfunc is initiated. ctx = %pK\n"
 		 , thrctx->name, thrctx);
@@ -123,8 +125,20 @@ static int auto_sleep_thread_thrfunc(void *data)
 
 			// No activity more than threshold -> Go to sleep
 			if (no_activity_cnt >= thrctx->no_activity_threshold) {
-				npu_trace("ASThread[%s] goes into sleep. no_activity_cnt = %d\n",
-					thrctx->name, no_activity_cnt);
+				if (thrctx->idle_start_ns) {
+					idle_duration_ns = npu_get_time_ns() - thrctx->idle_start_ns;
+				} else {
+					/* First idle state */
+					idle_duration_ns = 0;
+					thrctx->idle_start_ns = npu_get_time_ns();
+				}
+				npu_trace("ASThread[%s] goes into sleep. no_activity_cnt = %d, idle duration = %lld\n",
+					thrctx->name, no_activity_cnt, idle_duration_ns);
+
+				/* Invoke idle callback if available */
+				if (thrctx->on_idle)
+					thrctx->on_idle(&(thrctx->task_param), idle_duration_ns);
+
 				auto_sleep_thread_set_state(thrctx, THREAD_STATE_SLEEPING);
 				wait_event_interruptible_timeout(thrctx->wq,
 					wakeup_check(thrctx),
@@ -135,6 +149,7 @@ static int auto_sleep_thread_thrfunc(void *data)
 			}
 		} else {
 			no_activity_cnt = 0;
+			thrctx->idle_start_ns = 0;
 		}
 	}
 
@@ -144,7 +159,8 @@ static int auto_sleep_thread_thrfunc(void *data)
 
 int auto_sleep_thread_create(struct auto_sleep_thread *newthr, const char *print_name,
 	int (*do_task)(struct auto_sleep_thread_param *data),
-	int (*check_work)(struct auto_sleep_thread_param *data))
+	int (*check_work)(struct auto_sleep_thread_param *data),
+	void (*on_idle)(struct auto_sleep_thread_param *data, s64 idle_duration_ns))
 {
 
 	BUG_ON(!newthr);
@@ -166,6 +182,7 @@ int auto_sleep_thread_create(struct auto_sleep_thread *newthr, const char *print
 	newthr->thread_ref = NULL;
 	newthr->do_task = (do_task);
 	newthr->check_work = (check_work);
+	newthr->on_idle = (on_idle);
 	newthr->no_activity_threshold = DEFAULT_NO_ACTIVITY_THRESHOLD;
 	auto_sleep_thread_set_state(newthr, THREAD_STATE_INITIALIZED);
 

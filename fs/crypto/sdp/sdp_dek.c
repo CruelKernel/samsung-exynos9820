@@ -901,6 +901,7 @@ inline int __fscrypt_sdp_finish_set_sensitive(struct inode *inode,
 	struct fscrypt_sdp_context sdp_ctx;
 	struct fscrypt_key fek;
 	u8 enonce[MAX_EN_BUF_LEN];
+	sdp_fs_command_t *cmd = NULL; // For Audit Log
 
 	if ((crypt_info->ci_sdp_info->sdp_flags & SDP_DEK_TO_SET_SENSITIVE)
 			|| (crypt_info->ci_sdp_info->sdp_flags & SDP_DEK_TO_CONVERT_KEY_TYPE)) {
@@ -920,7 +921,7 @@ inline int __fscrypt_sdp_finish_set_sensitive(struct inode *inode,
 			}
 			if (res) {
 				DEK_LOGE("set_sensitive: failed to find fek (err:%d)\n", res);
-				return res;
+				goto out;
 			}
 		}
 #if DEK_DEBUG
@@ -986,6 +987,15 @@ inline int __fscrypt_sdp_finish_set_sensitive(struct inode *inode,
 
 out:
 	memzero_explicit(&fek, sizeof(fek));
+	if (res) {
+		cmd = sdp_fs_command_alloc(FSOP_AUDIT_FAIL_ENCRYPT,
+			current->tgid, crypt_info->ci_sdp_info->engine_id, -1,
+			inode->i_ino, res, GFP_NOFS);
+		if (cmd) {
+			sdp_fs_request(cmd, NULL);
+			sdp_fs_command_free(cmd);
+		}
+	}
 	return res;
 }
 

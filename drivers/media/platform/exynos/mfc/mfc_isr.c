@@ -182,6 +182,62 @@ static void __mfc_handle_frame_copy_timestamp(struct mfc_ctx *ctx)
 		ref_mb->vb.vb2_buf.timestamp = src_mb->vb.vb2_buf.timestamp;
 }
 
+static void __mfc_handle_frame_output_move_vc1(struct mfc_ctx *ctx,
+		dma_addr_t dspl_y_addr, unsigned int released_flag)
+{
+	struct mfc_dev *dev = ctx->dev;
+	struct mfc_dec *dec = ctx->dec_priv;
+	struct mfc_buf *ref_mb;
+	int index = 0;
+	int i;
+
+	ref_mb = mfc_find_move_buf(&ctx->buf_queue_lock,
+			&ctx->dst_buf_queue, &ctx->ref_buf_queue, dspl_y_addr, released_flag);
+	if (ref_mb) {
+		index = ref_mb->vb.vb2_buf.index;
+
+		/* Check if this is the buffer we're looking for */
+		mfc_debug(2, "[DPB] Found buf[%d] 0x%08llx, looking for disp addr 0x%08llx\n",
+				index, ref_mb->addr[0][0], dspl_y_addr);
+
+		if (released_flag & (1 << index)) {
+			dec->available_dpb &= ~(1 << index);
+			released_flag &= ~(1 << index);
+			mfc_debug(2, "[DPB] Corrupted frame(%d), it will be re-used(release)\n",
+					mfc_get_warn(mfc_get_int_err()));
+		} else {
+			dec->err_reuse_flag |= 1 << index;
+			dec->dynamic_used |= (1 << index);
+			mfc_debug(2, "[DPB] Corrupted frame(%d), it will be re-used(not released)\n",
+					mfc_get_warn(mfc_get_int_err()));
+		}
+	}
+
+	if (!released_flag)
+		return;
+
+	for (i = 0; i < MFC_MAX_DPBS; i++) {
+		if (released_flag & (1 << i)) {
+			/*
+			 * If the released buffer is in ref_buf_q,
+			 * it means that driver owns that buffer.
+			 * In that case, move buffer from ref_buf_q to dst_buf_q to reuse it.
+			 */
+			if (mfc_move_reuse_buffer(ctx, i)) {
+				dec->available_dpb &= ~(1 << i);
+				mfc_debug(2, "[DPB] released buf[%d] is reused\n", i);
+			/*
+			 * Otherwise, because the user owns the buffer
+			 * the buffer should be included in release_info when display frame.
+			 */
+			} else {
+				dec->dec_only_release_flag |= (1 << i);
+				mfc_debug(2, "[DPB] released buf[%d] is in dec_only flag\n", i);
+			}
+		}
+	}
+}
+
 static void __mfc_handle_frame_output_move(struct mfc_ctx *ctx,
 		dma_addr_t dspl_y_addr, unsigned int released_flag)
 {
@@ -304,11 +360,16 @@ static void __mfc_handle_frame_output_del(struct mfc_ctx *ctx,
 		}
 
 		if (is_hdr10_plus_sei) {
-			mfc_get_hdr_plus_info(ctx, &dec->hdr10_plus_info[index]);
-			mfc_set_vb_flag(ref_mb, MFC_FLAG_HDR_PLUS);
-			mfc_debug(2, "[HDR+] HDR10 plus dyanmic SEI metadata parsed\n");
+			if (dec->hdr10_plus_info) {
+				mfc_get_hdr_plus_info(ctx, &dec->hdr10_plus_info[index]);
+				mfc_set_vb_flag(ref_mb, MFC_FLAG_HDR_PLUS);
+				mfc_debug(2, "[HDR+] HDR10 plus dyanmic SEI metadata parsed\n");
+			} else {
+				mfc_err_ctx("[HDR+] HDR10 plus cannot be parsed\n");
+			}
 		} else {
-			dec->hdr10_plus_info[index].valid = 0;
+			if (dec->hdr10_plus_info)
+				dec->hdr10_plus_info[index].valid = 0;
 		}
 
 		if (ctx->src_fmt->mem_planes == 1) {
@@ -429,9 +490,10 @@ static void __mfc_handle_frame_new(struct mfc_ctx *ctx, unsigned int err)
 	/* decoder dst buffer CFW UNPROT */
 	mfc_unprotect_released_dpb(ctx, released_flag);
 
-	if ((IS_VC1_RCV_DEC(ctx) &&
-		mfc_get_warn(err) == MFC_REG_ERR_SYNC_POINT_NOT_RECEIVED) ||
-		(mfc_get_warn(err) == MFC_REG_ERR_BROKEN_LINK))
+	if (IS_VC1_RCV_DEC(ctx) &&
+		mfc_get_warn(err) == MFC_REG_ERR_SYNC_POINT_NOT_RECEIVED)
+		__mfc_handle_frame_output_move_vc1(ctx, dspl_y_addr, released_flag);
+	else if (mfc_get_warn(err) == MFC_REG_ERR_BROKEN_LINK)
 		__mfc_handle_frame_output_move(ctx, dspl_y_addr, released_flag);
 	else
 		__mfc_handle_frame_output_del(ctx, err, released_flag);

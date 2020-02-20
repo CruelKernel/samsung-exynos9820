@@ -133,7 +133,7 @@ err:
 int decon_wait_fence(struct decon_device *decon, struct sync_file *sync_file,
 		int fd)
 {
-	int err = sync_file_wait(sync_file, 900);
+	int err = sync_file_wait(sync_file, msecs_to_jiffies(600));
 	if (err >= 0)
 		return 0;
 
@@ -318,7 +318,7 @@ int decon_wait_fence(struct decon_device *decon, struct dma_fence *fence, int fd
 	struct dpu_fence_info acquire;
 	ktime_t s_time = ktime_get(), e_time;
 
-	err = dma_fence_wait_timeout(fence, false, 900);
+	err = dma_fence_wait_timeout(fence, false, msecs_to_jiffies(600));
 	if (err < 0) {
 		decon_err("%s: waiting on acquire fence timeout\n", __func__);
 		ret = err;

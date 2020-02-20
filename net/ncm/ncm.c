@@ -855,7 +855,7 @@ static ssize_t ncm_write(struct file *file, const char __user *buf, size_t count
 		return -EACCES;
 	}
 	memset(intermediate_string,'\0',sizeof(intermediate_string));
-	copy_from_user(intermediate_string,buf,sizeof(intermediate_string));
+	copy_from_user(intermediate_string,buf,sizeof(intermediate_string)-1);
 	intermediate_value = simple_strtol(intermediate_string, NULL, 10);
 	if (intermediate_value > 0) {
 		update_intermediate_timeout(intermediate_value);

@@ -27,8 +27,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: eapol.h 809460 2019-03-14 00:35:24Z $
  */
 
 #ifndef _eapol_h_

@@ -616,7 +616,11 @@ static int ffs_ep0_release(struct inode *inode, struct file *file)
 {
 	struct ffs_data *ffs = file->private_data;
 
+#ifdef VERBOSE_DEBUG
 	ENTER();
+#else
+	pr_info("%s\n", __func__);
+#endif
 
 	ffs_data_closed(ffs);
 

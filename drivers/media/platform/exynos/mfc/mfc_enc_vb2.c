@@ -431,6 +431,7 @@ static void mfc_enc_buf_queue(struct vb2_buffer *vb)
 
 		/* Mark destination as available for use by MFC */
 		mfc_add_tail_buf(&ctx->buf_queue_lock, &ctx->dst_buf_queue, buf);
+		mfc_qos_update_framerate(ctx, 0, 1);
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		for (i = 0; i < ctx->src_fmt->mem_planes; i++)
 			mfc_debug(2, "[BUFINFO] ctx[%d] add src index: %d, addr[%d]: 0x%08llx\n",
@@ -442,7 +443,7 @@ static void mfc_enc_buf_queue(struct vb2_buffer *vb)
 					ctx->framerate, buf->vb.vb2_buf.timestamp);
 
 		mfc_qos_update_last_framerate(ctx, buf->vb.vb2_buf.timestamp);
-		mfc_qos_update_framerate(ctx, 0);
+		mfc_qos_update_framerate(ctx, 0, 0);
 	} else {
 		mfc_err_ctx("unsupported buffer type (%d)\n", vq->type);
 	}

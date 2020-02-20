@@ -18,39 +18,54 @@
 #include <linux/ioport.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
+#include <linux/version.h>
 
 #include "proca_config.h"
 #include "proca_log.h"
 #include "proca_porting.h"
+#include "gaf/proca_gaf.h"
 
 #define PROCA_CONFIG_VERSION 3U
 #define PROCA_CONFIG_MAGIC 0xCD0436EAU
 
-static int append_sys_ram_range(uint64_t start, uint64_t end, void *arg)
+static int append_sys_ram_range(struct resource *res, void *arg)
 {
 	struct proca_config *conf = arg;
 
 	PROCA_DEBUG_LOG("System RAM region %p-%p was found\n",
-			(void *)(uintptr_t)start, (void *)(uintptr_t)end);
+		(void *)(uintptr_t)res->start, (void *)(uintptr_t)res->end);
 
 	if (conf->sys_ram_ranges_num == MAX_MEMORY_RANGES_NUM) {
 		PROCA_ERROR_LOG("Unsupported number of sys ram regions %llu\n",
 		       MAX_MEMORY_RANGES_NUM);
 		return -ENOMEM;
 	}
-	conf->sys_ram_ranges[conf->sys_ram_ranges_num].start = start;
-	conf->sys_ram_ranges[conf->sys_ram_ranges_num].end = end;
+	conf->sys_ram_ranges[conf->sys_ram_ranges_num].start = res->start;
+	conf->sys_ram_ranges[conf->sys_ram_ranges_num].end = res->end;
 
 	++conf->sys_ram_ranges_num;
 
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 42)
+#define __walk_system_ram_res_cb append_sys_ram_range
+#else
+static int __walk_system_ram_res_cb(u64 start, u64 end, void *arg)
+{
+	struct resource res;
+
+	res.start = start;
+	res.end = end;
+	return append_sys_ram_range(&res, arg);
+}
+#endif
+
 static int prepare_sys_ram_ranges(struct proca_config *conf)
 {
 	int ret = 0;
 
-	ret = walk_system_ram_res(0, ULONG_MAX, conf, append_sys_ram_range);
+	ret = walk_system_ram_res(0, ULONG_MAX, conf, __walk_system_ram_res_cb);
 	if (ret)
 		conf->sys_ram_ranges_num = 0;
 
@@ -104,7 +119,7 @@ int init_proca_config(struct proca_config *conf,
 	BUG_ON(!conf || !proca_table_addr);
 
 	prepare_kernel_constants(conf);
-	conf->gaf_addr = sec_gaf_get_addr();
+	conf->gaf_addr = proca_gaf_get_addr();
 	conf->proca_table_addr = proca_table_addr;
 	conf->version = PROCA_CONFIG_VERSION;
 	conf->size = sizeof(*conf);

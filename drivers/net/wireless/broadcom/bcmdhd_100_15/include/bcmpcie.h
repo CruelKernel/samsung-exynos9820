@@ -25,8 +25,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: bcmpcie.h 821465 2019-05-23 19:50:00Z $
  */
 
 #ifndef	_bcmpcie_h_

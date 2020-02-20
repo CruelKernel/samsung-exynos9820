@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: wpa.h 822438 2019-05-29 17:13:44Z $
  */
 
 #ifndef _proto_wpa_h_

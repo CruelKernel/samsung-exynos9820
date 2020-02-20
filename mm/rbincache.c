@@ -367,9 +367,6 @@ static void rc_store_page(int pool_id, struct cleancache_filekey key,
 	bool zero;
 
 	atomic_inc(&rc_num_puts);
-	if (!try_get_rbincache())
-		return;
-
 	zero = is_zero_page(src);
 	if (zero) {
 		handle = (struct rr_handle *)ZERO_HANDLE;
@@ -377,21 +374,19 @@ static void rc_store_page(int pool_id, struct cleancache_filekey key,
 	}
 	handle = region_store_cache(src, pool_id, key.u.ino, index);
 	if (!handle)
-		goto out;
+		return;
 out_zero:
 	ret = rc_store_handle(pool_id, key.u.ino, index, handle);
 	if (ret) { // failed
 		if (!zero)
 			region_flush_cache(handle);
-		goto out;
+		return;
 	}
 
 	/* update stats */
 	atomic_inc(&rc_num_succ_puts);
 	if (zero)
 		atomic_inc(&rbin_zero_pages);
-out:
-	put_rbincache();
 }
 
 /*
@@ -405,9 +400,6 @@ static int rc_load_page(int pool_id, struct cleancache_filekey key,
 	void *addr;
 
 	atomic_inc(&rc_num_gets);
-	if (!try_get_rbincache())
-		return ret;
-
 	handle = rc_load_del_handle(pool_id, key.u.ino, index);
 	if (!handle)
 		goto out;
@@ -427,8 +419,6 @@ static int rc_load_page(int pool_id, struct cleancache_filekey key,
 	/* update stats */
 	atomic_inc(&rc_num_succ_gets);
 out:
-	put_rbincache();
-
 	return ret;
 }
 
@@ -438,19 +428,14 @@ static void rc_flush_page(int pool_id, struct cleancache_filekey key,
 	struct rr_handle *handle;
 
 	atomic_inc(&rc_num_flush_page);
-	if (!try_get_rbincache())
-		return;
-
 	handle = rc_load_del_handle(pool_id, key.u.ino, index);
 	if (!handle)
-		goto out;
+		return;
 
 	if (handle != ZERO_HANDLE)
 		region_flush_cache(handle);
 
 	atomic_inc(&rc_num_succ_flush_page);
-out:
-	put_rbincache();
 }
 
 #define FREE_BATCH 16
@@ -500,8 +485,6 @@ static void rc_flush_inode(int pool_id, struct cleancache_filekey key)
 	int pages_flushed;
 
 	atomic_inc(&rc_num_flush_inode);
-	if (!try_get_rbincache())
-		return;
 	/*
 	 * Refuse new pages added in to the same rbnode, so get rb_lock at
 	 * first.
@@ -510,7 +493,7 @@ static void rc_flush_inode(int pool_id, struct cleancache_filekey key)
 	rbnode = rc_find_rbnode(&rcpool->rbtree, key.u.ino, 0, 0);
 	if (!rbnode) {
 		write_unlock_irqrestore(&rcpool->rb_lock, flags1);
-		goto out;
+		return;
 	}
 
 	kref_get(&rbnode->refcount);
@@ -531,8 +514,6 @@ static void rc_flush_inode(int pool_id, struct cleancache_filekey key)
 
 	atomic_inc(&rc_num_succ_flush_inode);
 	trace_printk("rbincache: %d pages flushed\n", pages_flushed);
-out:
-	put_rbincache();
 }
 
 static void rc_flush_fs(int pool_id)

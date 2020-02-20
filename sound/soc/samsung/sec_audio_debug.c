@@ -165,7 +165,7 @@ static void abox_debug_string_update_workfunc(struct work_struct *wk)
 
 		break;
 	case TYPE_ABOX_VSSERROR:
-		len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "CP Crash");
+		len += snprintf(p_debug_data->dbg_str_buf, DBG_STR_BUFF_SZ - len, "VSSERROR");
 		break;
 	default:
 		pr_err("%s: unknown type %d\n", __func__, p_debug_data->debug_err_type);

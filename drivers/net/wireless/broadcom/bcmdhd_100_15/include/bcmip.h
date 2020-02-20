@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: bcmip.h 785436 2018-10-18 17:54:25Z $
  */
 
 #ifndef _bcmip_h_

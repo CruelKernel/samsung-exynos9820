@@ -23,13 +23,14 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_event_log_filter.h 789224 2018-11-15 13:43:23Z $
+ * $Id: dhd_event_log_filter.h 837736 2019-08-27 08:09:50Z $
  */
 
 #ifndef dhd_event_log_filter_h
 #define dhd_event_log_filter_h
 #include <dhd.h>
 #include <event_log_tag.h>
+#include <dhd_debug.h>
 
 typedef struct {
 	uint16	version;
@@ -52,4 +53,7 @@ void dhd_event_log_filter_event_handler(
 
 void dhd_event_log_filter_notify_connect_request(dhd_pub_t *dhdp, uint8 *bssid, int channel);
 void dhd_event_log_filter_notify_connect_done(dhd_pub_t *dhdp, uint8 *bssid, int roam);
+#ifdef WLADPS_ENERGY_GAIN
+int dhd_event_log_filter_adps_energy_gain(dhd_pub_t *dhdp);
+#endif /* WLADPS_ENERGY_GAIN */
 #endif /* dhd_event_log_filter_h */

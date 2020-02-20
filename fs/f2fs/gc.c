@@ -379,7 +379,11 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 		/* W/A for FG_GC failure due to Atomic Write File */    
 		if (test_bit(secno, dirty_i->blacklist_victim_secmap))
 			goto next;
-
+#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+		/* W/A for FG_GC failure due to Pinned File */
+		if (test_bit(secno, dirty_i->pblacklist_victim_secmap))
+			goto next;
+#endif
 		cost = get_gc_cost(sbi, segno, &p);
 
 		if (p.min_cost > cost) {
@@ -709,6 +713,8 @@ static int move_data_block(struct inode *inode, block_t bidx,
 	int err = 0;
 	bool lfs_mode = test_opt(fio.sbi, LFS);
 
+	f2fs_cond_set_fua(&fio);
+
 	/* do not read out */
 	page = f2fs_grab_cache_page(inode->i_mapping, bidx, false);
 	if (!page)
@@ -730,7 +736,13 @@ static int move_data_block(struct inode *inode, block_t bidx,
 	}
 
 	if (f2fs_is_pinned_file(inode)) {
+#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+		/* W/A for GC failure due to Pinned File */
+		set_bit(GET_SEC_FROM_SEG(F2FS_I_SB(inode), segno),
+			DIRTY_I(F2FS_I_SB(inode))->pblacklist_victim_secmap);
+#else
 		f2fs_pin_file_control(inode, true);
+#endif
 		err = -EAGAIN;
 		goto out;
 	}
@@ -877,8 +889,15 @@ static int move_data_page(struct inode *inode, block_t bidx, int gc_type,
 		goto out;
 	}
 	if (f2fs_is_pinned_file(inode)) {
-		if (gc_type == FG_GC)
+		if (gc_type == FG_GC) {
+#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+			/* W/A for FG_GC failure due to Pinned File */
+			set_bit(GET_SEC_FROM_SEG(F2FS_I_SB(inode), segno),
+				DIRTY_I(F2FS_I_SB(inode))->pblacklist_victim_secmap);
+#else
 			f2fs_pin_file_control(inode, true);
+#endif
+		}
 		err = -EAGAIN;
 		goto out;
 	}
@@ -906,6 +925,7 @@ static int move_data_page(struct inode *inode, block_t bidx, int gc_type,
 		};
 		bool is_dirty = PageDirty(page);
 
+		f2fs_cond_set_fua(&fio);
 retry:
 		set_page_dirty(page);
 		f2fs_wait_on_page_writeback(page, DATA, true);

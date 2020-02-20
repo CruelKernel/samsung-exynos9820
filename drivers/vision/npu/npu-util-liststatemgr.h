@@ -265,7 +265,8 @@ static int LSM_NAME##__lsm_init(										\
 		snprintf(ast_name, sizeof(ast_name), "%s" AST_PREFIX, this->lsm_data.name);			\
 														\
 		/* Initialize Auto sleep thread */								\
-		ret = auto_sleep_thread_create(&(this->lsm_data.ast_worker), ast_name, do_task, check_work);	\
+		ret = auto_sleep_thread_create(									\
+			&(this->lsm_data.ast_worker),ast_name, do_task, check_work, NULL);			\
 		if (ret) {											\
 			npu_err("fail(%d) in auto_sleep_thread_create LSM(%s)\n",			\
 				ret, this->lsm_data.name);							\

@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: bcmeth.h 701825 2017-05-26 16:45:27Z $
  */
 
 /*

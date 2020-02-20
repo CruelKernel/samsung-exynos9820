@@ -843,7 +843,8 @@ struct fimc_is_cis_ext2_interface_ops {
 	int (*get_open_close_hint)(int* opening, int* closing);
 	int (*set_mainflash_duration)(struct fimc_is_sensor_interface *itf,
 				u32 mainflash_duration);
-	void *reserved[15];
+	int(*set_previous_dm)(struct fimc_is_sensor_interface *itf);
+	void *reserved[14];
 };
 
 struct fimc_is_cis_event_ops {

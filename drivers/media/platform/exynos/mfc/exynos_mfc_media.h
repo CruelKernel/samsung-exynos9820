@@ -60,6 +60,9 @@ enum v4l2_mpeg_video_hevc_hierarchical_coding_type {
 /* new entry for enum v4l2_mpeg_video_mpeg4_level */
 #define V4L2_MPEG_VIDEO_MPEG4_LEVEL_6			8
 
+/* new entry for enum v4l2_mpeg_video_h264_level */
+#define V4L2_MPEG_VIDEO_H264_LEVEL_5_2			16
+
 /* new entry for enum v4l2_mpeg_video_header_mode */
 #define V4L2_MPEG_VIDEO_HEADER_MODE_AT_THE_READY	2
 

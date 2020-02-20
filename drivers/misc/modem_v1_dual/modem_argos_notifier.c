@@ -16,6 +16,7 @@
 #include <linux/notifier.h>
 
 #include "modem_prj.h"
+#include "s5100_pcie.h"
 
 #define MIF_MAX_RPS_STR		8
 #define MIF_MAX_NDEV_NUM	8
@@ -36,6 +37,7 @@ struct argos_notifier {
 	struct notifier_block clat_nb;
 	unsigned int prev_ipc_rps;
 	unsigned int prev_clat_rps;
+	unsigned int prev_level;
 };
 
 unsigned int lit_rmnet_rps = 0x06;
@@ -192,6 +194,32 @@ static void mif_argos_notifier_gro_flushtime(unsigned long speed)
 static inline void mif_argos_notifier_gro_flushtime(unsigned long speed) {}
 #endif
 
+static void mif_argos_notifier_pcie_ctrl(struct argos_notifier *nf, void *data)
+{
+	int new_level    = *(int *)data;
+	int prev_level   = nf->prev_level & 0xf;
+	int lane_changed = nf->prev_level & 0x10;
+
+	mif_debug("level : [%d -> %d]\n", prev_level, new_level);
+
+	if (new_level >= 5 && !lane_changed) {
+		nf->prev_level = new_level;
+		if (!exynos_pcie_host_v1_lanechange(1, 2)) {
+			nf->prev_level |= 0x10;
+		} else {
+			mif_err("fail to change PCI lane 2\n");
+		}
+	}
+
+	if (new_level < 5 && lane_changed) {
+		if (!exynos_pcie_host_v1_lanechange(1, 1)) {
+			nf->prev_level = new_level;
+		} else {
+			mif_err("fail to change PCI lane 1\n");
+		}
+	}
+}
+
 static int mif_argos_notifier_ipc(struct notifier_block *nb, unsigned long speed, void *data)
 {
 	struct argos_notifier *nf = container_of(nb, struct argos_notifier, ipc_nb);
@@ -216,6 +244,8 @@ static int mif_argos_notifier_ipc(struct notifier_block *nb, unsigned long speed
 	}
 
 	mif_argos_notifier_gro_flushtime(speed);
+
+	mif_argos_notifier_pcie_ctrl(nf, data);
 
 	return NOTIFY_OK;
 }
@@ -259,6 +289,8 @@ static int mif_argos_notifier_clat(struct notifier_block *nb, unsigned long spee
 	}
 
 	mif_argos_notifier_gro_flushtime(speed);
+
+	mif_argos_notifier_pcie_ctrl(nf, data);
 
 	return NOTIFY_OK;
 }

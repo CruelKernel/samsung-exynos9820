@@ -148,7 +148,8 @@ static void sysrq_handle_crash(int key)
 	panic_on_oops = 1;	/* force panic */
 	wmb();
 
-	sec_debug_set_task_in_sysrq_crash((uint64_t)current);
+	sec_debug_set_sysrq_crash(current);
+
 	*killer = 1;
 }
 static struct sysrq_key_op sysrq_crash_op = {
@@ -304,7 +305,6 @@ static void sysrq_handle_showstate_blocked(int key)
 {
 	show_state_filter(TASK_UNINTERRUPTIBLE);
 	show_mem(0, NULL);
-	show_mem_extra_call_notifiers();
 	dump_tasks(NULL, NULL);
 }
 static struct sysrq_key_op sysrq_showstate_blocked_op = {

@@ -1003,7 +1003,7 @@ rtt_unpack_xtlv_cbfn(void *ctx, const uint8 *p_data, uint16 tlvid, uint16 len)
 		GCC_DIAGNOSTIC_PUSH_SUPPRESS_CAST();
 		DHD_RTT(("WL_PROXD_TLV_ID_COLLECT_CHAN_DATA\n"));
 		DHD_RTT(("\tchan est %u\n", (uint32) (len / sizeof(uint32))));
-		for (i = 0; (uint16)i < (len/sizeof(chan_data_entry)); i++) {
+		for (i = 0; (uint16)i < (uint16)(len/sizeof(chan_data_entry)); i++) {
 			uint32 *p = (uint32*)p_data;
 			chan_data_entry = ltoh32_ua(p + i);
 			DHD_RTT(("\t%u\n", chan_data_entry));
@@ -1929,29 +1929,12 @@ done:
 static void
 dhd_rtt_retry(dhd_pub_t *dhd)
 {
-	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
-	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
-	rtt_geofence_target_info_t  *geofence_target = NULL;
-	nan_ranging_inst_t *ranging_inst = NULL;
 
-	geofence_target = dhd_rtt_get_geofence_current_target(dhd);
-	if (!geofence_target) {
-		DHD_RTT(("dhd_rtt_retry: geofence target null\n"));
-		goto exit;
-	}
-	ranging_inst = wl_cfgnan_get_ranging_inst(cfg,
-		&geofence_target->peer_addr, NAN_RANGING_ROLE_INITIATOR);
-	if (!ranging_inst) {
-		DHD_RTT(("dhd_rtt_retry: ranging instance null\n"));
-		goto exit;
-	}
-	wl_cfgnan_reset_geofence_ranging(cfg,
-		ranging_inst, RTT_SCHED_RTT_RETRY_GEOFENCE);
+	/* Attempt RTT for current geofence target */
+	wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd,
+		RTT_SCHED_RTT_RETRY_GEOFENCE);
 
-exit:
-	return;
 }
-
 static void
 dhd_rtt_retry_work(struct work_struct *work)
 {
@@ -2493,7 +2476,9 @@ dhd_rtt_start(dhd_pub_t *dhd)
 		}
 
 	}
+#if !defined(WL_USE_RANDOMIZED_SCAN)
 	dhd_set_rand_mac_oui(dhd);
+#endif /* !defined(WL_USE_RANDOMIZED_SCAN */
 	dhd_rtt_ftm_config(dhd, FTM_DEFAULT_SESSION, FTM_CONFIG_CAT_GENERAL,
 			ftm_params, ftm_param_cnt);
 
@@ -4037,11 +4022,13 @@ dhd_rtt_init(dhd_pub_t *dhd)
 	INIT_DELAYED_WORK(&rtt_status->rtt_retry_timer, dhd_rtt_retry_work);
 #endif /* WL_NAN */
 	/* Global proxd config */
+	mutex_lock(&rtt_status->rtt_work_mutex);
 	ftm_params[ftm_param_cnt].event_mask = ((1 << WL_PROXD_EVENT_BURST_END) |
 		(1 << WL_PROXD_EVENT_SESSION_END));
 	ftm_params[ftm_param_cnt++].tlvid = WL_PROXD_TLV_ID_EVENT_MASK;
 	dhd_rtt_ftm_config(dhd, 0, FTM_CONFIG_CAT_GENERAL,
 			ftm_params, ftm_param_cnt);
+	mutex_unlock(&rtt_status->rtt_work_mutex);
 exit:
 	if (err < 0) {
 		kfree(rtt_status->rtt_config.target_info);

@@ -45,6 +45,9 @@
 const char *TYPE_NAME_FRAME = "frame";
 const char *TYPE_NAME_NW = "Netwrok mgmt.";
 
+/* Print log if driver is idle more than 10 seconds */
+const s64 NPU_PROTO_DRV_IDLE_LOG_DELAY_NS = 10L * 1000 * 1000 * 1000;
+
 #ifdef MBOX_MOCK_ENABLE
 int deinit_for_mbox_mock(void);
 int setup_for_mbox_mock(void);
@@ -278,6 +281,38 @@ static int is_stucked_req_frame(const struct proto_req_frame *req_frame)
 static int is_stucked_req_nw(const struct proto_req_nw *req_nw)
 {
 	return is_stucked_result_code(req_nw->nw.result_code);
+}
+
+/* Dump the session reference to npu log */
+static void log_session_ref(void)
+{
+	struct session_ref		*sess_ref = &(npu_proto_drv.session_ref);
+	struct session_ref_entry	*sess_entry;
+	const struct npu_session	*sess;
+	int				session_cnt = 0;
+	u64				u_pid;
+
+	BUG_ON(!sess_ref);
+
+	npu_info("Session state list =============================\n");
+	list_for_each_entry(sess_entry, &sess_ref->entry_list, list) {
+		npu_info("Entry[%d] : UID[%u] state[%d] frame[%s] nw[%s]\n",
+			session_cnt, sess_entry->uid, sess_entry->s_state,
+			(list_empty(&sess_entry->frame_list)) ? "EMPTY" : "NOT_EMPTY",
+			(list_empty(&sess_entry->nw_list)) ? "EMPTY" : "NOT_EMPTY");
+
+		sess = sess_entry->session;
+		if (sess) {
+			u_pid = (u64)sess->pid;
+			npu_info("Entry[%d] : Session UID[%u] PID[%llu] frame_id[%u]\n",
+				session_cnt, sess->uid, u_pid, sess->frame_id);
+		} else {
+			npu_info("Entry[%d] : NULL Session\n", session_cnt);
+		}
+
+		session_cnt++;
+	}
+	npu_info("End of session state list [%d] entries =========\n", session_cnt);
 }
 
 static struct session_ref_entry *__find_session_ref(const npu_uid_t uid)
@@ -1943,7 +1978,7 @@ static struct {
 			/*Dummy*/		/* Frame request */							/* NCP mgmt. request */
 /* FREE - (NA)      */	{{0, 0}, {.timeout_ns = 0,          .err_code = 0                    }, {.timeout_ns = 0,           .err_code = 0} },
 /* REQUESTED        */	{{0, 0}, {.timeout_ns = (5L * S2N), .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_SCHED_TIMEOUT)}, {.timeout_ns = (5L * S2N),  .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_SCHED_TIMEOUT)} },
-/* PROCESSING       */	{{0, 0}, {.timeout_ns = (10L * S2N), .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_NPU_TIMEOUT)  }, {.timeout_ns = (10L * S2N), .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_QUEUE_TIMEOUT)} },
+/* PROCESSING       */	{{0, 0}, {.timeout_ns = (10L * S2N), .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_NPU_TIMEOUT)  }, {.timeout_ns = (S2N / 2), .err_code = NPU_CRITICAL_DRIVER(NPU_ERR_QUEUE_TIMEOUT)} },
 /* COMPLETED - (NA) */	{{0, 0}, {.timeout_ns = 0,          .err_code = 0                    }, {.timeout_ns = 0,           .err_code = 0} },
 };
 #endif
@@ -2111,6 +2146,18 @@ static int proto_drv_check_work(struct auto_sleep_thread_param *data)
 	       || (npu_queue_op_is_available() > 0)
 	       || (nw_mbox_op_is_available() > 0)
 	       || (frame_mbox_op_is_available() > 0);
+}
+
+static void proto_drv_on_idle(struct auto_sleep_thread_param *data, s64 idle_duration_ns)
+{
+	if (idle_duration_ns < NPU_PROTO_DRV_IDLE_LOG_DELAY_NS)
+		return;
+
+	/* Idle is longer than NPU_PROTO_DRV_IDLE_LOG_DELAY_NS */
+	npu_warn("NPU driver is idle for [%lld ns].\n", idle_duration_ns);
+
+	/* Print out session info */
+	log_session_ref();
 }
 
 static void proto_drv_ast_signal_from_session(void)
@@ -2647,7 +2694,7 @@ int proto_drv_open(struct npu_device *npu_device)
 	/* AST initialization */
 	ret = auto_sleep_thread_create(&npu_proto_drv.ast,
 		NPU_PROTO_DRV_AST_NAME,
-		proto_drv_do_task, proto_drv_check_work);
+		proto_drv_do_task, proto_drv_check_work, proto_drv_on_idle);
 	if (ret) {
 		npu_err("fail(%d) in AST create\n", ret);
 		goto err_exit;

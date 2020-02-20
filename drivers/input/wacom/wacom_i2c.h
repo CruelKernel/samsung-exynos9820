@@ -83,7 +83,7 @@ struct wacom_g5_platform_data {
 	u32 ic_type;
 	u32 module_ver;
 	bool use_garage;
-	bool table_swap;
+	u32 table_swap;
 	bool use_vddio;
 	u32 bringup;
 

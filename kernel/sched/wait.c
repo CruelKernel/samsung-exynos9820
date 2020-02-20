@@ -11,6 +11,7 @@
 #include <linux/wait.h>
 #include <linux/hash.h>
 #include <linux/kthread.h>
+#include <linux/freezer.h>
 
 void __init_waitqueue_head(struct wait_queue_head *wq_head, const char *name, struct lock_class_key *key)
 {
@@ -297,6 +298,30 @@ long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_en
 	return ret;
 }
 EXPORT_SYMBOL(prepare_to_wait_event);
+
+/*
+ * Note! These two wait functions are entered with the
+ * wait-queue lock held (and interrupts off in the _irq
+ * case), so there is no race with testing the wakeup
+ * condition in the caller before they add the wait
+ * entry to the wake queue.
+ */
+int do_wait_freeze(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+{
+	if (likely(list_empty(&wait->entry)))
+		__add_wait_queue_entry_tail(wq, wait);
+
+	set_current_state(TASK_INTERRUPTIBLE);
+	if (signal_pending(current))
+		return -ERESTARTSYS;
+
+	spin_unlock(&wq->lock);
+	schedule();
+	try_to_freeze();
+	spin_lock(&wq->lock);
+	return 0;
+}
+EXPORT_SYMBOL(do_wait_freeze);
 
 /*
  * Note! These two wait functions are entered with the

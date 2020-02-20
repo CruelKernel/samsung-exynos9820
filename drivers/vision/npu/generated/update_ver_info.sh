@@ -11,6 +11,14 @@ then
 fi
 STASH_DEPTH=`git stash list | wc -l`
 USER_INFO=whoami|sed 's/\\/\-/g'
+
+# Error checking
+if [ ( -z $NPU_GIT_LOG ) -o ( -z $NPU_GIT_HASH ) -o ( -z $USER_INFO ) -o ( -z $NPU_GIT_LOCAL_CHANGE ) -o ( -z $STASH_DEPTH ) ]
+then
+	echo "An error occured during build info gathering." >&2
+	exit 16
+fi
+
 BUILD_INFO="$(USER_INFO)@$(hostname) / Build on $(date --rfc-3339='seconds')"
 
 cat > $TARGET_FILE << ENDL

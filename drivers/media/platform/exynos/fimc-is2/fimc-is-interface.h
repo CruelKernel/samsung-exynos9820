@@ -18,46 +18,9 @@
 #include "fimc-is-video.h"
 #include "fimc-is-time.h"
 #include "fimc-is-cmd.h"
-
-/*#define TRACE_WORK*/
-/* cam_ctrl : 1
-   shot :     2 */
-#define TRACE_WORK_ID_CAMCTRL	0x0000001
-#define TRACE_WORK_ID_GENERAL	0x0000002
-#define TRACE_WORK_ID_SHOT	0x0000004
-#define TRACE_WORK_ID_30C	0x0000008
-#define TRACE_WORK_ID_30P	0x0000010
-#define TRACE_WORK_ID_30F	0x0000011
-#define TRACE_WORK_ID_30G	0x0000012
-#define TRACE_WORK_ID_31C	0x0000020
-#define TRACE_WORK_ID_31P	0x0000040
-#define TRACE_WORK_ID_31F	0x0000041
-#define TRACE_WORK_ID_31G	0x0000042
-#define TRACE_WORK_ID_I0C	0x0000080
-#define TRACE_WORK_ID_I0P	0x0000100
-#define TRACE_WORK_ID_I1C	0x0000200
-#define TRACE_WORK_ID_I1P	0x0000400
-#define TRACE_WORK_ID_D0C	0x0000800
-#define TRACE_WORK_ID_D1C	0x0001000
-#define TRACE_WORK_ID_DC1S	0x0002000
-#define TRACE_WORK_ID_DC0C	0x0004000
-#define TRACE_WORK_ID_DC1C	0x0008000
-#define TRACE_WORK_ID_DC2C	0x0010000
-#define TRACE_WORK_ID_DC3C	0x0020000
-#define TRACE_WORK_ID_DC4C	0x0040000
-#define TRACE_WORK_ID_M0P	0x0080000
-#define TRACE_WORK_ID_M1P	0x0100000
-#define TRACE_WORK_ID_M2P	0x0200000
-#define TRACE_WORK_ID_M3P	0x0400000
-#define TRACE_WORK_ID_M4P	0x0800000
-#define TRACE_WORK_ID_M5P	0x1000000
-#define TRACE_WORK_ID_ME0C	0x2000000
-#define TRACE_WORK_ID_ME1C	0x4000000
-#define TRACE_WORK_ID_32P	0x8000000
-#define TRACE_WORK_ID_MASK	0xFFFFFFF
+#include "fimc-is-work.h"
 
 #define MAX_NBLOCKING_COUNT	3
-#define MAX_WORK_COUNT		10
 
 #define TRY_TIMEOUT_COUNT	2
 #define SENSOR_TIMEOUT_COUNT	2
@@ -91,43 +54,6 @@ enum interrupt_map {
 };
 #endif
 
-enum work_map {
-#if defined(ENABLE_IS_CORE)
-	WORK_GENERAL,
-#endif
-	WORK_SHOT_DONE,
-	WORK_30C_FDONE,
-	WORK_30P_FDONE,
-	WORK_30F_FDONE,
-	WORK_30G_FDONE,
-	WORK_31C_FDONE,
-	WORK_31P_FDONE,
-	WORK_31F_FDONE,
-	WORK_31G_FDONE,
-	WORK_32P_FDONE,
-	WORK_I0C_FDONE,
-	WORK_I0P_FDONE,
-	WORK_I1C_FDONE,
-	WORK_I1P_FDONE,
-	WORK_ME0C_FDONE,	/* ME */
-	WORK_ME1C_FDONE,	/* ME */
-	WORK_D0C_FDONE,	/* TPU0 */
-	WORK_D1C_FDONE,	/* TPU1 */
-	WORK_DC1S_FDONE, /* DCP Master Input */
-	WORK_DC0C_FDONE, /* DCP Master Capture */
-	WORK_DC1C_FDONE, /* DCP Slave Capture */
-	WORK_DC2C_FDONE, /* DCP Disparity Capture */
-	WORK_DC3C_FDONE, /* DCP Master Sub Capture */
-	WORK_DC4C_FDONE, /* DCP Slave Sub Capture */
-	WORK_M0P_FDONE,
-	WORK_M1P_FDONE,
-	WORK_M2P_FDONE,
-	WORK_M3P_FDONE,
-	WORK_M4P_FDONE,
-	WORK_M5P_FDONE,
-	WORK_MAX_MAP
-};
-
 enum streaming_state {
 	IS_IF_STREAMING_INIT,
 	IS_IF_STREAMING_OFF,
@@ -159,36 +85,6 @@ enum fimc_is_fw_boot {
 	FIRST_LAUNCHING,
 	WARM_BOOT,
 	COLD_BOOT,
-};
-
-struct fimc_is_msg {
-	u32	id;
-	u32	command;
-	u32	instance;
-	u32	group;
-	u32	param1;
-	u32	param2;
-	u32	param3;
-	u32	param4;
-};
-
-struct fimc_is_work {
-	struct list_head		list;
-	struct fimc_is_msg		msg;
-	u32				fcount;
-	struct fimc_is_frame		*frame;
-};
-
-struct fimc_is_work_list {
-	u32				id;
-	struct fimc_is_work		work[MAX_WORK_COUNT];
-	spinlock_t			slock_free;
-	spinlock_t			slock_request;
-	struct list_head		work_free_head;
-	u32				work_free_cnt;
-	struct list_head		work_request_head;
-	u32				work_request_cnt;
-	wait_queue_head_t		wait_queue;
 };
 
 struct fimc_is_interface {
@@ -264,10 +160,6 @@ void fimc_is_interface_reset(struct fimc_is_interface *this);
 void fimc_is_storefirm(struct fimc_is_interface *this);
 void fimc_is_restorefirm(struct fimc_is_interface *this);
 int fimc_is_set_fwboot(struct fimc_is_interface *this, int val);
-
-/*for debugging*/
-int print_fre_work_list(struct fimc_is_work_list *this);
-int print_req_work_list(struct fimc_is_work_list *this);
 
 int fimc_is_hw_logdump(struct fimc_is_interface *this);
 int fimc_is_hw_regdump(struct fimc_is_interface *this);

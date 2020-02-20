@@ -38,7 +38,6 @@ static void show_fc_blks_list(void){
     int i = 0;
 
     if(empty_b_info()){
-        alta_print("\"ERROR\":\"b_info_empty\"\n");
         return;
     }
 
@@ -48,32 +47,42 @@ static void show_fc_blks_list(void){
     }
 
     if ((long long) MAX_FC_BLKS_LIST <= get_fec_correct_blks()){  
-        alta_print(",\"dev_name\":\"%s\"",b_info->dev_name[b_info->list_idx]);
+        alta_print(",\"fc_dev\":\"%s\"",b_info->dev_name[b_info->list_idx]);
         alta_print(",\"fc_blk\":\"%llu\"",b_info->fc_blks_list[b_info->list_idx]);
         i = (b_info->list_idx + 1) % MAX_FC_BLKS_LIST;
     }
 
 
     for( ; i != b_info->list_idx; i = (i + 1) % MAX_FC_BLKS_LIST){
-        alta_print(",\"dev_name\":\"%s\"",b_info->dev_name[i]);
+        alta_print(",\"fc_dev\":\"%s\"",b_info->dev_name[i]);
         alta_print(",\"fc_blk\":\"%llu\"",b_info->fc_blks_list[i]);
     }
     alta_print("\n");
+}
+
+static void show_dmv_ctr_list(void){
+    int i = 0, ctr_cnt = get_dmv_ctr_cnt();
+
+    if(empty_b_info()){
+        return;
+    }
+
+    alta_print(",\"dmv_dev_cnt\":\"%d\"",ctr_cnt);
+
+    for( ; i < ctr_cnt; i++)
+        alta_print(",\"dmv_dev\":\"%s\"",b_info->dmv_ctr_list[i]);
 }
 
 static void show_blks_cnt(void){
     int i,foc = get_fec_off_cnt();
 
     if(empty_b_info()){
-        alta_print("\"ERROR\":\"b_info_empty\"\n");
         return;
     }
     alta_print("\"total_blks\":\"%llu\"",get_total_blks());
     alta_print(",\"skipped_blks\":\"%llu\"",get_skipped_blks());
     alta_print(",\"corrupted_blks\":\"%llu\"",get_corrupted_blks());
-
-    if(foc < 3)
-        alta_print(",\"fec_correct_blks\":\"%llu\"",get_fec_correct_blks());
+    alta_print(",\"fec_correct_blks\":\"%llu\"",get_fec_correct_blks());
 
     if(foc > 0){
         alta_print(",\"fec_off_cnt\":\"%d\"",foc);
@@ -93,8 +102,15 @@ ssize_t alta_bigdata_read(struct file *filep, char __user *buf, size_t size, lof
 
     set_print_buf(proc_buf,&proc_offset,ALTA_BUF_SIZE);
 
-    show_blks_cnt();
-    show_fc_blks_list();
+    /* Print DMV info */
+    if(empty_b_info()){
+        alta_print("\"ERROR\":\"b_info_empty\"\n");
+    }
+    else {
+        show_blks_cnt();
+        show_dmv_ctr_list();
+        show_fc_blks_list();
+    }
 
     ret = simple_read_from_buffer(buf, size, offset, proc_buf, proc_offset);
     kfree(proc_buf);
@@ -108,8 +124,15 @@ static ssize_t sysfs_show(struct kobject *kobj,
     size_t sysfs_offset;
     set_print_buf(buf, &sysfs_offset, PAGE_SIZE);
 
-    show_blks_cnt();
-    show_fc_blks_list();
+    /* Print DMV info */
+    if(empty_b_info()){
+        alta_print("\"ERROR\":\"b_info_empty\"\n");
+    }
+    else {
+        show_blks_cnt();
+        show_dmv_ctr_list();
+        show_fc_blks_list();
+    }
 
     return sysfs_offset;
 }

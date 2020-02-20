@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_exportfs.c 808905 2019-03-11 10:32:39Z $
+ * $Id: dhd_linux_exportfs.c 845836 2019-10-16 03:24:51Z $
  */
 #include <linux/kobject.h>
 #include <linux/proc_fs.h>
@@ -271,7 +271,6 @@ lbrxp_onoff(struct dhd_info *dev, const char *buf, size_t count)
 {
 	unsigned long onoff;
 	dhd_info_t *dhd = (dhd_info_t *)dev;
-	int i, j;
 
 	onoff = bcm_strtoul(buf, NULL, 10);
 
@@ -280,14 +279,6 @@ lbrxp_onoff(struct dhd_info *dev, const char *buf, size_t count)
 		return -EINVAL;
 	}
 	atomic_set(&dhd->lb_rxp_active, onoff);
-
-	/* Since the scheme is changed clear the counters */
-	for (i = 0; i < NR_CPUS; i++) {
-		DHD_LB_STATS_CLR(dhd->napi_percpu_run_cnt[i]);
-		for (j = 0; j < HIST_BIN_SIZE; j++) {
-			DHD_LB_STATS_CLR(dhd->napi_rx_hist[j][i]);
-		}
-	}
 
 	return count;
 }
@@ -885,14 +876,13 @@ static struct dhd_attr dhd_attr_cntl_antinfo =
 #endif /* MIMO_ANT_SETTING */
 
 #ifdef DHD_PM_CONTROL_FROM_FILE
-extern bool g_pm_control;
 extern uint32 pmmode_val;
 static ssize_t
 show_pm_info(struct dhd_info *dev, char *buf)
 {
 	ssize_t ret = 0;
 
-	if (!g_pm_control) {
+	if (pmmode_val == 0xFF) {
 		ret = scnprintf(buf, PAGE_SIZE -1, "PM mode is not set\n");
 	} else {
 		ret = scnprintf(buf, PAGE_SIZE -1, "%u\n", pmmode_val);
@@ -912,12 +902,6 @@ set_pm_info(struct dhd_info *dev, const char *buf, size_t count)
 		DHD_ERROR(("[WIFI_SEC] %s: Set Invalid value %lu \n",
 			__FUNCTION__, pm_val));
 		return -EINVAL;
-	}
-
-	if (!pm_val) {
-		g_pm_control = TRUE;
-	} else {
-		g_pm_control = FALSE;
 	}
 
 	pmmode_val = (uint32)pm_val;
@@ -1313,6 +1297,36 @@ set_control_he_enab(struct dhd_info *dev, const char *buf, size_t count)
 static struct dhd_attr dhd_attr_control_he_enab=
 __ATTR(control_he_enab, 0660, show_control_he_enab, set_control_he_enab);
 #endif /* CUSTOM_CONTROL_HE_ENAB */
+
+#if defined(CUSTOM_CONTROL_LOGTRACE) && defined(SHOW_LOGTRACE)
+/* By default logstr parsing is disabled */
+uint8 control_logtrace = 0;
+
+static ssize_t
+show_control_logtrace(struct dhd_info *dev, char *buf)
+{
+	ssize_t ret = 0;
+
+	ret = scnprintf(buf, PAGE_SIZE - 1, "%d\n", control_logtrace);
+	return ret;
+}
+
+static ssize_t
+set_control_logtrace(struct dhd_info *dev, const char *buf, size_t count)
+{
+	uint32 val;
+
+	val = bcm_atoi(buf);
+
+	control_logtrace = val ? 1 : 0;
+	DHD_ERROR(("%s: Set control logtrace: %d\n", __FUNCTION__, control_logtrace));
+	return count;
+}
+
+static struct dhd_attr dhd_attr_control_logtrace =
+__ATTR(control_logtrace, 0660, show_control_logtrace, set_control_logtrace);
+#endif /* CUSTOM_CONTROL_LOGTRACE & SHOW_LOGTRACE */
+
 /* Attribute object that gets registered with "wifi" kobject tree */
 static struct attribute *control_file_attrs[] = {
 #ifdef DHD_MAC_ADDR_EXPORT
@@ -1368,6 +1382,9 @@ static struct attribute *control_file_attrs[] = {
 #if defined(CUSTOM_CONTROL_HE_ENAB)
 	&dhd_attr_control_he_enab.attr,
 #endif /* CUSTOM_CONTROL_HE_ENAB */
+#if defined(CUSTOM_CONTROL_LOGTRACE) && defined(SHOW_LOGTRACE)
+	&dhd_attr_control_logtrace.attr,
+#endif /* CUSTOM_CONTROL_LOGTRACE && SHOW_LOGTRACE */
 	NULL
 };
 

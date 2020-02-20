@@ -36,7 +36,8 @@ fimc-is-objs	:= fimc-is-core.o \
 		fimc-is-clk-gate.o \
 		fimc-is-binary.o \
 		fimc-is-i2c-config.o \
-		fimc-is-sock.o
+		fimc-is-sock.o \
+		fimc-is-work.o
 
 obj-$(CONFIG_DCP_V1_0) += fimc-is-video-dcp.o \
 			       fimc-is-video-dcps.o \

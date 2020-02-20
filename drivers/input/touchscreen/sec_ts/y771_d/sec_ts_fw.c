@@ -966,7 +966,8 @@ static int sec_ts_load_fw_from_ums(struct sec_ts_data *ts, const char *file_path
 							__func__, ts->plat_data->img_version_of_ic[3], ts->plat_data->img_version_of_ic[2],
 							ts->plat_data->img_version_of_ic[1], ts->plat_data->img_version_of_ic[0],
 							fw_hd->img_ver);
-						error = -ENOENT;
+						error = 0;
+						input_info(true, &ts->client->dev, "%s: skip ffu update\n", __func__);
 						goto done;
 					} else {
 						input_info(true, &ts->client->dev, "%s: run ffu update\n", __func__);

@@ -13,9 +13,6 @@ obj-				:=
 obj-$(CONFIG_SEC_EXT)		+= sec_log.o
 obj-$(CONFIG_SEC_MEM)		+= sec_memory.o
 obj-$(CONFIG_BATTERY_SAMSUNG)	+= sec_batt.o
-# SecureStorage
-obj-$(CONFIG_SEC_DEBUG_GAF_V4)		+= sec_gaf_v4.o
-obj-$(CONFIG_SEC_DEBUG_GAF_V5)		+= sec_gaf_v5.o
 # Samsung Mobile Power Management Debugging Support
 obj-$(CONFIG_SEC_PM_DEBUG)		+= sec_pm_debug.o
 # Samsung sec NAD Feature

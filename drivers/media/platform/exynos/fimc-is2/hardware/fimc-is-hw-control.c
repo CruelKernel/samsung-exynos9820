@@ -29,122 +29,9 @@
 #include "fimc-is-hw-dcp.h"
 #include "fimc-is-hw-dm.h"
 #include "fimc-is-hw-paf-rdma.h"
+#include "fimc-is-work.h"
 
 #define INTERNAL_SHOT_EXIST	(1)
-
-static int __get_free_work_irq(struct fimc_is_work_list *this,
-	struct fimc_is_work **work)
-{
-	int ret = 0;
-
-	if (work) {
-		spin_lock(&this->slock_free);
-
-		if (this->work_free_cnt) {
-			*work = container_of(this->work_free_head.next,
-					struct fimc_is_work, list);
-			list_del(&(*work)->list);
-			this->work_free_cnt--;
-		} else
-			*work = NULL;
-
-		spin_unlock(&this->slock_free);
-	} else {
-		ret = -EFAULT;
-		err_hw("item is null ptr");
-	}
-
-	return ret;
-}
-
-static int __set_req_work_irq(struct fimc_is_work_list *this,
-	struct fimc_is_work *work)
-{
-	int ret = 0;
-
-	if (work) {
-		spin_lock(&this->slock_request);
-		list_add_tail(&work->list, &this->work_request_head);
-		this->work_request_cnt++;
-#ifdef TRACE_WORK
-		print_req_work_list(this);
-#endif
-
-		spin_unlock(&this->slock_request);
-	} else {
-		ret = -EFAULT;
-		err_hw("item is null ptr");
-	}
-
-	return ret;
-}
-
-static int __get_free_work(struct fimc_is_work_list *this,
-	struct fimc_is_work **work)
-{
-	int ret = 0;
-	ulong flags = 0;
-
-	if (work) {
-		spin_lock_irqsave(&this->slock_free, flags);
-
-		if (this->work_free_cnt) {
-			*work = container_of(this->work_free_head.next,
-					struct fimc_is_work, list);
-			list_del(&(*work)->list);
-			this->work_free_cnt--;
-		} else
-			*work = NULL;
-
-		spin_unlock_irqrestore(&this->slock_free, flags);
-	} else {
-		ret = -EFAULT;
-		err_hw("item is null ptr");
-	}
-
-	return ret;
-}
-
-static int __set_req_work(struct fimc_is_work_list *this,
-	struct fimc_is_work *work)
-{
-	int ret = 0;
-	ulong flags = 0;
-
-	if (work) {
-		spin_lock_irqsave(&this->slock_request, flags);
-		list_add_tail(&work->list, &this->work_request_head);
-		this->work_request_cnt++;
-#ifdef TRACE_WORK
-		print_req_work_list(this);
-#endif
-
-		spin_unlock_irqrestore(&this->slock_request, flags);
-	} else {
-		ret = -EFAULT;
-		err_hw("item is null ptr");
-	}
-
-	return ret;
-}
-
-static inline int get_free_work(struct fimc_is_work_list *this,
-	struct fimc_is_work **work)
-{
-	if (in_irq())
-		return __get_free_work_irq(this, work);
-	else
-		return __get_free_work(this, work);
-}
-
-static inline int set_req_work(struct fimc_is_work_list *this,
-	struct fimc_is_work *work)
-{
-	if (in_irq())
-		return __set_req_work_irq(this, work);
-	else
-		return __set_req_work(this, work);
-}
 
 static inline void wq_func_schedule(struct fimc_is_interface *itf,
 	struct work_struct *work_wq)
@@ -1255,6 +1142,7 @@ int fimc_is_hardware_grp_shot(struct fimc_is_hardware *hardware, u32 instance,
 	struct fimc_is_framemgr *framemgr;
 	struct fimc_is_group *head;
 	ulong flags = 0;
+	u32 shot_timeout = 0;
 #if defined(MULTI_SHOT_KTHREAD) || defined(MULTI_SHOT_TASKLET)
 	int i;
 #endif
@@ -1345,6 +1233,9 @@ int fimc_is_hardware_grp_shot(struct fimc_is_hardware *hardware, u32 instance,
 	/* for NI (noise index) */
 	hw_frame->noise_idx = frame->noise_idx;
 
+	/* shot timer set */
+	shot_timeout = head->device->resourcemgr->shot_timeout;
+
 	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &head->state)) {
 		if (!atomic_read(&hw_ip->status.otf_start)) {
 			atomic_set(&hw_ip->status.otf_start, 1);
@@ -1363,7 +1254,7 @@ int fimc_is_hardware_grp_shot(struct fimc_is_hardware *hardware, u32 instance,
 			put_frame(framemgr, hw_frame, FS_HW_REQUEST);
 			framemgr_x_barrier_irqr(framemgr, 0, flags);
 
-			mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(FIMC_IS_SHOT_TIMEOUT));
+			mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(shot_timeout));
 
 			return ret;
 		}
@@ -1404,7 +1295,7 @@ int fimc_is_hardware_grp_shot(struct fimc_is_hardware *hardware, u32 instance,
 			return -EINVAL;
 		}
 #endif
-		mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(FIMC_IS_SHOT_TIMEOUT));
+		mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(shot_timeout));
 	}
 
 	framemgr_x_barrier_irqr(framemgr, 0, flags);
@@ -1426,6 +1317,7 @@ int make_internal_shot(struct fimc_is_hw_ip *hw_ip, u32 instance, u32 fcount,
 	int ret = 0;
 	int i = 0;
 	struct fimc_is_frame *frame;
+	u32 shot_timeout;
 
 	FIMC_BUG(!hw_ip);
 	FIMC_BUG(!framemgr);
@@ -1470,7 +1362,8 @@ int make_internal_shot(struct fimc_is_hw_ip *hw_ip, u32 instance, u32 fcount,
 	frame->instance = instance;
 	*in_frame = frame;
 
-	mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(FIMC_IS_SHOT_TIMEOUT));
+	shot_timeout = hw_ip->group[instance]->device->resourcemgr->shot_timeout;
+	mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(shot_timeout));
 
 	return ret;
 }
@@ -1730,6 +1623,7 @@ int fimc_is_hardware_sensor_start(struct fimc_is_hardware *hardware, u32 instanc
 	int hw_slot = -1;
 	struct fimc_is_hw_ip *hw_ip;
 	enum fimc_is_hardware_id hw_id = DEV_HW_END;
+	u32 shot_timeout = 0;
 
 	FIMC_BUG(!hardware);
 
@@ -1756,8 +1650,10 @@ int fimc_is_hardware_sensor_start(struct fimc_is_hardware *hardware, u32 instanc
 		return -EINVAL;
 	}
 
-	if (atomic_read(&hw_ip->status.otf_start))
-		mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(FIMC_IS_SHOT_TIMEOUT));
+	if (atomic_read(&hw_ip->status.otf_start)) {
+		shot_timeout = hw_ip->group[instance]->device->resourcemgr->shot_timeout;
+		mod_timer(&hw_ip->shot_timer, jiffies + msecs_to_jiffies(shot_timeout));
+	}
 
 	atomic_set(&hardware->streaming[hardware->sensor_position[instance]], 1);
 	atomic_set(&hardware->bug_count, 0);
@@ -2257,6 +2153,10 @@ int fimc_is_hardware_close(struct fimc_is_hardware *hardware,u32 hw_id, u32 inst
 	refcount = atomic_dec_return(&hw_ip->rsccount);
 	if (refcount == 0) {
 		u32 group_id = get_group_id_from_hw_ip(hw_ip->id);
+		if (group_id >= GROUP_ID_MAX) {
+			merr_hw("[ID:%d]invalid group_id %d", instance, hw_ip->id, group_id);
+			return -EINVAL;
+		}
 
 		msdbg_hw(1, "%s: [G:0x%x], framemgr[ID:0x%x]->framemgr[ID:0x%x]\n",
 			instance, hw_ip, __func__, GROUP_ID(group_id),

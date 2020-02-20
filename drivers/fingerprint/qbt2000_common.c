@@ -229,16 +229,11 @@ static int fps_qbt2000_noise_control(struct qbt2000_drvdata *drvdata, int contro
 
 	if (control == 1) {
 		drvdata->noise_onoff_flag = QBT2000_NOISE_ON;
+		rc = set_wacom_ble_charge_mode(true);
+		pr_info("%d, rc:%d\n", control, rc);
 		if (drvdata->delayed_work_on_flag == true) {
 			cancel_delayed_work(&drvdata->delayed_work_noiseon);
 			drvdata->delayed_work_on_flag= false;
-		}
-		while(retry--) {
-			rc = set_wacom_ble_charge_mode(true);
-			pr_info("%d, retry:%d, rc:%d\n", control, retry, rc);
-			if (rc == 0)
-				break;
-			usleep_range(4950, 5000);
 		}
 	} else if ((control == 0) && (drvdata->noise_onoff_flag == QBT2000_NOISE_ON)) {
 		drvdata->noise_onoff_flag = QBT2000_NOISE_OFF;
@@ -1346,13 +1341,14 @@ static void fps_qbt2000_work_func_debug(struct work_struct *work)
 		sensor_status[g_data->sensortype + 2],
 		g_data->cbge_count, g_data->wuhb_count);
 #else
-	pr_info("ldo:%d,ipc:%d,wuhb:%d,tz:%d,type:%s,int:%d,%d,%d,%d,%d,%d\n",
+	pr_info("ldo:%d,ipc:%d,wuhb:%d,tz:%d,type:%s,int:%d,%d,%d,%d,%d,%d,%d\n",
 		g_data->enabled_ldo, g_data->enabled_ipc,
 		g_data->enabled_wuhb, g_data->tz_mode,
 		sensor_status[g_data->sensortype + 2],
 		g_data->cbge_count, g_data->ignored_cbge_count,
 		g_data->wuhb_count, g_data->i2c_error_set,
-		g_data->i2c_error_get, g_data->i2c_charging);
+		g_data->i2c_error_get, g_data->i2c_charging,
+		g_data->noise_onoff_flag);
 #endif
 }
 

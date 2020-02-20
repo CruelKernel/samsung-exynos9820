@@ -567,6 +567,7 @@ static int __tcp_grow_window(const struct sock *sk, const struct sk_buff *skb)
 static void tcp_grow_window(struct sock *sk, const struct sk_buff *skb)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
+	int room;
 #ifdef CONFIG_MPTCP
 	struct sock *meta_sk = mptcp(tp) ? mptcp_meta_sk(sk) : sk;
 	struct tcp_sock *meta_tp = tcp_sk(meta_sk);
@@ -576,14 +577,11 @@ static void tcp_grow_window(struct sock *sk, const struct sk_buff *skb)
 
 	/* Check #1 */
 #ifdef CONFIG_MPTCP
-	if (meta_tp->rcv_ssthresh < meta_tp->window_clamp &&
-	    (int)meta_tp->rcv_ssthresh < tcp_space(meta_sk) &&
-	    !tcp_under_memory_pressure(sk)) {
+	room = min_t(int, meta_tp->window_clamp, tcp_space(meta_sk)) - meta_tp->rcv_ssthresh;
 #else
-	if (tp->rcv_ssthresh < tp->window_clamp &&
-	    (int)tp->rcv_ssthresh < tcp_space(sk) &&
-	    !tcp_under_memory_pressure(sk)) {
+	room = min_t(int, tp->window_clamp, tcp_space(sk)) - tp->rcv_ssthresh;
 #endif
+	if (room > 0 && !tcp_under_memory_pressure(sk)) {
 		int incr;
 
 		/* Check #2. Increase window, if skb with such overhead
@@ -602,11 +600,9 @@ static void tcp_grow_window(struct sock *sk, const struct sk_buff *skb)
 		if (incr) {
 			incr = max_t(int, incr, 2 * skb->len);
 #ifdef CONFIG_MPTCP
-			meta_tp->rcv_ssthresh = min(meta_tp->rcv_ssthresh + incr,
-						    meta_tp->window_clamp);
+			meta_tp->rcv_ssthresh += min(room, incr);
 #else
-			tp->rcv_ssthresh = min(tp->rcv_ssthresh + incr,
-					       tp->window_clamp);
+			tp->rcv_ssthresh += min(room, incr);
 #endif
 			inet_csk(sk)->icsk_ack.quick |= 1;
 		}
@@ -879,7 +875,7 @@ static int netpm_piecelinear_logbdp(struct tcp_sock *tp)
 	int s, i, delta;
 	u32 rtt_min_ms, intlog_lower, intlog_upper, rtt_low, rtt_high;
 
-	rtt_min_ms = netpm_rtt_min(tp) / USEC_PER_MSEC;
+	rtt_min_ms = netpm_rtt_min(tp) / (u32) USEC_PER_MSEC;
 	s = 0;
 	i = 0;
 	while (s < rtt_min_ms) {
@@ -892,11 +888,8 @@ static int netpm_piecelinear_logbdp(struct tcp_sock *tp)
 
 	tp->netpm_max_tput = sysctl_tcp_netpm[3];
 
-	intlog_lower = NETPM_RWND_CAL(rtt_low);
+	intlog_lower = NETPM_RWND_CAL(rtt_low) < 0 ? 0 : NETPM_RWND_CAL(rtt_low);
 	intlog_upper = NETPM_RWND_CAL(rtt_high);
-
-	if (intlog_lower < 0)
-		return 0;
 
 	delta = (rtt_min_ms - rtt_low) * (intlog_upper - intlog_lower)
 		/ (rtt_high - rtt_low);
@@ -908,9 +901,9 @@ static void netpm_rwnd_max_adjustment(struct tcp_sock *tp)
 {
 	u32 rtt_min_ms, srtt_ms, rtt_var_ms;
 
-	rtt_min_ms = netpm_rtt_min(tp) / USEC_PER_MSEC;
-	srtt_ms = netpm_rtt_avg(tp) >> 3 / USEC_PER_MSEC;
-	rtt_var_ms = netpm_rttvar_avg(tp) >> 3 / USEC_PER_MSEC;
+	rtt_min_ms = netpm_rtt_min(tp) / (u32) USEC_PER_MSEC;
+	srtt_ms = netpm_rtt_avg(tp) >> 3 / (u32) USEC_PER_MSEC;
+	rtt_var_ms = netpm_rttvar_avg(tp) >> 3 / (u32) USEC_PER_MSEC;
 
 	if (tp->netpm_srtt_us && tp->netpm_rtt_min_us != NETPM_RTT_MIN_INITIAL_VAL) {
 		/* initial RWND max estimation */
@@ -1738,7 +1731,7 @@ static bool tcp_shifted_skb(struct sock *sk, struct sk_buff *skb,
 	TCP_SKB_CB(skb)->seq += shifted;
 
 	tcp_skb_pcount_add(prev, pcount);
-	BUG_ON(tcp_skb_pcount(skb) < pcount);
+	WARN_ON_ONCE(tcp_skb_pcount(skb) < pcount);
 	tcp_skb_pcount_add(skb, -pcount);
 
 	/* When we're adding to gso_segs == 1, gso_size will be zero,
@@ -1805,6 +1798,21 @@ static int skb_can_shift(const struct sk_buff *skb)
 	return !skb_headlen(skb) && skb_is_nonlinear(skb);
 }
 
+int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from,
+		  int pcount, int shiftlen)
+{
+	/* TCP min gso_size is 8 bytes (TCP_MIN_GSO_SIZE)
+	 * Since TCP_SKB_CB(skb)->tcp_gso_segs is 16 bits, we need
+	 * to make sure not storing more than 65535 * 8 bytes per skb,
+	 * even if current MSS is bigger.
+	 */
+	if (unlikely(to->len + shiftlen >= 65535 * TCP_MIN_GSO_SIZE))
+		return 0;
+	if (unlikely(tcp_skb_pcount(to) + pcount > 65535))
+		return 0;
+	return skb_shift(to, from, shiftlen);
+}
+
 /* Try collapsing SACK blocks spanning across multiple skbs to a single
  * skb.
  */
@@ -1816,6 +1824,7 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct sk_buff *prev;
 	int mss;
+	int next_pcount;
 	int pcount = 0;
 	int len;
 	int in_sack;
@@ -1921,7 +1930,7 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 	if (!after(TCP_SKB_CB(skb)->seq + len, tp->snd_una))
 		goto fallback;
 
-	if (!skb_shift(prev, skb, len))
+	if (!tcp_skb_shift(prev, skb, pcount, len))
 		goto fallback;
 	if (!tcp_shifted_skb(sk, skb, state, pcount, len, mss, dup_sack))
 		goto out;
@@ -1940,11 +1949,11 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 		goto out;
 
 	len = skb->len;
-	if (skb_shift(prev, skb, len)) {
-		pcount += tcp_skb_pcount(skb);
-		tcp_shifted_skb(sk, skb, state, tcp_skb_pcount(skb), len, mss, 0);
+	next_pcount = tcp_skb_pcount(skb);
+	if (tcp_skb_shift(prev, skb, next_pcount, len)) {
+		pcount += next_pcount;
+		tcp_shifted_skb(sk, skb, state, next_pcount, len, mss, 0);
 	}
-
 out:
 	state->fack_count += pcount;
 	return prev;
@@ -3227,9 +3236,9 @@ static void tcp_fastretrans_alert(struct sock *sk, const int acked,
 	bool do_lost = is_dupack || ((flag & FLAG_DATA_SACKED) &&
 				    (tcp_fackets_out(tp) > tp->reordering));
 
-	if (WARN_ON(!tp->packets_out && tp->sacked_out))
+	if (!tp->packets_out && tp->sacked_out)
 		tp->sacked_out = 0;
-	if (WARN_ON(!tp->sacked_out && tp->fackets_out))
+	if (!tp->sacked_out && tp->fackets_out)
 		tp->fackets_out = 0;
 
 	/* Now state machine starts.

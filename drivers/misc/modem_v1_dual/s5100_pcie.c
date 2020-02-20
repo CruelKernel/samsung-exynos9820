@@ -180,6 +180,8 @@ void first_save_s5100_status()
 
 void save_s5100_status()
 {
+	int val;
+
 	if (exynos_check_pcie_link_status(s5100pcie.pcie_channel_num) == 0) {
 		mif_err("It's not Linked - Ignore saving the s5100_status!\n");
 		return;
@@ -212,6 +214,14 @@ void save_s5100_status()
 		mif_err("MSI-DBG:AFTER: s5100pcie.pci_saved_configs is NOT NULL\n");
 	*/
 
+	/* check the BAR values saved */
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x10, &val);
+	mif_info("Saved BAR(0x10) : 0x%x\n", val);
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x14, &val);
+	mif_info("Saved BAR(0x14) : 0x%x\n", val);
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x18, &val);
+	mif_info("Saved BAR(0x18) : 0x%x\n", val);
+
 	disable_msi_int();
 
 	/* pci_enable_wake(s5100pcie.s5100_pdev, PCI_D0, 0); */
@@ -228,7 +238,7 @@ void save_s5100_status()
 void restore_s5100_state()
 {
 	int ret;
-	u32 val;
+	int val;
 
 	if (exynos_check_pcie_link_status(s5100pcie.pcie_channel_num) == 0) {
 		mif_err("It's not Linked - Ignore restoring the s5100_status!\n");
@@ -253,8 +263,24 @@ void restore_s5100_state()
 	pci_restore_state(s5100pcie.s5100_pdev);
 	/* DBG: mif_eff("MSI-DBG #5: after pci_restore_state()"); */
 
+	/* check the restored BAR values */
 	pci_read_config_dword(s5100pcie.s5100_pdev, 0x10, &val);
-	mif_err("BAR Restore Reg(0x10) : 0x%x\n", val);
+	pr_err("[%s] BAR0 : 0x%x\n", __func__, val);
+	val &= 0xfffffff0;      /* remove BAR space infroamtion at [3:0] */
+	if (val != 0x12d00000) { /* 0x12d00000 is pre-defined doorbell address */
+		mif_err("Restored BAR0(0x10) : 0x%x(not proper value)\n", val);
+		pci_write_config_dword(s5100pcie.s5100_pdev,
+			PCI_BASE_ADDRESS_0, 0x12D00000);
+		}
+
+	/* check the BAR values */
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x10, &val);
+	mif_info("Saved BAR(0x10) : 0x%x\n", val);
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x14, &val);
+	mif_info("Saved BAR(0x14) : 0x%x\n", val);
+	pci_read_config_dword(s5100pcie.s5100_pdev, 0x18, &val);
+	mif_info("Saved BAR(0x18) : 0x%x\n", val);
+
 
 	pci_enable_wake(s5100pcie.s5100_pdev, PCI_D0, 0);
 	/* pci_enable_wake(s5100pcie.s5100_pdev, PCI_D3hot, 0); */

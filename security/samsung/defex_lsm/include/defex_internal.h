@@ -18,7 +18,7 @@
 #include "defex_config.h"
 
 #define DEFEX_MAJOR_VERSION			2
-#define DEFEX_MINOR_VERSION			0
+#define DEFEX_MINOR_VERSION			5
 #define DEFEX_REVISION				"rel"
 
 /* DEFEX Features */
@@ -46,21 +46,6 @@
 
 #define DEFEX_STARTED				1
 
-/* DEFEX FLAG ATTRs */
-//#define DEFEX_ATTR_PRIVESC_DIR			(1 << 0)
-//#define DEFEX_ATTR_PRIVESC_EXP			(1 << 1)
-//#define DEFEX_ATTR_JAILHOUSE_DIR		(1 << 2) /* reserved for future use */
-//#define DEFEX_ATTR_JAILHOUSE_EXP		(1 << 3) /* reserved for future use */
-//#define DEFEX_ATTR_RESTRICT_EXP			(1 << 4) /* reserved for future use */
-//#define DEFEX_ATTR_RESTRICT_LV1_EXP		(1 << 5) /* reserved for future use */
-//#define DEFEX_ATTR_SAFEPLACE_DIR		(1 << 6)
-//#define DEFEX_INSIDE_PRIVESC_DIR		(1 << 8)
-//#define DEFEX_OUTSIDE_PRIVESC_DIR		(1 << 9)
-//#define DEFEX_INSIDE_JAILHOUSE_DIR		(1 << 10) /* reserved for future use */
-//#define DEFEX_OUTSIDE_JAILHOUSE_DIR		(1 << 11) /* reserved for future use */
-//#define DEFEX_ATTR_IMMUTABLE			(1 << 12) /* reserved for future use */
-//#define DEFEX_ATTR_IMMUTABLE_WR			(1 << 13) /* reserved for future use */
-//#define DEFEX_ATTR_FIVE_EXP			(1 << 14) /* reserved for future use */
 
 /* -------------------------------------------------------------------------- */
 /* Integrity feature */
@@ -183,6 +168,10 @@ int rules_lookup(const struct path *dpath, int attribute, struct file *f);
 /* Defex init API */
 /* -------------------------------------------------------------------------- */
 
-int defex_init_sysfs(void);
+int __init defex_init_sysfs(void);
+
+#ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
+extern bool boot_state_unlocked __ro_after_init;
+#endif /* DEFEX_DEPENDING_ON_OEMUNLOCK */
 
 #endif /* CONFIG_SECURITY_DEFEX_INTERNAL_H */

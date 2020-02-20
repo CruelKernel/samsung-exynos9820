@@ -26,8 +26,6 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: bcmevent.h 822151 2019-05-28 18:37:23Z $
- *
  */
 
 /*
@@ -373,6 +371,9 @@ void wl_event_to_network_order(wl_event_msg_t * evt);
 #define WLC_E_REASON_INFRA_DISASSOC	3
 #define WLC_E_REASON_NO_MODE_CHANGE_NEEDED	4
 
+/* TX STAT ERROR REASON CODE */
+#define WLC_E_REASON_TXBACKOFF_NOT_DECREMENTED 0x1
+
 /* WLC_E_SDB_TRANSITION event data */
 #define WL_MAX_BSSCFG     4
 #define WL_EVENT_SDB_TRANSITION_VER     1
@@ -408,8 +409,6 @@ typedef struct wl_event_sdb_trans {
 #define WLC_E_REASON_BETTER_AP		8	/* roamed due to finding better AP */
 #define WLC_E_REASON_MINTXRATE		9	/* roamed because at mintxrate for too long */
 #define WLC_E_REASON_TXFAIL		10	/* We can hear AP, but AP can't hear us */
-/* retained for precommit auto-merging errors; remove once all branches are synced */
-#define WLC_E_REASON_REQUESTED_ROAM	11
 #define WLC_E_REASON_BSSTRANS_REQ	11	/* roamed due to BSS Transition request by AP */
 #define WLC_E_REASON_LOW_RSSI_CU	12	/* roamed due to low RSSI and Channel Usage */
 #define WLC_E_REASON_RADAR_DETECTED	13	/* roamed due to radar detection by STA */
@@ -879,10 +878,10 @@ typedef enum wl_nan_events {
 #define IS_NAN_EVT_ON(var, evt) ((var & (1 << (evt-1))) != 0)
 
 #define NAN_EV_MASK_SET(var, evt)	\
-	((evt < WL_NAN_EVMASK_EXTN_LEN * 8) ? \
+	(((uint32)evt < WL_NAN_EVMASK_EXTN_LEN * 8) ? \
 	((*((uint8 *)var + ((evt - 1)/8))) |= (1 << ((evt - 1) %8))) : 0)
 #define IS_NAN_EVENT_ON(var, evt)	\
-	((evt < WL_NAN_EVMASK_EXTN_LEN * 8) && \
+	(((uint32)evt < WL_NAN_EVMASK_EXTN_LEN * 8) && \
 	(((*((uint8 *)var + ((evt - 1)/8))) & (1 << ((evt - 1) %8))) != 0))
 
 /*  ******************* end of NAN section *************** */

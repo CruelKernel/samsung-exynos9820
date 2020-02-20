@@ -49,7 +49,7 @@ static ssize_t hall_detect_show(struct device *dev,
 
 	return strlen(buf);
 }
-static DEVICE_ATTR(hall_detect, 0664, hall_detect_show, NULL);
+static DEVICE_ATTR(hall_detect, 0444, hall_detect_show, NULL);
 
 static struct attribute *hall_attrs[] = {
 	&dev_attr_hall_detect.attr,
@@ -81,7 +81,11 @@ static void flip_cover_work(struct work_struct *work)
 	if (first == second) {
 		flip_cover = first;
 
+#ifdef CONFIG_HALL_EVENT_REVERSE
+		input_report_switch(ddata->input, ddata->event_val, !flip_cover);
+#else
 		input_report_switch(ddata->input, ddata->event_val, flip_cover);
+#endif
 		input_sync(ddata->input);
 	}
 }
@@ -100,7 +104,11 @@ static void flip_cover_work(struct work_struct *work)
 
 	flip_cover = first;
 
+#ifdef CONFIG_HALL_EVENT_REVERSE
+	input_report_switch(ddata->input, ddata->event_val, !flip_cover);
+#else
 	input_report_switch(ddata->input, ddata->event_val, flip_cover);
+#endif
 	input_sync(ddata->input);
 }
 #endif

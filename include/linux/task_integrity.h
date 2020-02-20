@@ -76,6 +76,7 @@ struct processing_event_list {
 };
 
 enum task_integrity_reset_cause {
+	CAUSE_UNSET,
 	CAUSE_UNKNOWN,
 	CAUSE_MISMATCH_LABEL,
 	CAUSE_BAD_FS,
@@ -90,6 +91,10 @@ enum task_integrity_reset_cause {
 	CAUSE_INVALID_UPDATE_LABEL,
 	CAUSE_INVALID_SIGNATURE,
 	CAUSE_UKNOWN_FIVE_DATA,
+	CAUSE_PTRACE,
+	CAUSE_VMRW,
+	CAUSE_EXEC,
+	CAUSE_TAMPERED,
 	CAUSE_MAX,
 };
 
@@ -106,6 +111,9 @@ struct task_integrity {
 };
 
 #ifdef CONFIG_FIVE
+
+extern void task_integrity_set_reset_reason(struct task_integrity *intg,
+	enum task_integrity_reset_cause cause, struct file *file);
 
 struct task_integrity *task_integrity_alloc(void);
 void task_integrity_free(struct task_integrity *intg);
@@ -141,9 +149,12 @@ static inline void task_integrity_set(struct task_integrity *intg,
 static inline void task_integrity_reset(struct task_integrity *intg)
 {
 	task_integrity_set(intg, INTEGRITY_NONE);
+	// If cause is already set, this function will be skipped
+	task_integrity_set_reset_reason(intg, CAUSE_UNKNOWN, NULL);
 }
 
-extern void task_integrity_delayed_reset(struct task_struct *task);
+extern void task_integrity_delayed_reset(struct task_struct *task,
+		enum task_integrity_reset_cause cause, struct file *file);
 
 static inline enum task_integrity_value task_integrity_read(
 						struct task_integrity *intg)
@@ -205,7 +216,7 @@ extern int task_integrity_copy(struct task_integrity *from,
 extern int five_bprm_check(struct linux_binprm *bprm);
 extern void five_file_free(struct file *file);
 extern int five_file_mmap(struct file *file, unsigned long prot);
-extern int five_file_open(struct file *file, const struct cred *cred);
+extern int five_file_open(struct file *file);
 extern int five_file_verify(struct task_struct *task, struct file *file);
 extern void five_task_free(struct task_struct *task);
 
@@ -226,8 +237,6 @@ extern int five_ptrace(struct task_struct *task, long request);
 extern int five_process_vm_rw(struct task_struct *task, int write);
 extern char const * const tint_reset_cause_to_string(
 	enum task_integrity_reset_cause cause);
-extern void task_integrity_set_reset_reason(struct task_integrity *intg,
-	enum task_integrity_reset_cause cause, struct file *file);
 #else
 static inline struct task_integrity *task_integrity_alloc(void)
 {
@@ -268,7 +277,8 @@ static inline enum task_integrity_value task_integrity_user_read(
 	return INTEGRITY_NONE;
 }
 
-static inline void task_integrity_delayed_reset(struct task_struct *task)
+static inline void task_integrity_delayed_reset(struct task_struct *task,
+		enum task_integrity_reset_cause cause, struct file *file)
 {
 }
 
@@ -298,7 +308,7 @@ static inline int five_file_mmap(struct file *file, unsigned long prot)
 	return 0;
 }
 
-static inline int five_file_open(struct file *file, const struct cred *cred)
+static inline int five_file_open(struct file *file)
 {
 	return 0;
 }

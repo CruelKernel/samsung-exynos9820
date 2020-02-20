@@ -405,6 +405,8 @@ static int s5000ap_reset(struct modem_ctl *mc)
 
 	mif_info("+++\n");
 
+	mc->receive_first_ipc = 0;
+
 	/* mc->phone_state = STATE_OFFLINE; */
 	if (mc->phone_state == STATE_OFFLINE)
 		return 0;

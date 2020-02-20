@@ -71,4 +71,7 @@ int s5100_send_panic_noti_ext(void);
 int s5100_set_gpio_2cp_uart_sel(struct modem_ctl *mc, int value);
 int s5100_get_gpio_2cp_uart_sel(struct modem_ctl *mc);
 
+// PCIE Dynamic lane change : from //drivers/pci
+int exynos_pcie_host_v1_lanechange(int ch_num, int lane);
+
 #endif /* __S5100_PCIE_H__ */

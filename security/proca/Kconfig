@@ -19,3 +19,5 @@ config PROCA_DEBUG
 	   which contains hex representation of binary proca certificate. It
 	   might be used to check existence of task descriptor for some task
 	   in proca table.
+
+source security/proca/gaf/Kconfig

@@ -62,16 +62,15 @@ static int ssp_sensorhub_send_cmd(struct ssp_sensorhub_data *hub_data,
 		sensorhub_err("MSG2SSP_INST_LIB_NOTI err(%d)", buf[2]);
 		return -EINVAL;
 	}
-#ifdef CONFIG_PANEL_NOTIFY
-	if (buf[2] == MSG2SSP_AP_STATUS_WAKEUP ||
-		buf[2] == MSG2SSP_AP_STATUS_SLEEP) {
-		ret = SUCCESS;
+
+	if (buf[2] == MSG2SSP_AP_STATUS_WAKEUP) {
+		ret = ssp_send_cmd(hub_data->ssp_data, MSG2SSP_AP_STATUS_SCONTEXT_WAKEUP, 0);
+	}
+	else if(buf[2] == MSG2SSP_AP_STATUS_SLEEP) {
+		ret = ssp_send_cmd(hub_data->ssp_data, MSG2SSP_AP_STATUS_SCONTEXT_SLEEP, 0);
 	} else {
 		ret = ssp_send_cmd(hub_data->ssp_data, buf[2], 0);
 	}
-#else
-	ret = ssp_send_cmd(hub_data->ssp_data, buf[2], 0);
-#endif
 
 #ifndef CONFIG_PANEL_NOTIFY
 	if (buf[2] == MSG2SSP_AP_STATUS_WAKEUP ||

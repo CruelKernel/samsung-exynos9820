@@ -2320,6 +2320,11 @@ static int page_cache_read(struct file *file, pgoff_t offset, gfp_t gfp_mask)
 }
 
 #define MMAP_LOTSAMISS  (100)
+#if CONFIG_MMAP_READAROUND_LIMIT == 0
+int mmap_readaround_limit = VM_MAX_READAHEAD;
+#else
+int mmap_readaround_limit = CONFIG_MMAP_READAROUND_LIMIT;
+#endif
 
 /*
  * Synchronous readahead happens when we don't even find
@@ -2359,14 +2364,7 @@ static void do_sync_mmap_readahead(struct vm_area_struct *vma,
 	/*
 	 * mmap read-around
 	 */
-#if CONFIG_MMAP_READAROUND_LIMIT == 0
-	ra_pages = ra->ra_pages;
-#else
-	if (ra->ra_pages > CONFIG_MMAP_READAROUND_LIMIT)
-		ra_pages = CONFIG_MMAP_READAROUND_LIMIT;
-	else
-		ra_pages = ra->ra_pages;
-#endif
+	ra_pages = min_t(unsigned int, ra->ra_pages, mmap_readaround_limit);
 	ra->start = max_t(long, 0, offset - ra_pages / 2);
 	ra->size = ra_pages;
 	ra->async_size = ra_pages / 4;

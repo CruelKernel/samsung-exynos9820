@@ -570,6 +570,7 @@
 #define WPA2_AUTH_FILS_SHA384		0x20000 /* FILS with SHA384 key derivation */
 #define WPA2_AUTH_IS_FILS(auth) ((auth) & (WPA2_AUTH_FILS_SHA256 | WPA2_AUTH_FILS_SHA384))
 #define WPA3_AUTH_SAE_PSK		0x40000 /* SAE with 4-way handshake */
+#define WPA3_AUTH_DPP_AKM		0x80000 /* Device Provisioning Protocol (DPP) */
 #define WPA3_AUTH_OWE			0x100000 /* OWE */
 #define WPA3_AUTH_1X_SUITE_B_SHA256	0x200000 /* Suite B SHA256 */
 #define WPA3_AUTH_1X_SUITE_B_SHA384	0x400000 /* Suite B-192 SHA384 */
@@ -2179,9 +2180,18 @@
 #define PNO_SCAN_MAX_FW_SEC		PNO_SCAN_MAX_FW/1000 /* max time scan time in SEC */
 #define PNO_SCAN_MIN_FW_SEC		10			/* min time scan time in SEC */
 #define WL_PFN_HIDDEN_MASK		0x4
-#define MAX_SSID_WHITELIST_NUM         4
 #define MAX_BSSID_PREF_LIST_NUM        32
+
+#ifdef CUSTOM_SSID_WHITELIST_NUM
+#define MAX_SSID_WHITELIST_NUM		CUSTOM_SSID_WHITELIST_NUM
+#else
+#define MAX_SSID_WHITELIST_NUM         4
+#endif /* CUSTOM_SSID_WHITELIST_NUM */
+#ifdef CUSTOM_BSSID_BLACKLIST_NUM
+#define MAX_BSSID_BLACKLIST_NUM		CUSTOM_BSSID_BLACKLIST_NUM
+#else
 #define MAX_BSSID_BLACKLIST_NUM        32
+#endif /* CUSTOM_BSSID_BLACKLIST_NUM */
 
 #ifndef BESTN_MAX
 #define BESTN_MAX			10

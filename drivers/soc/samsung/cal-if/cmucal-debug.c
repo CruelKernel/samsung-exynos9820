@@ -249,7 +249,7 @@ vclk_write_set_margin(struct file *filp, const char __user *ubuf,
 		return len;
 
 	buf[len] = '\0';
-	if (!kstrtoint(buf, 0, &volt)) {
+	if (dvfs_domain && !kstrtoint(buf, 0, &volt)) {
 		margin = volt;
 		cal_dfs_set_volt_margin(dvfs_domain->id, volt);
 	}
@@ -282,7 +282,7 @@ vclk_write_set_freq(struct file *filp, const char __user *ubuf,
 		return len;
 
 	buf[len] = '\0';
-	if (!kstrtoint(buf, 0, &freq)) {
+	if (dvfs_domain && !kstrtoint(buf, 0, &freq)) {
 		debug_freq = freq;
 		cal_dfs_set_rate(dvfs_domain->id, freq);
 	}

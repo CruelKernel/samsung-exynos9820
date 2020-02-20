@@ -18,17 +18,31 @@
 #include "s6e3ha9_analog_clock_img.h"
 #include "s6e3ha9_digital_clock_img.h"
 
+static u8 S6E3HA9_AOD_KEY1_ENABLE[] = { 0x9F, 0xA5, 0xA5 };
+static u8 S6E3HA9_AOD_KEY1_DISABLE[] = { 0x9F, 0x5A, 0x5A };
+
 static u8 S6E3HA9_AOD_KEY2_ENABLE[] = { 0xF0, 0x5A, 0x5A };
 static u8 S6E3HA9_AOD_KEY2_DISABLE[] = { 0xF0, 0xA5, 0xA5 };
 
 static u8 S6E3HA9_AOD_KEY3_ENABLE[] = { 0xFC, 0x5A, 0x5A };
 static u8 S6E3HA9_AOD_KEY3_DISABLE[] = { 0xFC, 0xA5, 0xA5 };
 
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_l1_key_enable, DSI_PKT_TYPE_WR, S6E3HA9_AOD_KEY1_ENABLE, 0);
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_l1_key_disable, DSI_PKT_TYPE_WR,S6E3HA9_AOD_KEY1_DISABLE, 0);
+
 static DEFINE_STATIC_PACKET(s6e3ha9_aod_l2_key_enable, DSI_PKT_TYPE_WR, S6E3HA9_AOD_KEY2_ENABLE, 0);
 static DEFINE_STATIC_PACKET(s6e3ha9_aod_l2_key_disable, DSI_PKT_TYPE_WR,S6E3HA9_AOD_KEY2_DISABLE, 0);
 
 static DEFINE_STATIC_PACKET(s6e3ha9_aod_l3_key_enable, DSI_PKT_TYPE_WR, S6E3HA9_AOD_KEY3_ENABLE, 0);
 static DEFINE_STATIC_PACKET(s6e3ha9_aod_l3_key_disable, DSI_PKT_TYPE_WR, S6E3HA9_AOD_KEY3_DISABLE, 0);
+
+static DEFINE_PANEL_UDELAY(s6e3ha9_aod_self_mask_checksum_1frame_delay, 16700);
+static DEFINE_PANEL_UDELAY(s6e3ha9_aod_self_mask_checksum_2frame_delay, 33400);
+
+static DEFINE_PANEL_KEY(s6e3ha9_aod_l1_key_enable, CMD_LEVEL_1,
+	KEY_ENABLE, &PKTINFO(s6e3ha9_aod_l1_key_enable));
+static DEFINE_PANEL_KEY(s6e3ha9_aod_l1_key_disable, CMD_LEVEL_1,
+	KEY_DISABLE, &PKTINFO(s6e3ha9_aod_l1_key_disable));
 
 static DEFINE_PANEL_KEY(s6e3ha9_aod_l2_key_enable, CMD_LEVEL_2,
 	KEY_ENABLE, &PKTINFO(s6e3ha9_aod_l2_key_enable));
@@ -40,6 +54,8 @@ static DEFINE_PANEL_KEY(s6e3ha9_aod_l3_key_enable, CMD_LEVEL_3,
 static DEFINE_PANEL_KEY(s6e3ha9_aod_l3_key_disable, CMD_LEVEL_3,
 	KEY_DISABLE, &PKTINFO(s6e3ha9_aod_l3_key_disable));
 
+static struct keyinfo KEYINFO(s6e3ha9_aod_l1_key_enable);
+static struct keyinfo KEYINFO(s6e3ha9_aod_l1_key_disable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l2_key_enable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l2_key_disable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l3_key_enable);
@@ -176,7 +192,7 @@ static char s6e3ha9_aod_self_move_patt_tbl[][35] = {
 
 static struct maptbl s6e3ha9_aod_maptbl[] = {
 	[SELF_MASK_CTRL_MAPTBL] = DEFINE_0D_MAPTBL(s6e3ha9_aod_self_mask,
-		init_common_table, NULL, s6e3ha9_copy_self_mask_ctrl),
+		s6e3ha9_init_self_mask_ctrl, NULL, s6e3ha9_copy_self_mask_ctrl),
 	[DIGITAL_POS_MAPTBL] = DEFINE_0D_MAPTBL(s6e3ha9_aod_digital_pos,
 		init_common_table, NULL, s6e3ha9_copy_digital_pos),
 	[SET_TIME_MAPTBL] = DEFINE_0D_MAPTBL(s6e3ha9_aod_time,
@@ -280,6 +296,49 @@ static void *s6e3ha9_aod_self_mask_dis_cmdtbl[] = {
 };
 // --------------------- End of self mask control ---------------------
 
+// --------------------- check sum control ----------------------------
+static char S6E3HA9_AOD_SELF_MASK_CRC_ON1[] = {
+	0xD8,
+	0x10,
+};
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_crc_on1, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_CRC_ON1, 0x27);
+
+static char S6E3HA9_AOD_SELF_MASK_CRC_ON2[] = {
+	0xFE,
+	0x08,
+};
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_crc_on2, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_CRC_ON2, 0x28);
+
+static char S6E3HA9_AOD_SELF_MASK_DBIST_ON[] = {
+	0xBF,
+	0x01, 0x07, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00
+};
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_dbist_on, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_DBIST_ON, 0);
+
+static char S6E3HA9_AOD_SELF_MASK_DBIST_OFF[] = {
+	0xBF,
+	0x00, 0x07, 0xFF, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00
+};
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_dbist_off, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_DBIST_OFF, 0);
+
+static char S6E3HA9_AOD_SELF_MASK_ENABLE_FOR_CHECKSUM[] = {
+	0x7A,
+	0x21, 0x00, 0x00, 0x00, 0x95,
+	0x01, 0xF4, 0x02, 0x89, 0x08,
+	0x10, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_for_checksum, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_ENABLE_FOR_CHECKSUM, 0);
+
+static char S6E3HA9_AOD_SELF_MASK_RESTORE[] = {
+	0x7A,
+	0x21, 0x0B, 0xE0, 0x0C, 0x75,
+	0x0C, 0x76, 0x0D, 0x0B, 0x08,
+	0x10, 0x00, 0x00, 0x00, 0x00
+};
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_self_mask_restore, DSI_PKT_TYPE_WR, S6E3HA9_AOD_SELF_MASK_RESTORE, 0);
+
+// --------------------- end of check sum control ----------------------------
 
 
 // --------------------- Image for self icon ---------------------

@@ -1,7 +1,7 @@
 config BROADCOM_WIFI
 	bool "Broadcom WiFi Driver"
-	depends on WLAN
-	default n
+	depends on WLAN && WLAN_VENDOR_BROADCOM
+	default y
 	---help---
 	  This is a configuration for Broadcom WLAN driver.
 
@@ -127,6 +127,7 @@ config BCMDHD_NVRAM_PATH
 config BROADCOM_WIFI_RESERVED_MEM
 	bool "BROADCOM Reserved memory for wifi device"
 	depends on BROADCOM_WIFI
+	default y
 	---help---
 	  This is a configuration for Broadcom WLAN driver.
 
@@ -180,7 +181,8 @@ config WL_NAN
 
 config BCMDHD_PCIE
 	bool "Enable PCIe I/F Support"
-	depends on (BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4375)
+	depends on (BCM4354 || BCM4358 || BCM4359 || BCM4361 || BCM4375) && PCI
+	default y
 	---help---
 	  Enable PCI Express I/F Support
 
@@ -238,3 +240,10 @@ config BCMDHD_GET_OOB_STATE
         default y
         ---help---
           Support WLAN_HOST_WAKE pin level information
+
+config WLAN_BCM4375_ENHANCED_FEATURES
+	bool "Support BCM4375 Enhanced Feature"
+	depends on BCM4375
+	default n
+	---help---
+	Support BCM4375 Enahanced Feature

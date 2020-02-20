@@ -1852,10 +1852,10 @@ static const u32 sensor_imx316_setfiles_A_uid[] = {
 	0xCD2E,
 	0xCD35,
 	0xCD36,
-	0xDB05,
-	0xDC05,
 	0xCB35,
 	0xCB46,
+	0xDB05,
+	0xDC05,
 };
 
 static const u32 *sensor_imx316_setfiles_A[] = {
@@ -1863,10 +1863,10 @@ static const u32 *sensor_imx316_setfiles_A[] = {
 	sensor_imx316_setfile_A_480x1440_30fps_CD2E,
 	sensor_imx316_setfile_A_480x1440_30fps_CD35,
 	sensor_imx316_setfile_A_480x1440_30fps_CD36,
-	sensor_imx316_setfile_A_480x1440_30fps_DB05,
-	sensor_imx316_setfile_A_480x1440_30fps_DC05,
 	sensor_imx316_setfile_A_480x1440_30fps_CB35,
 	sensor_imx316_setfile_A_480x1440_30fps_CB46,
+	sensor_imx316_setfile_A_480x1440_30fps_DB05,
+	sensor_imx316_setfile_A_480x1440_30fps_DC05,
 };
 
 static const u32 sensor_imx316_setfile_A_sizes[] = {
@@ -1874,10 +1874,10 @@ static const u32 sensor_imx316_setfile_A_sizes[] = {
 	sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD2E) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD2E[0]),
 	sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD35) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD35[0]),
 	sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD36) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_CD36[0]),
-	sizeof(sensor_imx316_setfile_A_480x1440_30fps_DB05) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_DB05[0]),
-	sizeof(sensor_imx316_setfile_A_480x1440_30fps_DC05) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_DC05[0]),
 	sizeof(sensor_imx316_setfile_A_480x1440_30fps_CB35) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_CB35[0]),
 	sizeof(sensor_imx316_setfile_A_480x1440_30fps_CB46) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_CB46[0]),
+	sizeof(sensor_imx316_setfile_A_480x1440_30fps_DB05) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_DB05[0]),
+	sizeof(sensor_imx316_setfile_A_480x1440_30fps_DC05) / sizeof(sensor_imx316_setfile_A_480x1440_30fps_DC05[0]),
 };
 
 const u32 sensor_imx316_vcsel_current_setting_A[] = {

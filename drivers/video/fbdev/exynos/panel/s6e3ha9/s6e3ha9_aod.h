@@ -126,6 +126,11 @@
 #define FB_SELF_MOVE_EN		0x01
 #define ICON_SELF_MOVE_EN	0x02
 
+#define SELFMASK_CHECKSUM_VALID1	0x76
+#define SELFMASK_CHECKSUM_VALID2	0xC3
+
+#define SELFMASK_CHECKSUM_LEN		2
+
 //original offset : 7 use global param
 #if 0
 #define ANALOG_INTERVAL1_REG	1
@@ -149,6 +154,7 @@ void s6e3ha9_copy_digital_pos(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_digital_blink(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_time(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_timer_rate(struct maptbl *tbl, u8 *dst);
+int s6e3ha9_init_self_mask_ctrl(struct maptbl *tbl);
 
 void s6e3ha9_copy_icon_grid_on_ctrl(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_self_move_on_ctrl(struct maptbl *tbl, u8 *dst);

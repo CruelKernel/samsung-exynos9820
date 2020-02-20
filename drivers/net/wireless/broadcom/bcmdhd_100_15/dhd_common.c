@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 840097 2019-09-10 08:22:49Z $
+ * $Id: dhd_common.c 848301 2019-10-31 10:55:43Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -1211,26 +1211,26 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 			if ((ioc->cmd == WLC_GET_VAR || ioc->cmd == WLC_SET_VAR) &&
 					buf != NULL) {
 				if (ret == BCME_UNSUPPORTED || ret == BCME_NOTASSOCIATED) {
-					DHD_ERROR(("%s: %s: %s, %s\n",
+					DHD_ERROR_MEM(("%s: %s: %s, %s\n",
 						__FUNCTION__, ioc->cmd == WLC_GET_VAR ?
 						"WLC_GET_VAR" : "WLC_SET_VAR",
 						buf? (char *)buf:"NO MESSAGE",
 						ret == BCME_UNSUPPORTED ? "UNSUPPORTED"
 						: "NOT ASSOCIATED"));
 				} else {
-					DHD_ERROR(("%s: %s: %s, ret = %d\n",
+					DHD_ERROR_MEM(("%s: %s: %s, ret = %d\n",
 						__FUNCTION__, ioc->cmd == WLC_GET_VAR ?
 						"WLC_GET_VAR" : "WLC_SET_VAR",
 						(char *)buf, ret));
 				}
 			} else {
 				if (ret == BCME_UNSUPPORTED || ret == BCME_NOTASSOCIATED) {
-					DHD_ERROR(("%s: WLC_IOCTL: cmd: %d, %s\n",
+					DHD_ERROR_MEM(("%s: WLC_IOCTL: cmd: %d, %s\n",
 						__FUNCTION__, ioc->cmd,
 						ret == BCME_UNSUPPORTED ? "UNSUPPORTED" :
 						"NOT ASSOCIATED"));
 				} else {
-					DHD_ERROR(("%s: WLC_IOCTL: cmd: %d, ret = %d\n",
+					DHD_ERROR_MEM(("%s: WLC_IOCTL: cmd: %d, ret = %d\n",
 						__FUNCTION__, ioc->cmd, ret));
 				}
 			}
@@ -4876,7 +4876,7 @@ bool dhd_is_associated(dhd_pub_t *dhd, uint8 ifidx, int *retval)
 	DHD_TRACE((" %s WLC_GET_BSSID ioctl res = %d\n", __FUNCTION__, ret));
 
 	if (ret == BCME_NOTASSOCIATED) {
-		DHD_TRACE(("%s: not associated! res:%d\n", __FUNCTION__, ret));
+		DHD_ERROR(("%s: WLC_GET_BSSID, NOT ASSOCIATED\n", __FUNCTION__));
 	}
 
 	if (retval)
@@ -7440,3 +7440,28 @@ dhd_control_he_enab(dhd_pub_t * dhd, uint8 he_enab)
 	return ret;
 }
 #endif /* DISABLE_HE_ENAB || CUSTOM_CONTROL_HE_ENAB */
+
+#ifdef DHD_CHECK_4WAY_M4ACKED
+void
+dhd_set_m4_acked(dhd_pub_t *dhdp, int set)
+{
+	dhdp->dhd_chk_m4acked = set;
+}
+
+void
+dhd_chk_m4_acked(dhd_pub_t *dhdp)
+{
+	int wait_cnt = CHK_M4_WAIT_MAX_TIME / CHK_M4_WAIT_INTV_TIME;
+
+	while ((dhdp->dhd_chk_m4acked == FALSE) && wait_cnt) {
+		DHD_INFO(("%s waiting for M4_acked, wait_cnt: %d\n", __FUNCTION__, wait_cnt));
+		wait_cnt--;
+		osl_sleep(10);
+	}
+	if (!wait_cnt) {
+		DHD_ERROR(("%s Force TRUE M4_acked, wait_cnt is 0\n", __FUNCTION__));
+		dhdp->dhd_chk_m4acked = TRUE;
+	}
+	return;
+}
+#endif /* DHD_CHECK_4WAY_M4ACKED */

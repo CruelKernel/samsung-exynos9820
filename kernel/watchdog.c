@@ -31,7 +31,6 @@
 #include <linux/kvm_para.h>
 #include <linux/kthread.h>
 
-#include <soc/samsung/exynos-ehld.h>
 #include <linux/debug-snapshot.h>
 #include <linux/irqflags.h>
 

@@ -119,6 +119,17 @@
 #define FB_SELF_MOVE_EN		0x02
 #define ICON_SELF_MOVE_EN	0x01
 
+#define SELFMASK_CHECKSUM_VALID1	0x71
+#define SELFMASK_CHECKSUM_VALID2	0xC9
+#define SELFMASK_CHECKSUM_VALID3	0x06
+#define SELFMASK_CHECKSUM_VALID4	0x3A
+#define SELFMASK_CHECKSUM_VALID5	0x51
+#define SELFMASK_CHECKSUM_VALID6	0xCF
+#define SELFMASK_CHECKSUM_VALID7	0x8D
+#define SELFMASK_CHECKSUM_VALID8	0x16
+
+#define SELFMASK_CHECKSUM_LEN		8
+
 //original offset : 7 use global param
 #if 0
 #define ANALOG_INTERVAL1_REG	1
@@ -148,6 +159,7 @@ void s6e3fa7_copy_analog_clock_ctrl(struct maptbl *tbl, u8 *dst);
 void s6e3fa7_copy_digital_clock_ctrl(struct maptbl *tbl, u8 *dst);
 int s6e3fa7_getidx_self_mode_pos(struct maptbl *tbl);
 void s6e3fa7_copy_self_move_reset(struct maptbl *tbl, u8 *dst);
+int s6e3fa7_init_self_mask_ctrl(struct maptbl *tbl);
 
 #ifdef SUPPORT_NORMAL_SELF_MOVE
 int s6e3fa7_getidx_self_pattern(struct maptbl *tbl);

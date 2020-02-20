@@ -69,6 +69,8 @@ struct dwc3_otg {
 	struct dwc3_ext_otg_ops *ext_otg_ops;
 	
 	int			dp_use_informed;
+	
+	struct notifier_block	pm_nb;
 	struct completion	resume_cmpl;
 	int			dwc3_suspended;
 	struct			mutex lock;

@@ -36,6 +36,7 @@
 #include <linux/irq.h>
 #include <linux/irqdesc.h>
 #include <linux/nmi.h>
+#include <linux/sec_debug.h>
 
 struct dbg_snapshot_lastinfo {
 #ifdef CONFIG_DEBUG_SNAPSHOT_FREQ
@@ -234,6 +235,35 @@ void __init dbg_snapshot_init_log_idx(void)
 #ifdef CONFIG_DEBUG_SNAPSHOT_HRTIMER
 		atomic_set(&(dss_idx.hrtimer_log_idx[i]), -1);
 #endif
+	}
+}
+
+unsigned long sec_debug_get_kevent_index_addr(int type)
+{
+	switch (type) {
+	case DSS_KEVENT_TASK:
+		return virt_to_phys(&(dss_idx.task_log_idx[0]));
+
+	case DSS_KEVENT_WORK:
+		return virt_to_phys(&(dss_idx.work_log_idx[0]));
+
+	case DSS_KEVENT_IRQ:
+		return virt_to_phys(&(dss_idx.irq_log_idx[0]));
+
+	case DSS_KEVENT_FREQ:
+		return virt_to_phys(&(dss_idx.freq_log_idx));
+
+	case DSS_KEVENT_IDLE:
+		return virt_to_phys(&(dss_idx.cpuidle_log_idx[0]));
+
+	case DSS_KEVENT_THRM:
+		return virt_to_phys(&(dss_idx.thermal_log_idx));
+
+	case DSS_KEVENT_ACPM:
+		return virt_to_phys(&(dss_idx.acpm_log_idx));
+
+	default:
+		return 0;
 	}
 }
 

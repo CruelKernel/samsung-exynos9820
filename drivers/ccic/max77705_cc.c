@@ -532,6 +532,9 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 #if defined(CONFIG_USB_HOST_NOTIFY)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
+#ifdef CONFIG_USB_NOTIFY_PROC_LOG
+	int event;
+#endif
 
 	max77705_read_reg(usbc_data->muic, REG_CC_STATUS0, &cc_data->cc_status0);
 	ccstat =  (cc_data->cc_status0 & BIT_CCStat) >> FFS(BIT_CCStat);
@@ -689,6 +692,10 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			break;
 	case cc_Audio_Accessory:
 			msg_maxim("ccstat : cc_Audio_Accessory");
+#ifdef CONFIG_USB_NOTIFY_PROC_LOG
+			event = NOTIFY_EXTRA_USB_ANALOGAUDIO;
+			store_usblog_notify(NOTIFY_EXTRA, (void *)&event, NULL);
+#endif
 			usbc_data->acc_type = CCIC_DOCK_TYPEC_ANALOG_EARPHONE;
 			max77705_process_check_accessory(usbc_data);
 			break;

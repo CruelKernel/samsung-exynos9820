@@ -472,14 +472,21 @@ static ssize_t store_nad_balancer(struct device *dev,
 	char nad_cmd[BALANCER_CMD][NAD_BUFF_SIZE];
 	char *nad_ptr, *string;
 	int i, j, idx = 0, ret = -1, expire_time;
+	unsigned int len = 0;
 
 	/* Copy buf to nad cmd */
-	strncpy(cmd_temp, buf, NAD_BUFF_SIZE);
+	len = (unsigned int)min(count, sizeof(cmd_temp) - 1);
+	strncpy(cmd_temp, buf, len);
+	cmd_temp[len] = '\0';
 	string = cmd_temp;
 
 	/* Parse AT CMD */
 	while (idx < BALANCER_CMD) {
 		nad_ptr = strsep(&string, ",");
+		if (nad_ptr ==  NULL || strlen(nad_ptr) >= NAD_BUFF_SIZE) {
+				NAD_PRINT(" %s: invalid input\n",__func__);
+				return -EINVAL;	
+		}
 		strcpy(nad_cmd[idx++], nad_ptr);
 	}
 

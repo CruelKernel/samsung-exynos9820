@@ -419,10 +419,10 @@ static int tvr_report_event(struct hid_device *hid, u8 *data, int len)
 	struct hidraw_list *list;
 	int ret = 0;
 	unsigned long flags;
-	
+
 	if (!dev)
 		return -EPERM;
-	
+
 	spin_lock_irqsave(&list_lock, flags);
 	list_for_each_entry(list, &dev->list, node) {
 		int new_head = (list->head + 1) & (TVR_HIDRAW_BUFFER_SIZE - 1);
@@ -788,14 +788,14 @@ static int tvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		retval = tvr_connect(hdev);
 		if (retval) {
 			hid_err(hdev, "TVR: Couldn't connect\n");
-			goto exit;
+			return -EFAULT;
 		}
 
 		retval = gearvr_connect(hdev, 1);
 		if (retval) {
 			hid_err(hdev, "TVR: Couldn't connect Gearvr\n");
 			tvr_disconnect(hdev);
-			goto exit;
+			return -EFAULT;
 		}
 
 		retval = tvr_init_keys(hdev);
@@ -803,7 +803,7 @@ static int tvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 			hid_err(hdev, "TVR: Couldn't register keys\n");
 			gearvr_disconnect(hdev);
 			tvr_disconnect(hdev);
-			goto exit;
+			return -EFAULT;
 		}
 
 		isTvrConnected = TVR_CONNECTED;
@@ -928,7 +928,7 @@ static struct device_attribute *tvr_attrs[] = {
 
 static const struct hid_device_id tvr_devices[] = {
 	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_TVR_1) },
-	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_TVR_2) },	
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_TVR_2) },
 	{ }
 };
 

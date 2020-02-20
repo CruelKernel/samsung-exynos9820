@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgp2p.c 819430 2019-05-13 11:38:06Z $
+ * $Id: wl_cfgp2p.c 845437 2019-10-14 08:16:11Z $
  *
  */
 #include <typedefs.h>
@@ -342,18 +342,16 @@ void wl_cfgp2p_print_actframe(bool tx, void *frame, u32 frame_len, u32 channel)
 s32
 wl_cfgp2p_init_priv(struct bcm_cfg80211 *cfg)
 {
-#ifdef WL_P2P_USE_RANDMAC
 	struct ether_addr primary_mac;
-#endif /* WL_P2P_USE_RANDMAC */
 	cfg->p2p = MALLOCZ(cfg->osh, sizeof(struct p2p_info));
 	if (cfg->p2p == NULL) {
 		CFGP2P_ERR(("struct p2p_info allocation failed\n"));
 		return -ENOMEM;
 	}
-#ifdef WL_P2P_USE_RANDMAC
+
 	get_primary_mac(cfg, &primary_mac);
 	wl_cfgp2p_generate_bss_mac(cfg, &primary_mac);
-#endif /* WL_P2P_USE_RANDMAC */
+
 	wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_PRIMARY) = bcmcfg_to_prmry_ndev(cfg);
 	wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_PRIMARY) = 0;
 	wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_DEVICE) = NULL;
@@ -388,12 +386,13 @@ wl_cfgp2p_set_firm_p2p(struct bcm_cfg80211 *cfg)
 	struct net_device *ndev = bcmcfg_to_prmry_ndev(cfg);
 	s32 ret = BCME_OK;
 	s32 val = 0;
-#ifdef WL_P2P_USE_RANDMAC
 	struct ether_addr *p2p_dev_addr = wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_DEVICE);
-#else
-	struct ether_addr null_eth_addr = { { 0, 0, 0, 0, 0, 0 } };
-	struct ether_addr *p2p_dev_addr = &null_eth_addr;
-#endif // endif
+
+	if (ETHER_ISNULLADDR(p2p_dev_addr)) {
+		CFGP2P_ERR(("NULL p2p_dev_addr\n"));
+		return BCME_BADADDR;
+	}
+
 	/* Do we have to check whether APSTA is enabled or not ? */
 	ret = wldev_iovar_getint(ndev, "apsta", &val);
 	if (ret < 0) {
@@ -512,9 +511,6 @@ s32
 wl_cfgp2p_ifdel(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 {
 	s32 ret;
-#ifdef WL_DISABLE_HE_P2P
-	s32 bssidx = 0;
-#endif /* WL_DISABLE_HE_P2P */
 	struct net_device *netdev = bcmcfg_to_prmry_ndev(cfg);
 
 	CFGP2P_ERR(("------ cfg p2p_ifdel "MACDBG" dev->ifindex:%d\n",
@@ -524,18 +520,6 @@ wl_cfgp2p_ifdel(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 	if (unlikely(ret < 0)) {
 		printk("'cfg p2p_ifdel' error %d\n", ret);
 	}
-#ifdef WL_DISABLE_HE_P2P
-	if ((bssidx = wl_get_bssidx_by_wdev(cfg, netdev->ieee80211_ptr)) < 0) {
-		WL_ERR(("Find index failed\n"));
-		ret = BCME_ERROR;
-		return ret;
-	}
-	WL_DBG(("Enabling back HE for P2P\n"));
-	wl_cfg80211_set_he_mode(netdev, cfg, bssidx, WL_IF_TYPE_P2P_DISC, TRUE);
-	if (ret < 0) {
-		WL_ERR(("failed to set he features, error=%d\n", ret));
-	}
-#endif /* WL_DISABLE_HE_P2P */
 
 	return ret;
 }
@@ -1785,13 +1769,16 @@ wl_cfgp2p_generate_bss_mac(struct bcm_cfg80211 *cfg, struct ether_addr *primary_
 	struct ether_addr *mac_addr = wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_DEVICE);
 	struct ether_addr *int_addr;
 
-#ifdef WL_P2P_USE_RANDMAC
-	dhd_generate_mac_addr(mac_addr);
-#else
-	memcpy(mac_addr, primary_addr, sizeof(struct ether_addr));
-	mac_addr->octet[0] |= 0x02;
-	WL_DBG(("P2P Discovery address:"MACDBG "\n", MAC2STRDBG(mac_addr->octet)));
-#endif /* WL_P2P_USE_RANDMAC */
+	if (ETHER_IS_LOCALADDR(primary_addr)) {
+		/* STA is using locally administered MAC. Use randomized mac
+		 * for p2p  disc to avoid collision with sta mac add.
+		 */
+		wl_cfg80211_generate_mac_addr(mac_addr);
+	} else {
+		memcpy(mac_addr, primary_addr, sizeof(struct ether_addr));
+		mac_addr->octet[0] |= 0x02;
+		WL_DBG(("P2P Discovery address:"MACDBG "\n", MAC2STRDBG(mac_addr->octet)));
+	}
 
 	int_addr = wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_CONNECTION1);
 	memcpy(int_addr, mac_addr, sizeof(struct ether_addr));
@@ -2528,7 +2515,6 @@ struct wireless_dev *
 wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 {
 	struct wireless_dev *wdev = NULL;
-	struct ether_addr primary_mac;
 
 	if (!cfg || !cfg->p2p_supported)
 		return ERR_PTR(-EINVAL);
@@ -2580,12 +2566,6 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 		WL_ERR(("Could not allocate wireless device\n"));
 		return ERR_PTR(-ENOMEM);
 	}
-
-	bzero(&primary_mac, sizeof(primary_mac));
-	get_primary_mac(cfg, &primary_mac);
-#ifndef WL_P2P_USE_RANDMAC
-	wl_cfgp2p_generate_bss_mac(cfg, &primary_mac);
-#endif /* WL_P2P_USE_RANDMAC */
 
 	wdev->wiphy = cfg->wdev->wiphy;
 	wdev->iftype = NL80211_IFTYPE_P2P_DEVICE;

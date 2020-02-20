@@ -14,6 +14,8 @@ config XFRM_ALGO
 	tristate
 	select XFRM
 	select CRYPTO
+	select CRYPTO_HASH
+	select CRYPTO_BLKCIPHER
 
 config XFRM_USER
 	tristate "Transformation user configuration interface"
@@ -24,6 +26,14 @@ config XFRM_USER
 	  like IPsec used by native Linux tools.
 
 	  If unsure, say Y.
+
+config XFRM_INTERFACE
+	tristate "Transformation virtual interface"
+	depends on XFRM && IPV6
+	---help---
+	  This provides a virtual interface to route IPsec traffic.
+
+	  If unsure, say N.
 
 config XFRM_SUB_POLICY
 	bool "Transformation sub policy support"

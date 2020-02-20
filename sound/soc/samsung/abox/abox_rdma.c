@@ -1349,6 +1349,9 @@ static irqreturn_t abox_rdma_ipc_handler(int ipc, void *dev_id,
 	case PCM_PLTDAI_ACK:
 		data->ack_enabled = !!pcmtask_msg->param.trigger;
 		break;
+	case PCM_PLTDAI_CLOSED:
+		complete(&data->closed);
+		break;
 	default:
 		dev_warn(dev, "unknown message: %d\n", pcmtask_msg->msgtype);
 		return IRQ_NONE;
@@ -1696,6 +1699,7 @@ static int abox_rdma_close(struct snd_pcm_substream *substream)
 	struct abox_data *abox_data = data->abox_data;
 	int id = data->id;
 	int ret;
+	long time;
 	ABOX_IPC_MSG msg;
 	struct IPC_PCMTASK_MSG *pcmtask_msg = &msg.msg.pcmtask;
 
@@ -1716,6 +1720,11 @@ static int abox_rdma_close(struct snd_pcm_substream *substream)
 		if (ret < 0)
 			dev_warn(dev, "call notify failed: %d\n", ret);
 	}
+
+	time = wait_for_completion_timeout(&data->closed,
+			nsecs_to_jiffies(ABOX_DMA_TIMEOUT_NS));
+	if (time == 0)
+		dev_err(dev, "%s: timeout\n", __func__);
 
 	/* Release ASRC to reuse it in other DMA */
 	abox_cmpnt_asrc_release(abox_data->cmpnt, SNDRV_PCM_STREAM_PLAYBACK, id);
@@ -2326,6 +2335,7 @@ static int samsung_abox_rdma_probe(struct platform_device *pdev)
 	init_waitqueue_head(&data->compr_data.flush_wait);
 	init_waitqueue_head(&data->compr_data.exit_wait);
 	init_waitqueue_head(&data->compr_data.ipc_wait);
+	init_completion(&data->closed);
 	data->compr_data.isr_handler = abox_rdma_compr_isr_handler;
 
 	abox_register_ipc_handler(data->dev_abox, IPC_PCMPLAYBACK,

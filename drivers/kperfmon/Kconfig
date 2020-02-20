@@ -1,0 +1,13 @@
+# drivers/kperfmon/Kconfig
+#
+# Copyright (c) 2010-2011 Samsung Electronics Co., Ltd.
+#		http://www.samsung.com/
+#
+# Licensed under GPLv2
+
+config KPERFMON
+	bool "Enable performance log"
+	default n
+	help
+	  Samsung performance log(OLOG).
+

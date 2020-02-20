@@ -233,6 +233,10 @@ enum SEPC_SUB_ID {
 	CHECKSUM_PACKET,
 };
 
+enum TABLE_SWAP {
+	TABLE_SWAP_DEX_STATION = 1,
+	TABLE_SWAP_KBD_COVER = 2,
+};
 
 #define FW_UPDATE_RUNNING		1
 #define FW_UPDATE_PASS			2
@@ -301,9 +305,13 @@ struct wacom_i2c {
 	struct mutex irq_lock;
 	struct mutex mode_lock;
 	struct wake_lock fw_wakelock;
+	struct delayed_work nb_reg_work;
+	struct notifier_block kbd_nb;
+	struct work_struct kbd_work;
+	u8 kbd_conn_state;
+	u8 kbd_cur_conn_state;
 	struct notifier_block typec_nb;
-	struct delayed_work typec_nb_reg_work;
-	struct delayed_work usb_typec_work;
+	struct work_struct typec_work;
 	u8 dp_connect_state;
 	u8 dp_connect_cmd;
 	int irq;

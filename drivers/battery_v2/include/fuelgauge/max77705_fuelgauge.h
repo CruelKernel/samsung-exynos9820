@@ -60,6 +60,7 @@ ssize_t max77705_fg_store_attrs(struct device *dev,
 	.show = max77705_fg_show_attrs,			\
 	.store = max77705_fg_store_attrs,			\
 }
+
 struct sec_fg_info {
 	/* test print count */
 	int pr_cnt;

@@ -20,26 +20,25 @@
 #include "jsqz-core.h"
 
 // SFR
-#define     REG_0_Y_ADDR				0x000
-#define     REG_1_U_ADDR				0x004
-#define     REG_2_V_ADDR				0x008
+#define     REG_0_Y_ADDR			0x000
+#define     REG_1_U_ADDR			0x004
+#define     REG_2_V_ADDR			0x008
 #define     REG_3_INPUT_FORMAT		0x00C
 
 #define     REG_4_TO_19_Y_Q_MAT		0x010
-#define     REG_20_TO_35_C_Q_MAT		0x050
+#define     REG_20_TO_35_C_Q_MAT	0x050
 
 #define     REG_36_SW_RESET			0x090
 #define     REG_37_INTERRUPT_EN		0x094
 #define     REG_38_INTERRUPT_CLEAR	0x098
-#define     REG_39_JSQZ_HW_START		0x09C
+#define     REG_39_JSQZ_HW_START	0x09C
 #define     REG_40_JSQZ_HW_DONE		0x100
-#define     REG_42_BUS_CONFIG			0x108
+#define     REG_42_BUS_CONFIG		0x108
 
-#define     REG_43_TO_58_INIT_Y_Q		0x10C
-#define     REG_59_TO_74_INIT_C_Q		0x14C
+#define     REG_43_TO_58_INIT_Y_Q	0x10C
+#define     REG_59_TO_74_INIT_C_Q	0x14C
 
 
-// define APIs
 static inline void jsqz_sw_reset(void __iomem *base)
 {
 	writel(0x0, base + REG_36_SW_RESET);
@@ -166,7 +165,6 @@ static inline void jsqz_print_all_regs(struct jsqz_dev *jsqz)
 	dev_dbg(jsqz->dev, "%s: 0x00000108 : %08x\n", __func__, readl(base + REG_42_BUS_CONFIG));
 	dev_dbg(jsqz->dev, "%s: END\n", __func__);
 }
-
 #endif
 
 

@@ -13,6 +13,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/wait.h>
+#include <linux/sched.h>
 //#include "lib/vpul-ds.h"
 #include "npu-log.h"
 #include "npu-common.h"
@@ -222,20 +223,19 @@ int npu_session_NW_CMD_UNLOAD(struct npu_session *session)
 	struct npu_vertex_ctx *vctx;
 	struct npu_vertex *vertex;
 	struct npu_device *device;
+	nw_cmd_e nw_cmd = NPU_NW_CMD_UNLOAD;
 
 	vctx = &(session->vctx);
 	vertex = vctx->vertex;
 	device = container_of(vertex, struct npu_device, vertex);
 
-	if (!npu_device_is_emergency_err(device)) {
-		nw_cmd_e nw_cmd = NPU_NW_CMD_UNLOAD;
-		/* Post unload command */
-		npu_udbg("sending UNLOAD command.\n", session);
-		session->nw_result.result_code = NPU_NW_JUST_STARTED;
-		npu_session_put_nw_req(session, nw_cmd);
-	} else {
+	if (npu_device_is_emergency_err(device))
 		npu_udbg("NPU DEVICE IS EMERGENCY ERROR\n", session);
-	}
+
+	/* Post unload command */
+	npu_udbg("sending UNLOAD command.\n", session);
+	session->nw_result.result_code = NPU_NW_JUST_STARTED;
+	npu_session_put_nw_req(session, nw_cmd);
 
 	return ret;
 }
@@ -297,6 +297,8 @@ int npu_session_open(struct npu_session **session, void *cookie, void *memory)
 
 	(*session)->qbuf_IOFM_idx = -1;
 	(*session)->dqbuf_IOFM_idx = -1;
+
+	(*session)->pid	= task_pid_nr(current);
 
 	return ret;
 p_err:
@@ -1103,14 +1105,14 @@ int npu_session_NW_CMD_STREAMOFF(struct npu_session *session)
 	vertex = vctx->vertex;
 	device = container_of(vertex, struct npu_device, vertex);
 
-	if (!npu_device_is_emergency_err(device)) {
-		npu_udbg("sending STREAM OFF command.\n", session);
-		profile_point1(PROBE_ID_DD_NW_RECEIVED, session->uid, 0, nw_cmd);
-		session->nw_result.result_code = NPU_NW_JUST_STARTED;
-		npu_session_put_nw_req(session, nw_cmd);
-		wait_event(session->wq, session->nw_result.result_code != NPU_NW_JUST_STARTED);
-		profile_point1(PROBE_ID_DD_NW_NOTIFIED, session->uid, 0, nw_cmd);
-	} else {
+	npu_udbg("sending STREAM OFF command.\n", session);
+	profile_point1(PROBE_ID_DD_NW_RECEIVED, session->uid, 0, nw_cmd);
+	session->nw_result.result_code = NPU_NW_JUST_STARTED;
+	npu_session_put_nw_req(session, nw_cmd);
+	wait_event(session->wq, session->nw_result.result_code != NPU_NW_JUST_STARTED);
+	profile_point1(PROBE_ID_DD_NW_NOTIFIED, session->uid, 0, nw_cmd);
+
+	if (npu_device_is_emergency_err(device)) {
 		npu_udbg("NPU DEVICE IS EMERGENCY ERROR !\n", session);
 		npu_udbg("sending CLEAR_CB command.\n", session);
 		npu_session_put_nw_req(session, NPU_NW_CMD_CLEAR_CB);

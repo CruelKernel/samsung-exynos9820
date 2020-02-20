@@ -194,7 +194,8 @@ static void flush_buffer(struct pending_info * info)
     struct pending_queue * buf;
     struct pending_info_queue * pinfo_q;
 
-    if (!cpu_online(info->to)) {
+    tracing_mark_writev('B',1111,"flush_buffer", info->hash);
+    if (!mcps_cpu_online(info->to)) {
         unsigned int lcpu = light_cpu(info->gro);
         info->to = lcpu;
         PRINT_PINFO("INFO->TO CORE OFFLINE SO UPDATED " , info);
@@ -246,6 +247,8 @@ static void flush_buffer(struct pending_info * info)
     unlock_pending_buf(buf);
     pantry_unlock(pantry);
     local_irq_restore(flag);
+
+    tracing_mark_writev('E',1111,"flush_buffer", 0);
 
     if(smp) {
         smp_call_function_single_async(cpu , &pinfo_q->csd);
@@ -353,7 +356,7 @@ int try_to_hqueue(unsigned int hash, unsigned int old , struct sk_buff * skb, u3
     // by this way we can keep order.
     _move_flow(hash, hdrcpu);
     PRINT_MQTCP_HASH_UINT("MOVED TO ", old, hash, (unsigned int)hdrcpu);
-    return 0;
+    return hdrcpu;
 
 }
 
@@ -441,7 +444,9 @@ int pending_migration
     struct pending_info_queue *pinfo_q;
 
     int state;
-    unsigned long flag;
+    int smp = 0;
+
+    tracing_mark_writev('B',1111,"pending_migration", hash);
 
     if (gro) {
         pantry = &per_cpu(mcps_gro_pantries, from);
@@ -453,22 +458,25 @@ int pending_migration
         buf = &pending_packet_bufs[idx];
     }
 
-    local_irq_save(flag);
+    local_irq_disable();
     lock_pending_buf(buf);
     state = buf->state;
     unlock_pending_buf(buf);
-    local_irq_restore(flag);
+    local_irq_enable();
 
-    if(state != 0)
+    if(state != 0) {
+        tracing_mark_writev('E',1111,"pending_migration", 999);
         return -999;
+    }
 
     info = create_pending_info(hash, from , to, idx, gro);
     if(!info) {
+        tracing_mark_writev('E',1111,"pending_migration", ENOMEM);
         return -ENOMEM;
     }
     PRINT_PINFO("PENDING MIGRATION START" ,info);
 
-    local_irq_save(flag);
+    local_irq_disable();
     pantry_lock(pantry);
     lock_pending_buf(buf);
     buf->hash = hash;
@@ -479,21 +487,19 @@ int pending_migration
     push_pending_info(pinfo_q , info);
 
     if (!__test_and_set_bit(NAPI_STATE_SCHED, &pantry->rx_napi_struct.state)) {
-        if(gro) {
-            if (!mcps_gro_ipi_queued(pantry))
-                __napi_schedule_irqoff(&pantry->rx_napi_struct);
-        } else {
-            if (!mcps_ipi_queued(pantry))
-                __napi_schedule_irqoff(&pantry->rx_napi_struct);
-        }
-
+        smp = 1;
     }
 
     unlock_pending_buf(buf);
     pantry_unlock(pantry);
-    local_irq_restore(flag);
+    local_irq_enable();
+
+    if(smp && mcps_cpu_online(from)) {
+        smp_call_function_single_async(pantry->cpu , &pantry->csd);
+    }
 
     PRINT_PINFO("PENDING MIGRATION END" ,info);
+    tracing_mark_writev('E',1111,"pending_migration", hash);
     return 0;
 }
 

@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_bus.h 823751 2019-06-05 11:05:28Z $
+ * $Id: dhd_bus.h 823742 2019-06-05 08:37:45Z $
  */
 
 #ifndef _dhd_bus_h_
