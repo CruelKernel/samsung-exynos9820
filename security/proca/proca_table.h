@@ -24,11 +24,13 @@ void proca_table_init(struct proca_table *table);
 void proca_table_add_task_descr(struct proca_table *table,
 				struct proca_task_descr *descr);
 
-struct proca_task_descr *proca_table_get_by_pid(struct proca_table *table,
-						pid_t pid);
+struct proca_task_descr *proca_table_get_by_task(
+					struct proca_table *table,
+					const struct task_struct *task);
 
-struct proca_task_descr *proca_table_remove_by_pid(struct proca_table *table,
-						   pid_t pid);
+struct proca_task_descr *proca_table_remove_by_task(
+					struct proca_table *table,
+					const struct task_struct *task);
 
 void proca_table_remove_task_descr(struct proca_table *table,
 				   struct proca_task_descr *descr);

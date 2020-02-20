@@ -249,6 +249,53 @@
 
 #define TSMUX_HEX_DBG_CTRL			(TSMUX_HEX_BASE_ADDR + 0xC00)
 
+#ifdef CONFIG_SOC_EXYNOS9820
+#include "cmu_mfc/exynos9820_cmu_mfc.h"
+#endif
+#define MAX_OFFSET_CMU_MFC_SFR		0x8000
+#define TSMUX_CMU_MFC_READL(offset)    \
+	(readl(tsmux_dev->regs_base_cmu_mfc + (offset)))
+
+void tsmux_ioremap_cmu_mfc_sfr(struct tsmux_device *tsmux_dev) {
+	if (tsmux_dev == NULL) {
+		print_tsmux(TSMUX_ERR, "tsmux_dev is NULL\n");
+		return;
+	}
+
+	tsmux_dev->regs_base_cmu_mfc = ioremap(
+		tsmux_cmu_mfc_sfr_list[0].base_pa, MAX_OFFSET_CMU_MFC_SFR);
+	if (tsmux_dev->regs_base_cmu_mfc == NULL)
+		print_tsmux(TSMUX_ERR, "ioremap(tsmux_cmu_mfc_sfr_list[0].base_pa) failed\n");
+}
+
+void tsmux_print_cmu_mfc_sfr(struct tsmux_device *tsmux_dev) {
+	int i;
+	u32 cmu_mfc_sfr;
+
+	if (tsmux_dev == NULL) {
+		print_tsmux(TSMUX_ERR, "tsmux_dev is NULL\n");
+		return;
+	}
+
+	if (tsmux_dev->regs_base_cmu_mfc == NULL) {
+		print_tsmux(TSMUX_ERR, "regs_base_cmu_mfc is null\n");
+		return;
+	}
+
+	print_tsmux(TSMUX_SFR, "tsmux_cmu_mfc_sfr_list_size %d\n", tsmux_cmu_mfc_sfr_list_size);
+	print_tsmux(TSMUX_SFR, "cmu_mfc base addr: offset: value, name\n");
+
+	for (i = 0; i < tsmux_cmu_mfc_sfr_list_size; i++) {
+		cmu_mfc_sfr = TSMUX_CMU_MFC_READL(tsmux_cmu_mfc_sfr_list[i].offset);
+		print_tsmux(TSMUX_SFR, "%.8x: %.8x: %.8x, %s\n",
+			tsmux_cmu_mfc_sfr_list[i].base_pa,
+			tsmux_cmu_mfc_sfr_list[i].offset,
+			cmu_mfc_sfr,
+			tsmux_cmu_mfc_sfr_list[i].sfr_name);
+	}
+
+}
+
 uint32_t tsmux_get_hw_version(struct tsmux_device *tsmux_dev)
 {
 	uint32_t version = 0;

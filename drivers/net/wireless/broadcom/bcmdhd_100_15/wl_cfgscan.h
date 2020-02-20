@@ -103,9 +103,7 @@ int wl_cfg80211_random_mac_enable(struct net_device *dev);
 int wl_cfg80211_random_mac_disable(struct net_device *dev);
 int wl_cfg80211_scan_mac_enable(struct net_device *dev, uint8 *rand_mac, uint8 *rand_mask);
 int wl_cfg80211_scan_mac_disable(struct net_device *dev);
-#if defined(RANDOM_MAC_CONTROL)
 int wl_rand_mac_ctrl(struct net_device *dev, struct bcm_cfg80211 *cfg, bool randmac_enable);
-#endif /* RANDOM_MAC_CONTROL */
 #endif /* SUPPORT_RANDOM_MAC_SCAN */
 
 #ifdef WL_SCHED_SCAN

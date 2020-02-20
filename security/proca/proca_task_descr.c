@@ -40,22 +40,6 @@ struct proca_task_descr *create_proca_task_descr(struct task_struct *task,
 	return task_descr;
 }
 
-struct proca_task_descr *create_unsigned_proca_task_descr(
-						struct task_struct *task)
-{
-	struct proca_task_descr *task_descr = kzalloc(sizeof(*task_descr),
-							GFP_KERNEL);
-	if (unlikely(!task_descr))
-		return NULL;
-
-	task_descr->task = task;
-
-	PROCA_DEBUG_LOG("Task descriptor for unsigned task %d was created\n",
-			task->pid);
-
-	return task_descr;
-}
-
 void destroy_proca_task_descr(struct proca_task_descr *proca_task_descr)
 {
 	if (!proca_task_descr)

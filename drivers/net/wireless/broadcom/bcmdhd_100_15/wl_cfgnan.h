@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.h 850586 2019-11-14 01:49:36Z $
+ * $Id: wl_cfgnan.h 854674 2019-12-10 03:31:41Z $
  */
 
 #ifndef _wl_cfgnan_h_
@@ -679,7 +679,8 @@ extern int wl_cfgnan_set_vars_cbfn(void *ctx, const uint8 *tlv_buf,
 	uint16 type, uint16 len);
 extern int wl_cfgnan_config_eventmask(struct net_device *ndev, struct bcm_cfg80211 *cfg,
 	uint8 event_ind_flag, bool disable_events);
-extern int wl_cfgnan_check_nan_disable_pending(struct bcm_cfg80211 *cfg, bool force_disable);
+extern int wl_cfgnan_check_nan_disable_pending(struct bcm_cfg80211 *cfg,
+	bool force_disable, bool is_sync_reqd);
 extern int wl_cfgnan_start_handler(struct net_device *ndev,
 	struct bcm_cfg80211 *cfg, nan_config_cmd_data_t *cmd_data, uint32 nan_attr_mask);
 extern int wl_cfgnan_stop_handler(struct net_device *ndev, struct bcm_cfg80211 *cfg);

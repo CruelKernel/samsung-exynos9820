@@ -15,6 +15,10 @@ choice
 	config GAF_V5
 		bool "Use GAF structure version 5"
 		help
-		  Default option for kernel with PROCA LSM module.
+		  Default option for kernel with PROCA 2.0-2.1 LSM module.
+	config GAF_V6
+		bool "Use GAF structure version 6"
+		help
+		  Default option for kernel with PROCA 2.2+ LSM module.
 endchoice
 

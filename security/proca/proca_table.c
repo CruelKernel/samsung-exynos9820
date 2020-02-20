@@ -125,19 +125,20 @@ void proca_table_remove_task_descr(struct proca_table *table,
 	spin_unlock_irqrestore(&table->app_name_map_lock, irqsave_flags);
 }
 
-struct proca_task_descr *proca_table_get_by_pid(
-					struct proca_table *table, pid_t pid)
+struct proca_task_descr *proca_table_get_by_task(
+					struct proca_table *table,
+					const struct task_struct *task)
 {
 	struct proca_task_descr *descr;
 	struct proca_task_descr *target_task_descr = NULL;
 	unsigned long hash_key;
 	unsigned long irqsave_flags;
 
-	hash_key = calculate_pid_hash(table, pid);
+	hash_key = calculate_pid_hash(table, task->pid);
 
 	spin_lock_irqsave(&table->pid_map_lock, irqsave_flags);
 	hlist_for_each_entry(descr, &table->pid_map[hash_key], pid_map_node) {
-		if (pid == descr->task->pid) {
+		if (task == descr->task) {
 			target_task_descr = descr;
 			break;
 		}
@@ -147,12 +148,13 @@ struct proca_task_descr *proca_table_get_by_pid(
 	return target_task_descr;
 }
 
-struct proca_task_descr *proca_table_remove_by_pid(
-					struct proca_table *table, pid_t pid)
+struct proca_task_descr *proca_table_remove_by_task(
+				struct proca_table *table,
+				const struct task_struct *task)
 {
 	struct proca_task_descr *target_task_descr = NULL;
 
-	target_task_descr = proca_table_get_by_pid(table, pid);
+	target_task_descr = proca_table_get_by_task(table, task);
 	proca_table_remove_task_descr(table, target_task_descr);
 
 	return target_task_descr;

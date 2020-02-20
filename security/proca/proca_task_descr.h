@@ -21,9 +21,6 @@
 struct proca_task_descr *create_proca_task_descr(struct task_struct *task,
 						 struct proca_identity *ident);
 
-struct proca_task_descr *create_unsigned_proca_task_descr(
-						struct task_struct *task);
-
 void destroy_proca_task_descr(struct proca_task_descr *proca_task_descr);
 
 #endif /* __LINUX_PROCA_H */

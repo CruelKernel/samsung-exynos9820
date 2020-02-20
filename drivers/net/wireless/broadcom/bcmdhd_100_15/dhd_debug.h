@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_debug.h 843815 2019-10-01 12:48:01Z $
+ * $Id: dhd_debug.h 852609 2019-11-26 05:28:02Z $
  */
 
 #ifndef _dhd_debug_h_
@@ -856,4 +856,7 @@ typedef struct _pr_roam_tbl {
 	uint8 id;
 	print_roam_enhance_log_func pr_func;
 } pr_roam_tbl_t;
+
+extern uint32 dhd_dbg_get_fwverbose(dhd_pub_t *dhdp);
+extern void dhd_dbg_set_fwverbose(dhd_pub_t *dhdp, uint32 new_val);
 #endif /* _dhd_debug_h_ */
