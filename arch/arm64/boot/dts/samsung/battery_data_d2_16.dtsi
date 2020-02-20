@@ -1,0 +1,71 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_d2_bc80.dtsi"
+
+/ {
+	fragment@battery {
+		target-path = "/";
+		__overlay__ {
+			battery {
+				battery,vdivider_name;
+			};
+
+			max77705-fuelgauge {
+				fuelgauge,capacity = <0x1130>;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+};
+
+&hsi2c_46 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	samsung,stop-after-trans;
+	samsung,stand-mode;
+	clock-frequency = <100000>;
+
+	mfc-s2miw04-charger@3b {
+		status = "disabled";
+	};
+
+	mfc-charger@3b {
+		compatible = "idt,mfc-charger";
+		reg = <0x3b>;
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&wpc_int &wpc_det>;
+
+		battery,wpc_int = <&gpa3 1 0>;
+		battery,wpc_det = <&gpa2 0 0>;
+		battery,mst_pwr_en = <&expander_gpios 5 0>;
+
+		battery,charger_name = "max77705-charger";
+		battery,fuelgauge_name = "max77705-fuelgauge";
+		battery,wireless_charger_name = "mfc-charger";
+		battery,fod_data = <150 52 142 44 150 30 150 22 155 9 156 7>;
+		battery,fod_data_cv = <150 82 142 74 150 60 150 52 155 39 156 37>;
+		battery,fod_hero_5v_data = <150 2 142 (-6) 150 (-20) 150 (-28) 165 185 156 (-39)>;
+		battery,fod_dream_data = <150 52 142 44 150 (-50) 150 22 155 (-66) 156 7>;
+		battery,fod_dream_cv_data = <150 82 142 74 150 (-20) 150 52 155 (-36) 156 37>;
+		battery,wc_cover_rpp = <0x44>;
+	};
+};
+
+&hsi2c_43 {
+	status = "disabled";
+
+	bc80@55 {
+		status = "disabled";
+	};
+};

@@ -1,0 +1,31 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_d2_bc80.dtsi"
+
+/ {
+};
+
+&hsi2c_43 {
+	status = "okay";
+
+	bc80@55 {
+		compatible = "maxim,bc80";
+		reg = <0x55>;
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0     = <&vd_irq>;
+
+		bc80,irq-gpio = <&gpa3 3 0>;
+		bc80,en-gpio = <&expander_gpios 19 0>;
+	};
+};

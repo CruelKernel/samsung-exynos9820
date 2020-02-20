@@ -1,0 +1,30 @@
+/*
+ * SAMSUNG EXYNOS7885 SoC device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+&mali {
+	interactive_info = <260000 94 0>;
+	gpu_dvfs_table_size = <9 8>; /*<row col>*/
+	/*  8 columns      freq  down   up  stay  mif    little  middle   big  */
+	gpu_dvfs_table = <  702000    78  100   9  2093000 1456000       0 1820000
+		                650000    78   98   5  2093000 1456000       0 2080000
+		                572000    78   98   5  1794000       0       0       0
+		                433000    78   95   1  1352000       0       0       0
+		                377000    78   90   1  1352000       0       0       0
+		                325000    78   85   1  1014000       0       0       0
+		                260000    78   85   1   676000       0       0       0
+		                200000    78   85   1   676000       0       0       0
+		                156000     0   85   1   676000       0       0       0 >;
+	gpu_max_clock = <702000>;
+	gpu_max_clock_limit = <702000>;
+	gpu_min_clock = <156000>;
+	gpu_dvfs_start_clock = <260000>;
+	gpu_dvfs_bl_config_clock = <156000>;
+};
