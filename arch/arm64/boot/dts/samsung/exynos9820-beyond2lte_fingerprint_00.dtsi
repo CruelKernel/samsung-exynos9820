@@ -50,7 +50,7 @@
 				pinctrl-names = "default", "pins_poweron", "pins_poweroff";
 				pinctrl-0 = <&btp_ipc &btp_wuhb &btp_ldo>;
 				pinctrl-1 = <&spi1_bus &spi1_cs_func_high>;
-				pinctrl-2 = <&spi1_bus_sleep &spi1_cs_high>;
+				pinctrl-2 = <&spi1_bus_sleep &spi1_cs>;
 			};
 		};
 	};

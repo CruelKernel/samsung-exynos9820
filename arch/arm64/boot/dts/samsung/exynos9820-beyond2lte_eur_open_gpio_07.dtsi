@@ -95,11 +95,6 @@
 		PIN_IN(gpg2-3, DOWN);	/* VT8M_RST_N */
 	};
 	sleep5: sleep-state {
-		PIN_SLP(gpp0-0, INPUT, DOWN);	/* BTP_SPI_CLK */
-		PIN_SLP(gpp0-1, INPUT, DOWN);	/* BTP_SPI_MOSI */
-		PIN_SLP(gpp0-2, INPUT, DOWN);	/* BTP_SPI_MISO */
-		PIN_SLP(gpp0-3, OUT1, NONE);	/* BTP_SPI_CS */
-
 		PIN_SLP(gpp1-4, PREV, NONE);	/* TSP_SCL_1P8 */
 		PIN_SLP(gpp1-5, PREV, NONE);	/* TSP_SDA_1P8 */
 		PIN_SLP(gpp2-4, INPUT, NONE);	/* GRIP_SCL_1P8 */

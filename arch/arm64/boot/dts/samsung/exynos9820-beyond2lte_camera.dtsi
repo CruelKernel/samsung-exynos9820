@@ -28,6 +28,7 @@
 				position = <0>;	/* Rear:0. Front:1. Rear_sub:2. Secure:3. */
 				id = <0>; /* fimc_is_sensor id */
 				mclk_ch = <0>;
+				use_mclk_share;
 				sensor_i2c_ch = <0>; /* SENSOR_CONTROL_I2C0 */
 
 				rom_type = <2>; /* ROM_TYPE_EEPROM */
@@ -77,6 +78,7 @@
 				position = <2>; /* Rear:0. Front:1, Tele:2 */
 				id = <2>; /* fimc_is_sensor id */
 				mclk_ch = <0>;
+				use_mclk_share;
 				sensor_i2c_ch = <2>; /* SENSOR_CONTROL_I2C2 */
 
 				rom_type = <2>; /* ROM_TYPE_EEPROM */
@@ -181,6 +183,7 @@
 				position = <1>;	/* Rear:0. Front:1. Rear_sub:2. Secure:3. */
 				id = <1>; /* fimc_is_sensor id */
 				mclk_ch = <1>;
+				use_mclk_share;
 				sensor_i2c_ch = <4>; /* SENSOR_CONTROL_I2C4 */
 
 				rom_type = <2>; /* ROM_TYPE_EEPROM */
@@ -219,6 +222,7 @@
 				position = <3>; /* Rear:0. Front:1, Tele:2 */
 				id = <3>; /* fimc_is_sensor id */
 				mclk_ch = <1>;
+				use_mclk_share;
 				sensor_i2c_ch = <2>; /* SENSOR_CONTROL_I2C2 */
 
 				rom_type = <2>; /* ROM_TYPE_EEPROM */
@@ -987,6 +991,7 @@
 		reg = <0x10>; /* 1 bit right shift */
 		id = <0>; /* matching fimc_is_sensor id */
 		setfile = "default";
+		rev_reg = <0x0002 2 0xA002 0xA102>;
 	};
 };
 
@@ -1009,6 +1014,9 @@
 		id = <0 2>;
 		gpio_mcu_reset = <&gpg0 6 0x1>; /* ois reset */
 		gpio_mcu_boot0 = <&gpm29 0 0x1>; /* mcu boot0 */
+		 /* wx_pole, wy_pole, gyro_orientation, tx_pole, ty_pole */
+		ois_gyro_list = <0x01 0x01 0x20 0x00 0x00>;
+		aperture_control_delay = <15 20>;
 	};
 };
 
@@ -1033,6 +1041,7 @@
 		id = <4>; /* matching fimc_is_sensor id */
 		setfile = "setA";
 		status = "okay";
+		rev_reg = <0x0002 2 0xA101>;
 	};
 
 	rear2_eeprom@51 { /* Ultra wide eeprom */
@@ -1091,6 +1100,7 @@
 		reg = <0x10>; /* 1 bit right shift */
 		id = <1>; /* matching fimc_is_sensor id */
 		setfile = "default";
+		rev_reg = <0x0002 2 0xA101>;
 	};
 };
 
@@ -1232,6 +1242,7 @@
 		id = <3>; /* matching fimc_is_sensor id */
 		setfile = "setA";
 		status = "okay";
+		rev_reg = <0x0018 1 0x04>;
 	};
 
 	fimc-is-3m3@2D {
@@ -1239,6 +1250,7 @@
 		reg = <0x2D>; /* 1 bit right shift */
 		id = <2>; /* matching fimc_is_sensor id */
 		setfile = "setA";
+		rev_reg = <0x0002 2 0xA301>;
 	};
 };
 
