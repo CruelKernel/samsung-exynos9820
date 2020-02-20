@@ -208,6 +208,38 @@ static ssize_t modem_ctrl_store(struct device *dev,
 
 static DEVICE_ATTR(modem_ctrl, 0644, modem_ctrl_show, modem_ctrl_store);
 
+static ssize_t detect_time_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct modem_ctl *mc = dev_get_drvdata(dev);
+	struct link_device *ld = get_current_link(mc->iod);
+	struct mem_link_device *mld = to_mem_link_device(ld);
+	
+	return sprintf(buf, "%d\n", mld->not_work_time);
+}
+
+static ssize_t detect_time_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct modem_ctl *mc = dev_get_drvdata(dev);
+	struct link_device *ld = get_current_link(mc->iod);
+	struct mem_link_device *mld = to_mem_link_device(ld);
+	int value;
+
+	sscanf(buf, "%d", &value);
+	if (value < 0 || value > 300) {
+		return -EINVAL;
+	}
+
+	mld->not_work_time = (unsigned int)value;
+	mif_info("set detect_time to: %u sec\n", mld->not_work_time);
+
+	return count;
+}
+
+static DEVICE_ATTR(detect_time, 0644, detect_time_show, detect_time_store);
+
 static void runtime_link_cnt(struct modem_ctl *mc)
 {
 #define LINE_BUFF_SIZE 80
@@ -1001,6 +1033,10 @@ static int s5100_runtime_suspend(struct modem_ctl *mc)
 				gpio_get_value(mc->s5100_gpio_ap_wakeup));
 		mutex_unlock(&ap_status_lock);
 		pm_runtime_mark_last_busy(mc->dev);
+
+		mld->msi_irq_base_enabled = 1;
+		enable_irq(mld->msi_irq_base);
+		
 		return -EBUSY;
 	}
 
@@ -1150,7 +1186,14 @@ static int s5100_runtime_resume(struct modem_ctl *mc)
 
 	mutex_unlock(&ap_status_lock);
 
-	mod_timer(&mld->cp_not_work, jiffies + 5 * 60 * HZ);
+	// using PCIE 1 lane at usual tput
+	if (exynos_pcie_host_v1_lanechange(1, 1)) {
+		mif_info("fail to change PCI lane 1\n");
+	} else {
+		mif_info("change to PCI lane 1\n");
+	}
+
+	mod_timer(&mld->cp_not_work, jiffies + mld->not_work_time * HZ);
 	return 0;
 }
 
@@ -1463,6 +1506,7 @@ int s5100_init_modemctl_device(struct modem_ctl *mc, struct modem_data *pdata)
 	INIT_DELAYED_WORK(&mc->nr2ap_wakeup_work, ap_wakeup_work);
 
 	ret = device_create_file(mc->dev, &dev_attr_modem_ctrl);
+	ret |= device_create_file(mc->dev, &dev_attr_detect_time);
 	if (ret)
 		mif_err("can't create modem_ctrl!!!\n");
 

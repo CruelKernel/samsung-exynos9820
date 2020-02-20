@@ -13,6 +13,8 @@
 #ifndef __EXYNOS_HDCP2_LOG_H__
 #define __EXYNOS_HDCP2_LOG_H__
 
+#include <linux/dp_logger.h>
+
 #undef HDCP_DEBUG
 
 #ifdef HDCP_DEBUG

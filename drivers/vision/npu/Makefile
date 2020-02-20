@@ -3,6 +3,7 @@ obj-y					+= npu-util-liststatemgr.o
 obj-y					+= npu-util-msgidgen.o
 obj-y					+= npu-util-regs.o
 obj-y					+= npu-util-llq.o
+obj-y					+= npu-util-common.o
 obj-y					+= npu-log.o
 obj-y					+= npu-ver.o
 obj-y					+= npu-debug.o

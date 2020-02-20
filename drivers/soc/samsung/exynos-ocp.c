@@ -570,6 +570,11 @@ static int exynos_ocp_cpu_down_callback(unsigned int cpu)
 	return 0;
 }
 
+unsigned int get_ocp_clipped_freq(void)
+{
+	return data->clipped_freq;
+}
+
 /****************************************************************/
 /*			SYSFS INTERFACE				*/
 /****************************************************************/

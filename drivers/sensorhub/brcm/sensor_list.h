@@ -132,7 +132,7 @@ struct sensor_info {
 #define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 7, 7}
 #endif
 #define SENSOR_INFO_PROXIMITY_ALERT			{"proximity_alert_sensor", PROXIMITY_ALERT_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
-#define SENSOR_INFO_PROXIMITY_RAW			{"proximity_raw", PROXIMITY_RAW, false, REPORT_MODE_ON_CHANGE, 1, 0}
+#define SENSOR_INFO_PROXIMITY_RAW			{"proximity_raw", PROXIMITY_RAW, false, REPORT_MODE_ON_CHANGE, 2, 2}
 #define SENSOR_INFO_PROXIMITY_ADC_CALIB		{"proximity_adc_calib", PROXIMITY_ADC_CALIB, false, REPORT_MODE_ON_CHANGE, 6, 0}
 #define SENSOR_INFO_ROTATION_VECTOR			{"rotation_vector_sensor", ROTATION_VECTOR, true, REPORT_MODE_CONTINUOUS, 17, 17}
 #define SENSOR_INFO_GAME_ROTATION_VECTOR		{"game_rotation_vector", GAME_ROTATION_VECTOR, true, REPORT_MODE_CONTINUOUS, 17, 17}

@@ -7,6 +7,7 @@
 #include "fimc-is-type.h"
 #include "fimc-is-framemgr.h"
 #include "fimc-is-subdev-ctrl.h"
+#include "fimc-is-work.h"
 
 #ifndef ENABLE_IS_CORE
 #define CSI_NOTIFY_VSYNC	10
@@ -93,8 +94,9 @@ struct fimc_is_device_csi {
 	struct tasklet_struct		tasklet_csis_str;
 	struct tasklet_struct		tasklet_csis_end;
 	struct tasklet_struct		tasklet_csis_line;
-	struct work_struct		wq_csis_dma[CSI_VIRTUAL_CH_MAX];
 	struct workqueue_struct		*workqueue;
+	struct work_struct		wq_csis_dma[CSI_VIRTUAL_CH_MAX];
+	struct fimc_is_work_list	work_list[CSI_VIRTUAL_CH_MAX];
 	int				pre_dma_enable[CSI_VIRTUAL_CH_MAX];
 
 	/* subdev slots for dma */

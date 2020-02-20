@@ -452,7 +452,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			psy_do_property(battery->pdata->charger_name, get,
 				POWER_SUPPLY_PROP_TEMP, value);
 			battery->dchg_temp = sec_bat_get_direct_chg_temp_adc(battery,
-								value.intval, battery->pdata->adc_check_count);
+						value.intval, battery->pdata->adc_check_count);
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				battery->dchg_temp);
 		}
@@ -601,7 +601,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 				else if (is_hv_wire_type(battery->cable_type) ||
 					(is_pd_wire_type(battery->cable_type) &&
 					battery->pd_max_charge_power >= HV_CHARGER_STATUS_STANDARD1 &&
-					battery->pdic_info.sink_status.available_pdo_num > 1) ||
+					battery->hv_pdo) ||
 					battery->wire_status == SEC_BATTERY_CABLE_PREPARE_TA ||
 					battery->max_charge_power >= HV_CHARGER_STATUS_STANDARD1) /* 12000mW */
 					check_val = AFC_9V_OR_15W;
@@ -613,6 +613,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 	case HV_WC_CHARGER_STATUS:
 		{
 			int check_val = 0;
+#if !defined(CONFIG_BATTERY_SAMSUNG_MHS)
 			if(is_nv_wireless_type(battery->cable_type))
 				check_val = 0;
 			else {
@@ -621,6 +622,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 				else
 					check_val = 1;
 			}
+#endif
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", check_val);
 		}
 		break;
@@ -1141,6 +1143,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 	case BATT_TX_EVENT:
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				battery->tx_event);
+		if (battery->tx_event & BATT_TX_EVENT_WIRELESS_TX_ERR) {
+			/* clear tx all event */
+			sec_bat_set_tx_event(battery, 0, BATT_TX_EVENT_WIRELESS_ALL_MASK);
+		}
 		break;
 	case BATT_EXT_DEV_CHG:
 		break;
@@ -1615,11 +1621,16 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			battery->step_charging_status);
 		break;
 	case DIRECT_CHARGING_IIN:
-		value.intval = SEC_BATTERY_IIN_UA;
-		psy_do_property(battery->pdata->charger_name, get,
-			POWER_SUPPLY_EXT_PROP_MEASURE_INPUT, value);
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
-			value.intval);
+		if (is_pd_apdo_wire_type(battery->wire_status)) {
+			value.intval = SEC_BATTERY_IIN_UA;
+			psy_do_property(battery->pdata->charger_name, get,
+				POWER_SUPPLY_EXT_PROP_MEASURE_INPUT, value);
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+				value.intval);
+		} else {
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+					0);
+		}
 		break;
 #else
 	case DIRECT_CHARGING_STATUS:
@@ -1829,6 +1840,13 @@ ssize_t sec_bat_store_attrs(
 	case FG_CAPACITY:
 		break;
 	case FG_ASOC:
+		if (sscanf(buf, "%d\n", &x) == 1) {
+			if (x >= 0 && x <= 100) {
+				battery->batt_asoc = x;
+				sec_bat_check_battery_health(battery);
+			}
+			ret = count;
+		}
 		break;
 	case AUTH:
 		break;
@@ -2289,6 +2307,7 @@ ssize_t sec_bat_store_attrs(
 				if (prev_battery_cycle < 0) {
 					sec_bat_aging_check(battery);
 				}
+				sec_bat_check_battery_health(battery);
 			}
 			ret = count;
 		}
@@ -2414,6 +2433,10 @@ ssize_t sec_bat_store_attrs(
 			} else {
 				pr_info("@Tx_Mode %s: Set TX Enable (%d)\n", __func__, x);
 				sec_wireless_set_tx_enable(battery, x);
+				if (!x) {
+					/* clear tx all event */
+					sec_bat_set_tx_event(battery, 0, BATT_TX_EVENT_WIRELESS_ALL_MASK);
+				}
 #if defined(CONFIG_BATTERY_CISD)
 				if (x)
 					battery->cisd.tx_data[TX_ON]++;
@@ -3110,7 +3133,9 @@ ssize_t sec_bat_store_attrs(
 	case BATT_TEMP_CONTROL_TEST:
 		if (sscanf(buf, "%10d\n", &x) == 1) {
 			if (x) {
+#if !defined(CONFIG_BATTERY_SAMSUNG_MHS)
 				sec_bat_set_temp_control_test(battery, true);
+#endif
 #if defined(CM_OFFSET)
 				ret = sec_set_param(CM_OFFSET + 2, '1');
 				if (ret < 0) {
@@ -3121,7 +3146,9 @@ ssize_t sec_bat_store_attrs(
 				}
 #endif
 			} else {
+#if !defined(CONFIG_BATTERY_SAMSUNG_MHS)
 				sec_bat_set_temp_control_test(battery, false);
+#endif
 #if defined(CM_OFFSET)
 				ret = sec_set_param(CM_OFFSET + 2, '0');
 				if (ret < 0) {

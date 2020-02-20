@@ -25,6 +25,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/usb/samsung_usb.h>
 #include <linux/mfd/samsung/s2mps18-private.h>
+#include <linux/suspend.h>
 #include <soc/samsung/exynos-pm.h>
 #if defined(CONFIG_TYPEC)
 #include <linux/usb/typec.h>
@@ -426,9 +427,8 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 #endif
 		if (dotg->dwc3_suspended) {
 			pr_info("%s: wait resume completion\n", __func__);
-			reinit_completion(&dotg->resume_cmpl);
 			ret1 = wait_for_completion_timeout(&dotg->resume_cmpl,
-							msecs_to_jiffies(2000));
+							msecs_to_jiffies(5000));
 		}
 
 		platform_device_del(dwc->xhci);
@@ -457,6 +457,7 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 
 	if (on) {
 		wake_lock(&dotg->wakelock);
+		dwc->vbus_state = true;
 		ret = dwc3_otg_phy_enable(fsm, 0, on);
 		if (ret) {
 			dev_err(dwc->dev, "%s: failed to reinitialize core\n",
@@ -473,6 +474,7 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		}
 
 	} else {
+		dwc->vbus_state = false;
 		if (dwc->is_not_vbus_pad)
 			dwc3_gadget_disconnect_proc(dwc);
 		/* avoid missing disconnect interrupt */
@@ -809,6 +811,29 @@ u32 otg_is_connect(void)
 }
 EXPORT_SYMBOL_GPL(otg_is_connect);
 
+static int dwc3_otg_pm_notifier(struct notifier_block *nb,
+		unsigned long action, void *nb_data)
+{
+	struct dwc3_otg *dotg
+		= container_of(nb, struct dwc3_otg, pm_nb);
+
+	switch (action) {
+	case PM_SUSPEND_PREPARE:
+		pr_info("%s suspend prepare\n", __func__);
+		dotg->dwc3_suspended = 1;
+		reinit_completion(&dotg->resume_cmpl);
+		break;
+	case PM_POST_SUSPEND:
+		pr_info("%s post suspend\n", __func__);
+		dotg->dwc3_suspended = 0;
+		complete(&dotg->resume_cmpl);
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_OK;
+}
+
 int dwc3_otg_init(struct dwc3 *dwc)
 {
 	struct dwc3_otg *dotg;
@@ -886,6 +911,8 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	init_completion(&dotg->resume_cmpl);
 	dotg->dp_use_informed = 0;
 	dotg->dwc3_suspended = 0;
+	dotg->pm_nb.notifier_call = dwc3_otg_pm_notifier;
+	register_pm_notifier(&dotg->pm_nb);
 	register_usb_is_connect(otg_is_connect);
 
 	return 0;
@@ -897,6 +924,8 @@ void dwc3_otg_exit(struct dwc3 *dwc)
 
 	if (!dotg->ext_otg_ops)
 		return;
+
+	unregister_pm_notifier(&dotg->pm_nb);
 
 	dwc3_ext_otg_exit(dotg);
 

@@ -101,14 +101,23 @@ static ssize_t
 queue_ra_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long ra_kb;
-	ssize_t ret = queue_var_store(&ra_kb, page, count);
+	ssize_t ret;
+	static const char temp[] = "temporary ";
+	
+	/* IOPP-ra-v2.0.4.14 */
+	if (strncmp(page, temp, sizeof(temp) - 1) != 0)
+		return count;
+	
+	page += sizeof(temp) - 1;
+
+	ret = queue_var_store(&ra_kb, page, count);
 
 	if (ret < 0)
 		return ret;
 
 	q->backing_dev_info->ra_pages = ra_kb >> (PAGE_SHIFT - 10);
 
-	return ret;
+	return count;
 }
 
 static ssize_t queue_max_sectors_show(struct request_queue *q, char *page)
@@ -705,35 +714,35 @@ static ssize_t queue_io_vol_stats_show(struct request_queue *q, char *page)
 			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[1],
 			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[2],
 			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[3],
-			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[0],
-			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[1],
-			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[2],
-			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[3],
+			q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[0],
+			q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[1],
+			q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[2],
+			q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[3],
 			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[0],
 			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[1],
 			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[2],
 			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[3],
-			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[0],
-			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[1],
-			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[2],
-			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[3]);
+			q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[0],
+			q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[1],
+			q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[2],
+			q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[3]);
 
 	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[0] = 0;
 	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[1] = 0;
 	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[2] = 0;
 	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[3] = 0;
-	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[0] = 0;
-	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[1] = 0;
-	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[2] = 0;
-	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[3] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_bytes_cnt[3] = 0;
 	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[0] = 0;
 	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[1] = 0;
 	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[2] = 0;
 	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[3] = 0;
-	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[0] = 0;
-	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[1] = 0;
-	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[2] = 0;
-	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[3] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_bytes_cnt[3] = 0;
 
 	return ret;
 }
@@ -745,6 +754,7 @@ static struct queue_sysfs_entry queue_io_volume_stats_entry = {
 
 static ssize_t queue_io_vol_show(struct request_queue *q, char *page)
 {
+	/* not protect with lock (just for data monitoring) */
 	return sprintf(page, "%d,%lld,%d,%lld\n",
 			q->blk_io_vol[REQ_OP_READ].queuing_rqs,
 			q->blk_io_vol[REQ_OP_READ].queuing_bytes,
@@ -762,28 +772,36 @@ static struct queue_sysfs_entry queue_io_volume_entry = {
 
 static ssize_t queue_tw_stats_show(struct request_queue *q, char *page)
 {
-	struct blk_turbo_write *tw = q->tw;
-	ssize_t ret = -EINVAL;
+	struct blk_turbo_write tw;
+	ssize_t ret;
 
-	if (!tw)
-		return -EPERM;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_inc(&tw->refs);
+	tw.total_issued_mb = q->tw->total_issued_mb;
+	tw.issued_size_cnt[0] = q->tw->issued_size_cnt[0];
+	tw.issued_size_cnt[1] = q->tw->issued_size_cnt[1];
+	tw.issued_size_cnt[2] = q->tw->issued_size_cnt[2];
+	tw.issued_size_cnt[3] = q->tw->issued_size_cnt[3];
+
+	q->tw->total_issued_mb = 0;
+	q->tw->issued_size_cnt[0] = 0;
+	q->tw->issued_size_cnt[1] = 0;
+	q->tw->issued_size_cnt[2] = 0;
+	q->tw->issued_size_cnt[3] = 0;
+	spin_unlock_irq(q->queue_lock);
+
 	ret = sprintf(page, "\"TWMB\":\"%u\","
 			    "\"TWSC2\":\"%u\",\"TWSC3\":\"%u\","
 			    "\"TWSC4\":\"%u\",\"TWSC5\":\"%u\"\n",
-			tw->total_issued_mb,
-			tw->issued_size_cnt[0],
-			tw->issued_size_cnt[1],
-			tw->issued_size_cnt[2],
-			tw->issued_size_cnt[3]);
-
-	tw->total_issued_mb = 0;
-	tw->issued_size_cnt[0] = 0;
-	tw->issued_size_cnt[1] = 0;
-	tw->issued_size_cnt[2] = 0;
-	tw->issued_size_cnt[3] = 0;
-	refcount_dec(&tw->refs);
+			tw.total_issued_mb,
+			tw.issued_size_cnt[0],
+			tw.issued_size_cnt[1],
+			tw.issued_size_cnt[2],
+			tw.issued_size_cnt[3]);
 
 	return ret;
 }
@@ -795,17 +813,21 @@ static struct queue_sysfs_entry queue_tw_stats_entry = {
 
 static ssize_t queue_tw_state_show(struct request_queue *q, char *page)
 {
-	struct blk_turbo_write *tw = q->tw;
-	ssize_t ret = -EINVAL;
+	struct blk_turbo_write tw;
+	ssize_t ret;
 
-	if (!tw)
-		return -EPERM;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_inc(&tw->refs);
+	tw.state = q->tw->state;
+	tw.state_ts = q->tw->state_ts;
+	spin_unlock_irq(q->queue_lock);
+
 	ret = sprintf(page, "%d,%u\n",
-			tw->state,
-			jiffies_to_msecs(jiffies - tw->state_ts));
-	refcount_dec(&tw->refs);
+			tw.state, jiffies_to_msecs(jiffies - tw.state_ts));
 
 	return ret;
 }
@@ -817,38 +839,41 @@ static struct queue_sysfs_entry queue_tw_state_entry = {
 
 static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q, char *page)
 {
-	struct blk_turbo_write *tw = q->tw;
-	ssize_t ret = -EINVAL;
+	struct blk_turbo_write tw;
+	ssize_t ret;
 
-	if (!tw)
-		return -EPERM;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_inc(&tw->refs);
-	ret = sprintf(page, "%d\n", tw->up_threshold_bytes);
-	refcount_dec(&tw->refs);
+	tw.up_threshold_bytes = q->tw->up_threshold_bytes;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", tw.up_threshold_bytes);
 
 	return ret;
 }
 
 static ssize_t queue_tw_up_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
 {
-	struct blk_turbo_write *tw = q->tw;
 	unsigned long val;
-	ssize_t ret = -EINVAL;
-
-	if (!tw)
-		return -EPERM;
-
-	refcount_inc(&tw->refs);
+	ssize_t ret;
 
 	ret = queue_var_store(&val, page, count);
 	if (ret < 0)
 		return ret;
 
-	if (val >= tw->down_threshold_bytes)
-		tw->up_threshold_bytes = val;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_dec(&tw->refs);
+	if (val >= q->tw->down_threshold_bytes)
+		q->tw->up_threshold_bytes = val;
+	spin_unlock_irq(q->queue_lock);
 
 	return ret;
 }
@@ -861,38 +886,41 @@ static struct queue_sysfs_entry queue_tw_up_threshold_bytes_entry = {
 
 static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q, char *page)
 {
-	struct blk_turbo_write *tw = q->tw;
-	ssize_t ret = -EINVAL;
+	struct blk_turbo_write tw;
+	ssize_t ret;
 
-	if (!tw)
-		return -EPERM;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_inc(&tw->refs);
-	ret = sprintf(page, "%d\n", tw->down_threshold_bytes);
-	refcount_dec(&tw->refs);
+	tw.down_threshold_bytes = q->tw->down_threshold_bytes;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", tw.down_threshold_bytes);
 
 	return ret;
 }
 
 static ssize_t queue_tw_down_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
 {
-	struct blk_turbo_write *tw = q->tw;
 	unsigned long val;
-	ssize_t ret = -EINVAL;
-
-	if (!tw)
-		return -EPERM;
-
-	refcount_inc(&tw->refs);
+	ssize_t ret;
 
 	ret = queue_var_store(&val, page, count);
 	if (ret < 0)
 		return ret;
 
-	if (val <= tw->up_threshold_bytes)
-		tw->down_threshold_bytes = val;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_dec(&tw->refs);
+	if (val <= q->tw->up_threshold_bytes)
+		q->tw->down_threshold_bytes = val;
+	spin_unlock_irq(q->queue_lock);
 
 	return ret;
 }
@@ -905,37 +933,40 @@ static struct queue_sysfs_entry queue_tw_down_threshold_bytes_entry = {
 
 static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q, char *page)
 {
-	struct blk_turbo_write *tw = q->tw;
-	ssize_t ret = -EINVAL;
+	struct blk_turbo_write tw;
+	ssize_t ret;
 
-	if (!tw)
-		return -EPERM;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_inc(&tw->refs);
-	ret = sprintf(page, "%d\n", tw->off_delay_ms);
-	refcount_dec(&tw->refs);
+	tw.off_delay_ms = q->tw->off_delay_ms;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", tw.off_delay_ms);
 
 	return ret;
 }
 
 static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q, const char *page, size_t count)
 {
-	struct blk_turbo_write *tw = q->tw;
 	unsigned long val;
-	ssize_t ret = -EINVAL;
-
-	if (!tw)
-		return -EPERM;
-
-	refcount_inc(&tw->refs);
+	ssize_t ret;
 
 	ret = queue_var_store(&val, page, count);
 	if (ret < 0)
 		return ret;
 
-	tw->off_delay_ms = val;
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
 
-	refcount_dec(&tw->refs);
+	q->tw->off_delay_ms = val;
+	spin_unlock_irq(q->queue_lock);
 
 	return ret;
 }

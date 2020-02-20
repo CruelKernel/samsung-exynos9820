@@ -479,8 +479,8 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	/* Get USB3.0 PHY to tune the PHY */
 	if (parent) {
 		xhci->shared_hcd->phy = devm_phy_get(parent, "usb3-phy");
-		if (IS_ERR_OR_NULL(hcd->phy)) {
-			hcd->phy = NULL;
+		if (IS_ERR_OR_NULL(xhci->shared_hcd->phy)) {
+			xhci->shared_hcd->phy = NULL;
 			dev_err(&pdev->dev,
 				"%s: failed to get phy\n", __func__);
 		}

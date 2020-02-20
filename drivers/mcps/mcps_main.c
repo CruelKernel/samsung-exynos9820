@@ -17,19 +17,19 @@ int create_mcps(void);
 void release_mcps(void);
 
 int mcps_enable __read_mostly = 0;
-module_param(mcps_enable , int , 0644);
+module_param(mcps_enable , int , 0640);
 
 int mcps_pantry_max_capability __read_mostly = 30000;
-module_param(mcps_pantry_max_capability , int , 0644);
+module_param(mcps_pantry_max_capability , int , 0640);
 int mcps_pantry_quota __read_mostly = 300;
-module_param(mcps_pantry_quota , int , 0644);
+module_param(mcps_pantry_quota , int , 0640);
 
 unsigned int num_mcps_dev __read_mostly = 1;
-module_param(num_mcps_dev , int , 0644);
+module_param(num_mcps_dev , int , 0640);
 
 #ifdef CONFIG_MCTCP_DEBUG_PRINTK
 int mcps_print_BBB __read_mostly = 0;
-module_param(mcps_print_BBB , int , 0644);
+module_param(mcps_print_BBB , int , 0640);
 #endif
 
 DEFINE_PER_CPU_ALIGNED(struct mcps_pantry , mcps_pantries);
@@ -70,7 +70,7 @@ void mcps_do_ipi_and_irq_enable(struct mcps_pantry *pantry)
 
         while(next) {
             struct mcps_pantry *temp = next->ipi_next;
-            if(cpu_online(next->cpu)) {
+            if(mcps_cpu_online(next->cpu)) {
                 PRINT_DO_IPI(next->cpu);
 
                 smp_call_function_single_async(next->cpu , &next->csd);
@@ -168,6 +168,25 @@ static int enqueue_to_pantry(struct sk_buff *skb, int cpu)
     local_irq_save(flags); //save register information into flags and disable irq (local_irq_disabled)
 
     pantry_lock(pantry);
+
+    // hp off.
+    if(pantry->cpu == NR_CPUS) {
+        int hdr_cpu = 0;
+        pantry_unlock(pantry);
+        local_irq_restore(flags);
+
+        hdr_cpu = try_to_hqueue(skb->hash, cpu, skb, MCPS_NON_GRO_DEVICE);
+        cpu = hdr_cpu;
+        if(hdr_cpu < 0) {
+            return NET_RX_SUCCESS;
+        } else {
+            pantry = &per_cpu(mcps_pantries, hdr_cpu);
+
+            local_irq_save(flags);
+            pantry_lock(pantry);
+        }
+    }
+
     qlen = skb_queue_len(&pantry->input_pkt_queue);
     if (qlen <= mcps_pantry_max_capability) {
         if (qlen) {
@@ -257,10 +276,22 @@ EXPORT_SYMBOL(mcps_try_skb);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0))
 int mcps_cpu_startup_callback(unsigned int ocpu)
 {
-    unsigned int oldcpu = ocpu;
+    struct mcps_pantry *pantry = &per_cpu(mcps_pantries, ocpu);
+    tracing_mark_writev('B',1111,"mcps_cpu_online", ocpu);
 
-    hotplug_on(oldcpu, 0 , 0);
+    local_irq_disable();
+    pantry_lock(pantry);
+    pantry->cpu = ocpu;
+    pantry_unlock(pantry);
+    local_irq_enable();
 
+    hotplug_on(ocpu, 0 , MCPS_NON_GRO_DEVICE);
+
+    tracing_mark_writev('E',1111,"mcps_cpu_online", ocpu);
+
+    mcps_gro_cpu_startup_callback(ocpu);
+
+    cpumask_set_cpu(ocpu, mcps_cpu_online_mask);
     return 0;
 }
 
@@ -274,11 +305,17 @@ int mcps_cpu_teardown_callback(unsigned int ocpu)
     bool needsched = false;
     struct list_head pinfo_queue;
 
+    cpumask_clear_cpu(ocpu, mcps_cpu_online_mask);
+
+    tracing_mark_writev('B',1111,"mcps_cpu_offline", ocpu);
     skb_queue_head_init(&queue);
     INIT_LIST_HEAD(&pinfo_queue);
 
     cpu = light_cpu(0);
-    cpu = cpu < NR_CPUS ? cpu : 0;
+    if(cpu == ocpu) {
+        cpu = 0;
+    }
+
     pantry = &per_cpu(mcps_pantries, cpu);
     oldpantry = &per_cpu(mcps_pantries, oldcpu);
 
@@ -331,14 +368,17 @@ int mcps_cpu_teardown_callback(unsigned int ocpu)
         splice_pending_info_2cpu(&pinfo_queue , cpu , 0);
     }
 
-    if (needsched && !__test_and_set_bit(NAPI_STATE_SCHED, &pantry->rx_napi_struct.state)) {
-        if (!mcps_ipi_queued(pantry))
-            __napi_schedule_irqoff(&pantry->rx_napi_struct);
-    }
+    needsched = (needsched && !__test_and_set_bit(NAPI_STATE_SCHED, &pantry->rx_napi_struct.state));
 
     pantry_unlock(pantry);
     local_irq_enable();
 
+    if(needsched && mcps_cpu_online(cpu)) {
+        smp_call_function_single_async(pantry->cpu , &pantry->csd);
+    }
+    tracing_mark_writev('E',1111,"mcps_cpu_offline", cpu);
+
+    mcps_gro_cpu_teardown_callback(ocpu);
     return 0;
 }
 #else
@@ -355,6 +395,8 @@ int mcps_cpu_callback(struct notifier_block *notifier , unsigned long action, vo
     bool needsched = false;
     struct list_head pinfo_queue;
 
+    mcps_gro_cpu_callback(notifier, action, ocpu);
+
     skb_queue_head_init(&queue);
     INIT_LIST_HEAD(&pinfo_queue);
 
@@ -365,7 +407,10 @@ int mcps_cpu_callback(struct notifier_block *notifier , unsigned long action, vo
         return NOTIFY_OK;
 
     cpu = light_cpu(0);
-    cpu = cpu < NR_CPUS ? cpu : 0;
+    if(cpu == ocpu) {
+        cpu = 0;
+    }
+
     pantry = &per_cpu(mcps_pantries, cpu);
     oldpantry = &per_cpu(mcps_pantries, oldcpu);
 

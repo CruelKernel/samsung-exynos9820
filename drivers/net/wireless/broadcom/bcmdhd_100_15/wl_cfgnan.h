@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.h 840095 2019-09-10 08:21:07Z $
+ * $Id: wl_cfgnan.h 830995 2019-07-19 05:49:30Z $
  */
 
 #ifndef _wl_cfgnan_h_
@@ -744,6 +744,7 @@ void wl_cfgnan_data_set_peer_dp_state(struct bcm_cfg80211 *cfg,
 int wl_cfgnan_terminate_directed_rtt_sessions(struct net_device *ndev, struct bcm_cfg80211 *cfg);
 void wl_cfgnan_reset_geofence_ranging(struct bcm_cfg80211 *cfg,
 	nan_ranging_inst_t * rng_inst, int sched_reason);
+void wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd_pub_t *dhd, int sched_reason);
 void wl_cfgnan_process_range_report(struct bcm_cfg80211 *cfg,
 	wl_nan_ev_rng_rpt_ind_t *range_res);
 #endif /* RTT_SUPPORT */

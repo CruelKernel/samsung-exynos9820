@@ -45,4 +45,10 @@ int init_mcps_debug_manager(void) {}
 int release_mcps_debug_manager(void) {}
 void dump(struct eye * flow) {}
 #endif
+
+#ifdef CONFIG_MCPS_DEBUG_SYSTRACE
+extern void tracing_mark_writev(char sig, int pid, char *func, int value);
+#else
+#define tracing_mark_writev(sig, pid, func, value){}
+#endif
 #endif //__MCPS_DEBUG_H__

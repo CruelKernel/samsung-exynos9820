@@ -1158,6 +1158,7 @@ static ssize_t disk_discard_alignment_show(struct device *dev,
 	return sprintf(buf, "%d\n", queue_discard_alignment(disk->queue));
 }
 
+/* IOPP-bigdata-v2.0.4.14 */
 #undef DISCARD
 
 #define DISCARD	(WRITE + 1)
@@ -1218,6 +1219,7 @@ static ssize_t disk_ios_show(struct device *dev,
 	return ret;
 }
 
+/* IOPP-iomon-v1.0.4.14 */
 #define SEC2MB(x) ((unsigned long)((x) / 2 / 1024))
 static ssize_t iomon_show(struct device *dev, 
 			  struct device_attribute *attr, 
@@ -1720,6 +1722,7 @@ static const struct file_operations proc_diskstats_operations = {
 	.release	= seq_release,
 };
 
+/* IOPP-iod-v1.0.4.14 */
 #define PG2KB(x) ((unsigned long)((x) << (PAGE_SHIFT - 10)))
 static int iostats_show(struct seq_file *seqf, void *v)
 {

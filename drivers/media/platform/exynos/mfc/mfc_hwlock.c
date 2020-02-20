@@ -669,6 +669,8 @@ int mfc_just_run(struct mfc_dev *dev, int new_ctx_index)
 	unsigned int ret = 0;
 	int need_cache_flush = 0;
 
+	atomic_inc(&dev->hw_run_cnt);
+
 	if (ctx->state == MFCINST_RUNNING)
 		mfc_clean_ctx_int_flags(ctx);
 
@@ -770,8 +772,8 @@ void mfc_hwlock_handler_irq(struct mfc_dev *dev, struct mfc_ctx *curr_ctx,
 
 			spin_unlock_irqrestore(&dev->hwlock.lock, flags);
 
-			mfc_release_hwlock_ctx(curr_ctx);
 			mfc_wake_up_ctx(curr_ctx, reason, err);
+			mfc_release_hwlock_ctx(curr_ctx);
 			queue_work(dev->butler_wq, &dev->butler_work);
 		} else {
 			mfc_debug(2, "No preempt_ctx and no waiting module\n");
@@ -784,8 +786,8 @@ void mfc_hwlock_handler_irq(struct mfc_dev *dev, struct mfc_ctx *curr_ctx,
 
 				spin_unlock_irqrestore(&dev->hwlock.lock, flags);
 
-				mfc_release_hwlock_ctx(curr_ctx);
 				mfc_wake_up_ctx(curr_ctx, reason, err);
+				mfc_release_hwlock_ctx(curr_ctx);
 				queue_work(dev->butler_wq, &dev->butler_work);
 			} else {
 				mfc_debug(2, "There is a ctx to run\n");

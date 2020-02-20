@@ -42,6 +42,12 @@ const char *sec_blkops_dbg_type_names[NR_F2FS_SEC_DBG_ENTRY] = {
 };
 #endif
 
+const char *sec_fua_mode_names[NR_F2FS_SEC_FUA_MODE] = {
+	"NONE",
+	"ROOT",
+	"ALL",
+};
+
 struct f2fs_attr {
 	struct attribute attr;
 	ssize_t (*show)(struct f2fs_attr *, struct f2fs_sb_info *, char *);
@@ -507,6 +513,17 @@ static ssize_t f2fs_sbi_show(struct f2fs_attr *a,
 			"DEFWRITE", sbi->s_sec_defrag_writes_kb,
 			"NUMAPP",   sbi->s_sec_num_apps,
 			"CAPAPP",   sbi->s_sec_capacity_apps_kb);
+	} else if (!strcmp(a->attr.name, "sec_fua_mode")) {
+		int len = 0, i;
+		for (i = 0; i < NR_F2FS_SEC_FUA_MODE; i++) {
+			if (i == sbi->s_sec_cond_fua_mode)
+				len += snprintf(buf, PAGE_SIZE, "[%s] ", 
+						sec_fua_mode_names[i]);
+			else
+				len += snprintf(buf, PAGE_SIZE, "%s ", 
+						sec_fua_mode_names[i]);
+		}
+		return len;
 	} else if (!strcmp(a->attr.name, "sec_stats")) {
 		return f2fs_sec_stats_show(sbi, buf);
 	}
@@ -618,6 +635,16 @@ out:
 		sbi->s_sec_defrag_writes_kb = 0; 
 		sbi->s_sec_num_apps = 0; 
 		sbi->s_sec_capacity_apps_kb = 0; 
+		return count;
+	} else if (!strcmp(a->attr.name, "sec_fua_mode")) {
+		const char *mode= strim((char *)buf);
+		int idx;
+
+		for (idx = 0; idx < NR_F2FS_SEC_FUA_MODE; idx++) {
+			if(!strcmp(mode, sec_fua_mode_names[idx]))
+				sbi->s_sec_cond_fua_mode = idx;
+		}
+
 		return count;
 	}
 
@@ -841,6 +868,7 @@ F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_defrag_writes_kb, s_sec_defrag_writes_k
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_num_apps, s_sec_num_apps);
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_capacity_apps_kb, s_sec_capacity_apps_kb);
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_defrag_stat, s_sec_part_best_extents);
+F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_fua_mode, s_sec_cond_fua_mode);
 F2FS_GENERAL_RO_ATTR(dirty_segments);
 F2FS_GENERAL_RO_ATTR(lifetime_write_kbytes);
 F2FS_GENERAL_RO_ATTR(sec_fs_stat);
@@ -906,6 +934,7 @@ static struct attribute *f2fs_attrs[] = {
 	ATTR_LIST(sec_num_apps),
 	ATTR_LIST(sec_capacity_apps_kb),
 	ATTR_LIST(sec_defrag_stat),
+	ATTR_LIST(sec_fua_mode),
 #ifdef CONFIG_F2FS_FAULT_INJECTION
 	ATTR_LIST(inject_rate),
 	ATTR_LIST(inject_type),

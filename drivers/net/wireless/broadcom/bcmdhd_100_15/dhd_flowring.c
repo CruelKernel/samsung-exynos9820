@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_flowring.c 808473 2019-03-07 07:35:30Z $
+ * $Id: dhd_flowring.c 841874 2019-09-19 08:31:42Z $
  */
 
 #include <typedefs.h>
@@ -1223,7 +1223,8 @@ int dhd_flow_prio_map(dhd_pub_t *dhd, uint8 *map, bool set)
 		*map = iovbuf[0];
 		return BCME_OK;
 	}
-	len = bcm_mkiovar("bus:fl_prio_map", (char *)map, 4, (char*)iovbuf, sizeof(iovbuf));
+	len = bcm_mkiovar("bus:fl_prio_map", (char *)map, sizeof(uint8),
+		(char*)iovbuf, sizeof(iovbuf));
 	if (len == 0) {
 		return BCME_BUFTOOSHORT;
 	}

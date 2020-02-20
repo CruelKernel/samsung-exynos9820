@@ -14,6 +14,7 @@
 #define __PCIE_EXYNOS_HOST_V1_H
 
 #define MAX_TIMEOUT		2400	/* about 24 ms */
+#define MAX_TIMEOUT_LANECHANGE  10000
 #define ID_MASK			0xffff
 #define TPUT_THRESHOLD		150
 #define MAX_RC_NUM		2
@@ -206,6 +207,7 @@ struct exynos_pcie {
 #define PM_CAP_OFFSET			0x40
 #define PCIE_CAP_OFFSET			0x70
 #define PCIE_LINK_CTRL_STAT		0x80
+#define PCIE_CAP_NEGO_LINK_WIDTH_MASK	0x3f
 #define PCI_EXP_LNKCAP_MLW_X1		(0x1 << 4)
 #define PCI_EXP_LNKCAP_L1EL_64USEC	(0x7 << 15)
 #define PCI_EXP_LNKCTL2_TLS		0xf
@@ -246,6 +248,10 @@ struct exynos_pcie {
 
 #define PCIE_LINK_WIDTH_SPEED_CONTROL	0x80C
 #define PORT_LOGIC_SPEED_CHANGE		(0x1 << 17)
+
+#define MULTI_LANE_CONTROL_OFF		0x8C0
+#define TARGET_LINK_WIDTH_MASK		0xffffffc0
+#define DIRECT_LINK_WIDTH_CHANGE_MASK	0x40
 
 #define PCIE_ATU_VIEWPORT		0x900
 #define PCIE_ATU_REGION_INBOUND		(0x1 << 31)

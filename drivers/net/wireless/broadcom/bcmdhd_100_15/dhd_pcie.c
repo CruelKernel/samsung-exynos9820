@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie.c 828851 2019-07-05 03:55:45Z $
+ * $Id: dhd_pcie.c 842878 2019-09-25 05:47:28Z $
  */
 
 /* include files */
@@ -11191,7 +11191,7 @@ dhd_pcie_dump_wrapper_regs(dhd_pub_t *dhd)
 	DHD_ERROR(("%s: Master wrapper Reg\n", __FUNCTION__));
 
 	if (si_setcore(sih, PCIE2_CORE_ID, 0) != NULL) {
-		for (i = 0; i < sizeof(wrapper_dump_list) / 4; i++) {
+		for (i = 0; i < (uint32)sizeof(wrapper_dump_list) / 4; i++) {
 			val = si_wrapperreg(sih, wrapper_dump_list[i], 0, 0);
 			DHD_ERROR(("sbreg: addr:0x%x val:0x%x\n", wrapper_dump_list[i], val));
 		}
@@ -11199,7 +11199,7 @@ dhd_pcie_dump_wrapper_regs(dhd_pub_t *dhd)
 
 	if ((cr4regs = si_setcore(sih, ARMCR4_CORE_ID, 0)) != NULL) {
 		DHD_ERROR(("%s: ARM CR4 wrapper Reg\n", __FUNCTION__));
-		for (i = 0; i < sizeof(wrapper_dump_list) / 4; i++) {
+		for (i = 0; i < (uint32)sizeof(wrapper_dump_list) / 4; i++) {
 			val = si_wrapperreg(sih, wrapper_dump_list[i], 0, 0);
 			DHD_ERROR(("sbreg: addr:0x%x val:0x%x\n", wrapper_dump_list[i], val));
 		}

@@ -977,6 +977,28 @@ out_power_off:
 	input_info(true, &client->dev, "%s end\n", __func__);
 }
 
+static void wac_i2c_table_swap_reply(struct wacom_i2c *wac_i2c, char *data)
+{
+	u8 table_id;
+
+	table_id = data[3];
+
+	if (table_id == 1) {
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_DEX_STATION)
+			wac_i2c->dp_connect_state = true;
+
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_KBD_COVER)
+			wac_i2c->kbd_cur_conn_state = true;
+	} else if (!table_id) {
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_DEX_STATION)
+			wac_i2c->dp_connect_state = false;
+
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_KBD_COVER)
+			wac_i2c->kbd_cur_conn_state = false;
+	}
+
+}
+
 static void wacom_i2c_reply_handler(struct wacom_i2c *wac_i2c, char *data)
 {
 	char pack_sub_id;
@@ -988,6 +1010,9 @@ static void wacom_i2c_reply_handler(struct wacom_i2c *wac_i2c, char *data)
 	pack_sub_id = data[1];
 
 	switch (pack_sub_id) {
+	case SWAP_PACKET:
+		wac_i2c_table_swap_reply(wac_i2c, data);
+		break;
 	case ELEC_TEST_PACKET:
 		wac_i2c->check_elec++;
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
@@ -2182,23 +2207,28 @@ int wacom_fw_update(struct wacom_i2c *wac_i2c, u8 fw_update_way, bool bforced)
 		   wac_i2c->fw_ver_ic, wac_i2c->fw_ver_bin);
 
 	if (wac_i2c->pdata->bringup == 1) {
-		input_info(true, &client->dev,
-			   "bringup. do not update\n", __func__);
+		input_info(true, &client->dev, "bringup. do not update\n");
 		wac_i2c->update_status = FW_UPDATE_FAIL;
 		goto out_update_fw;
 	}
 
 	if (wac_i2c->pdata->bringup == 3) {
-		input_info(true, &client->dev,
-			   "bringup. force update\n", __func__);
+		input_info(true, &client->dev, "bringup. force update\n");
 		bforced = true;
 	}
 
 	/* If FFU firmware version is lower than IC's version, do not run update routine */
 	if (fw_update_way == FW_FFU && fw_ver_ic >= wac_i2c->fw_ver_bin) {
-		input_info(true, &client->dev, "FFU. update condition is failed\n", __func__);
-		wac_i2c->update_status = FW_UPDATE_FAIL;
-		goto out_update_fw;
+		input_info(true, &client->dev, "FFU. update is skipped\n");
+		wac_i2c->update_status = FW_UPDATE_PASS;
+
+		wacom_i2c_unload_fw(wac_i2c);
+		wacom_enable_irq(wac_i2c, true);
+		wacom_enable_pdct_irq(wac_i2c, true);
+		mutex_unlock(&wac_i2c->update_lock);
+
+		wac_i2c->probe_done = true;
+		return 0;
 	}
 
 	if (!bforced) {
@@ -2332,9 +2362,106 @@ end_fw_update:
 #endif
 }
 
-static void wacom_usb_typec_work(struct work_struct *work)
+#if defined(CONFIG_MUIC_SUPPORT_KEYBOARDDOCK)
+static void wac_i2c_kbd_work(struct work_struct *work)
 {
-	struct wacom_i2c *wac_i2c = container_of(work, struct wacom_i2c, usb_typec_work.work);
+	struct wacom_i2c *wac_i2c = container_of(work, struct wacom_i2c, kbd_work);
+	char data;
+	int ret;
+
+	if (wac_i2c->kbd_conn_state == wac_i2c->kbd_cur_conn_state) {
+		input_info(true, &wac_i2c->client->dev, "%s: already %sconnected\n",
+			   __func__, wac_i2c->kbd_conn_state ? "" : "dis");
+		return;
+	}
+
+	input_info(true, &wac_i2c->client->dev, "%s: %d\n", __func__,
+		   wac_i2c->kbd_conn_state);
+
+	if (!wac_i2c->power_enable) {
+		input_err(true, &wac_i2c->client->dev,
+				"%s: powered off\n", __func__);
+		return;
+	}
+
+	if (wake_lock_active(&wac_i2c->fw_wakelock)) {
+		input_err(true, &wac_i2c->client->dev,
+			   "%s: fw update is running\n", __func__);
+		return;
+	}
+
+	data = COM_SAMPLERATE_STOP;
+	ret = wacom_i2c_send(wac_i2c, &data, 1, WACOM_I2C_MODE_NORMAL);
+	if (ret != 1) {
+		input_err(true, &wac_i2c->client->dev,
+			  "%s: failed to send stop cmd %d\n",
+			  __func__, ret);
+		return;
+	}
+	wac_i2c->samplerate_state = false;
+	msleep(50);
+
+	if (wac_i2c->kbd_conn_state)
+		data = COM_SPECIAL_COMPENSATION;
+	else
+		data = COM_NORMAL_COMPENSATION;
+
+	ret = wacom_i2c_send(wac_i2c, &data, 1, WACOM_I2C_MODE_NORMAL);
+	if (ret != 1) {
+		input_err(true, &wac_i2c->client->dev,
+			  "%s: failed to send table swap cmd %d\n",
+			  __func__, ret);
+	}
+
+	data = COM_SAMPLERATE_STOP;
+	ret = wacom_i2c_send(wac_i2c, &data, 1, WACOM_I2C_MODE_NORMAL);
+	if (ret != 1) {
+		input_err(true, &wac_i2c->client->dev,
+			  "%s: failed to send stop cmd %d\n",
+			  __func__, ret);
+		return;
+	}
+
+	msleep(50);
+
+	data = COM_SAMPLERATE_133;
+	ret = wacom_i2c_send(wac_i2c, &data, 1, WACOM_I2C_MODE_NORMAL);
+	if (ret != 1) {
+		input_err(true, &wac_i2c->client->dev,
+			  "%s: failed to send start cmd, %d\n",
+			  __func__, ret);
+		return;
+	}
+	wac_i2c->samplerate_state = true;
+
+	input_info(true, &wac_i2c->client->dev, "%s: %s\n",
+			__func__, wac_i2c->kbd_conn_state ? "on" : "off");
+}
+
+static int wacom_i2c_keyboard_notification_cb(struct notifier_block *nb,
+					      unsigned long action, void *data)
+{
+	struct wacom_i2c *wac_i2c = container_of(nb, struct wacom_i2c, kbd_nb);
+	int state = !!action;
+
+	if (wac_i2c->kbd_conn_state == state)
+		goto out;
+
+	cancel_work_sync(&wac_i2c->kbd_work);
+	wac_i2c->kbd_conn_state = state;
+	input_info(true, &wac_i2c->client->dev, "%s: current %d change to %d\n",
+		   __func__, wac_i2c->kbd_cur_conn_state, state);
+	schedule_work(&wac_i2c->kbd_work);
+
+out:
+	return NOTIFY_DONE;
+}
+#endif
+
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+static void wacom_i2c_usb_typec_work(struct work_struct *work)
+{
+	struct wacom_i2c *wac_i2c = container_of(work, struct wacom_i2c, typec_work);
 	char data[5] = { 0 };
 	int ret;
 
@@ -2378,8 +2505,6 @@ static void wacom_usb_typec_work(struct work_struct *work)
 		return;
 	}
 
-	msleep(30);
-
 	data[0] = COM_SAMPLERATE_STOP;
 	ret = wacom_i2c_send(wac_i2c, &data[0], 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
@@ -2388,6 +2513,8 @@ static void wacom_usb_typec_work(struct work_struct *work)
 			  __func__, ret);
 		return;
 	}
+
+	msleep(50);
 
 	data[0] = COM_SAMPLERATE_133;
 	ret = wacom_i2c_send(wac_i2c, &data[0], 1, WACOM_I2C_MODE_NORMAL);
@@ -2403,8 +2530,8 @@ static void wacom_usb_typec_work(struct work_struct *work)
 			__func__, wac_i2c->dp_connect_cmd ? "on" : "off");
 }
 
-static int wacom_usb_typec_notification_cb(struct notifier_block *nb,
-		unsigned long action, void *data)
+static int wacom_i2c_usb_typec_notification_cb(struct notifier_block *nb,
+					       unsigned long action, void *data)
 {
 	struct wacom_i2c *wac_i2c = container_of(nb, struct wacom_i2c, typec_nb);
 	CC_NOTI_TYPEDEF usb_typec_info = *(CC_NOTI_TYPEDEF *)data;
@@ -2433,32 +2560,71 @@ static int wacom_usb_typec_notification_cb(struct notifier_block *nb,
 		goto out;
 	}
 
-	cancel_delayed_work(&wac_i2c->usb_typec_work);
+	cancel_work(&wac_i2c->typec_work);
 	wac_i2c->dp_connect_cmd = usb_typec_info.sub1;
-	schedule_delayed_work(&wac_i2c->usb_typec_work, msecs_to_jiffies(1));
+	schedule_work(&wac_i2c->typec_work);
 out:
 	return 0;
 }
+#endif
 
-static void wacom_usb_typec_nb_register_work(struct work_struct *work)
+static void wacom_i2c_nb_register_work(struct work_struct *work)
 {
 	struct wacom_i2c *wac_i2c = container_of(work, struct wacom_i2c,
-							typec_nb_reg_work.work);
+							nb_reg_work.work);
+	u32 table_swap = wac_i2c->pdata->table_swap;
+	u32 count = 0;
 	int ret;
-	static int count;
 
-	if (!wac_i2c || count > 100)
-		return;
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+	if (table_swap == TABLE_SWAP_DEX_STATION)
+		INIT_WORK(&wac_i2c->typec_work, wacom_i2c_usb_typec_work);
+#endif
+#ifdef CONFIG_MUIC_SUPPORT_KEYBOARDDOCK
+	if (table_swap == TABLE_SWAP_KBD_COVER)
+		INIT_WORK(&wac_i2c->kbd_work, wac_i2c_kbd_work);
+#endif
 
-	ret = manager_notifier_register(&wac_i2c->typec_nb,
-					wacom_usb_typec_notification_cb,
-					MANAGER_NOTIFY_CCIC_WACOM);
-	if (ret) {
+	do {
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+		if (table_swap == TABLE_SWAP_DEX_STATION) {
+			static bool manager_flag = false;
+
+			if (!manager_flag) {
+				ret = manager_notifier_register(&wac_i2c->typec_nb,
+								wacom_i2c_usb_typec_notification_cb,
+								MANAGER_NOTIFY_CCIC_WACOM);
+				if (!ret) {
+					manager_flag = true;
+					input_info(true, &wac_i2c->client->dev,
+						  "%s: typec notifier register success\n",
+						  __func__);
+					break;
+				}
+			}
+		}
+#endif
+#ifdef CONFIG_MUIC_SUPPORT_KEYBOARDDOCK
+		if (table_swap == TABLE_SWAP_KBD_COVER) {
+			static bool kbd_flag = false;
+
+			if (!kbd_flag) {
+				ret = keyboard_notifier_register(&wac_i2c->kbd_nb,
+								 wacom_i2c_keyboard_notification_cb,
+								 KEYBOARD_NOTIFY_DEV_WACOM);
+				if (!ret) {
+					kbd_flag = true;
+					input_info(true, &wac_i2c->client->dev,
+						  "%s: kbd notifier register success\n",
+						  __func__);
+					break;
+				}
+			}
+		}
+#endif
 		count++;
-		schedule_delayed_work(&wac_i2c->typec_nb_reg_work, msecs_to_jiffies(10));
-	} else {
-		input_err(true, &wac_i2c->client->dev, "%s: success\n", __func__);
-	}
+		msleep(30);
+	} while (count < 100);
 }
 
 static int wacom_request_gpio(struct i2c_client *client,
@@ -2673,7 +2839,12 @@ static struct wacom_g5_platform_data *wacom_parse_dt(struct i2c_client *client)
 
 	pdata->use_garage = of_property_read_bool(np, "wacom,use_garage");
 
-	pdata->table_swap = of_property_read_bool(np, "wacom,table_swap_for_dex_station");
+	ret = of_property_read_u32(np, "wacom,table_swap", &pdata->table_swap);
+	if (ret) {
+		input_err(true, &client->dev,
+			  "failed to read module_ver %d\n", ret);
+		pdata->table_swap = 0;
+	}
 
 	pdata->use_vddio = of_property_read_bool(np, "vddio-supply");
 
@@ -2864,10 +3035,8 @@ static int wacom_i2c_probe(struct i2c_client *client,
 	device_init_wakeup(&client->dev, true);
 
 	if (wac_i2c->pdata->table_swap) {
-		INIT_DELAYED_WORK(&wac_i2c->usb_typec_work, wacom_usb_typec_work);
-		INIT_DELAYED_WORK(&wac_i2c->typec_nb_reg_work,
-					wacom_usb_typec_nb_register_work);
-		schedule_delayed_work(&wac_i2c->typec_nb_reg_work, msecs_to_jiffies(10));
+		INIT_DELAYED_WORK(&wac_i2c->nb_reg_work, wacom_i2c_nb_register_work);
+		schedule_delayed_work(&wac_i2c->nb_reg_work, msecs_to_jiffies(500));
 	}
 
 	input_info(true, &client->dev, "probe done\n");
@@ -2940,6 +3109,18 @@ static void wacom_i2c_shutdown(struct i2c_client *client)
 
 	input_info(true, &wac_i2c->client->dev, "%s called!\n", __func__);
 
+	if (wac_i2c->pdata->table_swap) {
+#ifdef CONFIG_MUIC_SUPPORT_KEYBOARDDOCK
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_KBD_COVER)
+			keyboard_notifier_unregister(&wac_i2c->kbd_nb);
+#endif
+
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_DEX_STATION)
+			manager_notifier_unregister(&wac_i2c->typec_nb);
+#endif
+	}
+
 	cancel_delayed_work_sync(&wac_i2c->pen_insert_dwork);
 	cancel_work_sync(&wac_i2c->update_work);
 	cancel_delayed_work_sync(&wac_i2c->work_print_info);
@@ -2959,6 +3140,18 @@ static int wacom_i2c_remove(struct i2c_client *client)
 	wac_i2c->probe_done = false;
 
 	input_info(true, &wac_i2c->client->dev, "%s called!\n", __func__);
+
+	if (wac_i2c->pdata->table_swap) {
+#ifdef CONFIG_MUIC_SUPPORT_KEYBOARDDOCK
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_KBD_COVER)
+			keyboard_notifier_unregister(&wac_i2c->kbd_nb);
+#endif
+
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+		if (wac_i2c->pdata->table_swap == TABLE_SWAP_DEX_STATION)
+			manager_notifier_unregister(&wac_i2c->typec_nb);
+#endif
+	}
 
 	cancel_delayed_work_sync(&wac_i2c->pen_insert_dwork);
 	cancel_work_sync(&wac_i2c->update_work);

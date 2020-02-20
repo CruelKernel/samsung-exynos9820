@@ -26,8 +26,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: bcmcdc.h 700076 2017-05-17 14:42:22Z $
  */
 #ifndef _bcmcdc_h_
 #define	_bcmcdc_h_

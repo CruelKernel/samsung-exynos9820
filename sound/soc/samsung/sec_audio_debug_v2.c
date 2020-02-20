@@ -290,11 +290,6 @@ static ssize_t audio_log_read_file(struct file *file, char __user *user_buf,
 	else
 		num_msg = (size_t) p_dbg_log_data->buff_idx - p_dbg_log_data->read_idx;
 
-	if (num_msg < 0) {
-		pr_err("%s: buff idx invalid for %s\n", __func__, p_dbg_log_data->name);
-		return -EINVAL;
-	}
-
 	if (pos > num_msg) {
 		pr_err("%s: invalid offset for %s\n", __func__, p_dbg_log_data->name);
 		return -EINVAL;

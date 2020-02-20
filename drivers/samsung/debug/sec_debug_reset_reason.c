@@ -44,40 +44,8 @@ static const char *dword_regs_bit[][32] = {
 	}, /* RST_STAT */
 }; /* EXYNOS 9810 */
 
-struct outbuf {
-	char buf[SZ_1K];
-	int index;
-	int already;
-};
-
 static struct outbuf extra_buf;
 static struct outbuf pwrsrc_buf;
-
-static void write_buf(struct outbuf *obuf, int len, const char *fmt, ...)
-{
-	va_list list;
-	char *base;
-	int rem, ret;
-
-	base = obuf->buf;
-	base += obuf->index;
-
-	rem = sizeof(obuf->buf);
-	rem -= obuf->index;
-
-	if (rem <= 0)
-		return;
-
-	if ((len > 0) && (len < rem))
-		rem = len;
-
-	va_start(list, fmt);
-	ret = vsnprintf(base, rem, fmt, list);
-	if (ret)
-		obuf->index += ret;
-
-	va_end(list);
-}
 
 static int __init sec_debug_set_reset_reason(char *arg)
 {
@@ -107,6 +75,8 @@ static int set_debug_reset_reason_proc_show(struct seq_file *m, void *v)
 		seq_puts(m, "BPON\n");
 	else if (reset_reason == RR_T)
 		seq_puts(m, "TPON\n");
+	else if (reset_reason == RR_C)
+		seq_puts(m, "CPON\n");
 	else
 		seq_puts(m, "NPON\n");
 
@@ -179,41 +149,41 @@ static int sec_debug_reset_reason_pwrsrc_show(struct seq_file *m, void *v)
 	get_bk_item_val_as_string("PWROFF", val);
 	tmp = simple_strtol(val, NULL, 0);
 
-	write_buf(&pwrsrc_buf, 0, "OFFSRC:");
+	secdbg_write_buf(&pwrsrc_buf, 0, "OFFSRC:");
 	if (!tmp)
-		write_buf(&pwrsrc_buf, 0, " -");
+		secdbg_write_buf(&pwrsrc_buf, 0, " -");
 	else
 		for (i = 0; i < 8; i++)
 			if (tmp & (1 << i))
-				write_buf(&pwrsrc_buf, 0, " %s", regs_bit[0][i]);
+				secdbg_write_buf(&pwrsrc_buf, 0, " %s", regs_bit[0][i]);
 
-	write_buf(&pwrsrc_buf, 0, " /");
+	secdbg_write_buf(&pwrsrc_buf, 0, " /");
 
 	memset(val, 0, 32);
 	get_bk_item_val_as_string("PWR", val);
 	tmp = simple_strtol(val, NULL, 0);
 
-	write_buf(&pwrsrc_buf, 0, " ONSRC:");
+	secdbg_write_buf(&pwrsrc_buf, 0, " ONSRC:");
 	if (!tmp)
-		write_buf(&pwrsrc_buf, 0, " -");
+		secdbg_write_buf(&pwrsrc_buf, 0, " -");
 	else
 		for (i = 0; i < 8; i++)
 			if (tmp & (1 << i))
-				write_buf(&pwrsrc_buf, 0, " %s", regs_bit[1][i]);
+				secdbg_write_buf(&pwrsrc_buf, 0, " %s", regs_bit[1][i]);
 
-	write_buf(&pwrsrc_buf, 0, " /");
+	secdbg_write_buf(&pwrsrc_buf, 0, " /");
 
 	memset(val, 0, 32);
 	get_bk_item_val_as_string("RST", val);
 	tmp = simple_strtol(val, NULL, 0);
 
-	write_buf(&pwrsrc_buf, 0, " RSTSTAT:");
+	secdbg_write_buf(&pwrsrc_buf, 0, " RSTSTAT:");
 	if (!tmp)
-		write_buf(&pwrsrc_buf, 0, " -");
+		secdbg_write_buf(&pwrsrc_buf, 0, " -");
 	else
 		for (i = 0; i < 32; i++)
 			if (tmp & (1 << i))
-				write_buf(&pwrsrc_buf, 0, " %s", dword_regs_bit[0][i]);
+				secdbg_write_buf(&pwrsrc_buf, 0, " %s", dword_regs_bit[0][i]);
 
 	pwrsrc_buf.already = 1;
 out:
@@ -331,48 +301,48 @@ static int sec_debug_reset_reason_extra_show(struct seq_file *m, void *v)
 	pnc = get_bk_item_val("PANIC");
 	smu = get_bk_item_val("SMU");
 
-	write_buf(&extra_buf, 0, "RCNT:");
+	secdbg_write_buf(&extra_buf, 0, "RCNT:");
 	if (rstcnt && strnlen(rstcnt, MAX_ITEM_VAL_LEN))
-		write_buf(&extra_buf, 0, " %s /", rstcnt);
+		secdbg_write_buf(&extra_buf, 0, " %s /", rstcnt);
 	else
-		write_buf(&extra_buf, 0, " - /");
+		secdbg_write_buf(&extra_buf, 0, " - /");
 
-	write_buf(&extra_buf, 0, " PC:");
+	secdbg_write_buf(&extra_buf, 0, " PC:");
 	if (pc && strnlen(pc, MAX_ITEM_VAL_LEN))
-		write_buf(&extra_buf, 0, " %s", pc);
+		secdbg_write_buf(&extra_buf, 0, " %s", pc);
 	else
-		write_buf(&extra_buf, 0, " -");
+		secdbg_write_buf(&extra_buf, 0, " -");
 
-	write_buf(&extra_buf, 0, " LR:");
+	secdbg_write_buf(&extra_buf, 0, " LR:");
 	if (lr && strnlen(lr, MAX_ITEM_VAL_LEN))
-		write_buf(&extra_buf, 0, " %s", lr);
+		secdbg_write_buf(&extra_buf, 0, " %s", lr);
 	else
-		write_buf(&extra_buf, 0, " -");
+		secdbg_write_buf(&extra_buf, 0, " -");
 
 	/* BUG */
 	if (bug && strnlen(bug, MAX_ITEM_VAL_LEN)) {
 		handle_bug_string(buf_bug, bug);
 
-		write_buf(&extra_buf, 0, " BUG: %s", buf_bug);
+		secdbg_write_buf(&extra_buf, 0, " BUG: %s", buf_bug);
 	}
 
 	/* BUS */
 	if (bus && strnlen(bus, MAX_ITEM_VAL_LEN)) {
 		handle_bus_string(buf_bus, bus);
 
-		write_buf(&extra_buf, 0, " BUS: %s", buf_bus);
+		secdbg_write_buf(&extra_buf, 0, " BUS: %s", buf_bus);
 	}
 
 	/* PANIC */
 	ret = handle_panic_string(pnc);
 	if (ret == PNC_STR_UNRECV) {
 		if (smu && strnlen(smu, MAX_ITEM_VAL_LEN))
-			write_buf(&extra_buf, BBP_STR_LEN, " SMU: %s", smu);
+			secdbg_write_buf(&extra_buf, BBP_STR_LEN, " SMU: %s", smu);
 		else
-			write_buf(&extra_buf, BBP_STR_LEN, " PANIC: %s", pnc);
+			secdbg_write_buf(&extra_buf, BBP_STR_LEN, " PANIC: %s", pnc);
 	} else if (ret == PNC_STR_REST) {
 		if (strnlen(pnc, MAX_ITEM_VAL_LEN))
-			write_buf(&extra_buf, BBP_STR_LEN, " PANIC: %s", pnc);
+			secdbg_write_buf(&extra_buf, BBP_STR_LEN, " PANIC: %s", pnc);
 	}
 
 	extra_buf.already = 1;

@@ -461,17 +461,15 @@ static ssize_t show_nad_stat(struct device *dev,
 				"HPM_MIF_DATA(%d;%d_%d_%d_%d_%d;%d_%d_%d_%d_%d;%d_%d_%d_%d_%d;%d_%d_%d_%d_%d;"
 				"%d_%d_%d_%d_%d;%d_%d_%d_%d_%d;%d_%d_%d_%d_%d;%d_%d_%d_%d_%d),"
 				"DAS(%s),BLOCK(%s),"
-				"FN(%s_%s_%d_%s),FD(0x%08llx_0x%08llx_0x%08llx),"
+				"FN(%s_%s_%d_%s),"
+				"FNS(%s_%s_%d_%s),"
 #if defined(CONFIG_SEC_SUPPORT_VST)
-				"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx),VRES(%d),VADJ(%d),FRES(%d),"
+				"VRES(%d),VADJ(%d),FRES(%d),"
 				"AVT(%d),BIG_L11(%d),BIG_L18(%d),BIG_L23(%d),"
 				"MID_L6(%d),MID_L12(%d),MID_L17(%d),"
 				"LIT_L4(%d),LIT_L9(%d),LIT_L14(%d),"
 				"MIF_L1(%d),MIF_L5(%d),MIF_L9(%d)\n",
-#else
-				"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx)\n",
 #endif
-
 				sec_nad_env.nad_data,
 				sec_nad_env.nad_inform2_data,
 				sec_nad_env.nad_second_data,
@@ -718,17 +716,11 @@ static ssize_t show_nad_stat(struct device *dev,
 				sec_nad_env.nad_fail_info.block_string,
 				sec_nad_env.nad_fail_info.level,
 				sec_nad_env.nad_fail_info.vector_string,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].target_addr,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].read_val,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].expected_val,
 				sec_nad_env.nad_second_fail_info.das_string,
 				sec_nad_env.nad_second_fail_info.block_string,
 				sec_nad_env.nad_second_fail_info.level,
 				sec_nad_env.nad_second_fail_info.vector_string,
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].target_addr,
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].read_val,
 #if defined(CONFIG_SEC_SUPPORT_VST)
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].expected_val,
 				/* VST */
 				get_vst_result(), get_vst_adjust(), sec_nad_env.vst_info.vst_f_res,
 				sec_nad_env.nAsv_TABLE,
@@ -736,8 +728,6 @@ static ssize_t show_nad_stat(struct device *dev,
 				sec_nad_env.nad_ave_current_info.current_list[12].vst_current,sec_nad_env.nad_ave_current_info.current_list[13].vst_current,sec_nad_env.nad_ave_current_info.current_list[14].vst_current,
 				sec_nad_env.nad_ave_current_info.current_list[19].vst_current,sec_nad_env.nad_ave_current_info.current_list[20].vst_current,sec_nad_env.nad_ave_current_info.current_list[21].vst_current,
 				sec_nad_env.nad_ave_current_info.current_list[23].vst_current,sec_nad_env.nad_ave_current_info.current_list[24].vst_current,sec_nad_env.nad_ave_current_info.current_list[25].vst_current);
-#else
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].expected_val);
 #endif
 	} else {
 		return sprintf(buf, "OK_3.1_L_0x%x_0x%x_0x%x_0x%x,IT(%d),MT(%d),"
@@ -1018,7 +1008,6 @@ static ssize_t show_nad_stat(struct device *dev,
 #else
 				sec_nad_env.nad_inform3_data & 0xFF);
 #endif
-
 	}
 #else
 	if (!strncasecmp(sec_nad_env.nad_result, "FAIL", 4) && !strncasecmp(sec_nad_env.nad_second_result, "FAIL", 4)) {
@@ -1026,9 +1015,9 @@ static ssize_t show_nad_stat(struct device *dev,
 				buf_offset = buf;
 				buf += sprintf(buf,
 			       "NG_3.1_L_0x%x_0x%x_0x%x_0x%x,IT(%d),MT(%d),DAS(%s),BLOCK(%s),"
-				"FN(%s_%s_%d_%s),FD(0x%08llx_0x%08llx_0x%08llx),"
+				"FN(%s_%s_%d_%s),FNS(%s_%s_%d_%s),"
 #if defined(CONFIG_SEC_SUPPORT_VST)
-				"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx),VRES(%d),VADJ(%d),FRES(%d),"
+				"VRES(%d),VADJ(%d),FRES(%d),"
 				"AVT(%d),BIG_L11(%d),BIG_L16(%d),"
 				"MID_L6(%d),MID_L10(%d),"
 				"LIT_L4(%d),LIT_L6(%d),"
@@ -1038,8 +1027,6 @@ static ssize_t show_nad_stat(struct device *dev,
 				"LIT_V_TEMP(%d),LIT_V_TIME(%d),"
 				"MIF_V_TEMP(%d),MIF_V_TIME(%d),"
 				"INT_V_TEMP(%d),INT_V_TIME(%d)",
-#else
-				"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx)",
 #endif
 				sec_nad_env.nad_data,
 				sec_nad_env.nad_inform2_data,
@@ -1053,17 +1040,11 @@ static ssize_t show_nad_stat(struct device *dev,
 				sec_nad_env.nad_fail_info.block_string,
 				sec_nad_env.nad_fail_info.level,
 				sec_nad_env.nad_fail_info.vector_string,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].target_addr,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].read_val,
-				sec_nad_env.nad_dram_fail_information.nad_dram_fail_info[0].expected_val,
 				sec_nad_env.nad_second_fail_info.das_string,
 				sec_nad_env.nad_second_fail_info.block_string,
 				sec_nad_env.nad_second_fail_info.level,
 				sec_nad_env.nad_second_fail_info.vector_string,
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].target_addr,
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].read_val,
 #if defined(CONFIG_SEC_SUPPORT_VST)
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].expected_val,
 				/* VST */
 				get_vst_result(), get_vst_adjust(), sec_nad_env.vst_info.vst_f_res,
 				sec_nad_env.nAsv_TABLE,
@@ -1076,16 +1057,9 @@ static ssize_t show_nad_stat(struct device *dev,
 				get_vst_temperature(NAD_LITT),get_vst_operation_time(NAD_LITT),
 				get_vst_temperature(NAD_MIF),get_vst_operation_time(NAD_MIF),
 				get_vst_temperature(NAD_INT),get_vst_operation_time(NAD_INT));
-#else
-				sec_nad_env.nad_second_dram_fail_information.nad_dram_fail_info[0].expected_val);
 #endif
 
-				for (i = 0; i < sec_nad_env.nad_ave_current_info.total_num; i++) {
-					if (sec_nad_env.nad_ave_current_info.current_list[i].spec_out)
-						{
-							buf += sprintf(buf, ",OUT_%s_L%d(%d)",nad_block_name[sec_nad_env.nad_ave_current_info.current_list[i].block], sec_nad_env.nad_ave_current_info.current_list[i].level, sec_nad_env.nad_ave_current_info.current_list[i].vst_current);
-						}
-				}
+
 				
 				ecc_err_total = 0;
 				
@@ -1103,7 +1077,7 @@ static ssize_t show_nad_stat(struct device *dev,
 				}
 				
 				if (sec_nad_env.last_nad_fail_status > 0) {
-					buf += sprintf(buf, ",LN(%s_%s_%d_%s)",
+					buf += sprintf(buf, ",LN_%s_%s_%d_%s(0)",
 					sec_nad_env.last_fail_data_backup.nad_fail_info.das_string,
 					sec_nad_env.last_fail_data_backup.nad_fail_info.block_string,
 					sec_nad_env.last_fail_data_backup.nad_fail_info.level,
@@ -1156,12 +1130,7 @@ static ssize_t show_nad_stat(struct device *dev,
 
 
 
-				for (i = 0; i < sec_nad_env.nad_ave_current_info.total_num; i++) {
-					if (sec_nad_env.nad_ave_current_info.current_list[i].spec_out)
-						{
-							buf += sprintf(buf, ",OUT_%s_L%d(%d)",nad_block_name[sec_nad_env.nad_ave_current_info.current_list[i].block], sec_nad_env.nad_ave_current_info.current_list[i].level, sec_nad_env.nad_ave_current_info.current_list[i].vst_current);
-						}
-				}
+
 				
 				ecc_err_total = 0;
 				
@@ -1180,7 +1149,7 @@ static ssize_t show_nad_stat(struct device *dev,
 
 				
 				if (sec_nad_env.last_nad_fail_status > 0) {
-					buf += sprintf(buf, ",LN(%s_%s_%d_%s)",
+					buf += sprintf(buf, ",LN_%s_%s_%d_%s(0)",
 					sec_nad_env.last_fail_data_backup.nad_fail_info.das_string,
 					sec_nad_env.last_fail_data_backup.nad_fail_info.block_string,
 					sec_nad_env.last_fail_data_backup.nad_fail_info.level,
@@ -1281,8 +1250,8 @@ static ssize_t show_nad_acat(struct device *dev,
 	if (sec_nad_env.current_nad_status >= NAD_ACAT_FLAG) {
 		if (!strncasecmp(sec_nad_env.nad_acat_result, "FAIL", 4) && !strncasecmp(sec_nad_env.nad_acat_second_result, "FAIL", 4)) {
 			return sprintf(buf, "NG_3.0_L_0x%x_0x%x_0x%x_0x%x,%d,%d,HPM(NULL),%s,%s,"
-					"FN(%s_%s_%d_%s),FD(0x%08llx_0x%08llx_0x%08llx),"
-					"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx)\n",
+					"FN(%s_%s_%d_%s),"
+					"FNS(%s_%s_%d_%s)\n",
 					sec_nad_env.nad_acat_data,
 					sec_nad_env.nad_acat_inform2_data,
 					sec_nad_env.nad_acat_second_data,
@@ -1295,16 +1264,10 @@ static ssize_t show_nad_acat(struct device *dev,
 					sec_nad_env.nad_acat_fail_info.block_string,
 					sec_nad_env.nad_acat_fail_info.level,
 					sec_nad_env.nad_acat_fail_info.vector_string,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].target_addr,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].read_val,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].expected_val,
 					sec_nad_env.nad_acat_second_fail_info.das_string,
 					sec_nad_env.nad_acat_second_fail_info.block_string,
 					sec_nad_env.nad_acat_second_fail_info.level,
-					sec_nad_env.nad_acat_second_fail_info.vector_string,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].target_addr,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].read_val,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].expected_val);
+					sec_nad_env.nad_acat_second_fail_info.vector_string);
 		} else {
 			return sprintf(buf, "OK_3.0_L_0x%x_0x%x_0x%x_0x%x,%d,%d,HPM(NULL),OT(0x%x)\n",
 					sec_nad_env.nad_acat_data,
@@ -1322,8 +1285,8 @@ static ssize_t show_nad_acat(struct device *dev,
 	if (sec_nad_env.current_nad_status >= NAD_ACAT_FLAG) {
 		if (!strncasecmp(sec_nad_env.nad_acat_result, "FAIL", 4) && !strncasecmp(sec_nad_env.nad_acat_second_result, "FAIL", 4)) {
 			return sprintf(buf, "NG_3.0_L_0x%x_0x%x_0x%x_0x%x,%d,%d,HPM(NULL),%s,%s,"
-					"FN(%s_%s_%d_%s),FD(0x%08llx_0x%08llx_0x%08llx),"
-					"FNS(%s_%s_%d_%s),FDS(0x%08llx_0x%08llx_0x%08llx)\n",
+					"FN(%s_%s_%d_%s),"
+					"FNS(%s_%s_%d_%s)\n",
 					sec_nad_env.nad_acat_data,
 					sec_nad_env.nad_acat_inform2_data,
 					sec_nad_env.nad_acat_second_data,
@@ -1336,16 +1299,10 @@ static ssize_t show_nad_acat(struct device *dev,
 					sec_nad_env.nad_acat_fail_info.block_string,
 					sec_nad_env.nad_acat_fail_info.level,
 					sec_nad_env.nad_acat_fail_info.vector_string,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].target_addr,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].read_val,
-					sec_nad_env.nad_acat_dram_fail_information.nad_dram_fail_info[0].expected_val,
 					sec_nad_env.nad_acat_second_fail_info.das_string,
 					sec_nad_env.nad_acat_second_fail_info.block_string,
 					sec_nad_env.nad_acat_second_fail_info.level,
-					sec_nad_env.nad_acat_second_fail_info.vector_string,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].target_addr,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].read_val,
-					sec_nad_env.nad_acat_second_dram_fail_information.nad_dram_fail_info[0].expected_val);
+					sec_nad_env.nad_acat_second_fail_info.vector_string);
 		} else {
 			return sprintf(buf, "OK_3.0_L_0x%x_0x%x_0x%x_0x%x,%d,%d,HPM(NULL),OT(0x%x)\n",
 					sec_nad_env.nad_acat_data,
@@ -1377,9 +1334,10 @@ static ssize_t store_nad_acat(struct device *dev,
 {
 	int ret = -1;
 	int idx = 0;
-	char temp[NAD_BUFF_SIZE*3];
+    char temp[NAD_BUFF_SIZE*3];
 	char nad_cmd[NAD_CMD_LIST][NAD_BUFF_SIZE];
 	char *nad_ptr, *string;
+	unsigned int len = 0;
 
 	NAD_PRINT("buf : %s count : %d\n", buf, (int)count);
 
@@ -1387,11 +1345,17 @@ static ssize_t store_nad_acat(struct device *dev,
 		return -EINVAL;
 
 	/* Copy buf to nad temp */
-	strncpy(temp, buf, NAD_BUFF_SIZE*3);
+	len = (unsigned int)min(count, sizeof(temp) - 1);
+	strncpy(temp, buf, len);
+	temp[len] = '\0';
 	string = temp;
 
 	while (idx < NAD_CMD_LIST) {
 		nad_ptr = strsep(&string, ",");
+		if (nad_ptr ==  NULL || strlen(nad_ptr) >= NAD_BUFF_SIZE) {
+				NAD_PRINT(" %s: invalid input\n",__func__);
+				return -EINVAL;	
+		}
 		strcpy(nad_cmd[idx++], nad_ptr);
 	}
 
@@ -1547,22 +1511,121 @@ static ssize_t show_nad_all(struct device *dev,
 static DEVICE_ATTR(nad_all, S_IRUGO, show_nad_all, NULL);
 
 #if defined(CONFIG_SEC_NAD_C)
+static ssize_t show_nad_c_run(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	int ret;
+
+	if (sec_nad_env.fused_nad_custom_data.nadc_is_excuted == 1) {
+		sec_nad_env.fused_nad_custom_data.nadc_is_excuted = 0;
+
+		// clear nadc executed
+		ret = sec_set_nad_param(NAD_PARAM_WRITE);
+                if (ret < 0) {
+                        pr_err("%s: write error! %d\n", __func__, ret);
+                        return sprintf(buf, "%s\n", "RUN");
+                }
+		return sprintf(buf, "%s\n", "RUN");
+	} else
+		return sprintf(buf, "%s\n", "NORUN");
+
+}
+static DEVICE_ATTR(nad_c_run, S_IRUGO, show_nad_c_run, NULL);
+
 static ssize_t show_nadc_fac_result(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
 {
+	char vst_fail_das_string[10];
+	int block;
+	int max_ecc_err;
+	int max_ecc_err_index;
+	int temp;
+	int i;
+	
+	temp = NAD_VST_RESULT_MASK & sec_nad_env.vst_info.vst_f_res;
+	switch (temp) {
+		case 0x1:
+			strcpy(vst_fail_das_string,"BIG");
+			break;
+		case 0x2:
+			strcpy(vst_fail_das_string,"MID");
+			break;
+		case 0x4:
+			strcpy(vst_fail_das_string,"LIT");
+			break;
+		case 0x8:
+			strcpy(vst_fail_das_string,"G3D");
+			break;
+		case 0x10:
+			strcpy(vst_fail_das_string,"MIF");
+			break;
+		case 0x20:
+			strcpy(vst_fail_das_string,"INT");
+			break;
+		default:
+			strcpy(vst_fail_das_string,"NULL");
+			break;
+	}
+
+	max_ecc_err = 0;
+	
+	for (i = 0; i < sec_nad_env.nad_vector_oper_info.total_num; i++) {
+		block = sec_nad_env.nad_vector_oper_info.vector_list[i].block;
+		if (block == NAD_BIG || block == NAD_MIDD || block == NAD_LITT) {
+			if (sec_nad_env.nad_vector_oper_info.vector_list[i].ecc_err_count > 0) {
+				if (sec_nad_env.nad_vector_oper_info.vector_list[i].ecc_err_count > max_ecc_err) {
+					max_ecc_err = sec_nad_env.nad_vector_oper_info.vector_list[i].ecc_err_count;
+					max_ecc_err_index = i;
+				}
+			}
+		}	
+	}
+
 	if (!strncmp(sec_nad_env.fused_nad_custom_data.nad_result, "PASS", 4))
-		return sprintf(buf, "%s\n", sec_nad_env.fused_nad_custom_data.nad_result);
+		return sprintf(buf, "OK_5.0_L_CASE(NULL)DETAIL(NULL)\n");
 	else if (!strncmp(sec_nad_env.fused_nad_custom_data.nad_result, "MAIN", 4))
 		return sprintf(buf, "%s\n", "FAIL,CUSTOM_NAD");
-	else if (!strncmp(sec_nad_env.fused_nad_custom_data.nad_result, "FAIL", 4))
-		return sprintf(buf, "FAIL,NG_NADC_DAS(%s),BLOCK(%s),LEVEL(%d),VECTOR(%s)\n",
+	else if (!strncmp(sec_nad_env.fused_nad_custom_data.nad_result, "FAIL", 4)) {
+		/* case 1 vst fail */
+		if(( NAD_VST_RESULT_MASK & sec_nad_env.vst_info.vst_f_res) > 0) {
+			return sprintf(buf, "NG_5.0_L_CASE(VST)DETAIL(%s),NADC_DAS(%s),BLOCK(%s),LEVEL(%d),VECTOR(%s)\n",
+					vst_fail_das_string,
 					sec_nad_env.fused_nad_custom_data.nad_fail_info.das_string,
 					sec_nad_env.fused_nad_custom_data.nad_fail_info.block_string,
 					sec_nad_env.fused_nad_custom_data.nad_fail_info.level,
 					sec_nad_env.fused_nad_custom_data.nad_fail_info.vector_string);
+		}
+		/* case 2 ecc fail */
+		else if (max_ecc_err != 0) {
+			return sprintf(buf, "NG_5.0_L_CASE(ECC)DETAIL(%s),NADC_DAS(%s),BLOCK(%s),LEVEL(%d),VECTOR(%s)\n",
+					nad_block_name[sec_nad_env.nad_vector_oper_info.vector_list[max_ecc_err_index].block],
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.das_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.block_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.level,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.vector_string);	
+		}
+		/* case 3 first nad fail */
+		else if(!strncasecmp(sec_nad_env.nad_result, "FAIL", 4)){
+			return sprintf(buf, "NG_5.0_L_CASE(NAD)DETAIL(%s),NADC_DAS(%s),BLOCK(%s),LEVEL(%d),VECTOR(%s)\n",
+					sec_nad_env.nad_fail_info.das_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.das_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.block_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.level,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.vector_string);
+		}
+		/* case 4 DEFAULT */
+		else{
+			return sprintf(buf, "NG_5.0_L_CASE(DEF)DETAIL(DEF),NADC_DAS(%s),BLOCK(%s),LEVEL(%d),VECTOR(%s)\n",
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.das_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.block_string,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.level,
+					sec_nad_env.fused_nad_custom_data.nad_fail_info.vector_string);
+		}
+	}
 	else
-		return sprintf(buf, "%s\n", "NG");
+		return sprintf(buf, "%s\n", "NONE");
 }
 
 static ssize_t store_nadc_fac_result(struct device *dev,
@@ -1571,25 +1634,45 @@ static ssize_t store_nadc_fac_result(struct device *dev,
 {
 	int param_update = 0;
 	int ret;
+	int idx = 0;
+	char temp[NAD_BUFF_SIZE*2];
+	char nadc_cmd[NAD_CMD_LIST-1][NAD_BUFF_SIZE];
+	char *nadc_ptr, *string;
 
-	NAD_PRINT("buf : %s count = %d\n", buf, (int)count);	
+	NAD_PRINT("buf : %s count : %d\n", buf, (int)count);
+
+	/* Copy buf to nad temp */
+	strncpy(temp, buf, NAD_BUFF_SIZE*2);
+	string = temp;
+
+	while (idx < NAD_CMD_LIST-1) {
+		nadc_ptr = strsep(&string, ",");
+		strcpy(nadc_cmd[idx++], nadc_ptr);
+	}	
 
 	/* check cmd */
 	if (!strncmp(buf, "nadc", 4)) {
-		NAD_PRINT("run NADC command.\n");
-		strncpy(sec_nad_env.fused_nad_custom_data.nad_name, "NADC", 4);
-		strncpy(sec_nad_env.fused_nad_custom_data.nad_result, "NULL",4);
-		sec_nad_env.fused_nad_custom_data.nad_init_temp = 0;
-		sec_nad_env.fused_nad_custom_data.nad_max_temp = 0;
-		sec_nad_env.fused_nad_custom_data.nad_inform1 = 0;
-		sec_nad_env.fused_nad_custom_data.nad_inform2 = 0;
-		sec_nad_env.fused_nad_custom_data.nad_inform3 = 0;
-		sec_nad_env.current_nad_status = 0;
-		sec_nad_env.fused_nad_custom_data.running_count=0;
-		sec_nad_env.fused_nad_custom_data.loop_count = 1;
-		sec_nad_env.fused_nad_custom_data.skip_fail_flag = 0;
-		param_update = 1;
-	} 
+		/* Get NADC loop count */
+		ret = sscanf(nadc_cmd[1], "%d\n", &sec_nad_env.fused_nad_custom_data.loop_count);
+		if (ret != 1)
+			return -EINVAL;
+
+		/* case 1 : ACAT NAD */
+		if (sec_nad_env.fused_nad_custom_data.loop_count > 0) {
+			NAD_PRINT("run NADC command.\n");
+			strncpy(sec_nad_env.fused_nad_custom_data.nad_name, "NADC", 4);
+			strncpy(sec_nad_env.fused_nad_custom_data.nad_result, "NULL",4);
+			sec_nad_env.fused_nad_custom_data.nad_init_temp = 0;
+			sec_nad_env.fused_nad_custom_data.nad_max_temp = 0;
+			sec_nad_env.fused_nad_custom_data.nad_inform1 = 0;
+			sec_nad_env.fused_nad_custom_data.nad_inform2 = 0;
+			sec_nad_env.fused_nad_custom_data.nad_inform3 = 0;
+			sec_nad_env.current_nad_status = 0;
+			sec_nad_env.fused_nad_custom_data.running_count=0;
+			sec_nad_env.fused_nad_custom_data.skip_fail_flag = 0;
+			param_update = 1;
+		}
+	}
 
 	if (param_update == 1) {
 		ret = sec_set_nad_param(NAD_PARAM_WRITE);
@@ -1902,6 +1985,12 @@ static int __init sec_nad_init(void)
 
 #if defined(CONFIG_SEC_NAD_C)
 	ret = device_create_file(sec_nad, &dev_attr_nadc_fac_result);
+	if (ret) {
+		pr_err("%s: Failed to create fac_result file\n", __func__);
+		goto err_create_nad_sysfs;
+	}
+
+	ret = device_create_file(sec_nad, &dev_attr_nad_c_run);
 	if (ret) {
 		pr_err("%s: Failed to create fac_result file\n", __func__);
 		goto err_create_nad_sysfs;

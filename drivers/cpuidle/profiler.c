@@ -12,6 +12,7 @@
 #include <linux/kobject.h>
 #include <linux/cpuidle.h>
 #include <linux/slab.h>
+#include <soc/samsung/exynos_perf_cpuidle.h>
 
 /* whether profiling has started */
 static bool profile_started;
@@ -124,6 +125,7 @@ void cpuidle_profile_cpu_idle_enter(int cpu, int index)
 		return;
 
 	idle_enter(&cpu_idle_state[index].stats[cpu]);
+	exynos_perf_cpu_idle_enter(cpu, index);
 }
 
 void cpuidle_profile_cpu_idle_exit(int cpu, int index, int cancel)
@@ -131,6 +133,7 @@ void cpuidle_profile_cpu_idle_exit(int cpu, int index, int cancel)
 	if (!profile_started)
 		return;
 
+	exynos_perf_cpu_idle_exit(cpu, index, cancel);
 	idle_exit(&cpu_idle_state[index].stats[cpu], cancel);
 }
 
@@ -218,6 +221,8 @@ static void cpuidle_profile_start(void)
 		return;
 	}
 
+	exynos_perf_cpuidle_start();
+
 	reset_profile();
 	profile_start_time = ktime_get();
 
@@ -237,6 +242,8 @@ static void cpuidle_profile_stop(void)
 		pr_err("CPUIDLE profile does not start yet\n");
 		return;
 	}
+
+	exynos_perf_cpuidle_stop();
 
 	pr_info("cpuidle profile stop\n");
 
@@ -486,6 +493,8 @@ cpuidle_profile_cpu_idle_register(struct cpuidle_driver *drv)
 
 	cpu_idle_state = state;
 	cpu_idle_state_count = state_count;
+
+	exynos_perf_cpu_idle_register(drv);
 }
 
 void __init

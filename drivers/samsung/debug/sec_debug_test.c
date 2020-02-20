@@ -82,6 +82,7 @@ static void simulate_DISK_SLEEP(char *arg);
 static void simulate_CORRUPT_DELAYED_WORK(char *arg);
 static void simulate_MUTEX_AA(char *arg);
 static void simulate_MUTEX_ABBA(char *arg);
+static void simulate_WQ_LOCKUP(char *arg);
 
 enum {
 	FORCE_KERNEL_PANIC = 0,		/* KP */
@@ -128,6 +129,7 @@ enum {
 	FORCE_CORRUPT_DELAYED_WORK,	/* CORRUPT DELAYED WORK */
 	FORCE_MUTEX_AA,			/* MUTEX AA */
 	FORCE_MUTEX_ABBA,		/* MUTEX ABBA */
+	FORCE_WQ_LOCKUP,		/* WORKQUEUE LOCKUP */
 	NR_FORCE_ERROR,
 };
 
@@ -183,9 +185,10 @@ struct force_error force_error_vector = {
 		{"irqstorm",	&simulate_IRQ_STORM},
 		{"syncirqlockup",	&simulate_SYNC_IRQ_LOCKUP},
 		{"disksleep",	&simulate_DISK_SLEEP},
-		{"CDW",	&simulate_CORRUPT_DELAYED_WORK},
+		{"CDW",		&simulate_CORRUPT_DELAYED_WORK},
 		{"mutexaa",	&simulate_MUTEX_AA},
 		{"mutexabba",	&simulate_MUTEX_ABBA},
+		{"wqlockup",	&simulate_WQ_LOCKUP},
 	}
 };
 
@@ -194,6 +197,8 @@ struct debug_delayed_work_info {
 	u32 work_magic;
 	struct delayed_work read_info_work;
 };
+
+struct work_struct lockup_work;
 
 static DEFINE_SPINLOCK(sec_debug_test_lock);
 static DEFINE_RWLOCK(sec_debug_test_rw_lock);
@@ -915,13 +920,20 @@ static void sec_debug_work(struct work_struct *work)
 	pr_crit("%s info->work_magic : %d\n", __func__, info->work_magic);
 }
 
+static void sec_debug_wq_lockup(struct work_struct *work)
+{
+	pr_crit("%s\n", __func__);
+	asm("b .");
+}
+
 static void simulate_CORRUPT_DELAYED_WORK(char *arg)
 {
 	struct debug_delayed_work_info *info;
 
-	pr_crit("%s()\n", __func__);
-
 	info = kzalloc(sizeof(struct debug_delayed_work_info), GFP_KERNEL);
+
+	pr_info("%s(): address of info is 0x%p", __func__, info);
+
 	if (!info)
 		return;
 
@@ -1026,6 +1038,23 @@ static void simulate_MUTEX_ABBA(char *arg)
 	pr_crit("%s()\n", __func__);
 
 	test_mutex_abba();
+}
+
+static void simulate_WQ_LOCKUP(char *arg)
+{
+	int cpu;
+
+	pr_crit("%s()\n", __func__);
+	INIT_WORK(&lockup_work, sec_debug_wq_lockup);
+
+	if (arg) {
+		cpu = str_to_num(arg);
+
+		if (cpu >= 0 && cpu <= num_possible_cpus() - 1) {
+			pr_crit("Put works into cpu%d\n", cpu);
+			schedule_work_on(cpu, &lockup_work);
+		}
+	}
 }
 
 static int sec_debug_get_force_error(char *buffer, const struct kernel_param *kp)

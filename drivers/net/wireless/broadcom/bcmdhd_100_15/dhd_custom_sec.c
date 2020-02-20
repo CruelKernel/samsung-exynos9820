@@ -239,7 +239,9 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 
 #ifdef DHD_PM_CONTROL_FROM_FILE
 extern bool g_pm_control;
+#ifdef DHD_EXPORT_CNTL_FILE
 extern uint32 pmmode_val;
+#endif /* !DHD_EXPORT_CNTL_FILE */
 void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 {
 #ifndef DHD_EXPORT_CNTL_FILE
@@ -269,7 +271,9 @@ void sec_control_pm(dhd_pub_t *dhd, uint *power_mode)
 		filp_close(fp, NULL);
 	}
 #else
-	if (!g_pm_control) {
+	g_pm_control = FALSE;
+	/* Not set from the framework side */
+	if (pmmode_val == 0xFFu) {
 		/* Enable PowerSave Mode */
 		dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)power_mode,
 			sizeof(uint), TRUE, 0);

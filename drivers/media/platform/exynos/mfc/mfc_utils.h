@@ -204,4 +204,25 @@ void mfc_watchdog_start_tick(struct mfc_dev *dev);
 void mfc_watchdog_stop_tick(struct mfc_dev *dev);
 void mfc_watchdog_reset_tick(struct mfc_dev *dev);
 
+/* MFC idle checker interval */
+#define MFCIDLE_TICK_INTERVAL	1500
+
+void mfc_idle_checker(unsigned long arg);
+static inline void mfc_idle_checker_start_tick(struct mfc_dev *dev)
+{
+	dev->mfc_idle_timer.expires = jiffies +
+		msecs_to_jiffies(MFCIDLE_TICK_INTERVAL);
+	add_timer(&dev->mfc_idle_timer);
+}
+
+static inline void mfc_change_idle_mode(struct mfc_dev *dev,
+			enum mfc_idle_mode idle_mode)
+{
+	MFC_TRACE_DEV("** idle mode : %d\n", idle_mode);
+	dev->idle_mode = idle_mode;
+
+	if (dev->idle_mode == MFC_IDLE_MODE_NONE)
+		mfc_idle_checker_start_tick(dev);
+}
+
 #endif /* __MFC_UTILS_H */

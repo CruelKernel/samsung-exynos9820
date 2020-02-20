@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: ethernet.h 700076 2017-05-17 14:42:22Z $
  */
 
 #ifndef _NET_ETHERNET_H_	/* use native BSD ethernet.h when available */

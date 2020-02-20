@@ -110,9 +110,12 @@ struct rr_handle *region_store_cache(struct page *src, int pool_id,
 	struct rr_handle *handle;
 	unsigned long flags;
 
+	if (!try_get_rbincache())
+		return NULL;
+
 	handle = region_get_freemem();
 	if (!handle)
-		return NULL;
+		goto out;
 
 	BUG_ON(!handle_is_valid(handle));
 
@@ -127,6 +130,8 @@ struct rr_handle *region_store_cache(struct page *src, int pool_id,
 	add_to_list(handle, &region.usedlist);
 	mod_zone_page_state(region.zone, NR_FREE_RBIN_PAGES, -1);
 	atomic_inc(&rbin_cached_pages);
+out:
+	put_rbincache();
 
 	return handle;
 }
@@ -136,11 +141,15 @@ int region_load_cache(struct rr_handle *handle, struct page *dst,
 {
 	struct page *page;
 	unsigned long flags;
+	int ret = -EINVAL;
+
+	if (!try_get_rbincache())
+		return ret;
 
 	BUG_ON(!handle_is_valid(handle));
 
 	if (handle->usage != RC_INUSE)
-		return -EINVAL;
+		goto out;
 
 	spin_lock_irqsave(&region.lru_lock, flags);
 	/* skip if handle is invalid (freed or overwritten) */
@@ -149,7 +158,7 @@ int region_load_cache(struct rr_handle *handle, struct page *dst,
 			handle->rb_index != rb_index ||
 			handle->ra_index != ra_index))) {
 		spin_unlock_irqrestore(&region.lru_lock, flags);
-		return -EINVAL;
+		goto out;
 	}
 	handle->usage = RC_FREED;
 	list_del(&handle->lru);
@@ -162,8 +171,11 @@ int region_load_cache(struct rr_handle *handle, struct page *dst,
 	add_to_list(handle, &region.freelist);
 	atomic_dec(&rbin_cached_pages);
 	mod_zone_page_state(region.zone, NR_FREE_RBIN_PAGES, 1);
+	ret = 0;
+out:
+	put_rbincache();
 
-	return 0;
+	return ret;
 }
 
 int region_flush_cache(struct rr_handle *handle)

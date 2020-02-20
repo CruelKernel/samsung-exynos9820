@@ -7,5 +7,6 @@
 
 #define ologk(...)
 #define perflog(...)
+#define perflog_evt(...)
 
 #endif

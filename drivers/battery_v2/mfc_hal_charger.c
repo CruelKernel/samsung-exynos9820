@@ -145,7 +145,7 @@ static int mfc_check_ic_info(struct mfc_charger_data *charger)
 
 	if (!wpc_det) {
 		mfc_uno_on(charger, 1);
-		mdelay(10);
+		mdelay(200);
 	}
 
 	id = mfc_get_ic_id(charger);

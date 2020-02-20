@@ -851,7 +851,7 @@ int fimc_is_mcu_empty_check_clear(struct v4l2_subdev *subdev, struct fimc_is_cor
 	}
 
 	/* Put little delay for Target program option byte and self-reset */
-	mdelay(5);
+	mdelay(150);
 
 	/* Option byte read for checking protection status ------------------------ */
 	/* 1> Re-connect to the target */

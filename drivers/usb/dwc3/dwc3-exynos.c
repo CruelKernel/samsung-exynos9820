@@ -38,7 +38,6 @@
 #include <soc/samsung/exynos-cpupm.h>
 
 /* -------------------------------------------------------------------------- */
-
 struct dwc3_exynos_rsw {
 	struct otg_fsm		*fsm;
 	struct work_struct	work;
@@ -507,6 +506,8 @@ static int dwc3_exynos_probe(struct platform_device *pdev)
 	exynos->dev = dev;
 
 	exynos->idle_ip_index = exynos_get_idle_ip_index(dev_name(dev));
+	pr_info("%s, usb idle ip = %d\n", __func__,
+			exynos->idle_ip_index);
 	exynos_update_ip_idle_status(exynos->idle_ip_index, 0);
 
 	ret = dwc3_exynos_clk_get(exynos);

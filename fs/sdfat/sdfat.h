@@ -209,6 +209,12 @@ struct sdfat_inode_info {
 	struct inode vfs_inode;
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+typedef struct timespec64	sdfat_timespec_t;
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0) */
+typedef struct timespec		sdfat_timespec_t;
+#endif
+
 /*
  * FIXME : needs on-disk-slot in-memory data
  */
@@ -377,9 +383,9 @@ __sdfat_msg(struct super_block *sb, const char *lv, int st, const char *fmt, ...
 #define sdfat_log_msg(sb, lv, fmt, args...)          \
 	__sdfat_msg(sb, lv, 1, fmt, ## args)
 extern void sdfat_log_version(void);
-extern void sdfat_time_fat2unix(struct sdfat_sb_info *sbi, struct timespec *ts,
+extern void sdfat_time_fat2unix(struct sdfat_sb_info *sbi, sdfat_timespec_t *ts,
 				DATE_TIME_T *tp);
-extern void sdfat_time_unix2fat(struct sdfat_sb_info *sbi, struct timespec *ts,
+extern void sdfat_time_unix2fat(struct sdfat_sb_info *sbi, sdfat_timespec_t *ts,
 				DATE_TIME_T *tp);
 extern TIMESTAMP_T *tm_now(struct sdfat_sb_info *sbi, TIMESTAMP_T *tm);
 

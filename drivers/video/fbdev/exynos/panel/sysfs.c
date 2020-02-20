@@ -265,16 +265,21 @@ static ssize_t write_mtp_store(struct device *dev,
 {
 	struct panel_device *panel = dev_get_drvdata(dev);
 	int i = 0, val = 0, ret = 0, send_len = 0;
-	char* recv_buf = (char*)buf;
-	char* ptr = NULL;
-	u8* tx_buf = NULL;
+	char *recv_buf = (char *)buf;
+	char *ptr = NULL;
+	u8 *tx_buf = NULL;
 	struct panel_info *panel_data;
 
 	if (!IS_PANEL_ACTIVE(panel))
 		return -EIO;
 
 	ptr = strsep(&recv_buf, " ");
-	sscanf(ptr, "%d", &send_len);
+	ret = sscanf(ptr, "%d", &send_len);
+
+	if (ret < 1 || send_len < 1) {
+		panel_err("PANEL:ERR:%s: invalid parameter. %d %d\n", __func__, ret, send_len);
+		return -EINVAL;
+	}
 
 	panel_data = &panel->panel_data;
 
@@ -282,16 +287,27 @@ static ssize_t write_mtp_store(struct device *dev,
 
 	if (tx_buf == NULL) {
 		panel_err("PANEL:ERR:%s: fail to allloc buffer\n", __func__);
-		return size;
+		return -ENOMEM;
 	}
 	pr_info("%s len: %d\n", __func__, send_len);
-	mutex_lock(&panel->op_lock);
-	while ((ptr = strsep(&recv_buf, " \t")) != NULL) {
-		sscanf(ptr, "%02x", &val);
-		tx_buf[i++] = val;
-		pr_info("%s %d : %d\n", __func__, i - 1, val);
+
+	for (i = 0; i < send_len; i++) {
+		if ((ptr = strsep(&recv_buf, " \t")) == NULL) {
+			//adjust send_len by filled buffer
+			send_len = i;
+			break;
+		}
+		ret = sscanf(ptr, "%02x", &val);
+		if (ret < 1) {
+			panel_err("PANEL:ERR:%s: wrong parameter: %d\n", __func__, i);
+			ret = -EINVAL;
+			goto write_mtp_store_out;
+		}
+		tx_buf[i] = val;
+		pr_info("%s %d: 0x%02x\n", __func__, i, val);
 	}
-	mutex_unlock(&panel->op_lock);
+
+	mutex_lock(&panel->op_lock);
 
 	panel_set_key(panel, 3, true);
 
@@ -299,13 +315,20 @@ static ssize_t write_mtp_store(struct device *dev,
 
 	panel_set_key(panel, 3, false);
 
+	mutex_unlock(&panel->op_lock);
+
 	if (unlikely(ret != send_len)) {
 		pr_err("%s, failed to write reg %02Xh len %d %d\n",
 				__func__, buf[0], send_len, ret);
-		return -EIO;
+		ret = -EIO;
+		goto write_mtp_store_out;
 	}
-	pr_info("%s %d\n", __func__, ret);
-	return size;
+	pr_info("%s %d byte(s) sent.\n", __func__, ret);
+	ret = size;
+
+write_mtp_store_out:
+	kfree(tx_buf);
+	return ret;
 }
 
 static ssize_t gamma_interpolation_test_show(struct device *dev,
@@ -1172,6 +1195,82 @@ static ssize_t partial_disp_store(struct device *dev,
 	mutex_unlock(&panel->op_lock);
 	return size;
 }
+
+static void prepare_self_mask_check(struct panel_device *panel)
+{
+	decon_bypass_on_global(0);
+	disable_irq(panel->gpio[PANEL_GPIO_DISP_DET].irq);
+}
+
+static void clear_self_mask_check(struct panel_device *panel)
+{
+	clear_pending_bit(panel->gpio[PANEL_GPIO_DISP_DET].irq);
+	enable_irq(panel->gpio[PANEL_GPIO_DISP_DET].irq);
+	decon_bypass_off_global(0);
+}
+
+static ssize_t self_mask_check_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct panel_device *panel = dev_get_drvdata(dev);
+	struct aod_dev_info *aod;
+	struct panel_info *panel_data;
+	u8 success_check = 1;
+	u8* recv_checksum = NULL;
+	int ret = 0, i = 0;
+	int len = 0;
+
+	if (panel == NULL) {
+		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
+		return -EINVAL;
+	}
+	aod = &panel->aod;
+	panel_data = &panel->panel_data;
+
+	if (aod->props.self_mask_checksum_len) {
+		recv_checksum = kmalloc(sizeof(u8) * aod->props.self_mask_checksum_len, GFP_KERNEL);
+		if (!recv_checksum) {
+			panel_err("PANEL:ERR:%s:failed to mem alloc\n", __func__);
+			return -ENOMEM;
+		}
+		prepare_self_mask_check(panel);
+
+		ret = panel_do_aod_seqtbl_by_index(aod, SELF_MASK_CHECKSUM_SEQ);
+		if (unlikely(ret < 0)) {
+			panel_err("PANEL:ERR:%s:failed to send cmd selfmask checksum\n", __func__);
+			if (recv_checksum)
+				kfree(recv_checksum);
+			return ret;
+		}
+
+		ret = resource_copy_n_clear_by_name(panel_data,	recv_checksum, "self_mask_checksum");
+		if (unlikely(ret < 0)) {
+			panel_err("PANEL:ERR:%s:failed to get selfmask checksum\n", __func__);
+			if (recv_checksum)
+				kfree(recv_checksum);
+			return ret;
+		}
+		clear_self_mask_check(panel);
+
+		for (i = 0; i < aod->props.self_mask_checksum_len; i++) {
+			if (aod->props.self_mask_checksum[i] != recv_checksum[i]) {
+				success_check = 0;
+				break;
+			}
+		}
+		len = snprintf(buf, PAGE_SIZE, "%d", success_check);
+		for (i = 0; i < aod->props.self_mask_checksum_len; i++) {
+			len += snprintf(buf + len, PAGE_SIZE - len, " %02x", recv_checksum[i]);
+		}
+		len += snprintf(buf + len, PAGE_SIZE - len, "\n", recv_checksum[i]);
+		if (recv_checksum)
+			kfree(recv_checksum);
+	} else {
+		snprintf(buf, PAGE_SIZE, "-1\n");
+	}
+	return strlen(buf);
+}
+
 
 #ifdef CONFIG_SUPPORT_MST
 static ssize_t mst_show(struct device *dev,
@@ -2138,7 +2237,6 @@ static ssize_t conn_det_store(struct device *dev,
 	if (rc < 0) {
 		pr_warn("%s invalid param (ret %d)\n",
 				__func__, rc);
-		mutex_unlock(&panel->io_lock);
 		return rc;
 	}
 
@@ -3472,10 +3570,15 @@ static ssize_t dynamic_freq_store(struct device *dev,
 		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
 		return -EINVAL;
 	}
-
+	
 	rc = kstrtouint(buf, (unsigned int)0, &value);
 	if (rc < 0)
 		return rc;
+
+	if (value < 0 ) {
+		panel_err("PANEL:ERR:%s:value is negative : %d\n", __func__, value);
+		return -EINVAL;
+	}
 
 	dynamic_freq_update(panel, value);
 
@@ -3602,7 +3705,7 @@ static ssize_t spi_flash_ctrl_store(struct device *dev,
 	}
 	cmd_scanned = parse;
 	while (cmd_scanned < size && spi_flash_writelen < SPI_BUF_LEN) {
-		ret = sscanf(buf + cmd_scanned, " %i%n", &cmd_input, &parse); 
+		ret = sscanf(buf + cmd_scanned, " %i%n", &cmd_input, &parse);
 		if (ret < 1 || parse <= 0) {
 			break;
 		}
@@ -3747,6 +3850,7 @@ struct device_attribute panel_attrs[] = {
 #ifdef CONFIG_SUPPORT_POC_SPI
 	__PANEL_ATTR_RW(spi_flash_ctrl, 0660),
 #endif
+	__PANEL_ATTR_RO(self_mask_check, 0444),
 };
 
 int panel_sysfs_probe(struct panel_device *panel)

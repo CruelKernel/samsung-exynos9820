@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_custom_cis.c 793937 2018-12-11 15:21:38Z $
+ * $Id: dhd_custom_cis.c 848301 2019-10-31 10:55:43Z $
  */
 
 #include <typedefs.h>
@@ -145,6 +145,12 @@ dhd_read_cis(dhd_pub_t *dhdp)
 
 	ret = dhd_wl_ioctl_cmd(dhdp, WLC_GET_VAR, g_cis_buf, buf_size, 0, 0);
 	if (ret < 0) {
+		if (ret == BCME_UNSUPPORTED) {
+			DHD_ERROR(("%s: get cisdump, UNSUPPORTED\n", __FUNCTION__));
+		} else {
+			DHD_ERROR(("%s : get cisdump err(%d)\n",
+				__FUNCTION__, ret));
+		}
 		/* free local buf */
 		dhd_clear_cis(dhdp);
 	} else {

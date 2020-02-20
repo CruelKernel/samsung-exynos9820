@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 823747 2019-06-05 10:19:50Z $
+ * $Id: wl_cfgvendor.c 831648 2019-07-24 10:31:17Z $
  */
 
 /*
@@ -312,25 +312,31 @@ static int
 wl_cfgvendor_set_rand_mac_oui(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
-	int err = 0;
+	int err = -EINVAL;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	int type;
+
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		goto exit;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invalid len %d\n", len));
+		goto exit;
+	}
 
 	type = nla_type(data);
 
 	if (type == ANDR_WIFI_ATTRIBUTE_RANDOM_MAC_OUI) {
 		if (nla_len(data) != DOT11_OUI_LEN) {
 			WL_ERR(("nla_len not matched.\n"));
-			err = -EINVAL;
 			goto exit;
 		}
 		err = dhd_dev_cfg_rand_mac_oui(bcmcfg_to_prmry_ndev(cfg), nla_data(data));
 
 		if (unlikely(err))
 			WL_ERR(("Bad OUI, could not set:%d \n", err));
-
-	} else {
-		err = -EINVAL;
 	}
 exit:
 	return err;
@@ -340,18 +346,27 @@ static int
 wl_cfgvendor_set_nodfs_flag(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void *data, int len)
 {
-	int err = 0;
+	int err = -EINVAL;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	int type;
 	u32 nodfs;
+
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		return -EINVAL;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invalid len %d\n", len));
+		return -EINVAL;
+	}
 
 	type = nla_type(data);
 	if (type == ANDR_WIFI_ATTRIBUTE_NODFS_SET) {
 		nodfs = nla_get_u32(data);
 		err = dhd_dev_set_nodfs(bcmcfg_to_prmry_ndev(cfg), nodfs);
-	} else {
-		err = -1;
 	}
+
 	return err;
 }
 #endif /* CUSTOM_FORCE_NODFS_FLAG */
@@ -617,6 +632,16 @@ wl_cfgvendor_enable_full_scan_result(struct wiphy *wiphy,
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	int type;
 	bool real_time = FALSE;
+
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		return -EINVAL;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invalid len %d\n", len));
+		return -EINVAL;
+	}
 
 	type = nla_type(data);
 
@@ -1149,6 +1174,16 @@ wl_cfgvendor_gscan_get_channel_list(struct wiphy *wiphy,
 	uint32 reply_len = 0, num_channels, mem_needed;
 	struct sk_buff *skb;
 
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		return -EINVAL;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invalid len %d\n", len));
+		return -EINVAL;
+	}
+
 	type = nla_type(data);
 
 	if (type == GSCAN_ATTRIBUTE_BAND) {
@@ -1231,6 +1266,12 @@ wl_cfgvendor_set_tcpack_sup_mode(struct wiphy *wiphy,
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct net_device *ndev = wdev_to_wlc_ndev(wdev, cfg);
 	uint8 enable = 0;
+
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		err = BCME_BADARG;
+		goto exit;
+	}
 
 	if (len <= 0) {
 		WL_ERR(("Length of the nlattr is not valid len : %d\n", len));
@@ -1379,6 +1420,16 @@ static int wl_cfgvendor_enable_lazy_roam(struct wiphy *wiphy,
 	int type;
 	uint32 lazy_roam_enable_flag;
 
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		return -EINVAL;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invaild len %d\n", len));
+		return -EINVAL;
+	}
+
 	type = nla_type(data);
 
 	if (type == GSCAN_ATTRIBUTE_LAZY_ROAM_ENABLE) {
@@ -1389,6 +1440,7 @@ static int wl_cfgvendor_enable_lazy_roam(struct wiphy *wiphy,
 		if (unlikely(err))
 			WL_ERR(("Could not enable lazy roam:%d \n", err));
 	}
+
 	return err;
 }
 
@@ -1834,6 +1886,16 @@ wl_cfgvendor_set_fw_roaming_state(struct wiphy *wiphy,
 	int type;
 	int err = 0;
 
+	if (!data) {
+		WL_ERR(("data is not available\n"));
+		return -EINVAL;
+	}
+
+	if (len <= 0) {
+		WL_ERR(("invalid len %d\n", len));
+		return -EINVAL;
+	}
+
 	/* Get the requested fw roaming state */
 	type = nla_type(data);
 	if (type != GSCAN_ATTRIBUTE_ROAM_STATE_SET) {
@@ -1890,8 +1952,6 @@ wl_cfgvendor_priv_string_handler(struct wiphy *wiphy,
 	struct sk_buff *reply;
 	dhd_pub_t *dhdp = wl_cfg80211_get_dhdp(wdev->netdev);
 
-	WL_DBG(("entry: cmd = %d\n", nlioc->cmd));
-
 	/* send to dongle only if we are not waiting for reload already */
 	if (dhdp && dhdp->hang_was_sent) {
 		WL_INFORM(("Bus down. HANG was sent up earlier\n"));
@@ -1899,13 +1959,20 @@ wl_cfgvendor_priv_string_handler(struct wiphy *wiphy,
 		DHD_OS_WAKE_UNLOCK(dhdp);
 		return OSL_ERROR(BCME_DONGLE_DOWN);
 	}
-	if (nlioc->len <= 0) {
-		WL_ERR(("invalid len %d\n", nlioc->len));
+
+	if (!data) {
+		WL_ERR(("data is not available\n"));
 		return BCME_BADARG;
 	}
 
-	if (nlioc->offset != sizeof(struct bcm_nlmsg_hdr) ||
-		len <= sizeof(struct bcm_nlmsg_hdr)) {
+	if (len <= sizeof(struct bcm_nlmsg_hdr)) {
+		WL_ERR(("invalid len %d\n", len));
+		return BCME_BADARG;
+	}
+
+	WL_DBG(("entry: cmd = %d\n", nlioc->cmd));
+
+	if (nlioc->offset != sizeof(struct bcm_nlmsg_hdr)) {
 		WL_ERR(("invalid offset %d\n", nlioc->offset));
 		return BCME_BADARG;
 	}

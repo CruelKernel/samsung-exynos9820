@@ -786,9 +786,14 @@ static int displayport_link_status_read(void)
 	u8 val[DPCP_LINK_SINK_STATUS_FIELD_LENGTH] = {0, };
 	int count = 200;
 	int ret = 0;
+	int i;
 
 	/* for Link CTS : Branch Device Detection*/
 	ret = displayport_link_sink_status_read();
+	for (i = 0; ret != 0 && i < 4; i++) {
+		msleep(50);
+		ret = displayport_link_sink_status_read();
+	}
 	if (ret != 0) {
 		displayport_err("link_sink_status_read fail\n");
 		return -EINVAL;
@@ -1985,7 +1990,6 @@ static void displayport_hdcp22_run(struct work_struct *work)
 #endif
 		goto exit_hdcp;
 	}
-	displayport_info("hdcp22 auth success\n");
 
 	if (displayport_get_hpd_state() == 0) {
 		displayport_info("stop hdcp2 : HPD is low\n");
@@ -2074,6 +2078,7 @@ int displayport_enable(struct displayport_device *displayport)
 
 	if (!displayport->hpd_current_state) {
 		displayport_err("%s() hpd is low\n", __func__);
+		mutex_unlock(&displayport->cmd_lock);
 		return 0;
 	}
 
@@ -2579,9 +2584,10 @@ static int displayport_aux_onoff(struct displayport_device *displayport, int
 
 	displayport_info("aux vdd onoff = %d\n", onoff);
 	if (gpio_is_valid(displayport->gpio_sw_oe)) {
-		if (onoff == 1)
+		if (onoff == 1) {
 			gpio_direction_output(displayport->gpio_sw_oe, 0);
-		else
+			msleep(100);
+		} else
 			gpio_direction_output(displayport->gpio_sw_oe, 1);
 	} else {
 		displayport_info("aux switch is not available\n");
@@ -2685,6 +2691,7 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 			secdp_bigdata_save_item(BD_ADT_VID, displayport->ven_id);
 			secdp_bigdata_save_item(BD_ADT_PID, displayport->prod_id);
 #endif
+			displayport_aux_sel(displayport);
 			displayport_aux_onoff(displayport, 1);
 
 			displayport->bist_used = 0;

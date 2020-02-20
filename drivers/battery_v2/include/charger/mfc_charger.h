@@ -1046,7 +1046,9 @@ struct mfc_charger_platform_data {
 	int mst_switch_delay;
 	int wc_cover_rpp;
 	int wc_hv_rpp;
+	u32 oc_fod1;
 	u32 phone_fod_threshold;
+	u32 gear_ping_freq;
 	bool wpc_vout_ctrl_lcd_on;
 };
 
@@ -1078,6 +1080,7 @@ struct mfc_charger_data {
 	struct wake_lock wpc_tx_phm_lock;
 	struct wake_lock wpc_vrect_check_lock;
 	struct wake_lock wpc_tx_id_lock;
+	struct wake_lock wpc_cs100_lock;	
 	struct workqueue_struct *wqueue;
 	struct work_struct	wcin_work;
 	struct delayed_work	wpc_det_work;
@@ -1093,11 +1096,13 @@ struct mfc_charger_data {
 	struct delayed_work	wpc_vout_mode_work;
 	struct delayed_work	wpc_cm_fet_work;
 	struct delayed_work wpc_i2c_error_work;
-	struct delayed_work	wpc_rx_det_work;
+	struct delayed_work	wpc_rx_type_det_work;
+	struct delayed_work	wpc_rx_connection_work;
 	struct delayed_work wpc_tx_op_freq_work;
 	struct delayed_work wpc_tx_phm_work;
 	struct delayed_work wpc_vrect_check_work;
 	struct delayed_work wpc_rx_power_work;	
+	struct delayed_work wpc_cs100_work;
 
 	struct alarm phm_alarm;
 

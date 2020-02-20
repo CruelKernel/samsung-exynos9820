@@ -69,13 +69,31 @@ int get_fec_off_cnt(void){
     return 0;
 }
 
+int get_dmv_ctr_cnt(void){
+    if(!empty_b_info())
+        return atomic_read(&b_info->dmv_ctr_cnt);
+    return 0;
+}
+
+void add_dmv_ctr_entry(char* dev_name){
+    int idx = get_dmv_ctr_cnt();
+
+    if(!empty_b_info() && idx < MAX_DEV_LIST){
+        snprintf(b_info->dmv_ctr_list[idx],MAX_DEV_NAME,"%s",dev_name);
+        atomic_inc(&b_info->dmv_ctr_cnt);
+    }
+}
+
 struct blks_info * get_b_info(char* dev_name){
     pr_err("dm-verity-debug : dev_name = %s\n",dev_name);
 
-    if(empty_b_info())
+    if(empty_b_info()){
         b_info = create_b_info();
+        add_dmv_ctr_entry(dev_name);
+    }
     else{
         pr_info("dm-verity-debug : b_info already exists\n");
+        add_dmv_ctr_entry(dev_name);
         return b_info;
     }
 
@@ -136,7 +154,6 @@ void add_fec_off_cnt(char* dev_name){
 void print_blks_cnt(char* dev_name){
     int i,foc = get_fec_off_cnt();
     if(empty_b_info()){
-        pr_err("dm-verity-debug : b_info is empty !\n");
         return;
     }
 
@@ -153,7 +170,6 @@ void print_fc_blks_list(void){
     int i = 0;
 
     if(empty_b_info()){
-        pr_err("ERROR : b_info is empty !\n");
         return;
     }
     if(get_fec_correct_blks() == 0)
@@ -171,6 +187,21 @@ void print_fc_blks_list(void){
         pr_err("%s %llu",b_info->dev_name[i],(unsigned long long)b_info->fc_blks_list[i]);
 
     pr_err("====== FC_BLKS_LIST END ======\n");
+}
+
+void print_dmv_ctr_list(void){
+    int i = 0, ctr_cnt = get_dmv_ctr_cnt();
+
+    if(empty_b_info()){
+        return;
+    }
+
+    pr_err("\n====== DMV_CTR_LIST START ======\n");
+
+    for( ; i < ctr_cnt; i++)
+        pr_err("%s",b_info->dmv_ctr_list[i]);
+
+    pr_err("====== DMV_CTR_LIST END ======\n");
 }
 
 static void print_block_data(unsigned long long blocknr, unsigned char *data_to_dump
@@ -257,8 +288,14 @@ int verity_handle_err_hex_debug(struct dm_verity *v, enum verity_block_type type
             BUG();
     }
 
-    print_blks_cnt(v->data_dev->name);
-    print_fc_blks_list();
+    if(empty_b_info()){
+        pr_err("dm-verity-debug : b_info is empty !\n");
+    }
+    else{
+        print_dmv_ctr_list();
+        print_blks_cnt(v->data_dev->name);
+        print_fc_blks_list();
+    }
 
     DMERR("%s: %s block %llu is corrupted", v->data_dev->name, type_str, block);
 

@@ -28,6 +28,7 @@
 #define SIGN_LEN 512
 #define METADATA_LEN ((DIGEST_LEN)+(SIGN_LEN))
 #define SIGN_MALLOC_SIZE 4096
+#define BUF_KMALLOC_SIZE 4096
 #define DIGEST_MISSMATCH 999
 
 static int read_fw_image(const char* path, u8* output, 
@@ -142,7 +143,7 @@ static int calc_digest_from_image(const char* path, u8 *digest) {
 		goto fail_desc;
 	}
 
-	buf = kmalloc(KMALLOC_MAX_SIZE, GFP_KERNEL);
+	buf = kmalloc(BUF_KMALLOC_SIZE, GFP_KERNEL);
 	if (!buf) {
 		pr_err("--> %s) can't alloc buf\n", __func__);
 		ret = PTR_ERR(buf);
@@ -160,7 +161,7 @@ static int calc_digest_from_image(const char* path, u8 *digest) {
 	
 	while(1) {
 		start_offset = end_offset;
-		end_offset += KMALLOC_MAX_SIZE;
+		end_offset += BUF_KMALLOC_SIZE;
 
 		if(end_offset > file_size - METADATA_LEN)
 			end_offset = file_size - METADATA_LEN;

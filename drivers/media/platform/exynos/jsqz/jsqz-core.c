@@ -743,9 +743,9 @@ finish:
 
 /**
  * If the buffer we received from userspace is an fd representing a DMA buffer,
- * (HWJSQZ_BUFFER_DMABUF) then we attach to it.
+ * (HWSQZ_BUFFER_DMABUF) then we attach to it.
  *
- * If it's a pointer to user memory (HWJSQZ_BUFFER_USERPTR), then we check if
+ * If it's a pointer to user memory (HWSQZ_BUFFER_USERPTR), then we check if
  * that memory is associated to a dmabuf. If it is, we attach to it, thus
  * reusing that dmabuf.
  *
@@ -753,7 +753,7 @@ finish:
  * don't need to do anything here. We will use IOVMM later to get access to it.
  */
 static int jsqz_buffer_get_and_attach(struct jsqz_dev *jsqz_device,
-				      struct hwJSQZ_buffer *buffer,
+				      struct hwSQZ_buffer *buffer,
 				      struct jsqz_buffer_dma *dma_buffer)
 {
 	struct jsqz_buffer_plane_dma *plane;
@@ -766,12 +766,12 @@ static int jsqz_buffer_get_and_attach(struct jsqz_dev *jsqz_device,
 
 	plane = &dma_buffer->plane;
 
-	if (buffer->type == HWJSQZ_BUFFER_DMABUF) {
+	if (buffer->type == HWSQZ_BUFFER_DMABUF) {
 		plane->dmabuf = dma_buf_get(buffer->fd);
 
 		dev_dbg(jsqz_device->dev, "%s: dmabuf of fd %d is %p\n", __func__
 			, buffer->fd, plane->dmabuf);
-	} else if (buffer->type == HWJSQZ_BUFFER_USERPTR) {
+	} else if (buffer->type == HWSQZ_BUFFER_USERPTR) {
 		// Check if there's already a dmabuf associated to the
 		// chunk of user memory our client is pointing us to
 		plane->dmabuf = jsqz_get_dmabuf_from_userptr(jsqz_device,
@@ -789,7 +789,7 @@ static int jsqz_buffer_get_and_attach(struct jsqz_dev *jsqz_device,
 		goto err;
 	}
 
-	// this is NULL when the buffer is of type HWJSQZ_BUFFER_USERPTR
+	// this is NULL when the buffer is of type HWSQZ_BUFFER_USERPTR
 	// but the memory it points to is not associated to a dmabuf
 	if (plane->dmabuf) {
 		if (plane->dmabuf->size < plane->bytes_used) {
@@ -846,7 +846,7 @@ err:
  */
 static void jsqz_buffer_put_and_detach(struct jsqz_buffer_dma *dma_buffer)
 {
-	const struct hwJSQZ_buffer *user_buffer = dma_buffer->buffer;
+	const struct hwSQZ_buffer *user_buffer = dma_buffer->buffer;
 	struct jsqz_buffer_plane_dma *plane = &dma_buffer->plane;
 
 	// - buffer type DMABUF:
@@ -854,8 +854,8 @@ static void jsqz_buffer_put_and_detach(struct jsqz_buffer_dma *dma_buffer)
 	// - buffer type USERPTR:
 	//     in this case dmabuf is only set if we reuse any
 	//     preexisting dmabuf (see jsqz_buffer_get_*)
-	if (user_buffer->type == HWJSQZ_BUFFER_DMABUF
-			|| (user_buffer->type == HWJSQZ_BUFFER_USERPTR
+	if (user_buffer->type == HWSQZ_BUFFER_DMABUF
+			|| (user_buffer->type == HWSQZ_BUFFER_USERPTR
 			    && plane->dmabuf)) {
 		dma_buf_detach(plane->dmabuf, plane->attachment);
 		dma_buf_put(plane->dmabuf);
@@ -894,12 +894,12 @@ static void jsqz_buffer_teardown(struct jsqz_dev *jsqz_device,
  *
  * At the end of this function, the buffer is ready for DMA transfers.
  *
- * Note: this is needed when the input is a HWJSQZ_BUFFER_DMABUF as well
- *       as when it is a HWJSQZ_BUFFER_USERPTR, because the H/W ultimately
+ * Note: this is needed when the input is a HWSQZ_BUFFER_DMABUF as well
+ *       as when it is a HWSQZ_BUFFER_USERPTR, because the H/W ultimately
  *       needs a DMA address to operate on.
  */
 static int jsqz_buffer_setup(struct jsqz_ctx *ctx,
-			     struct hwJSQZ_buffer *buffer,
+			     struct hwSQZ_buffer *buffer,
 			     struct jsqz_buffer_dma *dma_buffer,
 			     enum dma_data_direction dir)
 {
@@ -927,8 +927,8 @@ static int jsqz_buffer_setup(struct jsqz_ctx *ctx,
 		return -EINVAL;
 	}
 
-	if ((buffer->type != HWJSQZ_BUFFER_USERPTR) &&
-			(buffer->type != HWJSQZ_BUFFER_DMABUF)) {
+	if ((buffer->type != HWSQZ_BUFFER_USERPTR) &&
+			(buffer->type != HWSQZ_BUFFER_DMABUF)) {
 		dev_err(jsqz_device->dev, "%s: unknown buffer type %u\n",
 			__func__, buffer->type);
 		return -EINVAL;
@@ -1563,6 +1563,7 @@ struct compat_hwjsqz_task {
 	struct compat_jsqz_buffer buf_out[2];
 	struct compat_hwjsqz_config config;
 	compat_uint_t buf_q[32];
+	compat_uint_t buf_init_q[32];
 	compat_int_t num_of_buf;
 };
 
@@ -1605,7 +1606,7 @@ static long jsqz_compat_ioctl32(struct file *filp,
     		for (i = 0; i < task.user_task.num_of_buf; i++)
     		{
     			task.user_task.buf_out[i].len = data.buf_out[i].len;
-    			if (data.buf_out[i].type == HWJSQZ_BUFFER_DMABUF)
+    			if (data.buf_out[i].type == HWSQZ_BUFFER_DMABUF)
     				task.user_task.buf_out[i].fd = data.buf_out[i].fd;
     			else
     				task.user_task.buf_out[i].userptr = data.buf_out[i].userptr;

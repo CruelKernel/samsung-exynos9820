@@ -330,8 +330,8 @@ static int modem_spi_boot_remove(struct spi_device *spi)
 }
 #ifdef CONFIG_OF
 static const struct of_device_id modem_boot_spi_dt_match[] = {
-	{ .compatible = "modem_boot_spi",
-	},
+	{ .compatible = "modem_boot_spi" },
+	{},
 };
 MODULE_DEVICE_TABLE(of, modem_boot_spi_dt_match);
 #endif

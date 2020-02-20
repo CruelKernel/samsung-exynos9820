@@ -26,7 +26,6 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
-#include <linux/usb/composite.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -231,7 +230,7 @@ static void dwc3_gedget_link_state_print (struct dwc3 *dwc, char* fname)
 		sprintf(buf+(i*5), "%02d > ",
 			dwc->linkstate_record[(dwc->linkstate_ai+i)%DWC3_LINK_STATE_LAST_INFO_MEM]);
 	}
-	dev_info(dwc->dev, "usb: %s (%s%s)\n", __func__, buf, fname);
+	pr_info("usb: %s (%s%s)\n", __func__, buf, fname);
 }
 
 /**
@@ -980,9 +979,19 @@ static void dwc3_gadget_ep_free_request(struct usb_ep *ep,
 {
 	struct dwc3_request		*req = to_dwc3_request(request);
 	struct dwc3_ep			*dep = to_dwc3_ep(ep);
+	struct dwc3			*dwc = dep->dwc;
+	unsigned long			flags;
 
 	dep->allocated_requests--;
 	trace_dwc3_free_request(req);
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	if (req->list.next != LIST_POISON1) {
+		if (req->list.next != NULL)
+			list_del(&req->list);
+	}
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
 	kfree(req);
 }
 
@@ -2105,17 +2114,17 @@ static int dwc3_gadget_run_stop_vbus(struct dwc3 *dwc, int is_on, int suspend)
 				dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 				dev_err(dwc->dev,
 					"gadget run/stop timeout, DCTL : 0x%x\n",
-					reg);
+						reg);
 				reg = dwc3_readl(dwc->regs, DWC3_DSTS);
 				dev_err(dwc->dev,
 					"gadget run/stop timeout, DSTS : 0x%x\n",
-					reg);
+						reg);
 				do {
 					reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 					if (!(reg & DWC3_DCTL_CSFTRST)) {
 						dev_info(dwc->dev,
 							"gadget run/stop DCTL softreset, DCTL : 0x%x\n",
-							reg);
+								reg);
 						goto good;
 					}
 					udelay(1);
@@ -2128,8 +2137,9 @@ static int dwc3_gadget_run_stop_vbus(struct dwc3 *dwc, int is_on, int suspend)
 			/* Do nothing in DCTL stop timeout */
 			dev_err(dwc->dev,
 			"gadget DCTL stop timeout, DSTS: 0x%x\n",
-			reg);
-			dwc3_soft_reset(dwc);
+				reg);
+			if (!dwc->vbus_state)
+				dwc3_soft_reset(dwc);
 			goto good;
 		}
 		udelay(1);
@@ -2153,6 +2163,12 @@ static int dwc3_gadget_vbus_session(struct usb_gadget *g, int is_active)
 			__func__, is_active, dwc->softconnect, dwc->vbus_session);
 
 	spin_lock_irqsave(&dwc->lock, flags);
+
+	if (dwc->vbus_session == is_active) {
+		dev_info(dwc->dev, "%s: already processed\n", __func__);
+		spin_unlock_irqrestore(&dwc->lock, flags);
+		return 0;
+	}
 
 	/* Mark that the vbus was powered */
 	dwc->vbus_session = is_active;

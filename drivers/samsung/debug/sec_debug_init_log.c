@@ -18,6 +18,14 @@ static char *buf_ptr;
 static unsigned long buf_size;
 static unsigned long buf_idx;
 
+size_t sec_debug_get_curr_init_ptr(void)
+{
+#ifdef CONFIG_SEC_DEBUG_SYSRQ_KMSG
+	return (size_t)(buf_ptr + buf_idx);
+#endif
+	return 0;
+}
+
 static void sec_debug_hook_init_log(const char *str, size_t size)
 {
 	int len;
@@ -32,7 +40,7 @@ static void sec_debug_hook_init_log(const char *str, size_t size)
 		buf_idx = (buf_idx + size) % buf_size;
 	}
 }
-	
+
 static int __init sec_debug_init_init_log(void)
 {
 	pr_err("%s: start\n", __func__);
@@ -44,6 +52,7 @@ static int __init sec_debug_init_init_log(void)
 	memset(buf_ptr, 0, buf_size);
 	register_init_log_hook_func(sec_debug_hook_init_log);
 	pr_err("%s: done\n", __func__);
+
 	return 0;
 }
 late_initcall(sec_debug_init_init_log);

@@ -85,7 +85,7 @@ static struct auto_sleep_thread* AST_basic_setup(void) {
 	LLQ_REGISTER_TASK(llq_ast_test, AST_basic_signal);
 	
 	if(ast_thr) {
-		ret = auto_sleep_thread_create(ast_thr, "AST_test_pop_llq", pop_llq_do_task, pop_llq_check_work);
+		ret = auto_sleep_thread_create(ast_thr, "AST_test_pop_llq", pop_llq_do_task, pop_llq_check_work, NULL);
 		if (ret) return NULL;
 		else return ast_thr;
 	} else {
@@ -283,3 +283,4 @@ TESTDEF(AST_06_check_race_longtime_func,
 	/* Shutdown */	
 	AST_basic_teardown(ast_thr);
 )
+

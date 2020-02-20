@@ -544,7 +544,7 @@ int setup_for_mbox_mock(void)
 
 	/* Initialize and run the mbox mock */
 	ret = auto_sleep_thread_create(&mbox_mock_protodrv.ast, "Mbox mock for protodrv-basic"
-		                       ,mbox_mock_do_task ,mbox_mock_check_work);
+		                       ,mbox_mock_do_task ,mbox_mock_check_work, NULL);
 	if(ret) {
 		return -1;
 	}
@@ -600,7 +600,7 @@ int setup_with_session(int session_num) {
 
 	/* Initialize and run the mbox mock */
 	ret = auto_sleep_thread_create(&mbox_mock_protodrv.ast, "Mbox mock for protodrv-basic"
-		                       ,mbox_mock_do_task ,mbox_mock_check_work);
+		                       ,mbox_mock_do_task ,mbox_mock_check_work, NULL);
 	if(ret) {
 		return -1;
 	}

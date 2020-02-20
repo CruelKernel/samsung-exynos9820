@@ -75,7 +75,7 @@ enum secure_state {
 };
 #endif
 /* size of maximum read/write buffer supported by driver */
-#define MAX_BUFFER_SIZE   259U
+#define MAX_BUFFER_SIZE   260U
 
 /* Different driver debug lever */
 enum P3_DEBUG_LEVEL {
@@ -304,8 +304,10 @@ static int p3_xfer(struct p3_data *p3_device, struct p3_ioctl_transfer *tr)
 	if (p3_device == NULL || tr == NULL)
 		return -EFAULT;
 
-	if (tr->len > DEFAULT_BUFFER_SIZE || !tr->len)
+	if (tr->len > MAX_BUFFER_SIZE || !tr->len) {
+		P3_ERR_MSG("%s invalid size\n", __func__);
 		return -EMSGSIZE;
+	}
 
 	if (tr->tx_buffer != NULL) {
 		if (copy_from_user(tx_buffer,
@@ -588,9 +590,11 @@ static ssize_t spip3_write(struct file *filp, const char *buf, size_t count,
 
 	p3_dev = filp->private_data;
 
+	if (count > MAX_BUFFER_SIZE) {
+		P3_ERR_MSG("%s invalid size\n", __func__);
+		return -EMSGSIZE;
+	}
 	mutex_lock(&p3_dev->buffer_mutex);
-	if (count > MAX_BUFFER_SIZE)
-		count = MAX_BUFFER_SIZE;
 
 	if (copy_from_user(&tx_buffer[0], &buf[0], count)) {
 		P3_ERR_MSG("%s : failed to copy from user space\n", __func__);
@@ -632,6 +636,10 @@ static ssize_t spip3_read(struct file *filp, char *buf, size_t count,
 	unsigned char tx_buffer[MAX_BUFFER_SIZE] = {0x0, };
 	unsigned char rx_buffer[MAX_BUFFER_SIZE] = {0x0, };
 
+	if (count > MAX_BUFFER_SIZE) {
+		P3_ERR_MSG("%s invalid size\n", __func__);
+		return -EMSGSIZE;
+	}
 	P3_INFO_MSG("spip3_read count %zu - Enter\n", count);
 	mutex_lock(&p3_dev->buffer_mutex);
 

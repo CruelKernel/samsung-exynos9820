@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wldev_common.h 813004 2019-04-03 07:16:21Z $
+ * $Id$
  */
 #ifndef __WLDEV_COMMON_H__
 #define __WLDEV_COMMON_H__
@@ -47,7 +47,7 @@ s32 wldev_ioctl_set(
  */
 s32 wldev_iovar_getbuf(
 	struct net_device *dev, s8 *iovar_name,
-	const void *param, s32 paramlen, void *buf, s32 buflen, struct mutex* buf_sync);
+	const void *param, u32 paramlen, void *buf, u32 buflen, struct mutex* buf_sync);
 
 /** Set named IOVARs, this function calls wl_dev_ioctl with
  *  WLC_SET_VAR IOCTL code

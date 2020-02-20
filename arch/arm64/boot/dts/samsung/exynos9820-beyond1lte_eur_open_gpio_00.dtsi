@@ -1,0 +1,198 @@
+/*
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+// Support BEYOND1 EUR HW REV0.0
+
+#include "exynos_gpio_config_macros.dtsi"
+
+/*
+ * pin banks of exynos9820 pin-controller 0 (ALIVE)
+ * GPA0, GPA1, GPA2, GPA3, GPA4
+ * GPQ0
+ * ETC0
+ * Note that do not set sleep state because this is an ALIVE region.
+ */
+&pinctrl_0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&initial0>;
+	initial0: initial-state {
+		PIN_IN(gpa4-1, DOWN);	/* NC */
+	};
+};
+
+/*
+ * pin banks of exynos9820 pin-controller 1 (AUD)
+ * GPB0, GPB1, GPB2
+ */
+
+/*
+ * pin banks of exynos9820 pin-controller 2 (CMGP)
+ * GPM0 ~ GPM10
+ * GPM11 ~ GPM20
+ * GPM21 ~ GPM30
+ * GPM31
+ * Note that do not set sleep state because this is an ALIVE region.
+ */
+&pinctrl_2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&initial2>;
+	initial2: initial-state {
+		PIN_IN(gpm2-0, NONE);	/* MEM_SCL_1P8 */
+		PIN_IN(gpm3-0, NONE);	/* MEM_SDA_1P8 */
+		PIN_IN(gpm30-0, DOWN);	/* NC */
+		PIN_IN(gpm31-0, DOWN);	/* NC */
+	};
+};
+
+/*
+ * pin banks of exynos9820 pin-controller 3 (FSYS0)
+ * GPF0
+ */
+
+/*
+ * pin banks of exynos9820 pin-controller 4 (FSYS1)
+ * GPF1, GPF2, GPF3
+ */
+&pinctrl_4 {
+	pinctrl-names = "sleep";
+	pinctrl-0 = <&sleep4>;
+	sleep4: sleep-state {
+		PIN_SLP(gpf2-0, INPUT, NONE);	/* PCIE_CLK_REQ_L */
+		
+		PIN_SLP(gpf3-0, PREV, NONE);	/* UFS_REFCLK */
+		PIN_SLP(gpf3-1, PREV, NONE);	/* UFS_RST_N */
+	};
+};
+
+/*
+ * pin banks of exynos9820 pin-controller 5 (PERIC0)
+ * GPP0, GPP1, GPP2, GPP3
+ * GPG0, GPG1, GPG2, GPG4
+ */
+&pinctrl_5 {
+	pinctrl-names = "default","sleep";
+	pinctrl-0 = <&initial5>;
+	pinctrl-1 = <&sleep5>;
+	initial5: initial-state {
+		PIN_IN(gpp2-6, DOWN);	/* NC */
+		PIN_IN(gpp2-7, DOWN);	/* NC */
+
+		PIN_IN(gpg0-0, UP);	/* IFC_SENSE_INT_AP */
+		PIN_IN(gpg1-2, NONE);	/* HW_REV3 */
+		PIN_IN(gpg1-3, NONE);	/* HW_REV2 */
+		PIN_IN(gpg1-4, NONE);	/* HW_REV1 */
+		PIN_IN(gpg1-5, NONE);	/* HW_REV0 */
+		PIN_IN(gpg1-7, DOWN);	/* NC */
+	};
+	sleep5: sleep-state {
+		PIN_SLP(gpp1-4, PREV, NONE);	/* TSP_SCL_1P8 */
+		PIN_SLP(gpp1-5, PREV, NONE);	/* TSP_SDA_1P8 */
+		PIN_SLP(gpp2-4, INPUT, NONE);	/* GRIP_SCL_1P8 */
+		PIN_SLP(gpp2-5, INPUT, NONE);	/* GRIP_SDA_1P8 */
+
+		PIN_SLP(gpp2-6, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpp2-7, INPUT, DOWN);	/* NC */
+
+		PIN_SLP(gpp3-4, INPUT, NONE);	/* SMPL_WARN_AP */
+
+		PIN_SLP(gpg0-0, INPUT, UP);  	/* IFC_SENSE_INT_AP */
+		PIN_SLP(gpg0-4, INPUT, UP);  	/* USB3.1_CON_SEL */
+		PIN_SLP(gpg0-5, PREV, NONE);	/* WLAN_EN */
+
+		PIN_SLP(gpg1-2, INPUT, NONE);	/* HW_REV3 */
+		PIN_SLP(gpg1-3, INPUT, NONE);	/* HW_REV2 */
+		PIN_SLP(gpg1-4, INPUT, NONE);	/* HW_REV1 */
+		PIN_SLP(gpg1-5, INPUT, NONE);	/* HW_REV0 */
+		PIN_SLP(gpg1-7, INPUT, DOWN);	/* NC */
+
+		PIN_SLP(gpg2-2, PREV, NONE);    /* DISP_DET */
+		PIN_SLP(gpg2-4, PREV, DOWN);	/* CAM_TORCH_EN */
+		PIN_SLP(gpg2-6, OUT0, DOWN);	/* CAM_RST_N */
+
+		PIN_SLP(gpg4-0, OUT1, NONE);    /* EXPANDER_RST */
+	};
+};
+
+/*
+ * pin banks of exynos9820 pin-controller 6 (PERIC1)
+ * GPP4, GPP5, GPP6
+ * GPC0, GPC1
+ * GPD0
+ * GPG3
+ * GPH0, GPH1
+ */
+&pinctrl_6 {
+	pinctrl-names = "default","sleep";
+	pinctrl-0 = <&initial6>;
+	pinctrl-1 = <&sleep6>;
+	initial6: initial-state {
+		PIN_IN(gpp5-4, DOWN);	/* NC */
+		PIN_IN(gpp5-5, DOWN);	/* NC */
+
+		PIN_IN(gpc0-2, DOWN);	/* NC */
+		PIN_IN(gpc0-3, DOWN);	/* NC */
+
+		PIN_IN(gpc1-0, DOWN);	/* NC */
+		PIN_IN(gpc1-1, DOWN);	/* NC */
+		PIN_IN(gpc1-2, DOWN);	/* NC */
+		PIN_IN(gpc1-3, DOWN);	/* NC */
+
+		PIN_IN(gpg3-1, NONE);	/* CP_HW_REV3 */
+		PIN_IN(gpg3-2, NONE);	/* CP_HW_REV2 */
+		PIN_IN(gpg3-3, NONE);	/* CP_HW_REV1 */
+		PIN_IN(gpg3-4, NONE);	/* CP_HW_REV0 */
+
+	};
+	sleep6:sleep-state {
+		PIN_SLP(gpp4-4, OUT0, DOWN);	/* MST_DATA */
+		PIN_SLP(gpp4-5, OUT0, DOWN);	/* MST_EN */
+
+		PIN_SLP(gpp5-0, INPUT, NONE);	/* NFC_HRM_SCL_1P8 */
+		PIN_SLP(gpp5-1, INPUT, NONE);	/* NFC_HRM_SDA_1P8 */
+
+		PIN_SLP(gpp5-4, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpp5-5, INPUT, DOWN);	/* NC */
+
+		PIN_SLP(gpc0-0, INPUT, NONE);	/* CAM_SCL_1P8 */
+		PIN_SLP(gpc0-1, INPUT, NONE);	/* CAM_SDA_1P8 */
+		PIN_SLP(gpc0-2, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc0-3, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc0-6, INPUT, NONE);	/* CAM_AF_SCL_1P8 */
+		PIN_SLP(gpc0-7, INPUT, NONE);	/* CAM_AF_SDA_1P8 */
+
+		PIN_SLP(gpc1-0, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc1-1, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc1-2, INPUT, DOWN);	/* NC */
+		PIN_SLP(gpc1-3, INPUT, DOWN);	/* NC */
+
+		PIN_SLP(gpd0-0, PREV, NONE);    /* DISP_TE */
+		PIN_SLP(gpd0-2, OUT0, NONE);	/* XBOOTLDO0 */
+
+		PIN_SLP(gpg3-1, INPUT, NONE);	/* CP_HW_REV3 */
+		PIN_SLP(gpg3-2, INPUT, NONE);	/* CP_HW_REV2 */
+		PIN_SLP(gpg3-3, INPUT, NONE);	/* CP_HW_REV1 */
+		PIN_SLP(gpg3-4, INPUT, NONE);	/* CP_HW_REV0 */
+		PIN_SLP(gpg3-5, OUT0, DOWN);	/* MST_PWR_EN */
+		PIN_SLP(gpg3-6, OUT0, DOWN);	/* CAM_FLASH_EN */
+
+		PIN_SLP(gpp6-2, INPUT, NONE);	/* EXPANDER_SCL_1P8 */
+		PIN_SLP(gpp6-3, INPUT, NONE);	/* EXPANDER_SDA_1P8 */
+		
+		PIN_SLP(gph0-0, PREV, NONE);	/* SHUB_SPI_CLK */
+		PIN_SLP(gph0-1, PREV, NONE);	/* SHUB_SPI_MOSI */
+		PIN_SLP(gph0-2, PREV, NONE);	/* SHUB_SPI_MISO */
+		PIN_SLP(gph0-3, PREV, NONE);	/* SHUB_SPI_SS_N */
+		PIN_SLP(gph1-0, PREV, NONE);	/* BTP_LDO_EN */
+	};
+};
+
+/*
+ * pin banks of exynos9820 pin-controller 7 (VTS)
+ * GPV0
+ */

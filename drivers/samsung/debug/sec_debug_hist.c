@@ -23,7 +23,6 @@ static ssize_t sec_dhist_read(struct file *file, char __user *buf,
 {
 	loff_t pos = *offset;
 	ssize_t count, ret = 0;
-	char *dhist_buf = NULL;
 	char *base = NULL;
 
 	if (!dhist_size) {
@@ -45,7 +44,7 @@ static ssize_t sec_dhist_read(struct file *file, char __user *buf,
 	if (pos >= dhist_size) {
 		pr_crit("%s: pos %x , dhist: %x\n", __func__, pos, dhist_size);
 
-		ret = -ENXIO;
+		ret = 0;
 
 		goto fail;
 	}
@@ -61,30 +60,17 @@ static ssize_t sec_dhist_read(struct file *file, char __user *buf,
 		goto fail;
 	}
 
-	dhist_buf = kzalloc(dhist_size, GFP_NOWAIT);
-	if (!dhist_buf) {
-		pr_crit("%s: fail to allocate (%x)\n", __func__, dhist_size);
-
-		ret = -ENOMEM;
-
-		goto fail;
-	}
-
-	/* need to free from here */
-	memcpy(dhist_buf, base, dhist_size);
-
-	if (copy_to_user(buf, dhist_buf + pos, count)) {
+	if (copy_to_user(buf, base + pos, count)) {
 		pr_crit("%s: fail to copy to use\n", __func__);
 
 		ret = -EFAULT;
 	} else {
-		pr_crit("%s: buf: %p base: %p\n", __func__, dhist_buf, base);
+		//pr_crit("%s: buf: %p base: %p\n", __func__, dhist_buf, base);
+		pr_crit("%s: base: %p\n", __func__, base);
 
 		*offset += count;
 		ret = count;
 	}
-
-	kfree(dhist_buf);
 
 fail:
 	return ret;

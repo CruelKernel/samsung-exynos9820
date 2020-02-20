@@ -171,10 +171,8 @@ static long __npu_binary_read(struct npu_binary *binary, void *target, size_t ta
 	}
 
 	binary->image_size = fsize;
-	/* no cache operation, because target is sram of vpu */
-#if 1//def CONFIG_EXYNOS_VPU_HARDWARE
 	memcpy(target, (void *)buf, fsize);
-#endif
+
 	npu_info("success of fw(%s, %ld) apply.\n", fpath, fsize);
 	ret = fsize;
 
@@ -186,9 +184,9 @@ p_err:
 	return ret;
 
 request_fw:
-	ret = request_firmware(&fw_blob, NPU_FW_NAME, binary->dev);
+	ret = request_firmware(&fw_blob, NPU_FW_PATH3 NPU_FW_NAME, binary->dev);
 	if (ret) {
-		npu_err("fail(%d) in request_firmware(%s)", ret, binary->fpath2);
+		npu_err("fail(%d) in request_firmware(%s)\n", ret, NPU_FW_PATH3 NPU_FW_NAME);
 		ret = -EINVAL;
 		goto request_err;
 	}
@@ -212,10 +210,9 @@ request_fw:
 	}
 
 	binary->image_size = fw_blob->size;
-#ifdef CONFIG_EXYNOS_VPU_HARDWARE
 	memcpy(target, fw_blob->data, fw_blob->size);
-#endif
-	npu_info("success of binay(%s, %ld) apply.\n", binary->fpath2, fw_blob->size);
+
+	npu_info("success of binay(%s, %ld) apply.\n", NPU_FW_PATH3 NPU_FW_NAME, fw_blob->size);
 	ret = fw_blob->size;
 
 request_err:
@@ -282,7 +279,7 @@ int npu_binary_write(struct npu_binary *binary,
 
 	binary->image_size = target_size;
 
-	npu_info("success of binay(%s, %ld) apply.\n", binary->fpath1, target_size);
+	npu_info("success of binary(%s, %ld) apply.\n", binary->fpath1, target_size);
 
 	filp_close(fp, current->files);
 	set_fs(old_fs);

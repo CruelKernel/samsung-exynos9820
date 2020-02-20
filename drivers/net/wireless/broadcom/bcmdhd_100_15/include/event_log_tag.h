@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: event_log_tag.h 820429 2019-05-17 22:30:04Z $
  */
 
 #ifndef _EVENT_LOG_TAG_H_
@@ -396,8 +394,22 @@
 #define EVENT_LOG_TAG_BTCEC_INFO		341
 #define EVENT_LOG_TAG_BTCEC_SCHED		342
 
+#ifdef SLOT_SCHED
+#define EVENT_LOG_TAG_SBSS_HC		344
+#endif /* SLOT_SCHED */
+
+/* wlc_chan_cal */
+#define EVENT_LOG_TAG_WCC_ERR			345
+#define EVENT_LOG_TAG_WCC_INFO			346
+#define EVENT_LOG_TAG_WCC_TRACE			347
+
+/* AMT logging */
+#define EVENT_LOG_TAG_AMT_ERR			348
+#define EVENT_LOG_TAG_AMT_INFO			349
+#define EVENT_LOG_TAG_AMT_TRACE			350
+
 /* EVENT_LOG_TAG_MAX	= Set to the same value of last tag, not last tag + 1 */
-#define EVENT_LOG_TAG_MAX			342
+#define EVENT_LOG_TAG_MAX			350
 
 typedef enum wl_el_set_type_def {
 	EVENT_LOG_SET_TYPE_DEFAULT = 0, /* flush the log buffer when it is full - Default option */

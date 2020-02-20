@@ -772,7 +772,7 @@ exit:
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
-	defined(SUPPORT_RANDOM_MAC_SCAN)
+	defined(SUPPORT_RANDOM_MAC_SCAN) && !defined(WL_USE_RANDOMIZED_SCAN)
 static const u8 *
 wl_retrieve_wps_attribute(const u8 *buf, u16 element_id)
 {
@@ -1085,7 +1085,7 @@ wl_scan_prep(struct bcm_cfg80211 *cfg, void *scan_params, u32 len,
 		if (len >= (scan_param_size + (request->n_channels * sizeof(u16)))) {
 			wl_cfgscan_populate_scan_channels(cfg,
 					chan_list, request, &n_channels);
-			cur_offset += (n_channels * (sizeof(u16)));
+			cur_offset += (uint32)(n_channels * (sizeof(u16)));
 		}
 	}
 
@@ -1189,25 +1189,34 @@ wl_run_escan(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
 	defined(SUPPORT_RANDOM_MAC_SCAN)
+#if !defined(WL_USE_RANDOMIZED_SCAN)
 	if ((request != NULL) && !ETHER_ISNULLADDR(request->mac_addr) &&
 		!ETHER_ISNULLADDR(request->mac_addr_mask) &&
 		!wl_is_wps_enrollee_active(ndev, request->ie, request->ie_len)) {
 		/* Call scanmac only for valid configuration */
 		err = wl_cfg80211_scan_mac_enable(ndev, request->mac_addr,
 			request->mac_addr_mask);
-		if (err < 0) {
-			if (err == BCME_UNSUPPORTED) {
-				/* Ignore if chip doesnt support the feature */
-				err = BCME_OK;
-			} else {
-				/* For errors other than unsupported fail the scan */
-				WL_ERR(("%s : failed to set random mac for host scan, %d\n",
-					__FUNCTION__, err));
-				err = -EAGAIN;
-				goto exit;
-			}
+	}
+#elif defined(WL_USE_RANDOMIZED_SCAN) && defined(RANDOM_MAC_CONTROL)
+	if (request) {
+		bool randmac_enable = (request->flags & NL80211_SCAN_FLAG_RANDOM_ADDR);
+		err = wl_rand_mac_ctrl(ndev, cfg, randmac_enable);
+	}
+#endif /* WL_USE_RANDOMIZED_SCAN */
+#if (!defined(WL_USE_RANDOMIZED_SCAN) || defined(RANDOM_MAC_CONTROL))
+	if (err < 0) {
+		if (err == BCME_UNSUPPORTED) {
+			/* Ignore if chip doesnt support the feature */
+			err = BCME_OK;
+		} else {
+			/* For errors other than unsupported fail the scan */
+			WL_ERR(("%s : failed to set random mac for host scan, %d\n",
+				__FUNCTION__, err));
+			err = -EAGAIN;
+			goto exit;
 		}
 	}
+#endif	/* !WL_USE_RANDOMIZED_SCAN || RANDOM_MAC_CONTROL */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0) && defined(SUPPORT_RANDOM_MAC_SCAN) */
 
 	if (!cfg->p2p_supported || !p2p_scan(cfg)) {
@@ -1663,7 +1672,6 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 {
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct cfg80211_ssid *ssids;
-	struct ether_addr primary_mac;
 	bool p2p_ssid;
 #ifdef WL11U
 	bcm_tlv_t *interworking_ie;
@@ -1758,10 +1766,6 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 					/* p2p on at the first time */
 					p2p_on(cfg) = true;
 					wl_cfgp2p_set_firm_p2p(cfg);
-					get_primary_mac(cfg, &primary_mac);
-#ifndef WL_P2P_USE_RANDMAC
-					wl_cfgp2p_generate_bss_mac(cfg, &primary_mac);
-#endif /* WL_P2P_USE_RANDMAC */
 #if defined(P2P_IE_MISSING_FIX)
 					cfg->p2p_prb_noti = false;
 #endif // endif
@@ -2045,7 +2049,7 @@ void wl_cfg80211_scan_abort(struct bcm_cfg80211 *cfg)
 		err = wldev_ioctl_set(dev, WLC_SCAN, params, params_size);
 		if (err < 0) {
 			/* scan abort can fail if there is no outstanding scan */
-			WL_DBG(("scan abort  failed. ret:%d\n", err));
+			WL_ERR(("scan engine not aborted ret(%d)\n", err));
 		}
 		MFREE(cfg->osh, params, params_size);
 	}
@@ -2083,7 +2087,7 @@ s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 		goto out;
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
-	defined(SUPPORT_RANDOM_MAC_SCAN)
+	defined(SUPPORT_RANDOM_MAC_SCAN) && !defined(WL_USE_RANDOMIZED_SCAN)
 		/* Disable scanmac if enabled */
 		if (cfg->scanmac_enabled) {
 			wl_cfg80211_scan_mac_disable(ndev);
@@ -2711,12 +2715,13 @@ int wl_cfg80211_scan_mac_enable(struct net_device *dev, uint8 *rand_mac, uint8 *
 		return err;
 	}
 
+#if !defined(WL_USE_RANDOMIZED_SCAN)
 	if (wl_get_drv_status_all(cfg, CONNECTED) || wl_get_drv_status_all(cfg, CONNECTING) ||
 	    wl_get_drv_status_all(cfg, AP_CREATED) || wl_get_drv_status_all(cfg, AP_CREATING)) {
 		WL_ERR(("fail to Set random mac, current state is wrong\n"));
 		return BCME_UNSUPPORTED;
 	}
-
+#endif /* !defined(WL_USE_RANDOMIZED_SCAN */
 	/* Enable scan mac */
 	sm = (wl_scanmac_t *)buffer;
 	sm_enable = (wl_scanmac_enable_t *)sm->data;
@@ -2735,7 +2740,9 @@ int wl_cfg80211_scan_mac_enable(struct net_device *dev, uint8 *rand_mac, uint8 *
 		sm->len = sizeof(*sm_config);
 		sm->subcmd_id = WL_SCANMAC_SUBCMD_CONFIG;
 		sm_config->scan_bitmap = WL_SCANMAC_SCAN_UNASSOC;
-
+#ifdef WL_USE_RANDOMIZED_SCAN
+		sm_config->scan_bitmap |= WL_SCANMAC_SCAN_ASSOC_HOST;
+#endif /* WL_USE_RANDOMIZED_SCAN */
 		/* Set randomize mac address recv from upper layer */
 		(void)memcpy_s(&sm_config->mac.octet, ETH_ALEN, rand_mac, ETH_ALEN);
 
@@ -2795,6 +2802,24 @@ wl_cfg80211_scan_mac_disable(struct net_device *dev)
 
 	return err;
 }
+#if defined(RANDOM_MAC_CONTROL)
+int
+wl_rand_mac_ctrl(struct net_device *dev, struct bcm_cfg80211 *cfg, bool randmac_enable)
+{
+	s32 err = BCME_OK;
+	uint8 randomize_all_bits_mask[ETHER_ADDR_LEN] = {0};
+	/* Use default mask for 46 bit randomization */
+	uint8 random_addr[ETHER_ADDR_LEN] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+	if (randmac_enable && !cfg->scanmac_enabled) {
+		err = wl_cfg80211_scan_mac_enable(dev, random_addr, randomize_all_bits_mask);
+	} else if (!randmac_enable) {
+		err = wl_cfg80211_scan_mac_disable(dev);
+	}
+
+	return err;
+}
+#endif /* RANDOM_MAC_CONTROL */
 #endif /* SUPPORT_RANDOM_MAC_SCAN */
 
 #ifdef WL_SCHED_SCAN
@@ -2942,7 +2967,7 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 		ret = -EINVAL;
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
-	defined(SUPPORT_RANDOM_MAC_SCAN)
+	defined(SUPPORT_RANDOM_MAC_SCAN) && (!defined(WL_USE_RANDOMIZED_SCAN)
 	if (!ETHER_ISNULLADDR(request->mac_addr) && !ETHER_ISNULLADDR(request->mac_addr_mask)) {
 		ret = wl_cfg80211_scan_mac_enable(dev, request->mac_addr, request->mac_addr_mask);
 		/* Ignore if chip doesnt support the feature */

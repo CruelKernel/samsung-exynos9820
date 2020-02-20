@@ -142,7 +142,9 @@ static void mem_abort_decode(unsigned int esr)
 
 static inline phys_addr_t show_virt_to_phys(unsigned long addr)
 {
-	if (!is_vmalloc_addr((void *)addr))
+	if (!is_vmalloc_addr((void *)addr) ||
+		(addr >= (unsigned long) KERNEL_START &&
+		 addr <= (unsigned long) KERNEL_END))
 		return __pa(addr);
 	else
 		return page_to_phys(vmalloc_to_page((void *)addr)) +

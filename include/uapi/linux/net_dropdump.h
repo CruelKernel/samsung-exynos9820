@@ -19,6 +19,7 @@ static inline struct list_head *dropdump_ptype_head(const struct packet_type *pt
 
 #define PACKET_NOLOG	0x00
 #define PACKET_NOKLOG	0x10
+#define PACKET_LOGED	0x20
 #define PACKET_DUMMY	0x80
 #define PACKET_IN	0x01
 #define PACKET_OUT	0x02

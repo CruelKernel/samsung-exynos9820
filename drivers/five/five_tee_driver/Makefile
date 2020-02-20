@@ -10,7 +10,7 @@ obj-$(CONFIG_FIVE_USE_TRUSTONIC) += $(TEEC_CLIENT_PATH)/teec_common_tbase.o
 
 itee_driver-objs += five_tee_driver.o
 
-ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Isecurity/integrity/five \
+ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Isecurity/samsung/five \
                                 -Idrivers/five/five_tee_driver/$(PROTOCOL_PATH) \
                                 -Idrivers/five/five_tee_driver/$(TEEC_CLIENT_PATH)
 

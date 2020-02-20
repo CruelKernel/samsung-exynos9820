@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 823752 2019-06-05 11:08:24Z $
+ * $Id: dhd_linux.c 823742 2019-06-05 08:37:45Z $
  */
 
 #include <typedefs.h>
@@ -7455,6 +7455,7 @@ dhd_add_monitor_if(dhd_info_t *dhd)
 		DHD_ERROR(("%s, register_netdev failed for %s\n",
 			__FUNCTION__, dev->name));
 		free_netdev(dev);
+		return;
 	}
 
 	if (FW_SUPPORTED((&dhd->pub), monitor)) {

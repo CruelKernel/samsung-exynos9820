@@ -17,8 +17,12 @@
 #define OFFSET_SDR_FOR_MINFORM		(0x0)
 #define MASK_SDR_FOR_MINFORM		(0xF)
 
+#define SHA256_DIGEST_SIZE      32
+#define SHA256_BLOCK_SIZE       64
+#define SHA256_DIGEST_LENGTH  SHA256_DIGEST_SIZE
+
 static unsigned int dump_sink;
-static unsigned int reset_rwc;
+static unsigned int upload_count;
 static int initialized;
 
 static int sec_sdcard_ramdump(const char *val, const struct kernel_param *kp)
@@ -136,7 +140,7 @@ static ssize_t sec_rdx_bootdev_proc_write(struct file *file,
 			goto out;
 		}
 
-		pfiemap = phys_to_virt(sec_rdx_bootdev_paddr);
+		pfiemap = phys_to_virt(sec_rdx_bootdev_paddr) + SHA256_DIGEST_LENGTH;
 		paddr = virt_to_phys(&pfiemap->fm_extents[pfiemap->fm_mapped_extents]);
 		if (paddr <
 			sec_rdx_bootdev_paddr + sec_rdx_bootdev_size) {
@@ -157,27 +161,27 @@ static const struct file_operations sec_rdx_bootdev_fops = {
 	.write = sec_rdx_bootdev_proc_write,
 };
 
-static int __init sec_set_reset_rwc(char *arg)
+static int __init sec_set_upload_count(char *arg)
 {
-	get_option(&arg, &reset_rwc);
+	get_option(&arg, &upload_count);
 	return 0;
 }
-early_param("sec_debug.reset_rwc", sec_set_reset_rwc);
+early_param("sec_debug.upload_count", sec_set_upload_count);
 
 
-static int sec_reset_rwc_show(struct seq_file *m, void *v)
+static int sec_upload_count_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%d", reset_rwc);
+	seq_printf(m, "%d", upload_count);
 	return 0;
 }
 
-static int sec_reset_rwc_open(struct inode *inode, struct file *file)
+static int sec_upload_count_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, sec_reset_rwc_show, NULL);
+	return single_open(file, sec_upload_count_show, NULL);
 }
 
-static const struct file_operations sec_reset_rwc_proc_fops = {
-	.open = sec_reset_rwc_open,
+static const struct file_operations sec_upload_count_proc_fops = {
+	.open = sec_upload_count_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
@@ -231,6 +235,7 @@ static int __init sec_map_rdx_bootdev_region(void)
 		mutex_unlock(&rdx_bootdev_mutex);
 		return 0;
 	}
+	memset(phys_to_virt(sec_rdx_bootdev_paddr), 0, SHA256_DIGEST_LENGTH);
 
 	mutex_unlock(&rdx_bootdev_mutex);
 	return 0;
@@ -248,10 +253,10 @@ static int __init sec_dump_sink_init(void)
 		pr_err("%s: fail to create proc entry (rdx_bootdev)\n", __func__);
 		return -ENOMEM;
 	}
-	entry = proc_create("reset_rwc", 0444, NULL, &sec_reset_rwc_proc_fops);
+	entry = proc_create("upload_count", 0444, NULL, &sec_upload_count_proc_fops);
 
 	if (!entry) {
-		pr_err("%s: fail to create proc entry (reset_rwc)\n", __func__);
+		pr_err("%s: fail to create proc entry (upload_count)\n", __func__);
 		return -ENOMEM;
 	}
 	pr_info("%s: success to create proc entry\n", __func__);

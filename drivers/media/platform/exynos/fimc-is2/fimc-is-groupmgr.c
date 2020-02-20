@@ -2555,8 +2555,8 @@ int fimc_is_group_buffer_queue(struct fimc_is_groupmgr *groupmgr,
 #ifdef SENSOR_REQUEST_DELAY
 		if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state) &&
 			(frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_GED
-			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK
-			|| frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_CAMERAX)) {
+			 || frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_SDK
+			 || frame->shot->uctl.opMode == CAMERA_OP_MODE_HAL3_CAMERAX)) {
 			int req_cnt = 0;
 			struct fimc_is_frame *prev;
 			list_for_each_entry_reverse(prev, &framemgr->queued_list[FS_REQUEST], list) {
@@ -2586,6 +2586,7 @@ int fimc_is_group_buffer_queue(struct fimc_is_groupmgr *groupmgr,
 			}
 		}
 #endif
+
 		trans_frame(framemgr, frame, FS_REQUEST);
 	} else {
 		err("frame(%d) is invalid state(%d)\n", index, frame->state);

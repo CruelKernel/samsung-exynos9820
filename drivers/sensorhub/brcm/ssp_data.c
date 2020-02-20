@@ -40,7 +40,7 @@
 #endif
 
 
-#ifdef CONFIG_SENSORS_SSP_DAVINCI
+#if defined(CONFIG_SENSORS_SSP_DAVINCI) || ANDROID_VERSION >= 100000
 #define SUPER_VDIS_FORMAT	0xEEEE
 #define VDIS_TIMESTAMP_FORMAT 	0xFFFF
 #else
@@ -104,14 +104,18 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 	u64 update_timestamp = 0;
 	u64 current_timestamp = get_current_timestamp();
 	u32 ts_index = 0;
+#if defined(CONFIG_SENSORS_SSP_DAVINCI) || ANDROID_VERSION >= 100000
 	u16 ts_flag = 0;
+#else
+	u32 ts_flag = 0;
+#endif
 	u16 ts_cnt = 5;
 
 	if (data->IsVDIS_Enabled == true && sensor_type == GYROSCOPE_SENSOR) {
 		u64 prev_index = 0;
 
 		memcpy(&ts_index, pchRcvDataFrame + *iDataIdx, 4);
-#ifdef CONFIG_SENSORS_SSP_DAVINCI
+#if defined(CONFIG_SENSORS_SSP_DAVINCI) || ANDROID_VERSION >= 100000
 		memcpy(&ts_flag, pchRcvDataFrame + *iDataIdx + 4, 2);
 		memcpy(&ts_cnt, pchRcvDataFrame + *iDataIdx + 6, 2);
 #else

@@ -14,6 +14,11 @@ enum {
     MCPS_MODES                  = 4
 };
 
+enum {
+    MCPS_NON_GRO_DEVICE         = 0,
+    MCPS_GRO_DEVICE             = 1,
+};
+
 #define VALID_UCPU(c) (c < NR_CPUS)
 #define VALID_CPU(c) (0 <= c && c < NR_CPUS)
 
@@ -36,6 +41,10 @@ enum {
 
 /*Declare mcps_enable .. Sync...*/
 extern int mcps_enable;
+
+extern cpumask_var_t mcps_cpu_online_mask;
+
+#define mcps_cpu_online(cpu)        cpumask_test_cpu((cpu), mcps_cpu_online_mask)
 
 struct mcps_modes
 {
@@ -101,7 +110,9 @@ struct arps_meta {
 
 extern struct arps_meta __rcu *static_arps;
 extern struct arps_meta __rcu *dynamic_arps;
+extern struct arps_meta __rcu *newflow_arps;
 extern struct arps_meta* get_arps_rcu(void);
+extern struct arps_meta* get_newflow_rcu(void);
 extern struct arps_meta* get_static_arps_rcu(void);
 
 #define NUM_FACTORS 5
@@ -154,6 +165,10 @@ struct mcps_attribute {
 extern struct mcps_config __rcu * mcps;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0))
 void mcps_napi_complete(struct napi_struct *n);
+int mcps_gro_cpu_startup_callback(unsigned int ocpu);
+int mcps_gro_cpu_teardown_callback(unsigned int ocpu);
+#else
+int mcps_gro_cpu_callback(struct notifier_block *notifier , unsigned long action, void* ocpu);
 #endif
 int del_mcps(struct mcps_config* mcps);
 int init_mcps(struct mcps_config* mcps);

@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: bcmipv6.h 700076 2017-05-17 14:42:22Z $
  */
 
 #ifndef _bcmipv6_h_

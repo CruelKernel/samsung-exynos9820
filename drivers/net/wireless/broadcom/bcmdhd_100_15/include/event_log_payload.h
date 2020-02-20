@@ -26,8 +26,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: event_log_payload.h 828528 2019-07-03 09:08:35Z $
  */
 
 #ifndef _EVENT_LOG_PAYLOAD_H_
@@ -931,6 +929,7 @@ typedef struct prsv_periodic_log_hdr {
 
 #define ROAM_LOG_VER_1	(1u)
 #define ROAM_LOG_VER_2	(2u)
+#define ROAM_LOG_VER_3	(3u)
 #define ROAM_SSID_LEN	(32u)
 typedef struct roam_log_trig_v1 {
 	prsv_periodic_log_hdr_t hdr;
@@ -1003,13 +1002,13 @@ typedef struct roam_log_scan_cmplt_v1 {
 	roam_scan_ap_info_t scan_list[ROAM_LOG_RPT_SCAN_LIST_SIZE];
 } roam_log_scan_cmplt_v1_t;
 
-#define ROAM_CHN_UNI_2A		36
-#define ROAM_CHN_UNI_2A_MAX	64
-#define ROAM_CHN_UNI_2C		100
-#define ROAM_CHN_UNI_2C_MAX	144
-#define ROAM_CHN_UNI_3		149
-#define ROAM_CHN_UNI_3_MAX	165
-#define ROAM_CHN_SPACE		2 /* channel index space for 5G */
+#define ROAM_CHN_UNI_2A		36u
+#define ROAM_CHN_UNI_2A_MAX	64u
+#define ROAM_CHN_UNI_2C		100u
+#define ROAM_CHN_UNI_2C_MAX	144u
+#define ROAM_CHN_UNI_3		149u
+#define ROAM_CHN_UNI_3_MAX	165u
+#define ROAM_CHN_SPACE		2u /* channel index space for 5G */
 
 typedef struct roam_log_scan_cmplt_v2 {
 	prsv_periodic_log_hdr_t hdr;
@@ -1093,5 +1092,48 @@ typedef struct roam_log_btmrep_v2 {
 	uint16 pad[2];
 	int	result;
 } roam_log_btm_rep_v2_t;
+
+/* ROAM_LOG_VER_3 specific structures */
+typedef struct roam_log_btmrep_v3 {
+	prsv_periodic_log_hdr_t hdr;
+	uint8 req_mode; /* d11 BSSTRANS req mode */
+	uint8 status; /* d11 BSSTRANS response status code */
+	uint16 pad[2];
+	struct ether_addr target_addr; /* bssid to move */
+	int	result;
+} roam_log_btm_rep_v3_t;
+
+typedef struct roam_log_bcnrptreq_v3 {
+	prsv_periodic_log_hdr_t hdr;
+	int32 result;
+	uint8 reg;	/* operating class */
+	uint8 channel;  /* number of requesting channel */
+	uint8 mode;		/* request mode d11 rmreq bcn */
+	uint8 bssid_wild; /* is wild bssid */
+	uint8 ssid_len;		/* length of SSID */
+	uint8 pad;
+	uint16 duration;	/* duration */
+	uint8 ssid[ROAM_SSID_LEN];
+	uint channel_num;	/* number of scan channel */
+	uint16 band2g_chan_list; /* channel bit map */
+	uint16 uni2a_chan_list;
+	uint8 uni2c_chan_list[3];
+	uint8 uni3_chan_list;
+} roam_log_bcnrpt_req_v3_t;
+
+#define BCNRPT_RSN_SUCCESS	0
+#define BCNRPT_RSN_BADARG	1
+#define BCNRPT_RSN_SCAN_ING	2
+#define BCNRPT_RSN_SCAN_FAIL	3
+
+typedef struct roam_log_bcnrptrep_v3 {
+	prsv_periodic_log_hdr_t hdr;
+	uint8 scan_status;		/* scan status */
+	uint8 reason;			/* report mode d11 RMREP mode */
+	uint16 reason_detail;
+	uint32 count;
+	uint16 duration;		/* duration */
+	uint16 pad;
+} roam_log_bcnrpt_rep_v3_t;
 
 #endif /* _EVENT_LOG_PAYLOAD_H_ */

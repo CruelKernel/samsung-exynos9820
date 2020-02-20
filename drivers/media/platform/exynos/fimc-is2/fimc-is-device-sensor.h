@@ -211,6 +211,8 @@ enum fimc_is_ex_mode {
 	EX_DUALFPS_960 = 3,
 	EX_DUALFPS_480 = 4,
 	EX_PDAF_OFF = 5,
+	EX_3DHDR = 6,
+	EX_PDSTAT_OFF = 7,
 };
 
 struct fimc_is_sensor_cfg {

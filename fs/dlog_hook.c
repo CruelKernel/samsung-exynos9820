@@ -94,8 +94,9 @@ static const char *extensions[] = {
 	"dotx",	"htm", "html", "hwdt", "hwp",
 	"hwpx",	"hwt", "memo", "pdf", "pot",
 	"potx",	"pps", "ppsx", "ppt", "pptm",
-	"pptx",	"rtf", "snb", "spd", "xls",
-	"xlsm", "xlsx", "xlt", "xltx", "xml",
+	"pptx",	"rtf", "sdoc", "snb", "spd",
+	"xls", "xlsm", "xlsx", "xlt", "xltx",
+	"xml",
 	NULL,
 };
 

@@ -469,6 +469,7 @@ struct mem_link_device {
 
 	struct hrtimer tx_timer;
 	struct hrtimer sbd_tx_timer;
+	struct hrtimer sbd_print_timer;
 
 	struct work_struct page_reclaim_work;
 
@@ -553,6 +554,7 @@ struct mem_link_device {
 	atomic_t forced_cp_crash;
 	struct timer_list crash_ack_timer;
 	struct timer_list cp_not_work;
+	unsigned int not_work_time;
 
 	spinlock_t state_lock;
 	enum link_state state;

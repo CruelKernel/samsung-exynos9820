@@ -69,6 +69,7 @@ static struct g2d_stamp_type {
 	{"suspend",       G2D_STAMPTYPE_INOUT,     false},
 	{"resume",        G2D_STAMPTYPE_INOUT,     false},
 	{"hwfc_job",      G2D_STAMPTYPE_NUM,       true},
+	{"pending",       G2D_STAMPTYPE_NUM,       false},
 };
 
 static bool g2d_stamp_show_single(struct seq_file *s, struct g2d_stamp *stamp)

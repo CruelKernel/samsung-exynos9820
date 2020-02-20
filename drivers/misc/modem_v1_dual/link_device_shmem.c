@@ -46,6 +46,9 @@
 
 #define MIF_TX_QUOTA 64
 
+static inline void start_tx_timer(struct mem_link_device *mld,
+				  struct hrtimer *timer);
+
 #if !defined(CONFIG_CP_SECURE_BOOT)
 #define CRC32_XINIT 0xFFFFFFFFL		/* initial value */
 #define CRC32_XOROT 0xFFFFFFFFL		/* final xor value */
@@ -718,6 +721,7 @@ static void cmd_phone_start_handler(struct mem_link_device *mld)
 	modem_notify_event(MODEM_EVENT_ONLINE, mc);
 
 exit:
+	start_tx_timer(mld, &mld->sbd_print_timer);
 	spin_unlock_irqrestore(&mld->state_lock, flags);
 }
 
@@ -3743,6 +3747,55 @@ static const struct attribute_group napi_group = {		\
 };
 #endif
 
+#define BUFF_SIZE 256
+static u32 p_rwpointer[4];
+static u32 c_rwpointer[4];
+
+static enum hrtimer_restart sbd_print(struct hrtimer *timer)
+{
+	struct mem_link_device *mld = container_of(timer, 
+									struct mem_link_device, sbd_print_timer);
+	struct sbd_link_device *sl = &mld->sbd_link_dev;
+	u16 id;
+	struct sbd_ring_buffer *rb[ULDL];
+	struct io_device *iod;
+	char buf[BUFF_SIZE];
+	int len = 0;
+
+	if (likely(sbd_active(sl))) {
+		id = sbd_ch2id(sl, QOS_HIPRIO);
+		rb[TX] = &sl->ipc_dev[id].rb[TX];
+		rb[RX] = &sl->ipc_dev[id].rb[RX];
+
+		c_rwpointer[0] = *(u32 *)rb[TX]->rp;
+		c_rwpointer[1] = *(u32 *)rb[TX]->wp;
+		c_rwpointer[2] = *(u32 *)rb[RX]->rp;
+		c_rwpointer[3] = *(u32 *)rb[RX]->wp;
+
+		if (memcmp(p_rwpointer, c_rwpointer, sizeof(u32)*4)) {
+			mif_err("TX %04d/%04d %04d/%04d RX %04d/%04d %04d/%04d\n", 
+				c_rwpointer[0] & 0xFFFF, c_rwpointer[1] & 0xFFFF,
+				c_rwpointer[0] >> 16, c_rwpointer[1] >> 16, 
+				c_rwpointer[2] & 0xFFFF, c_rwpointer[3] & 0xFFFF,
+				c_rwpointer[2] >> 16, c_rwpointer[3] >> 16);
+			memcpy(p_rwpointer, c_rwpointer, sizeof(u32)*4);
+
+			spin_lock(&rb[TX]->iod->msd->active_list_lock);
+			list_for_each_entry(iod, &rb[TX]->iod->msd->activated_ndev_list, node_ndev) {
+				len += snprintf(buf + len, BUFF_SIZE - len, "%s: %lu/%lu ", iod->name, 
+								iod->ndev->stats.tx_packets, iod->ndev->stats.rx_packets);
+			}
+			spin_unlock(&rb[TX]->iod->msd->active_list_lock);
+			
+			mif_err("%s\n", buf);
+		}
+	}
+
+	hrtimer_forward_now(timer, ms_to_ktime(1000));
+
+	return HRTIMER_RESTART;
+}
+
 struct link_device *shmem_create_link_device(struct platform_device *pdev)
 {
 	struct modem_data *modem;
@@ -3988,6 +4041,10 @@ struct link_device *shmem_create_link_device(struct platform_device *pdev)
 		hrtimer_init(&mld->sbd_tx_timer,
 				CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		mld->sbd_tx_timer.function = sbd_tx_timer_func;
+
+		hrtimer_init(&mld->sbd_print_timer,
+				CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+		mld->sbd_print_timer.function = sbd_print;
 
 		err = create_sbd_link_device(ld,
 				&mld->sbd_link_dev, mld->base, mld->size);

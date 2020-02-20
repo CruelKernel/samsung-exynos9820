@@ -584,6 +584,7 @@ static int usb_audio_probe(struct usb_interface *intf,
 			exynos_usb_audio_hcd(dev);
 			exynos_usb_audio_desc(dev);
 			exynos_usb_audio_map_buf(dev);
+			usb_audio->is_audio = 1;
 		}
 	}
 		dev_info(&dev->dev, "usb_host : %s abox set done\n", __func__);
@@ -672,6 +673,8 @@ static int usb_audio_probe(struct usb_interface *intf,
 	if (dev->do_remote_wakeup)
 		usb_enable_autosuspend(dev);
 	dev_info(&dev->dev, "usb_host : %s done \n", __func__);
+
+	pr_info("%s done\n", __func__);
 
 	return 0;
 

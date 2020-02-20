@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: vlan.h 700076 2017-05-17 14:42:22Z $
  */
 
 #ifndef _vlan_h_

@@ -103,6 +103,7 @@ static void exynos_pcie_assert_phy_reset(struct pcie_port *pp);
 void exynos_pcie_host_v1_send_pme_turn_off(struct exynos_pcie *exynos_pcie);
 void exynos_pcie_host_v1_poweroff(int ch_num);
 int exynos_pcie_host_v1_poweron(int ch_num);
+int exynos_pcie_host_v1_lanechange(int ch_num, int lane);
 static int exynos_pcie_wr_own_conf(struct pcie_port *pp, int where, int size,
 				u32 val);
 static int exynos_pcie_rd_own_conf(struct pcie_port *pp, int where, int size,
@@ -329,7 +330,7 @@ void exynos_pcie_host_v1_register_dump(int ch_num)
 	pr_err("Print ELBI(Sub_Controller) region...\n");
 	for (i = 0; i < 45; i++) {
 		for (j = 0; j < 4; j++) {
-			if (((i * 0x10) + (j * 4)) < 0x2C4) {
+			if (((i * 0x10) + (j * 4)) < 0x2D0) {
 				pr_err("ELBI 0x%04x : 0x%08x\n",
 					(i * 0x10) + (j * 4),
 					exynos_elbi_read(exynos_pcie,
@@ -1124,7 +1125,7 @@ static int exynos_pcie_establish_link(struct pcie_port *pp)
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
-	u32 val, busdev;
+	u32 val, busdev, lane_num;
 	int count = 0, try_cnt = 0;
 retry:
 	/* avoid checking rx elecidle when access DBI */
@@ -1260,6 +1261,11 @@ retry:
 				BUG_ON(1);
 			}
 		}
+
+		exynos_pcie_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &lane_num);
+		lane_num = lane_num >> 20;
+		lane_num &= PCIE_CAP_NEGO_LINK_WIDTH_MASK;
+		dev_info(dev, "Current lane_num(0x80) : %d\n", lane_num);
 
 		val = exynos_elbi_read(exynos_pcie, PCIE_IRQ0);
 		exynos_elbi_write(exynos_pcie, val, PCIE_IRQ0);
@@ -2258,6 +2264,78 @@ static void exynos_pcie_resumed_phydown(struct pcie_port *pp)
 #endif
 	exynos_pcie_clock_enable(pp, PCIE_DISABLE_CLOCK);
 }
+
+int exynos_pcie_host_v1_lanechange(int ch_num, int lane) {
+	struct exynos_pcie *exynos_pcie = &g_pcie_host_v1[ch_num];
+	struct dw_pcie *pci = exynos_pcie->pci;
+	struct pcie_port *pp = &pci->pp;
+	struct pci_bus *ep_pci_bus;
+	int i;
+	u32 val, lane_num;
+
+	if (exynos_pcie->state != STATE_LINK_UP) {
+		dev_err(pci->dev, "Link is not up\n");
+		return 1;
+	}
+
+	if (lane > 2 || lane < 1) {
+		dev_err(pci->dev, "Unable to change to %d lane\n", lane);
+		return 1;
+	}
+
+	exynos_pcie_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &lane_num);
+	lane_num = lane_num >> 20;
+	lane_num &= PCIE_CAP_NEGO_LINK_WIDTH_MASK;
+	dev_info(pci->dev, "Current lane_num(0x80) : from %d lane\n", lane_num);
+
+	if (lane_num == lane) {
+		dev_err(pci->dev, "Already changed to %d lane\n", lane);
+		return 1;
+	}
+
+	//modify register to change lane num
+	ep_pci_bus = pci_find_bus(exynos_pcie->pci_dev->bus->domain_nr, 1);
+	exynos_pcie_rd_other_conf(pp, ep_pci_bus, 0, PCI_VENDOR_ID, 4, &val);
+
+	exynos_pcie_rd_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, &val);
+	val = val & TARGET_LINK_WIDTH_MASK;
+	val = val | lane;
+	exynos_pcie_wr_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, val);
+
+	exynos_pcie_rd_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, &val);
+	val = val | DIRECT_LINK_WIDTH_CHANGE_MASK;
+	exynos_pcie_wr_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, val);
+
+	if (lane == 2) {
+		for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
+			val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & 0x3f;
+
+			if (val == 0x11)
+				break;
+			udelay(10);
+		}
+	}
+
+	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
+		exynos_pcie_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &lane_num);
+		lane_num = lane_num >> 20;
+		lane_num &= PCIE_CAP_NEGO_LINK_WIDTH_MASK;
+
+		if (lane_num == lane)
+			break;
+		udelay(10);
+	}
+
+	if (lane_num != lane) {
+		dev_err(pci->dev, "Unable to change to %d lane\n", lane);
+		return 1;
+	}
+
+	dev_info(pci->dev, "Changed lane_num(0x80) : to %d lane\n", lane_num);
+
+	return 0;
+}
+EXPORT_SYMBOL(exynos_pcie_host_v1_lanechange);
 
 int exynos_pcie_host_v1_poweron(int ch_num)
 {

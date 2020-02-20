@@ -47,7 +47,7 @@ static ssize_t certify_hall_detect_show(struct device *dev,
 
 	return strlen(buf);
 }
-static DEVICE_ATTR(certify_hall_detect, 0664, certify_hall_detect_show, NULL);
+static DEVICE_ATTR(certify_hall_detect, 0444, certify_hall_detect_show, NULL);
 
 static struct attribute *certify_hall_attrs[] = {
 	&dev_attr_certify_hall_detect.attr,

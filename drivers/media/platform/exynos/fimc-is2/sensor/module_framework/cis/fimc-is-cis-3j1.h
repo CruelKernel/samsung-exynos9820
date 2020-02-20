@@ -26,6 +26,8 @@
 #define SENSOR_3J1_COARSE_INTEGRATION_TIME_MAX_MARGIN       0x4
 #define SENSOR_3J1_POST_INIT_SETTING_MAX	30
 
+#define SENSOR_3J1_EXPOSURE_TIME_MAX						250000 /* 250ms */
+
 #define USE_GROUP_PARAM_HOLD	(0)
 
 enum sensor_3j1_mode_enum {

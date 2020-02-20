@@ -58,6 +58,7 @@ enum AOD_SEQ {
 	ENABLE_SELF_MOVE_SEQ,
 	DISABLE_SELF_MOVE_SEQ,
 #endif
+	SELF_MASK_CHECKSUM_SEQ,
 	MAX_AOD_SEQ,
 };
 
@@ -133,6 +134,12 @@ struct aod_ioctl_props {
 	int self_move_pattern;
 #endif
 	int prev_rotate;
+	u8* self_mask_checksum;
+		/*
+		because len is different in each ddi
+		0 : unsupport
+	*/
+	int self_mask_checksum_len;
 };
 
 struct aod_dev_info {

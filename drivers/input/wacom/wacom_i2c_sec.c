@@ -894,7 +894,7 @@ int wacom_ble_charge_mode(struct wacom_i2c *wac_i2c, int mode)
 		return -EPERM;
 	}
 
-	if (wac_i2c->ble_block_flag) {
+	if (wac_i2c->ble_block_flag && (mode != EPEN_BLE_C_DIABLE)) {
 		input_err(true, &client->dev, "%s: operation not permitted\n",
 			  __func__);
 		return -EPERM;
@@ -1446,13 +1446,15 @@ static ssize_t epen_fac_garage_rawdata_show(struct device *dev,
 	struct wacom_i2c *wac_i2c = container_of(sec, struct wacom_i2c, sec);
 	struct i2c_client *client = wac_i2c->client;
 	char data[17] = { 0, };
-	int ret;
+	int ret, retry = 1;
 	u8 cmd;
 
 	if (!wac_i2c->fac_garage_mode) {
 		input_err(true, &client->dev, "not in factory garage mode\n");
 		return snprintf(buf, PAGE_SIZE, "NG");
 	}
+
+get_garage_retry:
 
 	wacom_enable_irq(wac_i2c, false);
 	wacom_enable_pdct_irq(wac_i2c, false);
@@ -1493,6 +1495,11 @@ static ssize_t epen_fac_garage_rawdata_show(struct device *dev,
 
 	wac_i2c->garage_gain1 = data[9];
 	wac_i2c->garage_freq1 = ((u16)data[10] << 8) + data[11];
+
+	if (wac_i2c->garage_freq0 == 0 && retry > 0) {
+		retry--;
+		goto get_garage_retry;
+	}
 
 	input_info(true, &client->dev, "%s: %d, %d, %d, %d\n", __func__,
 		   wac_i2c->garage_gain0, wac_i2c->garage_freq0,
@@ -1924,6 +1931,30 @@ static void run_elec_test(void *device_data)
 	wacom_i2c_set_survey_mode(wac_i2c, EPEN_SURVEY_MODE_NONE);
 	mutex_unlock(&wac_i2c->mode_lock);
 
+	/* wait for status event for normal mode of wacom */
+	msleep(250);
+	do {
+		ret = wacom_i2c_recv(wac_i2c, data, COM_COORD_NUM, WACOM_I2C_MODE_NORMAL);
+		if (ret != COM_COORD_NUM) {
+			input_err(true, &client->dev, "%s: failed to recv status data\n",
+				  __func__);
+			msleep(50);
+			continue;
+		}
+
+		/* check packet ID */
+		if ((data[0] & 0x0F) != NOTI_PACKET && (data[1] != CMD_PACKET)) {
+			input_info(true, &client->dev,
+				   "%s: invalid status data %d\n",
+				   __func__, (RETRY_COUNT - retry + 1));
+		} else {
+			break;
+		}
+
+		msleep(50);
+	} while(retry--);
+
+	retry = RETRY_COUNT;
 	cmd = COM_ELEC_XSCAN;
 	ret = wacom_i2c_send(wac_i2c, &cmd, 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
@@ -1979,10 +2010,17 @@ static void run_elec_test(void *device_data)
 #endif
 			/* check packet ID & sub packet ID */
 			if (((data[0] & 0x0F) != 0x0E) && (data[1] != 0x65)) {
-				input_err(true, &client->dev,
-					  "%s: invalid elec data %d %d\n",
-					  __func__, (data[0] & 0x0F), data[1]);
-				goto out;
+				input_info(true, &client->dev,
+					   "%s: %d data of wacom elec\n",
+					   __func__, (RETRY_COUNT - retry + 1));
+				if (--retry) {
+					continue;
+				} else {
+					input_err(true, &client->dev,
+						  "%s: invalid elec data %d %d\n",
+						  __func__, (data[0] & 0x0F), data[1]);
+					goto out;
+				}
 			}
 
 			if (data[11] != 3) {
@@ -2078,10 +2116,17 @@ static void run_elec_test(void *device_data)
 #endif
 			/* check packet ID & sub packet ID */
 			if (((data[0] & 0x0F) != 0x0E) && (data[1] != 0x65)) {
-				input_err(true, &client->dev,
-					  "%s: invalid elec data %d %d\n",
-					  __func__, (data[0] & 0x0F), data[1]);
-				goto out;
+				input_info(true, &client->dev,
+					   "%s: %d data of wacom elec\n",
+					   __func__, (RETRY_COUNT - retry + 1));
+				if (--retry) {
+					continue;
+				} else {
+					input_err(true, &client->dev,
+						  "%s: invalid elec data %d %d\n",
+						  __func__, (data[0] & 0x0F), data[1]);
+					goto out;
+				}
 			}
 
 			if (data[11] != 3) {
@@ -2549,7 +2594,8 @@ int set_wacom_ble_charge_mode(bool mode)
 
 	if (!mode) {
 		ret = wacom_ble_charge_mode(wac_i2c, mode);
-		wac_i2c->ble_block_flag = true;
+		if (!ret)
+			wac_i2c->ble_block_flag = true;
 	} else {
 		wac_i2c->ble_block_flag = false;
 #ifdef CONFIG_SEC_FACTORY

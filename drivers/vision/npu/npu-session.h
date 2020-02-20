@@ -15,6 +15,7 @@
 
 #include <linux/types.h>
 #include <linux/mutex.h>
+#include <linux/sched.h>
 
 #include "vs4l.h"
 
@@ -103,6 +104,8 @@ struct npu_session {
 	struct mutex *global_lock;
 
 	struct mbox_process_dat mbox_process_dat;
+
+	pid_t pid;
 };
 
 typedef int (*session_cb)(struct npu_session *);

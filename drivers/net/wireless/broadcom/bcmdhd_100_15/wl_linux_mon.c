@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_linux_mon.c 576195 2015-08-01 18:21:54Z $
+ * $Id$
  */
 
 #include <osl.h>
@@ -42,6 +42,7 @@
 #include <dhd_dbg.h>
 #include <dngl_stats.h>
 #include <dhd.h>
+#include <bcmstdlib_s.h>
 
 typedef enum monitor_states
 {
@@ -224,16 +225,19 @@ static int dhd_mon_if_subif_start_xmit(struct sk_buff *skb, struct net_device *n
 		if ((dot11_hdr->frame_control & 0x0300) == 0x0300)
 			dot11_hdr_len += 6;
 
-		memcpy(dst_mac_addr, dot11_hdr->addr1, sizeof(dst_mac_addr));
-		memcpy(src_mac_addr, dot11_hdr->addr2, sizeof(src_mac_addr));
+		(void)memcpy_s(dst_mac_addr, sizeof(dst_mac_addr), dot11_hdr->addr1,
+				sizeof(dst_mac_addr));
+		(void)memcpy_s(src_mac_addr, sizeof(src_mac_addr), dot11_hdr->addr2,
+				sizeof(src_mac_addr));
 
 		/* Skip the 802.11 header, QoS (if any) and SNAP, but leave spaces for
 		 * for two MAC addresses
 		 */
 		skb_pull(skb, dot11_hdr_len + qos_len + snap_len - sizeof(src_mac_addr) * 2);
 		pdata = (unsigned char*)skb->data;
-		memcpy(pdata, dst_mac_addr, sizeof(dst_mac_addr));
-		memcpy(pdata + sizeof(dst_mac_addr), src_mac_addr, sizeof(src_mac_addr));
+		(void)memcpy_s(pdata, sizeof(dst_mac_addr), dst_mac_addr, sizeof(dst_mac_addr));
+		(void)memcpy_s(pdata + sizeof(dst_mac_addr), sizeof(src_mac_addr), src_mac_addr,
+				sizeof(src_mac_addr));
 		PKTSETPRIO(skb, 0);
 
 		MON_PRINT("if name: %s, matched if name %s\n", ndev->name, mon_if->real_ndev->name);
@@ -319,8 +323,7 @@ int dhd_add_monitor(const char *name, struct net_device **new_ndev)
 	}
 
 	ndev->type = ARPHRD_IEEE80211_RADIOTAP;
-	strncpy(ndev->name, name, IFNAMSIZ);
-	ndev->name[IFNAMSIZ - 1] = 0;
+	strlcpy(ndev->name, name, sizeof(ndev->name));
 	ndev->netdev_ops = &dhd_mon_if_ops;
 
 	ret = register_netdevice(ndev);

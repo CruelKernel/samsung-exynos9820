@@ -1,6 +1,13 @@
 config SECURITY_DEFEX
 	bool "Defex Support"
 	depends on SECURITY
+	select CRYPTO
+	select CRYPTO_RSA
+	select CRYPTO_SHA1
+	select CRYPTO_SHA256
+	select CRYPTO_HASH_INFO
+	select INTEGRITY_SIGNATURE
+	select INTEGRITY_ASYMMETRIC_KEYS
 	default n
 	help
 	  This selects the Defex support.

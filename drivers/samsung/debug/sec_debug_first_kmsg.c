@@ -99,7 +99,7 @@ static int __init sec_first_kmsg_late_init(void)
 {
 	struct proc_dir_entry *entry;
 
-	entry = proc_create("first_kmsg", S_IFREG | 0444,
+	entry = proc_create("first_kmsg", S_IFREG | 0440,
 			    NULL, &first_kmsg_file_ops);
 	if (!entry) {
 		pr_err("%s: failed to create proc entry\n", __func__);

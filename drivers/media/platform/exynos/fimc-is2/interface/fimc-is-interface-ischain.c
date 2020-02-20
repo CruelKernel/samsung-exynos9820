@@ -24,6 +24,7 @@
 #include "fimc-is-interface.h"
 #include "fimc-is-debug.h"
 #include "fimc-is-clk-gate.h"
+#include "fimc-is-work.h"
 
 #include "fimc-is-interface-ischain.h"
 #include "fimc-is-interface-library.h"
@@ -787,109 +788,6 @@ int fimc_is_interface_ischain_probe(struct fimc_is_interface_ischain *this,
 	dbg_itfc("interface ishchain probe done (%d,%d,%d)(%d)", hw_id, hw_slot, hw_slot, ret);
 
 	return ret;
-}
-
-int print_fre_work_list(struct fimc_is_work_list *this)
-{
-	struct fimc_is_work *work, *temp;
-
-	if (!(this->id & TRACE_WORK_ID_MASK))
-		return 0;
-
-	printk(KERN_ERR "[INF] fre(%02X, %02d) :", this->id, this->work_free_cnt);
-
-	list_for_each_entry_safe(work, temp, &this->work_free_head, list) {
-		printk(KERN_CONT "%X(%d)->", work->msg.command, work->fcount);
-	}
-
-	printk(KERN_CONT "X\n");
-
-	return 0;
-}
-
-static int set_free_work(struct fimc_is_work_list *this, struct fimc_is_work *work)
-{
-	int ret = 0;
-	ulong flags;
-
-	if (work) {
-		spin_lock_irqsave(&this->slock_free, flags);
-
-		list_add_tail(&work->list, &this->work_free_head);
-		this->work_free_cnt++;
-#ifdef TRACE_WORK
-		print_fre_work_list(this);
-#endif
-
-		spin_unlock_irqrestore(&this->slock_free, flags);
-	} else {
-		ret = -EFAULT;
-		err("item is null ptr\n");
-	}
-
-	return ret;
-}
-
-int print_req_work_list(struct fimc_is_work_list *this)
-{
-	struct fimc_is_work *work, *temp;
-
-	if (!(this->id & TRACE_WORK_ID_MASK))
-		return 0;
-
-	printk(KERN_ERR "[INF] req(%02X, %02d) :", this->id, this->work_request_cnt);
-
-	list_for_each_entry_safe(work, temp, &this->work_request_head, list) {
-		printk(KERN_CONT "%X([%d][G%X][F%d])->", work->msg.command,
-				work->msg.instance, work->msg.group, work->fcount);
-	}
-
-	printk(KERN_CONT "X\n");
-
-	return 0;
-}
-
-static int get_req_work(struct fimc_is_work_list *this,
-	struct fimc_is_work **work)
-{
-	int ret = 0;
-	ulong flags;
-
-	if (work) {
-		spin_lock_irqsave(&this->slock_request, flags);
-
-		if (this->work_request_cnt) {
-			*work = container_of(this->work_request_head.next,
-					struct fimc_is_work, list);
-			list_del(&(*work)->list);
-			this->work_request_cnt--;
-		} else
-			*work = NULL;
-
-		spin_unlock_irqrestore(&this->slock_request, flags);
-	} else {
-		ret = -EFAULT;
-		err("item is null ptr\n");
-	}
-
-	return ret;
-}
-
-static void init_work_list(struct fimc_is_work_list *this, u32 id, u32 count)
-{
-	u32 i;
-
-	this->id = id;
-	this->work_free_cnt	= 0;
-	this->work_request_cnt	= 0;
-	INIT_LIST_HEAD(&this->work_free_head);
-	INIT_LIST_HEAD(&this->work_request_head);
-	spin_lock_init(&this->slock_free);
-	spin_lock_init(&this->slock_request);
-	for (i = 0; i < count; ++i)
-		set_free_work(this, &this->work[i]);
-
-	init_waitqueue_head(&this->wait_queue);
 }
 
 static inline void wq_func_schedule(struct fimc_is_interface *itf,
@@ -2650,7 +2548,7 @@ int fimc_is_interface_probe(struct fimc_is_interface *this,
 	u32 irq,
 	void *core_data)
 {
-	int ret = 0;
+	int ret = 0, work_id;
 	struct fimc_is_core *core = (struct fimc_is_core *)core_data;
 
 	dbg_interface(1, "%s\n", __func__);
@@ -2708,37 +2606,8 @@ int fimc_is_interface_probe(struct fimc_is_interface *this,
 	clear_bit(IS_IF_STATE_READY, &this->state);
 	clear_bit(IS_IF_STATE_LOGGING, &this->state);
 
-	init_work_list(&this->work_list[WORK_SHOT_DONE], TRACE_WORK_ID_SHOT, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_30C_FDONE], TRACE_WORK_ID_30C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_30P_FDONE], TRACE_WORK_ID_30P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_30F_FDONE], TRACE_WORK_ID_30F, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_30G_FDONE], TRACE_WORK_ID_30G, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_31C_FDONE], TRACE_WORK_ID_31C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_31P_FDONE], TRACE_WORK_ID_31P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_31F_FDONE], TRACE_WORK_ID_31F, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_31G_FDONE], TRACE_WORK_ID_31G, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_32P_FDONE], TRACE_WORK_ID_32P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_I0C_FDONE], TRACE_WORK_ID_I0C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_I0P_FDONE], TRACE_WORK_ID_I0P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_I1C_FDONE], TRACE_WORK_ID_I1C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_I1P_FDONE], TRACE_WORK_ID_I1P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_ME0C_FDONE], TRACE_WORK_ID_ME0C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_ME1C_FDONE], TRACE_WORK_ID_ME1C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_D0C_FDONE], TRACE_WORK_ID_D0C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_D1C_FDONE], TRACE_WORK_ID_D1C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC1S_FDONE], TRACE_WORK_ID_DC1S, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC0C_FDONE], TRACE_WORK_ID_DC0C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC1C_FDONE], TRACE_WORK_ID_DC1C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC2C_FDONE], TRACE_WORK_ID_DC2C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC3C_FDONE], TRACE_WORK_ID_DC3C, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_DC4C_FDONE], TRACE_WORK_ID_DC4C, MAX_WORK_COUNT);
-
-	init_work_list(&this->work_list[WORK_M0P_FDONE], TRACE_WORK_ID_M0P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_M1P_FDONE], TRACE_WORK_ID_M1P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_M2P_FDONE], TRACE_WORK_ID_M2P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_M3P_FDONE], TRACE_WORK_ID_M3P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_M4P_FDONE], TRACE_WORK_ID_M4P, MAX_WORK_COUNT);
-	init_work_list(&this->work_list[WORK_M5P_FDONE], TRACE_WORK_ID_M5P, MAX_WORK_COUNT);
+	for (work_id = WORK_SHOT_DONE; work_id < WORK_MAX_MAP; work_id++)
+		init_work_list(&this->work_list[work_id], work_id, MAX_WORK_COUNT);
 
 	this->err_report_vendor = NULL;
 

@@ -96,13 +96,16 @@ void proca_table_add_task_descr(struct proca_table *table,
 		       &table->pid_map[hash_key]);
 	spin_unlock_irqrestore(&table->pid_map_lock, irqsave_flags);
 
-	hash_key = calculate_app_name_hash(table,
-			 descr->proca_identity.parsed_cert.app_name,
-			 descr->proca_identity.parsed_cert.app_name_size);
-	spin_lock_irqsave(&table->app_name_map_lock, irqsave_flags);
-	hlist_add_head(&descr->app_name_map_node,
-		       &table->app_name_map[hash_key]);
-	spin_unlock_irqrestore(&table->app_name_map_lock, irqsave_flags);
+	if (descr->proca_identity.certificate) {
+		hash_key = calculate_app_name_hash(table,
+			descr->proca_identity.parsed_cert.app_name,
+			descr->proca_identity.parsed_cert.app_name_size);
+		spin_lock_irqsave(&table->app_name_map_lock, irqsave_flags);
+		hlist_add_head(&descr->app_name_map_node,
+			&table->app_name_map[hash_key]);
+		spin_unlock_irqrestore(
+			&table->app_name_map_lock, irqsave_flags);
+	}
 }
 
 void proca_table_remove_task_descr(struct proca_table *table,

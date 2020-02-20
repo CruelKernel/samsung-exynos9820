@@ -1153,6 +1153,10 @@ static int exynos_ufs_populate_dt(struct device *dev, struct exynos_ufs *ufs)
 	if (of_property_read_u32(np, "ufs-pm-qos-fsys0", &ufs->pm_qos_fsys0_value))
 		ufs->pm_qos_fsys0_value = 0;
 
+	if (of_find_property(np, "enable_tw", NULL)) {
+		ufs->enable_tw = true;
+		dev_info(dev, "host supports ufs turbo write\n");
+	}
 
 out:
 	return ret;

@@ -133,27 +133,39 @@ static struct bbd_device bbd;
  */
 static unsigned char bbd_patch_old[] = {
 #if defined(CONFIG_SENSORS_SSP_BEYOND)
-#include "bbd_patch_file_beyond_old.h"
+#include "p_os/bbd_patch_file_beyond_old.h"
 #else
-#include "bbd_patch_file_beyond_old.h"
+#include "p_os/bbd_patch_file_beyond_old.h"
 #endif
 };
 
 static unsigned char bbd_patch_new_old[] = { // hw_rev 20 ~ hw_rev 23
 #if defined(CONFIG_SENSORS_SSP_BEYOND)
-#include "bbd_patch_file_beyond_new_old.h"
+#if ANDROID_VERSION < 100000
+#include "p_os/bbd_patch_file_beyond_new_old.h"
 #else
-#include "bbd_patch_file_beyond_new_old.h"
+#include "q_os/bbd_patch_file_beyond_new_old.h"
+#endif
+#else
+#include "p_os/bbd_patch_file_beyond_new_old.h"
 #endif
 };
 
 static unsigned char bbd_patch[] = {
 #if defined(CONFIG_SENSORS_SSP_BEYOND)
-#include "bbd_patch_file_beyond.h"
-#elif defined(CONFIG_SENSORS_SSP_DAVINCI)
-#include "bbd_patch_file_davinci.h"
+#if ANDROID_VERSION < 100000
+#include "p_os/bbd_patch_file_beyond.h"
 #else
-#include "bbd_patch_file_beyond.h"
+#include "q_os/bbd_patch_file_beyond.h"
+#endif
+#elif defined(CONFIG_SENSORS_SSP_DAVINCI)
+#if ANDROID_VERSION < 100000
+#include "p_os/bbd_patch_file_davinci.h"
+#else
+#include "q_os/bbd_patch_file_davinci.h"
+#endif
+#else
+#include "p_os/bbd_patch_file_beyond.h"
 #endif
 };
 

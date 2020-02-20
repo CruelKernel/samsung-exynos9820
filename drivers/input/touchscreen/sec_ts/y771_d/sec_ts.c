@@ -927,6 +927,7 @@ void sec_ts_reinit(struct sec_ts_data *ts)
 		__func__, ts->charger_mode, ts->touch_functions, ts->power_status);
 
 	ts->touch_noise_status = 0;
+	ts->touch_pre_noise_status = 0;
 	ts->wet_mode = 0;
 
 	/* charger mode */
@@ -1032,9 +1033,10 @@ void sec_ts_print_info(struct sec_ts_data *ts)
 		ts->print_info_cnt_release++;
 
 	input_info(true, &ts->client->dev,
-			"mode:%04X tc:%d noise:%x wet:%d wc:%x(%d) lp:(%x) fod:%d D%05X fn:%04X/%04X ED:%d // v:%02X%02X cal:%02X(%02X) C%02XT%04X.%4s%s Cal_flag:%s fail_cnt:%d // sp:%d sip:%d id(%d,%d) tmp(%d)// #%d %d\n",
+			"mode:%04X tc:%d noise:%d%d ext_n:%d wet:%d wc:%x(%d) lp:(%x) fod:%d D%05X fn:%04X/%04X ED:%d // v:%02X%02X cal:%02X(%02X) C%02XT%04X.%4s%s Cal_flag:%s fail_cnt:%d // sp:%d sip:%d id(%d,%d) tmp(%d)// #%d %d\n",
 			ts->print_info_currnet_mode, ts->touch_count,
-			ts->touch_noise_status, ts->wet_mode,
+			ts->touch_noise_status, ts->touch_pre_noise_status,
+			ts->external_noise_mode, ts->wet_mode,
 			ts->charger_mode, ts->force_charger_mode,
 			ts->lowpower_mode, ts->fod_set_val, ts->defect_probability,
 			ts->touch_functions, ts->ic_status, ts->ed_enable,
@@ -1273,6 +1275,13 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 					ts->noise_count++;
 			}
 
+			if ((p_event_status->stype == TYPE_STATUS_EVENT_VENDOR_INFO) &&
+					(p_event_status->status_id == SEC_TS_VENDOR_ACK_PRE_NOISE_STATUS_NOTI)) {
+				ts->touch_pre_noise_status = !!p_event_status->status_data_1;
+				input_info(true, &ts->client->dev, "%s: TSP PRE NOISE MODE %s\n",
+						__func__, ts->touch_pre_noise_status == 0 ? "OFF" : "ON");
+			}
+
 			if(ts->plat_data->support_ear_detect && ts->ed_enable){
 				if ((p_event_status->stype == TYPE_STATUS_EVENT_VENDOR_INFO) &&
 					(p_event_status->status_id == STATUS_EVENT_VENDOR_PROXIMITY)) {
@@ -1331,6 +1340,7 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 				ts->coord[t_id].noise_level = max(ts->coord[t_id].noise_level, p_event_coord->noise_level);
 				ts->coord[t_id].max_strength = max(ts->coord[t_id].max_strength, p_event_coord->max_strength);
 				ts->coord[t_id].hover_id_num = max(ts->coord[t_id].hover_id_num, (u8)p_event_coord->hover_id_num);
+				ts->coord[t_id].noise_status = p_event_coord->noise_status;
 
 				if (ts->coord[t_id].z <= 0)
 					ts->coord[t_id].z = 1;
@@ -1359,7 +1369,7 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 						location_detect(ts, location, ts->coord[t_id].x, ts->coord[t_id].y);
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 						input_info(true, &ts->client->dev,
-								"[R] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d mx:%d my:%d p:%d noise:%x, nlvl:%d, maxS:%d, hid:%d\n",
+								"[R] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d mx:%d my:%d p:%d noise:(%x,%d%d) nlvl:%d, maxS:%d, hid:%d\n",
 								t_id, location,
 								ts->coord[t_id].x - ts->coord[t_id].p_x,
 								ts->coord[t_id].y - ts->coord[t_id].p_y,
@@ -1367,11 +1377,11 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 								ts->coord[t_id].x, ts->coord[t_id].y,
 								ts->coord[t_id].max_energy_x, ts->coord[t_id].max_energy_y,
 								ts->coord[t_id].palm_count,
-								ts->touch_noise_status, ts->coord[t_id].noise_level,
-								ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+								ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+								ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #else
 						input_info(true, &ts->client->dev,
-								"[R] tID:%d loc:%s dd:%d,%d mp:%d,%d mc:%d tc:%d p:%d noise:%x, nlvl:%d, maxS:%d, hid:%d\n",
+								"[R] tID:%d loc:%s dd:%d,%d mp:%d,%d mc:%d tc:%d p:%d noise:(%x,%d%d) nlvl:%d, maxS:%d, hid:%d\n",
 								t_id, location,
 								ts->coord[t_id].x - ts->coord[t_id].p_x,
 								ts->coord[t_id].y - ts->coord[t_id].p_y,
@@ -1379,8 +1389,8 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 								ts->coord[t_id].max_energy_y - ts->coord[t_id].p_y,
 								ts->coord[t_id].mcount, ts->touch_count,
 								ts->coord[t_id].palm_count,
-								ts->touch_noise_status, ts->coord[t_id].noise_level,
-								ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+								ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+								ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #endif
 						ts->coord[t_id].action = SEC_TS_COORDINATE_ACTION_NONE;
 						ts->coord[t_id].mcount = 0;
@@ -1431,23 +1441,23 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 						input_info(true, &ts->client->dev,
-								"[P] tID:%d.%d x:%d y:%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:%x,%d, nlvl:%d, maxS:%d, hid:%d\n",
+								"[P] tID:%d.%d x:%d y:%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:(%x,%d%d), nlvl:%d, maxS:%d, hid:%d\n",
 								t_id, (ts->input_dev->mt->trkid - 1) & TRKID_MAX,
 								ts->coord[t_id].x, ts->coord[t_id].y, ts->coord[t_id].z,
 								ts->coord[t_id].major, ts->coord[t_id].minor,
 								location, ts->touch_count,
 								ts->coord[t_id].ttype,
-								ts->touch_noise_status, ts->external_noise_mode, ts->coord[t_id].noise_level,
-								ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+								ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+								ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #else
 						input_info(true, &ts->client->dev,
-								"[P] tID:%d.%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:%x,%d, nlvl:%d, maxS:%d, hid:%d\n",
+								"[P] tID:%d.%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:(%x,%d%d), nlvl:%d, maxS:%d, hid:%d\n",
 								t_id, (ts->input_dev->mt->trkid - 1) & TRKID_MAX,
 								ts->coord[t_id].z, ts->coord[t_id].major,
 								ts->coord[t_id].minor, location, ts->touch_count,
 								ts->coord[t_id].ttype,
-								ts->touch_noise_status, ts->external_noise_mode, ts->coord[t_id].noise_level,
-								ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+								ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+								ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #endif
 					} else if (ts->coord[t_id].action == SEC_TS_COORDINATE_ACTION_MOVE) {
 						if (p_event_coord->max_energy_flag) {
@@ -1459,19 +1469,19 @@ static void sec_ts_read_event(struct sec_ts_data *ts)
 							location_detect(ts, location, ts->coord[t_id].x, ts->coord[t_id].y);
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 							input_info(true, &ts->client->dev,
-									"[M] tID:%d.%d x:%d y:%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:%x, nlvl:%d, maxS:%d, hid:%d\n",
+									"[M] tID:%d.%d x:%d y:%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:(%x,%d%d), nlvl:%d, maxS:%d, hid:%d\n",
 									t_id, ts->input_dev->mt->trkid & TRKID_MAX,
 									ts->coord[t_id].x, ts->coord[t_id].y, ts->coord[t_id].z,
 									ts->coord[t_id].major, ts->coord[t_id].minor, location, ts->touch_count,
-									ts->coord[t_id].ttype, ts->touch_noise_status, ts->coord[t_id].noise_level,
-									ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+									ts->coord[t_id].ttype, ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+									ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #else
 							input_info(true, &ts->client->dev,
-									"[M] tID:%d.%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:%x, nlvl:%d, maxS:%d, hid:%d\n",
+									"[M] tID:%d.%d z:%d major:%d minor:%d loc:%s tc:%d type:%X noise:(%x,%d%d), nlvl:%d, maxS:%d, hid:%d\n",
 									t_id, ts->input_dev->mt->trkid & TRKID_MAX, ts->coord[t_id].z, 
 									ts->coord[t_id].major, ts->coord[t_id].minor, location, ts->touch_count,
-									ts->coord[t_id].ttype, ts->touch_noise_status, ts->coord[t_id].noise_level,
-									ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
+									ts->coord[t_id].ttype, ts->coord[t_id].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status,
+									ts->coord[t_id].noise_level, ts->coord[t_id].max_strength, ts->coord[t_id].hover_id_num);
 #endif
 						}
 
@@ -2956,23 +2966,23 @@ void sec_ts_unlocked_release_all_finger(struct sec_ts_data *ts)
 
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 			input_info(true, &ts->client->dev,
-					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d p:%d noise:%x\n",
+					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d p:%d noise:(%x,%d%d)\n",
 					i, location,
 					ts->coord[i].x - ts->coord[i].p_x,
 					ts->coord[i].y - ts->coord[i].p_y,
 					ts->coord[i].mcount, ts->touch_count,
 					ts->coord[i].x, ts->coord[i].y,
 					ts->coord[i].palm_count,
-					ts->touch_noise_status);
+					ts->coord[i].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status);
 #else
 			input_info(true, &ts->client->dev,
-					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d p:%d noise:%x\n",
+					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d p:%d noise:(%x,%d%d)\n",
 					i, location,
 					ts->coord[i].x - ts->coord[i].p_x,
 					ts->coord[i].y - ts->coord[i].p_y,
 					ts->coord[i].mcount, ts->touch_count,
 					ts->coord[i].palm_count,
-					ts->touch_noise_status);
+					ts->coord[i].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status);
 #endif
 			ts->coord[i].action = SEC_TS_COORDINATE_ACTION_RELEASE;
 		}
@@ -3011,23 +3021,23 @@ void sec_ts_locked_release_all_finger(struct sec_ts_data *ts)
 			location_detect(ts, location, ts->coord[i].x, ts->coord[i].y);
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 			input_info(true, &ts->client->dev,
-					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d p:%d noise:%x\n",
+					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d lx:%d ly:%d p:%d noise:(%x,%d%d)\n",
 					i, location,
 					ts->coord[i].x - ts->coord[i].p_x,
 					ts->coord[i].y - ts->coord[i].p_y,
 					ts->coord[i].mcount, ts->touch_count,
 					ts->coord[i].x, ts->coord[i].y,
 					ts->coord[i].palm_count,
-					ts->touch_noise_status);
+					ts->coord[i].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status);
 #else
 			input_info(true, &ts->client->dev,
-					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d p:%d noise:%x\n",
+					"[RA] tID:%d loc:%s dd:%d,%d mc:%d tc:%d p:%d noise:(%x,%d%d)\n",
 					i, location,
 					ts->coord[i].x - ts->coord[i].p_x,
 					ts->coord[i].y - ts->coord[i].p_y,
 					ts->coord[i].mcount, ts->touch_count,
 					ts->coord[i].palm_count,
-					ts->touch_noise_status);
+					ts->coord[i].noise_status, ts->touch_noise_status, ts->touch_pre_noise_status);
 #endif
 			ts->coord[i].action = SEC_TS_COORDINATE_ACTION_RELEASE;
 		}
@@ -3497,6 +3507,7 @@ int sec_ts_start_device(struct sec_ts_data *ts)
 	sec_ts_delay(70);
 	ts->power_status = SEC_TS_STATE_POWER_ON;
 	ts->touch_noise_status = 0;
+	ts->touch_pre_noise_status = 0;
 
 	ret = sec_ts_wait_for_ready(ts, SEC_TS_ACK_BOOT_COMPLETE);
 	if (ret < 0) {

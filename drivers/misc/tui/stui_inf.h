@@ -29,5 +29,7 @@ int  stui_set_mask(int mask);
 int  stui_clear_mask(int mask);
 
 int stui_cancel_session(void);
+int stui_register_on_events(void);
+void stui_unregister_from_events(void);
 
 #endif /* __LINUX_SAMSUNG_TUI_INF_H */

@@ -23,7 +23,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_event_log_filter.c 826493 2019-06-20 07:37:48Z $
+ * $Id: dhd_event_log_filter.c 837739 2019-08-27 08:50:31Z $
  */
 
 /*
@@ -136,6 +136,7 @@ typedef struct {
 	wl_if_mgt_stats_t mgmt_stat;
 	wl_if_state_compact_t if_comp_stat;
 	wl_adps_dump_summary_v2_t adps_dump_summary;
+	wl_adps_energy_gain_v1_t adps_energy_gain;
 	wl_roam_stats_v1_t roam_stat;
 } EWPF_ifc_elem_t;
 
@@ -242,6 +243,12 @@ static EWPF_tbl_t EWPF_if_periodic[] =
 		WL_STATE_IF_ADPS_STATE,
 		evt_xtlv_copy_cb,
 		IFACE_INFO(adps_dump_summary),
+		NULL
+	},
+	{
+		WL_STATE_IF_ADPS_ENERGY_GAIN,
+		evt_xtlv_copy_cb,
+		IFACE_INFO(adps_energy_gain),
 		NULL
 	},
 	{EWPF_XTLV_INVALID, NULL, NONE_INFO(0), NULL}
@@ -3140,3 +3147,60 @@ ewpr_base64_encode(dhd_pub_t *dhdp, char* input, int32 length)
 	return output;
 }
 #endif /* DHD_EWPR_VER2 */
+
+#ifdef WLADPS_ENERGY_GAIN
+#define ADPS_GAIN_ENERGY_CONV_UNIT	100000	/* energy unit(10^-2) * dur unit(10^-3) */
+static int
+dhd_calculate_adps_energy_gain(wl_adps_energy_gain_v1_t *data)
+{
+	int i;
+	int energy_gain = 0;
+
+	/* energy unit: (uAh * 10^-2)/sec */
+	int pm0_idle_energy[MAX_BANDS] =
+		{ADPS_GAIN_2G_PM0_IDLE, ADPS_GAIN_5G_PM0_IDLE};
+	int txpspoll_energy[MAX_BANDS] =
+		{ADPS_GAIN_2G_TX_PSPOLL, ADPS_GAIN_5G_TX_PSPOLL};
+
+	/* dur unit: mSec */
+	for (i = 0; i < MAX_BANDS; i++) {
+		energy_gain += (data->gain_data[i].pm_dur_gain * pm0_idle_energy[i]);
+		energy_gain -= (data->gain_data[i].step0_dur * txpspoll_energy[i]);
+	}
+	energy_gain /= ADPS_GAIN_ENERGY_CONV_UNIT;
+
+	return energy_gain;
+}
+
+int dhd_event_log_filter_adps_energy_gain(dhd_pub_t *dhdp)
+{
+	int ret;
+
+	void *last_elem;
+	EWP_filter_t *filter;
+	EWPF_ifc_elem_t *ifc_elem;
+
+	if (!dhdp || !dhdp->event_log_filter) {
+		return 0;
+	}
+
+	filter = (EWP_filter_t *)dhdp->event_log_filter;
+
+	if (filter->enabled != TRUE) {
+		DHD_FILTER_ERR(("%s - EWP Filter is not enabled\n", __FUNCTION__));
+		return 0;
+	}
+
+	/* Refer to STA interface */
+	last_elem = dhd_ring_get_last(filter->i_ring[0]);
+	if (last_elem == NULL) {
+		DHD_FILTER_ERR(("%s - last_elem is NULL\n", __FUNCTION__));
+		return 0;
+	}
+
+	ifc_elem = (EWPF_ifc_elem_t *)last_elem;
+	ret = dhd_calculate_adps_energy_gain(&ifc_elem->adps_energy_gain);
+
+	return ret;
+}
+#endif /* WLADPS_ENERGY_GAIN */

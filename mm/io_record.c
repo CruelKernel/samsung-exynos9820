@@ -85,8 +85,10 @@ int fill_result_buf(int start_idx, int end_idx)
 
 	/* max size check (not strict) */
 	result_buf_used = result_buf_cursor - result_buf;
-	size_expected = sizeof(int) * 2 + strlen(path) +
-			sizeof(int) * 2 * (end_idx - start_idx);
+	size_expected = sizeof(int) * 2 +                         /* end magic of this attempt */
+			sizeof(int) + strlen(path) +              /* for path string */
+			sizeof(int) * 2 * (end_idx - start_idx) + /* data */
+			sizeof(int);                              /* end magic of post-processing */
 	if (size_expected > (RESULT_BUF_SIZE_IN_BYTES - result_buf_used))
 		return -EINVAL;
 
@@ -354,7 +356,7 @@ ssize_t read_record(char __user *buf, size_t count, loff_t *ppos)
 	}
 
 	ret = (*ppos + count < result_buf_size) ? count :
-			 (*ppos + count) - result_buf_size;
+			 (result_buf_size - *ppos);
 	if (copy_to_user(buf, result_buf + *ppos, ret)) {
 		ret = -EFAULT;
 		goto out;

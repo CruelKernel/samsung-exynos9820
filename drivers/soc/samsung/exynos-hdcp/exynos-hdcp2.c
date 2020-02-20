@@ -373,6 +373,7 @@ static void exynos_hdcp_worker(struct work_struct *work)
 	}
 
 	hdcp_info("Exynos HDCP interrupt occur by LDFW.\n");
+	dp_logger_print("soc HDCP2 interrupt occur by LDFW.\n");
 	ret = hdcp_dplink_auth_check(HDCP_DRM_ON);
 }
 

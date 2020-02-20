@@ -1422,10 +1422,20 @@ static int max77705_sysfs_is_writeable(struct _ccic_data_t *pccic_data,
 	switch (prop) {
 	case CCIC_SYSFS_PROP_LPM_MODE:
 	case CCIC_SYSFS_PROP_CTRL_OPTION:
-	case CCIC_SYSFS_PROP_FW_UPDATE:
-	case CCIC_SYSFS_PROP_DEX_FAN_UVDM:
 	case CCIC_SYSFS_PROP_DEBUG_OPCODE:
 	case CCIC_SYSFS_PROP_CONTROL_GPIO:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int max77705_sysfs_is_writeonly(struct _ccic_data_t *pccic_data,
+				    enum ccic_sysfs_property prop)
+{
+	switch (prop) {
+	case CCIC_SYSFS_PROP_FW_UPDATE:
+	case CCIC_SYSFS_PROP_DEX_FAN_UVDM:
 		return 1;
 	default:
 		return 0;
@@ -1833,6 +1843,8 @@ static void max77705_irq_execute(struct max77705_usbc_platform_data *usbc_data,
 	u8 vdm_command = 0x0;
 	u8 vdm_type = 0x0;
 	u8 vdm_response = 0x0;
+	u8 reqd_vdm_command = 0;
+	uint8_t W_DATA = 0x0;
 
 	memset(&vdm_header, 0, sizeof(UND_DATA_MSG_VDM_HEADER_Type));
 	max77705_i2c_opcode_read(usbc_data, cmd_data->opcode,
@@ -1959,6 +1971,34 @@ static void max77705_irq_execute(struct max77705_usbc_platform_data *usbc_data,
 						break;
 					default:
 						msg_maxim("vdm_command isn't valid[%x]", vdm_command);
+						break;
+					};
+				} else if (vdm_response == SEC_UVDM_ININIATOR) {
+					switch (vdm_command) {
+					case Attention:
+						/* Attention message is not able to be received via 0x48 OPCode */
+						/* Check requested vdm command and responded vdm command */
+						{
+							/* Read requested vdm command */
+							max77705_read_reg(usbc_data->muic, 0x23, &reqd_vdm_command);
+							reqd_vdm_command &= 0x1F; /* Command bit, b4...0 */
+
+							if (reqd_vdm_command == Configure) {
+								W_DATA = 1 << (usbc_data->dp_selected_pin - 1);
+								/* Retry Configure message */
+								msg_maxim("Retry Configure message, W_DATA = %x, dp_selected_pin = %d",
+										W_DATA, usbc_data->dp_selected_pin);
+								max77705_vdm_process_set_DP_configure_mode_req(usbc_data, W_DATA);
+							}
+						}
+						break;
+					case Discover_Identity:
+					case Discover_SVIDs:
+					case Discover_Modes:
+					case Enter_Mode:
+					case Configure:
+					default:
+						/* Nothing */
 						break;
 					};
 				} else
@@ -3267,6 +3307,7 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	pccic_sysfs_prop->get_property = max77705_sysfs_get_local_prop;
 	pccic_sysfs_prop->set_property = max77705_sysfs_set_prop;
 	pccic_sysfs_prop->property_is_writeable = max77705_sysfs_is_writeable;
+	pccic_sysfs_prop->property_is_writeonly = max77705_sysfs_is_writeonly;
 	pccic_sysfs_prop->properties = max77705_sysfs_properties;
 	pccic_sysfs_prop->num_properties = ARRAY_SIZE(max77705_sysfs_properties);
 	pccic_data->ccic_syfs_prop = pccic_sysfs_prop;

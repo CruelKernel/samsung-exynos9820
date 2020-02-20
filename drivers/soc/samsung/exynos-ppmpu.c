@@ -70,8 +70,6 @@ static irqreturn_t exynos_ppmpu_irq_handler(int irq, void *dev_id)
 		pr_err("%s:ppmpu_fail_info buffer is invalid! ret(%#x)\n",
 			__func__, data->need_log);
 
-	pr_info("PPMPU_FAIL_DETECTOR: Implemented PPMPU Fail Detector HardIRQ handler!\n");
-
 	return IRQ_WAKE_THREAD;
 }
 
@@ -83,7 +81,7 @@ static irqreturn_t exynos_ppmpu_irq_handler_thread(int irq, void *dev_id)
 	int i;
 
 	if (data->need_log == PPMPU_SKIP_FAIL_INFO_LOGGING) {
-		pr_info("PPMPU_FAIL_DETECTOR: Ignore PPMPU illegal reads\n");
+		pr_debug("PPMPU_FAIL_DETECTOR: Ignore PPMPU illegal reads\n");
 		return IRQ_HANDLED;
 	}
 

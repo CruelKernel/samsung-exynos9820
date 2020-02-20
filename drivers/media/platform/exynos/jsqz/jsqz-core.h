@@ -167,7 +167,7 @@ struct jsqz_buffer_plane_dma {
  */
 struct jsqz_buffer_dma {
 	/* pointer to jsqz_task.task.buf_out/cap */
-	const struct hwJSQZ_buffer		*buffer;
+	const struct hwSQZ_buffer		*buffer;
 	struct jsqz_buffer_plane_dma	plane;
 };
 

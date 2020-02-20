@@ -636,6 +636,9 @@ static void SEC_ufs_update_h8_info(struct ufs_hba *hba, bool hibern8_enter)
 	struct SEC_UFS_TW_info *tw_info = &(hba->SEC_tw_info);
 	u64 calc_h8_time_ms = 0;
 
+	if (!ufshcd_is_ufs_dev_active(hba))
+		return;
+
 	if (unlikely(((s64)tw_info->hibern8_enter_count < 0) || ((s64)tw_info->hibern8_amount_ms < 0)))
 		return;
 
@@ -1291,6 +1294,7 @@ static inline void ufshcd_hba_start(struct ufs_hba *hba)
 #ifdef CUSTOMIZE_UPIU_FLAGS
 SIO_PATCH_VERSION(UPIU_customize, 1, 1, "");
 
+/* IOPP-ufs_cp-v1.0.4.9 */
 static void set_customized_upiu_flags(struct ufshcd_lrb *lrbp, u32 *upiu_flags)
 {
 	if (lrbp->command_type == UTP_CMD_TYPE_SCSI) {
@@ -3249,11 +3253,8 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 	struct completion wait;
 	unsigned long flags;
 
-	if (!ufshcd_is_link_active(hba)) {
-		flush_work(&hba->clk_gating.ungate_work);
-		if (!ufshcd_is_link_active(hba))
-			return -EPERM;
-	}
+	if (!ufshcd_is_link_active(hba))
+		return -EPERM;
 
 	down_read(&hba->clk_scaling_lock);
 
@@ -4055,20 +4056,31 @@ void ufshcd_tw_ctrl(struct scsi_device *sdev, int en)
 
 	hba = shost_priv(sdev->host);
 
+	hba->tw_state_is_changing = true;
+	mb();
+	pr_err("UFS: try TW %s.\n", en ? "On" : "Off");
+
 	if (!hba->support_tw)
-		return;
+		goto out;
 
 	if (hba->pm_op_in_progress) {
 		dev_err(hba->dev, "%s: tw ctrl during pm operation is not allowed.\n",
 			__func__);
-		return;
+		goto out;
 	}
 
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL) {
 		dev_err(hba->dev, "%s: ufs host is not available.\n",
 			__func__);
-		return;
+		goto out;
 	}
+
+	if (hba->tw_state_not_allowed) {
+		dev_err(hba->dev, "%s: tw ctrl is not allowed.\n",
+				__func__);
+		goto out;
+	}
+	
 	if (ufshcd_is_tw_err(hba))
 		dev_err(hba->dev, "%s: previous turbo write control was failed.\n",
 			__func__);
@@ -4077,9 +4089,15 @@ void ufshcd_tw_ctrl(struct scsi_device *sdev, int en)
 		if (ufshcd_is_tw_on(hba)) {
 			dev_err(hba->dev, "%s: turbo write already enabled. tw_state = %d\n",
 				__func__, hba->ufs_tw_state);
-			return;
+			goto out;
 		}
 		pm_runtime_get_sync(hba->dev);
+		if (hba->tw_state_not_allowed) {	// check again
+			dev_err(hba->dev, "%s: tw ctrl %s is not allowed\n",
+					__func__, en ? "On" : "Off");
+			goto out_rpm_put;
+		}
+
 		err = ufshcd_query_flag_retry(hba, UPIU_QUERY_OPCODE_SET_FLAG,
 					QUERY_FLAG_IDN_TW_EN, NULL);
 		if (err) {
@@ -4094,9 +4112,15 @@ void ufshcd_tw_ctrl(struct scsi_device *sdev, int en)
 		if (ufshcd_is_tw_off(hba)) {
 			dev_err(hba->dev, "%s: turbo write already disabled. tw_state = %d\n",
 				__func__, hba->ufs_tw_state);
-			return;
+			goto out;
 		}
 		pm_runtime_get_sync(hba->dev);
+		if (hba->tw_state_not_allowed) {	// check again
+			dev_err(hba->dev, "%s: tw ctrl %s is not allowed(e.g. ufs driver is suspended)\n",
+					__func__, en ? "On" : "Off");
+			goto out_rpm_put;
+		}
+
 		err = ufshcd_query_flag_retry(hba, UPIU_QUERY_OPCODE_CLEAR_FLAG,
 					QUERY_FLAG_IDN_TW_EN, NULL);
 		if (err) {
@@ -4109,7 +4133,10 @@ void ufshcd_tw_ctrl(struct scsi_device *sdev, int en)
 		}
 	}
 	SEC_ufs_update_tw_info(hba, 0);
+out_rpm_put:
  	pm_runtime_put_sync(hba->dev); 
+out:
+	hba->tw_state_is_changing = false;
 }
 
 static void ufshcd_reset_tw(struct ufs_hba *hba, bool force)
@@ -7530,6 +7557,7 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	u8 desc_buf[hba->desc_size.dev_desc];
 	u8 health_buf[hba->desc_size.hlth_desc];
 	bool ascii_type;
+	struct exynos_ufs *ufs;
 
 	err = ufshcd_read_device_desc(hba, desc_buf, hba->desc_size.dev_desc);
 	if (err) {
@@ -7595,14 +7623,17 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	hba->lifetime = dev_desc->lifetime;
 
 	/* the device desc size of ufs 3.1 is different with the one of prev ver. */
-	if (hba->desc_size.dev_desc < (DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT + 3))
-		goto out;
+	if (hba->desc_size.dev_desc < (DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT + 3)) {
+		hba->support_tw = false;
+		return 0;
+	}
 
 	dev_desc->dextfeatsupport = ((desc_buf[DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT] << 24)|
 								(desc_buf[DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT + 1] << 16) |
 								(desc_buf[DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT + 2] << 8) |
 								desc_buf[DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT + 3]);
-	if (dev_desc->dextfeatsupport & 0x100) {
+	ufs = to_exynos_ufs(hba);
+	if (ufs->enable_tw && (dev_desc->dextfeatsupport & 0x100)){
 		dev_info(hba->dev,"%s: ufs device supports turbo write\n", __func__);
 		if (hba->lifetime < UFS_TW_DISABLE_THRESHOLD) {
 			/* if device supports tw, enable hibern flush */
@@ -7617,7 +7648,8 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 			dev_info(hba->dev,"%s: ufs turbo write is enabled\n", __func__);
 		} else
 			hba->support_tw = false;
-	}
+	} else
+		hba->support_tw = false;
 
 out:
 	return err;
@@ -7896,6 +7928,9 @@ retry:
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	hba->ufshcd_state = UFSHCD_STATE_OPERATIONAL;
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
+
+	hba->saved_err = 0;
+	hba->saved_uic_err = 0;
 
 	if (hba->support_tw) {
 		if (!ufshcd_eh_in_progress(hba) && !hba->pm_op_in_progress
@@ -9064,6 +9099,14 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	bool gating_allowed = !ufshcd_can_fake_clkgating(hba);
 
 	hba->pm_op_in_progress = 1;
+	if (hba->tw_state_is_changing) {
+		dev_err(hba->dev, "%s: TW state %s return %d.\n",
+				__func__, hba->tw_state_is_changing ? "changing" : "none",
+				-EBUSY);
+		ret = -EBUSY;
+		goto out;
+	}
+
 	if (!ufshcd_is_shutdown_pm(pm_op)) {
 		pm_lvl = ufshcd_is_runtime_pm(pm_op) ?
 			 hba->rpm_lvl : hba->spm_lvl;
@@ -9220,6 +9263,9 @@ enable_gating:
 	hba->clk_gating.is_suspended = false;
 	ufshcd_release(hba);
 out:
+	if (!ret && ufshcd_is_system_pm(pm_op))
+		hba->tw_state_not_allowed = true;
+
 	hba->pm_op_in_progress = 0;
 
 	if (hba->monitor.flag & UFSHCD_MONITOR_LEVEL1)
@@ -9362,6 +9408,9 @@ disable_vreg:
 	ufshcd_vreg_set_lpm(hba);
 out:
 	hba->pm_op_in_progress = 0;
+
+	if (hba->tw_state_not_allowed)
+		hba->tw_state_not_allowed = false;
 
 	if (hba->monitor.flag & UFSHCD_MONITOR_LEVEL1)
 		dev_info(hba->dev, "UFS resume done\n");

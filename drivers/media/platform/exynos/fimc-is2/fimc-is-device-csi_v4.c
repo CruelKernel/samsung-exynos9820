@@ -281,14 +281,9 @@ static void csis_disable_all_vc_dma_buf(struct fimc_is_device_csi *csi)
 		framemgr = GET_SUBDEV_FRAMEMGR(dma_subdev);
 		framemgr_e_barrier(framemgr, 0);
 		if (likely(framemgr)) {
-			/*
-			 * W/A: DMA should be on forcely at invalid frame state.
-			 * The invalid state indicates that there is process frame at DMA off.
-			 */
 			if (framemgr->queued_count[FS_PROCESS] &&
 				!csi->pre_dma_enable[vc] && !cur_dma_enable) {
-				csi_s_output_dma(csi, vc, true);
-				minfo("[VC%d] DMA on forcely[P(%d)]\n", csi, vc, framemgr->queued_count[FS_PROCESS]);
+				minfo("[VC%d] wq_csis_dma is being delayed. [P(%d)]\n", csi, vc, framemgr->queued_count[FS_PROCESS]);
 				print_frame_queue(framemgr, FS_PROCESS);
 			}
 
@@ -883,65 +878,110 @@ static void csi_err_handle(struct fimc_is_device_csi *csi)
 static void wq_csis_dma_vc0(struct work_struct *data)
 {
 	struct fimc_is_device_csi *csi;
+	struct fimc_is_work_list *work_list;
+	struct fimc_is_work *work;
 	struct fimc_is_framemgr *framemgr;
+
+	FIMC_BUG_VOID(!data);
 
 	csi = container_of(data, struct fimc_is_device_csi, wq_csis_dma[CSI_VIRTUAL_CH_0]);
 	if (!csi) {
-		err("[CSI] csi is NULL");
+		merr("csi is NULL.", csi);
 		BUG();
 	}
 
-	framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_0);
-	if (framemgr)
-		csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_0);
+	work_list = &csi->work_list[CSI_VIRTUAL_CH_0];
+	get_req_work(work_list, &work);
+	while (work) {
+		framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_0);
+		if (framemgr)
+			csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_0);
+
+		set_free_work(work_list, work);
+		get_req_work(work_list, &work);
+	}
+
 }
 
 static void wq_csis_dma_vc1(struct work_struct *data)
 {
 	struct fimc_is_device_csi *csi;
+	struct fimc_is_work_list *work_list;
+	struct fimc_is_work *work;
 	struct fimc_is_framemgr *framemgr;
+
+	FIMC_BUG_VOID(!data);
 
 	csi = container_of(data, struct fimc_is_device_csi, wq_csis_dma[CSI_VIRTUAL_CH_1]);
 	if (!csi) {
-		err("[CSI] csi is NULL");
+		merr("csi is NULL.", csi);
 		BUG();
 	}
 
-	framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_1);
-	if (framemgr)
-		csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_1);
+	work_list = &csi->work_list[CSI_VIRTUAL_CH_1];
+	get_req_work(work_list, &work);
+	while (work) {
+		framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_1);
+		if (framemgr)
+			csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_1);
+
+		set_free_work(work_list, work);
+		get_req_work(work_list, &work);
+	}
 }
 
 static void wq_csis_dma_vc2(struct work_struct *data)
 {
 	struct fimc_is_device_csi *csi;
+	struct fimc_is_work_list *work_list;
+	struct fimc_is_work *work;
 	struct fimc_is_framemgr *framemgr;
+
+	FIMC_BUG_VOID(!data);
 
 	csi = container_of(data, struct fimc_is_device_csi, wq_csis_dma[CSI_VIRTUAL_CH_2]);
 	if (!csi) {
-		err("[CSI] csi is NULL");
+		merr("csi is NULL.", csi);
 		BUG();
 	}
 
-	framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_2);
-	if (framemgr)
-		csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_2);
+	work_list = &csi->work_list[CSI_VIRTUAL_CH_2];
+	get_req_work(work_list, &work);
+	while (work) {
+		framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_2);
+		if (framemgr)
+			csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_2);
+
+		set_free_work(work_list, work);
+		get_req_work(work_list, &work);
+	}
 }
 
 static void wq_csis_dma_vc3(struct work_struct *data)
 {
 	struct fimc_is_device_csi *csi;
-	struct fimc_is_framemgr *framemgr = NULL;
+	struct fimc_is_work_list *work_list;
+	struct fimc_is_work *work;
+	struct fimc_is_framemgr *framemgr;
+
+	FIMC_BUG_VOID(!data);
 
 	csi = container_of(data, struct fimc_is_device_csi, wq_csis_dma[CSI_VIRTUAL_CH_2]);
 	if (!csi) {
-		err("[CSI] csi is NULL");
+		merr("csi is NULL.", csi);
 		BUG();
 	}
 
-	framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_3);
-	if (framemgr)
-		csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_3);
+	work_list = &csi->work_list[CSI_VIRTUAL_CH_3];
+	get_req_work(work_list, &work);
+	while (work) {
+		framemgr = csis_get_vc_framemgr(csi, CSI_VIRTUAL_CH_3);
+		if (framemgr)
+			csi_dma_tag(*csi->subdev, csi, framemgr, CSI_VIRTUAL_CH_3);
+
+		set_free_work(work_list, work);
+		get_req_work(work_list, &work);
+	}
 }
 
 static void tasklet_csis_end(unsigned long data)
@@ -999,6 +1039,46 @@ static void tasklet_csis_line(unsigned long data)
 	v4l2_subdev_notify(subdev, CSIS_NOTIFY_LINE, NULL);
 }
 
+static inline void csi_wq_func_schedule(struct fimc_is_device_csi *csi,
+	struct work_struct *work_wq)
+{
+	if (csi->workqueue)
+		queue_work(csi->workqueue, work_wq);
+	else
+		schedule_work(work_wq);
+}
+
+static void do_dma_done_work_func(struct fimc_is_device_csi *csi, int vc)
+{
+	bool retry_flag = true;
+	struct work_struct *work_wq;
+	struct fimc_is_work_list *work_list;
+	struct fimc_is_work *work;
+
+	work_wq= &csi->wq_csis_dma[vc];
+	work_list = &csi->work_list[vc];
+
+retry:
+	get_free_work(work_list, &work);
+	if (work) {
+		work->msg.id = 0;
+		work->msg.instance = csi->instance;
+		work->msg.param1 = vc;
+
+		work->fcount = atomic_read(&csi->fcount);
+		set_req_work(work_list, work);
+
+		if (!work_pending(work_wq))
+			csi_wq_func_schedule(csi, work_wq);
+	} else {
+		merr("[VC%d]free work list is empty. retry(%d)", csi, vc, retry_flag);
+		if (retry_flag) {
+			retry_flag = false;
+			goto retry;
+		}
+	}
+}
+
 static irqreturn_t fimc_is_isr_csi(int irq, void *data)
 {
 	struct fimc_is_device_csi *csi;
@@ -1029,7 +1109,7 @@ static irqreturn_t fimc_is_isr_csi(int irq, void *data)
 	if (dma_frame_end) {
 		/* VC0 */
 		if (csi->dma_subdev[CSI_VIRTUAL_CH_0] && (dma_frame_end & (1 << CSI_VIRTUAL_CH_0)))
-			csi_wq_func_schedule(csi, &csi->wq_csis_dma[CSI_VIRTUAL_CH_0]);
+			do_dma_done_work_func(csi, CSI_VIRTUAL_CH_0);
 	}
 #endif
 
@@ -1085,15 +1165,6 @@ clear_status:
 	return IRQ_HANDLED;
 }
 
-static inline void csi_wq_func_schedule(struct fimc_is_device_csi *csi,
-	struct work_struct *work_wq)
-{
-	if (csi->workqueue)
-		queue_work(csi->workqueue, work_wq);
-	else
-		schedule_work(work_wq);
-}
-
 static irqreturn_t fimc_is_isr_csi_dma(int irq, void *data)
 {
 	struct fimc_is_device_csi *csi;
@@ -1138,7 +1209,7 @@ static irqreturn_t fimc_is_isr_csi_dma(int irq, void *data)
 #if !defined(SUPPORTED_EARLYBUF_DONE_HW)
 		/* VC0 */
 		if (csi->dma_subdev[CSI_VIRTUAL_CH_0] && (dma_frame_end & (1 << CSI_VIRTUAL_CH_0)))
-			csi_wq_func_schedule(csi, &csi->wq_csis_dma[CSI_VIRTUAL_CH_0]);
+			do_dma_done_work_func(csi, CSI_VIRTUAL_CH_0);
 #endif
 		for (vc = CSI_VIRTUAL_CH_1; vc < CSI_VIRTUAL_CH_MAX; vc++) {
 			if ((dma_frame_end & (1 << vc)) && csi->dma_subdev[vc]) {
@@ -1154,7 +1225,7 @@ static irqreturn_t fimc_is_isr_csi_dma(int irq, void *data)
 					else
 						merr("[VC%d] framemgr is NULL\n", csi, vc);
 				} else {
-					csi_wq_func_schedule(csi, &csi->wq_csis_dma[vc]);
+					do_dma_done_work_func(csi, vc);
 				}
 			}
 		}
@@ -1564,14 +1635,25 @@ static int csi_stream_on(struct v4l2_subdev *subdev,
 		}
 
 		/* DMA Workqueue Setting */
-		if (csi->dma_subdev[CSI_VIRTUAL_CH_0])
+		if (csi->dma_subdev[CSI_VIRTUAL_CH_0]) {
 			INIT_WORK(&csi->wq_csis_dma[CSI_VIRTUAL_CH_0], wq_csis_dma_vc0);
-		if (csi->dma_subdev[CSI_VIRTUAL_CH_1])
+			init_work_list(&csi->work_list[CSI_VIRTUAL_CH_0], CSI_VIRTUAL_CH_0, MAX_WORK_COUNT);
+		}
+
+		if (csi->dma_subdev[CSI_VIRTUAL_CH_1]) {
 			INIT_WORK(&csi->wq_csis_dma[CSI_VIRTUAL_CH_1], wq_csis_dma_vc1);
-		if (csi->dma_subdev[CSI_VIRTUAL_CH_2])
+			init_work_list(&csi->work_list[CSI_VIRTUAL_CH_1], CSI_VIRTUAL_CH_1, MAX_WORK_COUNT);
+		}
+
+		if (csi->dma_subdev[CSI_VIRTUAL_CH_2]) {
 			INIT_WORK(&csi->wq_csis_dma[CSI_VIRTUAL_CH_2], wq_csis_dma_vc2);
-		if (csi->dma_subdev[CSI_VIRTUAL_CH_3])
+			init_work_list(&csi->work_list[CSI_VIRTUAL_CH_2], CSI_VIRTUAL_CH_2, MAX_WORK_COUNT);
+		}
+
+		if (csi->dma_subdev[CSI_VIRTUAL_CH_3]) {
 			INIT_WORK(&csi->wq_csis_dma[CSI_VIRTUAL_CH_3], wq_csis_dma_vc3);
+			init_work_list(&csi->work_list[CSI_VIRTUAL_CH_3], CSI_VIRTUAL_CH_3, MAX_WORK_COUNT);
+		}
 	}
 
 	/* if sensor's output otf was enabled, enable line irq */

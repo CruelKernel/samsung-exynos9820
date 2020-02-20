@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 830195 2019-07-16 07:09:20Z $
+ * $Id: dhd.h 848266 2019-10-31 09:18:01Z $
  */
 
 /****************
@@ -1126,9 +1126,6 @@ typedef struct dhd_pub {
 #if defined(DHD_HANG_SEND_UP_TEST)
 	uint req_hang_type;
 #endif /* DHD_HANG_SEND_UP_TEST */
-#if defined(CONFIG_BCM_DETECT_CONSECUTIVE_HANG)
-	uint hang_counts;
-#endif /* CONFIG_BCM_DETECT_CONSECUTIVE_HANG */
 #ifdef WLTDLS
 	bool tdls_enable;
 #endif // endif
@@ -1421,6 +1418,7 @@ typedef struct dhd_pub {
 	union {
 		wl_roam_stats_v1_t v1;
 	} roam_evt;
+	bool dhd_chk_m4acked;		/* check acked for sending M4 packet */
 } dhd_pub_t;
 
 typedef struct {
@@ -1920,6 +1918,7 @@ extern void dhd_bus_wakeup_work(dhd_pub_t *dhdp);
 #define WIFI_FEATURE_CONTROL_ROAMING    0x800000	/* Enable/Disable firmware roaming */
 #define WIFI_FEATURE_FILTER_IE          0x1000000	/* Probe req ie filter              */
 #define WIFI_FEATURE_SCAN_RAND          0x2000000	/* Support MAC & Prb SN randomization */
+#define WIFI_FEATURE_P2P_RAND_MAC       0x80000000  /* Support P2P MAC randomization    */
 #define WIFI_FEATURE_INVALID            0xFFFFFFFF	/* Invalid Feature                  */
 
 #define MAX_FEATURE_SET_CONCURRRENT_GROUPS  3
@@ -1927,6 +1926,7 @@ extern void dhd_bus_wakeup_work(dhd_pub_t *dhdp);
 extern int dhd_dev_get_feature_set(struct net_device *dev);
 extern int dhd_dev_get_feature_set_matrix(struct net_device *dev, int num);
 extern int dhd_dev_cfg_rand_mac_oui(struct net_device *dev, uint8 *oui);
+extern int dhd_update_rand_mac_addr(dhd_pub_t *dhd);
 #ifdef CUSTOM_FORCE_NODFS_FLAG
 extern int dhd_dev_set_nodfs(struct net_device *dev, uint nodfs);
 #endif /* CUSTOM_FORCE_NODFS_FLAG */
@@ -2925,6 +2925,10 @@ int dhd_parse_map_file(osl_t *osh, void *file, uint32 *ramstart,
 int dhd_event_logtrace_infobuf_pkt_process(dhd_pub_t *dhdp, void *pktbuf,
 		dhd_event_log_t *event_data);
 #endif /* PCIE_FULL_DONGLE */
+#ifdef CUSTOM_CONTROL_LOGTRACE
+/* By default logstr parsing is disabled */
+extern uint8 control_logtrace;
+#endif /* CUSTOM_CONTROL_LOGTRACE */
 #endif /* SHOW_LOGTRACE */
 
 #define dhd_is_device_removed(x) FALSE
@@ -3245,7 +3249,7 @@ extern void dhd_os_get_axi_error_filename(struct net_device *dev, char *dump_pat
 #endif /*  DNGL_AXI_ERROR_LOGGING */
 
 #endif /* DHD_LOG_DUMP */
-int dhd_export_debug_data(void *mem_buf, void *fp, const void *user_buf, int buf_len, void *pos);
+int dhd_export_debug_data(void *mem_buf, void *fp, const void *user_buf, uint32 buf_len, void *pos);
 #define DHD_PCIE_CONFIG_SAVE(bus)	pci_save_state(bus->dev)
 #define DHD_PCIE_CONFIG_RESTORE(bus)	pci_restore_state(bus->dev)
 
@@ -3400,4 +3404,11 @@ extern uint8 control_he_enab;
 #endif /* DISABLE_HE_ENAB  || CUSTOM_CONTROL_HE_ENAB */
 
 void *dhd_get_roam_evt(dhd_pub_t *dhdp);
+
+#ifdef DHD_CHECK_4WAY_M4ACKED
+extern void dhd_set_m4_acked(dhd_pub_t *dhdp, int set);
+extern void dhd_chk_m4_acked(dhd_pub_t *dhdp);
+#define CHK_M4_WAIT_MAX_TIME	200 /* ms */
+#define CHK_M4_WAIT_INTV_TIME	10 /* ms */
+#endif /* DHD_CHECK_4WAY_M4ACKED */
 #endif /* _dhd_h_ */

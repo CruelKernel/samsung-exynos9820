@@ -2022,6 +2022,9 @@ static int memsize_reserved_show(struct seq_file *m, void *private)
 	unsigned long dt_reserved = 0, reusable = 0, kernel, total;
 	unsigned long system = totalram_pages << PAGE_SHIFT;
 
+#ifdef CONFIG_ION_RBIN_HEAP
+	system += totalrbin_pages << PAGE_SHIFT;
+#endif
 	sort(reserved_mem_reg, reserved_mem_reg_count,
 	     sizeof(reserved_mem_reg[0]), __rmem_reg_cmp, NULL);
 	seq_printf(m, "v1\n");

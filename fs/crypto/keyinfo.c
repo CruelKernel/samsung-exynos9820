@@ -453,7 +453,9 @@ int fscrypt_get_encryption_info(struct inode *inode)
 	struct fscrypt_mode *mode;
 	u8 *raw_key = NULL;
 	int res;
-
+#ifdef CONFIG_FSCRYPT_SDP
+	sdp_fs_command_t *cmd = NULL;
+#endif
 	if (inode->i_crypt_info)
 		return 0;
 
@@ -533,8 +535,19 @@ int fscrypt_get_encryption_info(struct inode *inode)
 
 		if (fscrypt_sdp_is_classified(crypt_info)) {
 			res = derive_fek(inode, &ctx, crypt_info, raw_key, mode->keysize);
-			if (res)
+			if (res) {
+				if (fscrypt_sdp_is_sensitive(crypt_info)) {
+					cmd = sdp_fs_command_alloc(FSOP_AUDIT_FAIL_DECRYPT,
+						current->tgid, crypt_info->ci_sdp_info->engine_id, -1,
+						inode->i_ino, res, GFP_NOFS);
+					if (cmd) {
+						sdp_fs_request(cmd, NULL);
+						sdp_fs_command_free(cmd);
+					}
+				}
 				goto out;
+			}
+
 			fscrypt_sdp_update_conv_status(crypt_info);
 			goto sdp_dek;
 		}

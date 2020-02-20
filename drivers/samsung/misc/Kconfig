@@ -3,23 +3,6 @@ menuconfig SEC_MISC
 	depends on SEC_EXT
 	default y
 
-choice
-	prompt "Version of GAF structure"
-	depends on SEC_DEBUG
-	default SEC_DEBUG_GAF_V5 if PROCA
-	default SEC_DEBUG_GAF_V4
-
-config SEC_DEBUG_GAF_V4
-	bool "Use GAF structure version 4"
-	help
-	  Default option for kernel without PROCA LSM module.
-
-config SEC_DEBUG_GAF_V5
-	bool "Use GAF structure version 5"
-	help
-	  Default option for kernel with PROCA LSM module.
-endchoice
-
 comment "Samsung Mobile Power Management Options"
 menuconfig SEC_PM
 	bool "Samsung Mobile Power Management"

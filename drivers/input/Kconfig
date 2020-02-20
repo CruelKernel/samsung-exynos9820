@@ -215,6 +215,17 @@ config HALL
 
 	  If unsure, say N.
 
+config HALL_EVENT_REVERSE
+	tristate "Adjusting the status value of HALL IC"
+	default y
+	depends on HALL
+	depends on ANDROID_MAJOR_VERSION >= "q"
+	help
+	  Adjusting the status value of HALL IC.
+	  This was required from input FW.
+
+	  If unsure, say N.
+
 config CERTIFY_HALL
 	tristate "Enable CERTIFY HALL IC"
 	default n

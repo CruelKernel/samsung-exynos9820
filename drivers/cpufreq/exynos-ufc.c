@@ -18,6 +18,7 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_opp.h>
 #include <linux/ems_service.h>
+#include <linux/exynos-ucc.h>
 
 #include <soc/samsung/exynos-cpuhp.h>
 
@@ -102,6 +103,13 @@ static ssize_t show_cpufreq_min_limit(struct kobject *kobj,
 
 static struct kpp kpp_ta;
 static struct kpp kpp_fg;
+
+static struct ucc_req ucc_req =
+{
+	.name = "ufc",
+};
+static int ucc_requested;
+static int ucc_requested_val = 0;
 
 static ssize_t store_cpufreq_min_limit(struct kobject *kobj,
 				struct kobj_attribute *attr, const char *buf,
@@ -202,6 +210,8 @@ static ssize_t store_cpufreq_min_limit(struct kobject *kobj,
 			pm_qos_update_request(&domain->user_min_qos_req, 0);
 			kpp_request(STUNE_TOPAPP, &kpp_ta, 0);
 			kpp_request(STUNE_FOREGROUND, &kpp_fg, 0);
+			ucc_requested_val = 0;
+			ucc_update_request(&ucc_req, ucc_requested_val);
 			continue;
 		}
 
@@ -237,9 +247,13 @@ static ssize_t store_cpufreq_min_limit(struct kobject *kobj,
 		if ((domain->user_boost == 3) && sse_mode_game) {
 			kpp_request(STUNE_TOPAPP, &kpp_ta, domain->user_boost_game);
 			kpp_request(STUNE_FOREGROUND, &kpp_fg, domain->user_boost_game);
+			ucc_requested_val = domain->ucc_index;
+			ucc_update_request(&ucc_req, ucc_requested_val);
 		} else {
 			kpp_request(STUNE_TOPAPP, &kpp_ta, domain->user_boost);
 			kpp_request(STUNE_FOREGROUND, &kpp_fg, domain->user_boost);
+			ucc_requested_val = domain->ucc_index;
+			ucc_update_request(&ucc_req, ucc_requested_val);
 		}
 
 		if (is_lit_on)
@@ -395,6 +409,46 @@ static ssize_t show_cpufreq_max_limit(struct kobject *kobj,
 		first_domain()->min_freq >> (scale * SCALE_SIZE));
 }
 
+unsigned int get_cpufreq_max_limit(void)
+{
+	struct list_head *domains = get_domain_list();
+	struct exynos_cpufreq_domain *domain;
+	unsigned int pm_qos_max;
+	int scale = -1;
+
+	if (!domains) {
+		pr_err("failed to get domains!\n");
+		return -ENXIO;
+	}
+
+	list_for_each_entry_reverse(domain, domains, list) {
+		scale++;
+
+		/* get value of minimum PM QoS */
+		pm_qos_max = pm_qos_request(domain->pm_qos_max_class);
+		if (pm_qos_max > 0) {
+			pm_qos_max = min(pm_qos_max, domain->max_freq);
+			pm_qos_max = max(pm_qos_max, domain->min_freq);
+
+			/*
+			 * To manage frequencies of all domains at once,
+			 * scale down frequency as multiple of 4.
+			 * ex) domain2 = freq
+			 *     domain1 = freq /4
+			 *     domain0 = freq /16
+			 */
+			pm_qos_max = pm_qos_max >> (scale * SCALE_SIZE);
+			return pm_qos_max;
+		}
+	}
+
+	/*
+	 * If there is no QoS at all domains, it returns minimum
+	 * frequency of last domain
+	 */
+	return first_domain()->min_freq >> (scale * SCALE_SIZE);
+}
+
 static void enable_domain_cpus(struct exynos_cpufreq_domain *domain)
 {
 	struct cpumask mask;
@@ -546,6 +600,38 @@ static ssize_t store_execution_mode_change(struct kobject *kobj, struct kobj_att
 	return count;
 }
 
+static ssize_t show_cstate_control(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+    return snprintf(buf, 10, "%d\n", ucc_requested);
+}
+
+static ssize_t store_cstate_control(struct kobject *kobj, struct kobj_attribute *attr,
+					const char *buf, size_t count)
+{
+	int input;
+	if (!sscanf(buf, "%8d", &input))
+		return -EINVAL;
+
+	if (input < 0)
+		return -EINVAL;
+
+	input = !!input;
+
+	if (input == ucc_requested)
+		goto out;
+
+	ucc_requested = input;
+
+	if (ucc_requested)
+		ucc_add_request(&ucc_req, ucc_requested_val);
+	else
+		ucc_remove_request(&ucc_req);
+
+out:
+	return count;
+}
+
 static ssize_t show_boost_mode_change(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
@@ -586,6 +672,8 @@ __ATTR(cpufreq_max_limit, 0644,
 static struct kobj_attribute execution_mode_change =
 __ATTR(execution_mode_change, 0644,
 		show_execution_mode_change, store_execution_mode_change);
+static struct kobj_attribute cstate_control =
+__ATTR(cstate_control, 0644, show_cstate_control, store_cstate_control);
 static struct kobj_attribute boost_mode_change =
 __ATTR(boost_mode_change, 0644,
 		show_boost_mode_change, store_boost_mode_change);
@@ -607,6 +695,9 @@ static __init void init_sysfs(void)
 	if (sysfs_create_file(power_kobj, &execution_mode_change.attr))
 		pr_err("failed to create execution_mode_change node\n");
 
+	if (sysfs_create_file(power_kobj, &cstate_control.attr))
+		pr_err("failed to create cstate_control node\n");
+
 	if (sysfs_create_file(power_kobj, &boost_mode_change.attr))
 		pr_err("failed to create boost_mode_change node\n");
 
@@ -622,6 +713,9 @@ static int parse_ufc_ctrl_info(struct exynos_cpufreq_domain *domain,
 
 	if (!of_property_read_u32(dn, "user-boost", &val))
 		domain->user_boost = val;
+
+	if (!of_property_read_u32(dn, "ucc-index", &val))
+		domain->ucc_index = val;
 
 	if (!of_property_read_u32(dn, "user-boost-game", &val))
 		domain->user_boost_game = val;

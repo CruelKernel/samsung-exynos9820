@@ -1,0 +1,10 @@
+#
+# Exynos CPU Performance Profiling
+#
+
+menuconfig EXYNOS_CPU_PERF
+	bool "Exynos CPU Performance Profiling"
+	default y
+	help
+	  Enable Exynos CPU Performance Profiling
+	depends on SOC_SAMSUNG

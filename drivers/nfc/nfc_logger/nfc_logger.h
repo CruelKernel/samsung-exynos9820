@@ -30,6 +30,7 @@ int nfc_logger_init(void);
 
 #define nfc_print_hex_dump(a, b, c)	do { } while (0)
 #define nfc_logger_init()		do { } while (0)
+#define nfc_logger_set_max_count(a)	do { } while (0)
 #endif
 
 #endif

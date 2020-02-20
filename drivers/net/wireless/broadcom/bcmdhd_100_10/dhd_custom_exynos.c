@@ -23,7 +23,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_custom_exynos.c 823753 2019-06-05 11:13:01Z $
+ * $Id: dhd_custom_exynos.c 823711 2019-06-05 05:09:51Z $
  */
 #include <linux/device.h>
 #include <linux/gpio.h>

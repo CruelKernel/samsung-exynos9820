@@ -583,9 +583,9 @@ static ssize_t key_pressed_count_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(sec_key_pressed, 0664, key_pressed_show, NULL);
-static DEVICE_ATTR(sec_key_pressed_code, 0664, key_pressed_show_code, NULL);
-static DEVICE_ATTR(wakeup_keys, 0664, NULL, wakeup_enable);
+static DEVICE_ATTR(sec_key_pressed, 0444, key_pressed_show, NULL);
+static DEVICE_ATTR(sec_key_pressed_code, 0444, key_pressed_show_code, NULL);
+static DEVICE_ATTR(wakeup_keys, 0220, NULL, wakeup_enable);
 static DEVICE_ATTR(keycode_pressed, 0444, keycode_pressed_show, NULL);
 static DEVICE_ATTR(key_pressed_count, 0664, key_pressed_count_show, key_pressed_count_store);
 

@@ -306,8 +306,8 @@
 				hdr_min_luma = <5>;		/* 0.0005 */
 				partial_width = <360>;
 				partial_height = <228>;
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 				adaptive_freq_info =  <&freq_1143 &freq_1150 &freq_1157 &freq_1176>;
 			};
 
@@ -352,8 +352,8 @@
 				hdr_min_luma = <5>;		/* 0.0005 */
 				partial_width = <360>;
 				partial_height = <228>;
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 				dynamic_freq =  <&freq_1143 &freq_1150 &freq_1157 &freq_1176>;
 			};
 
@@ -394,8 +394,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 			};
 
 			s6e3ha9_beyond1_1080x2280: s6e3ha9_beyond1_1080x2280 {
@@ -475,8 +475,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 			};
 
 			s6e3ha9_beyond1: s6e3ha9_beyond1 {
@@ -515,8 +515,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 			};
 
 			s6e3ha9_beyond2: s6e3ha9_beyond2 {
@@ -555,8 +555,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 			};
 
 			s6e3ha9_beyondx: s6e3ha9_beyondx {
@@ -595,8 +595,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 			};
 
 			s6e3ha9_beyondx_df: s6e3ha9_beyondx_df {
@@ -635,8 +635,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 				dynamic_freq =  <&freq_897 &freq_903_5 &freq_910 &freq_929_5>;
 
 			};
@@ -677,8 +677,8 @@
 				hdr_max_luma = <4000000>;	/* 540 */
 				hdr_max_avg_luma = <1200000>;	/* 120 */
 				hdr_min_luma = <5>;		/* 0.0005 */
-				color_mode_num = <2>;
-				color_mode = <0 9>; /* color mode : NATIVE, SRGB, P3 */
+				color_mode_num = <3>;
+				color_mode = <0 7 9>; /* color mode : NATIVE, SRGB, P3 */
 				dynamic_freq =  <&freq_897 &freq_903_5 &freq_910 &freq_929_5>;
 			};
 		};

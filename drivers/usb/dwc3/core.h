@@ -1140,6 +1140,7 @@ struct dwc3 {
 	unsigned		sparse_transfer_control:1;
 	unsigned		is_not_vbus_pad:1;
 	unsigned		start_config_issued:1;
+	unsigned		vbus_state:1;
 
 	struct work_struct      set_vbus_current_work;
 	int			vbus_current; /* 100mA,  500mA,  900mA */

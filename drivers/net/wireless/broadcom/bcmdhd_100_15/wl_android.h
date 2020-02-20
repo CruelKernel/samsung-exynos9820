@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.h 794110 2018-12-12 05:03:21Z $
+ * $Id: wl_android.h 848923 2019-11-05 12:28:45Z $
  */
 
 #include <linux/module.h>
@@ -164,3 +164,5 @@ extern int wl_android_bcnrecv_event(struct net_device *ndev,
 #define TSPEC_DEF_MIN_PHY_RATE 6000000
 #define TSPEC_DEF_DIALOG_TOKEN 7
 #endif /* WL_CAC_TS */
+
+#define WL_PRIV_CMD_LEN 64

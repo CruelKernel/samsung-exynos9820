@@ -74,6 +74,8 @@ typedef struct _ccic_sysfs_property_t {
 	/* Decides whether userspace can change a specific property */
 	int (*property_is_writeable)(struct _ccic_data_t *pccic_data,
 				      enum ccic_sysfs_property prop);
+	int (*property_is_writeonly)(struct _ccic_data_t *pccic_data,
+				      enum ccic_sysfs_property prop);
 } ccic_sysfs_property_t, *pccic_sysfs_property_t;
 
 void ccic_sysfs_init_attrs(void);

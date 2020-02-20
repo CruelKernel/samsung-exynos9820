@@ -82,6 +82,11 @@ static struct boot_event boot_events[] = {
 	{"!@Boot_SVC : IMSI Ready",},
 	{"!@Boot_SVC : completeConnection",},
 	{"!@Boot_DEBUG: finishUserUnlockedCompleted",},
+    {"!@Boot: setIconVisibility: ims_volte: [SHOW]",},
+    {"!@Boot_DEBUG: Launcher.onCreate()",},
+    {"!@Boot_DEBUG: Launcher.onResume()",},
+    {"!@Boot_DEBUG: Launcher.LoaderTask.run() start",},
+    {"!@Boot_DEBUG: Launcher - FinishFirstBind",},
 };
 
 #define MAX_LENGTH_OF_SYSTEMSERVER_LOG 90

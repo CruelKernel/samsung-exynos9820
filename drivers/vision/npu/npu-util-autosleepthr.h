@@ -40,9 +40,11 @@ struct auto_sleep_thread {
 
 	int (*do_task)(struct auto_sleep_thread_param *data);
 	int (*check_work)(struct auto_sleep_thread_param *data);
+	void (*on_idle)(struct auto_sleep_thread_param *data, const s64 idle_duration_ns);
 
 	struct auto_sleep_thread_param	task_param;
 	int	no_activity_threshold;
+	s64	idle_start_ns;
 
 	atomic_t	thr_state;	/* enum auto_sleep_thread_state_e */
 };
@@ -51,7 +53,8 @@ struct auto_sleep_thread {
 /* Prototypes */
 int auto_sleep_thread_create(struct auto_sleep_thread *newthr, const char *print_name,
 	int (*do_task)(struct auto_sleep_thread_param *data),
-	int (*check_work)(struct auto_sleep_thread_param *data));
+	int (*check_work)(struct auto_sleep_thread_param *data),
+	void (*on_idle)(struct auto_sleep_thread_param *data, s64 idle_duration_ns));
 int auto_sleep_thread_start(struct auto_sleep_thread *thr, struct auto_sleep_thread_param param);
 int auto_sleep_thread_terminate(struct auto_sleep_thread *thr);
 void auto_sleep_thread_signal(struct auto_sleep_thread *thr);

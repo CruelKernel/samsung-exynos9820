@@ -408,6 +408,8 @@ exit:
 	return 0;
 }
 
+extern receive_first_ipc;
+
 static int s5000ap_reset(struct modem_ctl *mc)
 {
 	void __iomem *base = shm_get_ipc_region();
@@ -416,10 +418,15 @@ static int s5000ap_reset(struct modem_ctl *mc)
 
 	mif_info("+++\n");
 
+	receive_first_ipc = 0;
+
 	/* 2cp dump WA */
 	if (timer_pending(&mld->crash_ack_timer))
 		del_timer(&mld->crash_ack_timer);
 	atomic_set(&mld->forced_cp_crash, 0);
+
+	if (hrtimer_active(&mld->sbd_print_timer))
+		hrtimer_cancel(&mld->sbd_print_timer);
 
 	/* mc->phone_state = STATE_OFFLINE; */
 	if (mc->phone_state == STATE_OFFLINE)

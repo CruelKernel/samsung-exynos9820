@@ -256,6 +256,7 @@ int hdcp_dplink_authenticate(void)
 		ret = do_dplink_auth(&lk_info);
 		if (ret == HDCP_SUCCESS) {
 			hdcp_info("Success HDCP authenticate done.\n");
+			dp_logger_print("soc HDCP2 authenticate done.\n");
 			retry_cnt = 0;
 			mutex_unlock(&hdcp_auth_mutex);
 			return 0;
@@ -263,12 +264,14 @@ int hdcp_dplink_authenticate(void)
 			/* auth_proc_state flag check */
 			if (auth_proc_state == HDCP_AUTH_PROCESS_STOP) {
 				hdcp_info("Stop authenticate.\n");
+				dp_logger_print("soc HDCP2 Stop authenticate.\n");
 				auth_proc_state = HDCP_AUTH_PROCESS_IDLE;
 				break;
 			}
 			/* retry */
 			dplink_clear_irqflag_all();
 			hdcp_err("HDCP auth failed. retry(%d)\n", retry_cnt);
+			dp_logger_print("soc HDCP2 auth failed:%d, retry(%d)\n", ret, retry_cnt);
 		}
 	}
 

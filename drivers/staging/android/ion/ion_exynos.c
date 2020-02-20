@@ -419,7 +419,7 @@ static void exynos_flush_sg(struct device *dev,
 	for_each_sg(sgl, sg, nelems, i) {
 		virt = phys_to_virt(dma_to_phys(dev, sg->dma_address));
 
-		__dma_flush_area(virt, nelems);
+		__dma_flush_area(virt, sg->length);
 	}
 }
 

@@ -23,8 +23,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: p2p.h 757905 2018-04-16 23:16:27Z $
  */
 
 #ifndef _P2P_H_

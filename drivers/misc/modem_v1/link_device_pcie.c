@@ -567,7 +567,6 @@ static void cmd_phone_start_handler(struct mem_link_device *mld)
 		if (phone_start_count < 100) {
 			if (phone_start_count++ > 3) {
 				phone_start_count = 101;
-				set_dflags(127);
 				send_ipc_irq(mld,
 					cmd2int(phone_start_count - 100));
 				return;

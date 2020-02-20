@@ -44,7 +44,6 @@
 void exynos_usb_audio_set_device(struct usb_device *udev)
 {
 	usb_audio->udev = udev;
-	usb_audio->is_audio = 1;
 }
 
 int exynos_usb_audio_map_buf(struct usb_device *udev)
@@ -210,7 +209,8 @@ int exynos_usb_audio_setintf(struct usb_device *udev, int iface, int alt, int di
 	}
 
 	if (DEBUG)
-		dev_info(&udev->dev, "USB_AUDIO_IPC : %s ", __func__);
+		dev_info(&udev->dev, "USB_AUDIO_IPC : %s, alt = %d\n",
+				__func__, alt);
 
 	if (!usb_audio->is_audio || !otg_connection) {
 		dev_info(dev, "USB_AUDIO_IPC : is_audio is 0. return!\n");
@@ -244,6 +244,11 @@ int exynos_usb_audio_setintf(struct usb_device *udev, int iface, int alt, int di
 			if (!left_time)
 				dev_info(dev, "%s: timeout for IN connection done\n");
 		}
+	}
+
+	if (!usb_audio->is_audio || !otg_connection) {
+		dev_info(dev, "USB_AUDIO_IPC : is_audio = 0. return!\n");
+		return -1;
 	}
 
 	mutex_lock(&usb_audio->lock);

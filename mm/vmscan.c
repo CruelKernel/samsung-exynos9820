@@ -1764,7 +1764,7 @@ static int current_may_throttle(void)
 		bdi_write_congested(current->backing_dev_info);
 }
 
-static inline bool need_memory_boosting(struct pglist_data *pgdat);
+static inline bool need_memory_boosting(struct pglist_data *pgdat, bool skip);
 
 /*
  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
@@ -1829,7 +1829,7 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	if (nr_taken == 0)
 		return 0;
 
-	if (need_memory_boosting(pgdat)) {
+	if (need_memory_boosting(pgdat, false)) {
 		force_reclaim = true;
 		ttu |= TTU_IGNORE_ACCESS;
 	}
@@ -2238,9 +2238,10 @@ static ssize_t mem_boost_mode_store(struct kobject *kobj,
 
 	mem_boost_mode = mode;
 	last_mode_change = jiffies;
+#ifdef CONFIG_ION_RBIN_HEAP
 	if (mem_boost_mode == BOOST_HIGH)
 		wake_ion_rbin_heap_prereclaim();
-
+#endif
 	return count;
 }
 
@@ -2367,14 +2368,14 @@ static inline bool mem_boost_pgdat_wmark(struct pglist_data *pgdat)
 	return false;
 }
 
-static inline bool need_memory_boosting(struct pglist_data *pgdat)
+static inline bool need_memory_boosting(struct pglist_data *pgdat, bool skip)
 {
 	bool ret;
 
 	if (time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME))
 		mem_boost_mode = NO_BOOST;
 
-	if (memory_boosting_disabled)
+	if (!skip && memory_boosting_disabled)
 		return false;
 
 	switch (mem_boost_mode) {
@@ -2486,7 +2487,7 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 		}
 	}
 
-	if (current_is_kswapd() && need_memory_boosting(pgdat)) {
+	if (current_is_kswapd() && need_memory_boosting(pgdat, true)) {
 		scan_balance = SCAN_FILE;
 		goto out;
 	}

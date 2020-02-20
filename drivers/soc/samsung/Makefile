@@ -88,3 +88,6 @@ obj-$(CONFIG_EXYNOS_CP_RESERVE)	+= exynos-cpmem.o
 
 # Exynos PPMPU fail detector
 obj-$(CONFIG_EXYNOS_PPMPU_FAIL_DETECTOR)	+= exynos-ppmpu.o
+
+# Exynos CPU Performance
+obj-$(CONFIG_EXYNOS_CPU_PERF)	+= exynos_cpu_perf/

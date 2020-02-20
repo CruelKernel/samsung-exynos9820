@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_pktdump.c 820929 2019-05-21 14:09:11Z $
+ * $Id: dhd_linux_pktdump.c 848266 2019-10-31 09:18:01Z $
  */
 
 #include <typedefs.h>
@@ -825,6 +825,15 @@ dhd_dump_eapol_4way_message(dhd_pub_t *dhd, int ifidx, uint8 *pktdata, bool tx,
 		EAP_PRINT_OTHER("OTHER 4WAY");
 		break;
 	}
+#ifdef DHD_CHECK_4WAY_M4ACKED
+	if ((type == EAPOL_4WAY_M1) && !tx) {
+		/* Rx 4Way M1 packet */
+		dhd_set_m4_acked(dhd, FALSE);
+	} else if ((type == EAPOL_4WAY_M4) && (cond == FALSE) && TX_FATE_ACKED(pktfate)) {
+		/* Tx 4Way M4 packet Acked */
+		dhd_set_m4_acked(dhd, TRUE);
+	}
+#endif /* DHD_CHECK_4WAY_M4ACKED */
 }
 
 void

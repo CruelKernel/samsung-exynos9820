@@ -33,7 +33,7 @@
 #define MFC_FLASH_FW_HEX_PATH		"mfc/mfc_fw_flash.bin"
 #define MFC_FW_SDCARD_BIN_PATH		"/sdcard/mfc_fw_flash.bin"
 
-#define MFC_FW_BIN_VERSION			0x100F
+#define MFC_FW_BIN_VERSION			0x1011
 #define MFC_FLASH_FW_HEX_LSI_PATH		"mfc/mfc_fw_flash_s2miw04.bin"
 
 /* for SPU FW update */

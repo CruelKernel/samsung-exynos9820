@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 829185 2019-07-09 08:26:05Z $
+ * $Id: wl_cfgvendor.c 847349 2019-10-24 04:48:59Z $
  */
 
 /*
@@ -1511,9 +1511,31 @@ wl_cfgvendor_set_hal_started(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+#ifdef WL_STA_ASSOC_RAND
+		struct ether_addr primary_mac;
+			dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
+				int ret;
+#endif /* WL_STA_ASSOC_RAND */
 	WL_INFORM(("%s,[DUMP] HAL STARTED\n", __FUNCTION__));
 
 	cfg->hal_started = true;
+
+#ifdef WL_STA_ASSOC_RAND
+	/* If mac randomization is enabled and primary macaddress is not
+	 * randomized, randomize it from HAL init context
+	 */
+	get_primary_mac(cfg, &primary_mac);
+	if ((!ETHER_IS_LOCALADDR(&primary_mac)) &&
+		(!wl_get_drv_status(cfg, CONNECTED, wdev_to_ndev(wdev)))) {
+		WL_DBG(("%s, Local admin bit not set, randomize"
+			"STA MAC address \n", __FUNCTION__));
+		if ((ret = dhd_update_rand_mac_addr(dhd)) < 0) {
+			WL_ERR(("%s: failed to set macaddress, ret = %d\n", __FUNCTION__, ret));
+			return ret;
+		}
+	}
+#endif /* WL_STA_ASSOC_RAND */
+
 	return BCME_OK;
 }
 
@@ -2312,6 +2334,13 @@ wl_cfgvendor_set_bssid_blacklist(struct wiphy *wiphy,
 					goto exit;
 				}
 				num = nla_get_u32(iter);
+#ifdef CUSTOM_BSSID_BLACKLIST_NUM
+				if (num == 0 && num == MAX_BSSID_BLACKLIST_NUM) {
+					WL_ERR(("Support BSSID count:%d\n",
+						MAX_BSSID_BLACKLIST_NUM));
+					goto exit;
+				}
+#endif /* CUSTOM_BSSID_BLACKLIST_NUM */
 				if (num == 0 || num > MAX_BSSID_BLACKLIST_NUM) {
 					WL_ERR(("wrong BSSID count:%d\n", num));
 					err = -EINVAL;
@@ -2412,6 +2441,13 @@ wl_cfgvendor_set_ssid_whitelist(struct wiphy *wiphy,
 				goto exit;
 			}
 			num = nla_get_u32(iter);
+#ifdef CUSTOM_SSID_WHITELIST_NUM
+			if (num == 0 && num == MAX_SSID_WHITELIST_NUM) {
+				WL_ERR(("Support SSID count:%d\n",
+					MAX_SSID_WHITELIST_NUM));
+				goto exit;
+			}
+#endif /* CUSTOM_SSID_WHITELIST_NUM */
 			if (num == 0 || num > MAX_SSID_WHITELIST_NUM) {
 				WL_ERR(("wrong SSID count:%d\n", num));
 				err = -EINVAL;
@@ -6208,16 +6244,16 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	wifi_rate_stat *p_wifi_rate_stat = NULL;
 	uint total_len = 0;
 	uint32 rxbeaconmbss;
-	wifi_iface_stat iface;
 	wlc_rev_info_t revinfo;
-#ifdef CONFIG_COMPAT
-	compat_wifi_iface_stat compat_iface;
-	int compat_task_state = is_compat_task();
-#endif /* CONFIG_COMPAT */
+	wl_if_stats_t *if_stats = NULL;
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
+	COMPAT_STRUCT_IFACE(wifi_iface_stat, iface);
 
 	WL_INFORM_MEM(("%s: Enter \n", __func__));
 	RETURN_EIO_IF_NOT_UP(cfg);
 
+	BCM_REFERENCE(if_stats);
+	BCM_REFERENCE(dhdp);
 	/* Get the device rev info */
 	bzero(&revinfo, sizeof(revinfo));
 	err = wldev_ioctl_get(bcmcfg_to_prmry_ndev(cfg), WLC_GET_REVINFO, &revinfo,
@@ -6228,8 +6264,8 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 
 	outdata = (void *)MALLOCZ(cfg->osh, WLC_IOCTL_MAXLEN);
 	if (outdata == NULL) {
-		WL_ERR(("%s: alloc failed\n", __func__));
-		return -ENOMEM;
+		WL_ERR(("outdata alloc failed\n"));
+		return BCME_NOMEM;
 	}
 
 	bzero(&scbval, sizeof(scb_val_t));
@@ -6269,6 +6305,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	}
 	wl_wme_cnt = (wl_wme_cnt_t *)iovar_buf;
 
+	COMPAT_BZERO_IFACE(wifi_iface_stat, iface);
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].ac, WIFI_AC_VO);
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].tx_mpdu, wl_wme_cnt->tx[AC_VO].packets);
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].rx_mpdu, wl_wme_cnt->rx[AC_VO].packets);
@@ -6304,18 +6341,45 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	/* Translate traditional (ver <= 10) counters struct to new xtlv type struct */
 	err = wl_cntbuf_to_xtlv_format(NULL, iovar_buf, WLC_IOCTL_MAXLEN, revinfo.corerev);
 	if (err != BCME_OK) {
-		WL_ERR(("%s wl_cntbuf_to_xtlv_format ERR %d\n",
-			__FUNCTION__, err));
+		WL_ERR(("wl_cntbuf_to_xtlv_format ERR %d\n", err));
 		goto exit;
 	}
 
 	if (!(wlc_cnt = GET_WLCCNT_FROM_CNTBUF(iovar_buf))) {
-		WL_ERR(("%s wlc_cnt NULL!\n", __FUNCTION__));
+		WL_ERR(("wlc_cnt NULL!\n"));
 		err = BCME_ERROR;
 		goto exit;
 	}
 
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].retries, wlc_cnt->txretry);
+#ifndef DISABLE_IF_COUNTERS
+	if_stats = (wl_if_stats_t *)MALLOCZ(cfg->osh, sizeof(wl_if_stats_t));
+	if (!if_stats) {
+	    WL_ERR(("MALLOCZ failed\n"));
+	    err = BCME_NOMEM;
+	    goto exit;
+	}
+
+	if (FW_SUPPORTED(dhdp, ifst)) {
+		err = wl_cfg80211_ifstats_counters(bcmcfg_to_prmry_ndev(cfg), if_stats);
+	} else {
+		err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "if_counters",
+			NULL, 0, (char *)if_stats, sizeof(*if_stats), NULL);
+	}
+
+	if (!err) {
+		/* Populate from if_stats */
+		if (dtoh16(if_stats->version) > WL_IF_STATS_T_VERSION) {
+			WL_ERR(("incorrect version of wl_if_stats_t,"
+				" expected=%u got=%u\n", WL_IF_STATS_T_VERSION,
+				if_stats->version));
+			goto exit;
+		}
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].retries, (uint32)if_stats->txretry);
+	} else
+#endif /* !DISABLE_IF_COUNTERS */
+	{
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].retries, wlc_cnt->txretry);
+	}
 
 	err = wl_cfgvendor_lstats_get_bcn_mbss(iovar_buf, &rxbeaconmbss);
 	if (unlikely(err)) {
@@ -6334,16 +6398,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	COMPAT_ASSIGN_VALUE(iface, num_peers, NUM_PEER);
 	COMPAT_ASSIGN_VALUE(iface, peer_info->num_rate, NUM_RATE);
 
-#ifdef CONFIG_COMPAT
-	if (compat_task_state) {
-		memcpy(output, &compat_iface, sizeof(compat_iface));
-		output += (sizeof(compat_iface) - sizeof(wifi_rate_stat));
-	} else
-#endif /* CONFIG_COMPAT */
-	{
-		memcpy(output, &iface, sizeof(iface));
-		output += (sizeof(iface) - sizeof(wifi_rate_stat));
-	}
+	COMPAT_MEMCOPY_IFACE(output, total_len, wifi_iface_stat, iface, wifi_rate_stat);
 
 	err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "ratestat", NULL, 0,
 		iovar_buf, WLC_IOCTL_MAXLEN, NULL);
@@ -6374,15 +6429,6 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	total_len = sizeof(wifi_radio_stat_h) +
 		NUM_CHAN * sizeof(wifi_channel_stat);
 
-#ifdef CONFIG_COMPAT
-	if (compat_task_state) {
-		total_len += sizeof(compat_wifi_iface_stat);
-	} else
-#endif /* CONFIG_COMPAT */
-	{
-		total_len += sizeof(wifi_iface_stat);
-	}
-
 	total_len = total_len - sizeof(wifi_peer_info) +
 		NUM_PEER * (sizeof(wifi_peer_info) - sizeof(wifi_rate_stat_v1) +
 			NUM_RATE * sizeof(wifi_rate_stat_v1));
@@ -6400,6 +6446,9 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 exit:
 	if (outdata) {
 		MFREE(cfg->osh, outdata, WLC_IOCTL_MAXLEN);
+	}
+	if (if_stats) {
+		MFREE(cfg->osh, if_stats, sizeof(wl_if_stats_t));
 	}
 	return err;
 }
@@ -7514,8 +7563,7 @@ static int wl_cfgvendor_start_mkeep_alive(struct wiphy *wiphy, struct wireless_d
 				break;
 			default:
 				WL_ERR(("Unknown type: %d\n", type));
-				ret = BCME_BADARG;
-				goto exit;
+				break;
 		}
 	}
 
@@ -7624,6 +7672,63 @@ exit:
 	kfree_skb(skb);
 	return ret;
 }
+
+#ifdef WL_P2P_RAND
+static int
+wl_cfgvendor_set_p2p_rand_mac(struct wiphy *wiphy,
+		struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	int type;
+	WL_DBG(("%s, wdev->iftype = %d\n", __FUNCTION__, wdev->iftype));
+	WL_INFORM_MEM(("randomized p2p_dev_addr - "MACDBG"\n", MAC2STRDBG(nla_data(data))));
+
+	BCM_REFERENCE(cfg);
+
+	type = nla_type(data);
+
+	if (type == BRCM_ATTR_DRIVER_RAND_MAC) {
+		if (nla_len(data) != ETHER_ADDR_LEN) {
+			WL_ERR(("nla_len not matched.\n"));
+			err = -EINVAL;
+			goto exit;
+		}
+
+		if (wdev->iftype != NL80211_IFTYPE_P2P_DEVICE) {
+			WL_ERR(("wrong interface type , wdev->iftype=%d\n", wdev->iftype));
+			err = -EINVAL;
+			goto exit;
+		}
+		(void)memcpy_s(wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_DEVICE), ETHER_ADDR_LEN,
+				nla_data(data), ETHER_ADDR_LEN);
+		(void)memcpy_s(wdev->address, ETHER_ADDR_LEN, nla_data(data), ETHER_ADDR_LEN);
+
+		err = wl_cfgp2p_disable_discovery(cfg);
+		if (unlikely(err < 0)) {
+			WL_ERR(("P2P disable discovery failed, ret=%d\n", err));
+			goto exit;
+		}
+
+		err = wl_cfgp2p_set_firm_p2p(cfg);
+		if (unlikely(err < 0)) {
+			WL_ERR(("Set P2P address in firmware failed, ret=%d\n", err));
+			goto exit;
+		}
+
+		err = wl_cfgp2p_enable_discovery(cfg, bcmcfg_to_prmry_ndev(cfg), NULL, 0);
+		if (unlikely(err < 0)) {
+			WL_ERR(("P2P enable discovery failed, ret=%d\n", err));
+			goto exit;
+		}
+	} else {
+		WL_ERR(("unexpected attrib type:%d\n", type));
+		err = -EINVAL;
+	}
+exit:
+	return err;
+}
+#endif /* WL_P2P_RAND */
 
 static int
 wl_cfgvendor_apf_set_filter(struct wiphy *wiphy,
@@ -8446,6 +8551,16 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.doit = wl_cfgvendor_notify_dump_completion
 	},
 #endif /* WL_CFG80211 && DHD_FILE_DUMP_EVENT */
+#ifdef WL_P2P_RAND
+	{
+		{
+			.vendor_id = OUI_BRCM,
+			.subcmd = BRCM_VENDOR_SCMD_SET_MAC
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV,
+		.doit = wl_cfgvendor_set_p2p_rand_mac
+	},
+#endif /* WL_P2P_RAND */
 #if defined(WL_CFG80211)
 	{
 		{

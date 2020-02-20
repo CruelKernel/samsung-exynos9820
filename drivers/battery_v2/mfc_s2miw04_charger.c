@@ -2164,11 +2164,16 @@ static int mfc_chg_get_property(struct power_supply *psy,
 			pr_info("%s: LSI FIRM_VERIFY is not implemented\n", __func__);
 			val->intval = 1;
 		} else if (val->intval == SEC_WIRELESS_MST_SWITCH_VERIFY) {
-			gpio_direction_output(charger->pdata->mst_pwr_en, 1);
-			msleep(charger->pdata->mst_switch_delay);
-			val->intval = mfc_get_firmware_version(charger, MFC_RX_FIRMWARE);
-			pr_info("%s: check f/w revision, mst power on (0x%x)\n", __func__, val->intval);
-			gpio_direction_output(charger->pdata->mst_pwr_en, 0);
+			if (gpio_is_valid(charger->pdata->mst_pwr_en)) {
+				gpio_direction_output(charger->pdata->mst_pwr_en, 1);
+				msleep(charger->pdata->mst_switch_delay);
+				val->intval = mfc_get_firmware_version(charger, MFC_RX_FIRMWARE);
+				pr_info("%s: check f/w revision, mst power on (0x%x)\n", __func__, val->intval);
+				gpio_direction_output(charger->pdata->mst_pwr_en, 0);
+			} else {
+				pr_info("%s: MST_SWITCH_VERIFY, invalid gpio(mst_pwr_en)\n", __func__);
+				val->intval = -1;
+			}
 		} else {
 			val->intval = -ENODATA;
 			pr_err("%s wrong mode\n", __func__);

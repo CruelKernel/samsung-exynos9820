@@ -76,6 +76,7 @@ enum power_supply_ext_property {
 	POWER_SUPPLY_EXT_PROP_SYSOVLO,
 	POWER_SUPPLY_EXT_PROP_VBAT_OVP,
 	POWER_SUPPLY_EXT_PROP_USB_CONFIGURE,
+	POWER_SUPPLY_EXT_PROP_WDT_STATUS,
 	POWER_SUPPLY_EXT_PROP_WATER_DETECT,
 	POWER_SUPPLY_EXT_PROP_SURGE,
 	POWER_SUPPLY_EXT_PROP_SUB_PBA_TEMP_REC,
@@ -462,6 +463,10 @@ enum sec_battery_measure_input {
 #define BATT_TX_EVENT_WIRELESS_TX_ETC           0x00004000
 #define BATT_TX_EVENT_WIRELESS_TX_RETRY			0x00008000
 #define BATT_TX_EVENT_WIRELESS_ALL_MASK			0x0000ffff
+#define BATT_TX_EVENT_WIRELESS_TX_ERR			(BATT_TX_EVENT_WIRELESS_TX_FOD | BATT_TX_EVENT_WIRELESS_TX_HIGH_TEMP | \
+	BATT_TX_EVENT_WIRELESS_RX_UNSAFE_TEMP | BATT_TX_EVENT_WIRELESS_RX_CHG_SWITCH | BATT_TX_EVENT_WIRELESS_RX_CS100 | \
+	BATT_TX_EVENT_WIRELESS_TX_OTG_ON | BATT_TX_EVENT_WIRELESS_TX_LOW_TEMP | BATT_TX_EVENT_WIRELESS_TX_SOC_DRAIN | \
+	BATT_TX_EVENT_WIRELESS_TX_CRITICAL_EOC | BATT_TX_EVENT_WIRELESS_TX_CAMERA_ON | BATT_TX_EVENT_WIRELESS_TX_OCP | BATT_TX_EVENT_WIRELESS_TX_MISALIGN | BATT_TX_EVENT_WIRELESS_TX_ETC)
 
 #define SEC_BAT_ERROR_CAUSE_NONE		0x0000
 #define SEC_BAT_ERROR_CAUSE_FG_INIT_FAIL	0x0001
@@ -784,6 +789,11 @@ struct sec_age_data {
 #define sec_age_data_t \
 	struct sec_age_data
 #endif
+
+typedef struct {
+	unsigned int cycle;
+	unsigned int asoc;
+} battery_health_condition;
 
 struct sec_wireless_rx_power_info {
 	unsigned int vout;
@@ -1132,6 +1142,8 @@ struct sec_battery_platform_data {
 	int age_data_length;
 	sec_age_data_t* age_data;
 #endif
+	battery_health_condition* health_condition;
+
 	int siop_input_limit_current;
 	int siop_charging_limit_current;
 	int siop_hv_input_limit_current;
@@ -1235,6 +1247,7 @@ struct sec_charger_platform_data {
 	unsigned long chg_irq_attr;
 	unsigned int chg_ocp_current;
 	unsigned int chg_ocp_dtc;
+	unsigned int topoff_time;
 
 	/* otg_en setting */
 	int otg_en;
@@ -1440,4 +1453,6 @@ static inline struct power_supply *get_power_supply_by_name(char *name)
 #define is_pd_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC)
 #endif
+#define is_pd_fpdo_wire_type(cable_type) ( \
+	cable_type == SEC_BATTERY_CABLE_PDIC)
 #endif /* __SEC_CHARGING_COMMON_H */

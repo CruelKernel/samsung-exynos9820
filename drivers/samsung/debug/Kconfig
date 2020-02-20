@@ -97,7 +97,7 @@ config SEC_DEBUG_AVOID_UNNECESSARY_TRAP
 	 after exception handling
 
 config SEC_DEBUG_FIRST_KMSG
-	bool "support storing of initial 2M kernel log"
+	bool "support storing initial 2M kernel log"
 	depends on SEC_DEBUG
 	default y
 	help
@@ -110,6 +110,14 @@ config SEC_DEBUG_DTASK
 	default y
 	help
 	  This option enables getting information of task with TASK_UNINTERRUPTIBLE.
+
+config SEC_DEBUG_SYSRQ_KMSG
+	bool "support storing last n lines of kmsg before Sysrq trigger"
+	depends on SEC_DEBUG
+	default y
+	help
+	  This option enables storing last n lines of kmsg before Sysrq triggered.
+ 	  It can be used for debugging purpose in case of Sysrq triggered.
 
 comment "Samsung ubsan debug feature"
 config SEC_DEBUG_UBSAN
@@ -148,4 +156,11 @@ config SEC_DEBUG_SPINBUG_PANIC
 	default y
 	help
 	  This option enables the kernel to panic on "spin bug"
+	  
+config SEC_DEBUG_WORKQUEUE_LOCKUP_PANIC
+	bool "Bug on workqueue lockup"
+	depends on SEC_DEBUG && WQ_WATCHDOG
+	default y
+	help
+	  This option enables the kernel to panic on workqueue lockup
 

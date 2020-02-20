@@ -22,8 +22,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id$
  */
 
 #ifndef _FILSAUTH_H_

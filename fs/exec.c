@@ -1261,15 +1261,17 @@ extern struct super_block *sys_sb;	/* pointer to superblock */
 extern struct super_block *odm_sb;	/* pointer to superblock */
 extern struct super_block *vendor_sb;	/* pointer to superblock */
 extern struct super_block *rootfs_sb;	/* pointer to superblock */
+extern struct super_block *art_sb;	/* pointer to superblock */
 extern int is_recovery;
+extern int __check_verifiedboot;
 
 static int kdp_check_sb_mismatch(struct super_block *sb) 
 {	
-	if(is_recovery) {
+	if(is_recovery || __check_verifiedboot) {
 		return 0;
 	}
 	if((sb != rootfs_sb) && (sb != sys_sb)
-		&& (sb != odm_sb) && (sb != vendor_sb)) {
+		&& (sb != odm_sb) && (sb != vendor_sb) && (sb != art_sb)) {
 		return 1;
 	}
 	return 0;
@@ -1289,8 +1291,8 @@ static int invalid_drive(struct linux_binprm * bprm)
 	sb = vfsmnt->mnt_sb;
 
 	if(kdp_check_sb_mismatch(sb)) {
-		printk("\nSuperblock Mismatch #%s# vfsmnt #%p#sb #%p:%p:%p:%p:%p#\n",
-					bprm->filename, vfsmnt, sb, rootfs_sb, sys_sb, odm_sb, vendor_sb);
+		printk("\nSuperblock Mismatch #%s# vfsmnt #%p#sb #%p:%p:%p:%p:%p:%p#\n",
+					bprm->filename, vfsmnt, sb, rootfs_sb, sys_sb, odm_sb, vendor_sb, art_sb);
 		return 1;
 	}
 
@@ -1918,7 +1920,7 @@ static int exec_binprm(struct linux_binprm *bprm)
 		ptrace_event(PTRACE_EVENT_EXEC, old_vpid);
 		proc_exec_connector(current);
 	} else {
-		task_integrity_delayed_reset(current);
+		task_integrity_delayed_reset(current, CAUSE_EXEC, bprm->file);
 	}
 
 	return ret;

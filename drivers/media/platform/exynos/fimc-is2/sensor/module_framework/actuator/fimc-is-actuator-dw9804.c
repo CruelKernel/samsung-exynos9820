@@ -540,8 +540,14 @@ static int sensor_dw9804_actuator_probe(struct i2c_client *client,
 	set_bit(FIMC_IS_SENSOR_ACTUATOR_AVAILABLE, &sensor_peri->peri_state);
 
 	snprintf(subdev_actuator->name, V4L2_SUBDEV_NAME_SIZE, "actuator-subdev.%d", actuator->id);
-p_err:
+
 	probe_info("%s done\n", __func__);
+	return ret;
+
+p_err:
+	if (subdev_actuator)
+		kzfree(subdev_actuator);
+
 	return ret;
 }
 

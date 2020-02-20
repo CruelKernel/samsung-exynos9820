@@ -707,6 +707,32 @@ unsigned long sec_debug_get_buf_size(int type)
 	return 0;
 }
 
+void secdbg_write_buf(struct outbuf *obuf, int len, const char *fmt, ...)
+{
+	va_list list;
+	char *base;
+	int rem, ret;
+
+	base = obuf->buf;
+	base += obuf->index;
+
+	rem = sizeof(obuf->buf);
+	rem -= obuf->index;
+
+	if (rem <= 0)
+		return;
+
+	if ((len > 0) && (len < rem))
+		rem = len;
+
+	va_start(list, fmt);
+	ret = vsnprintf(base, rem, fmt, list);
+	if (ret)
+		obuf->index += ret;
+
+	va_end(list);
+}
+
 void sec_debug_set_task_in_sys_shutdown(uint64_t task)
 {
 	if (sdn)
@@ -719,10 +745,20 @@ void sec_debug_set_task_in_dev_shutdown(uint64_t task)
 		sdn->kernd.task_in_dev_shutdown = task;
 }
 
-void sec_debug_set_task_in_sysrq_crash(uint64_t task)
+void sec_debug_set_sysrq_crash(struct task_struct *task)
 {
-	if (sdn)
-		sdn->kernd.task_in_sysrq_crash = task;
+	if (sdn) {
+		sdn->kernd.task_in_sysrq_crash = (uint64_t)task;
+
+#ifdef CONFIG_SEC_DEBUG_SYSRQ_KMSG
+		if (task) {
+			if (strcmp(task->comm, "init") == 0)
+				sdn->sysrq_ptr = sec_debug_get_curr_init_ptr();
+			else
+				sdn->sysrq_ptr = dbg_snapshot_get_curr_ptr_for_sysrq();
+#endif
+		}
+	}
 }
 
 void sec_debug_set_task_in_soft_lockup(uint64_t task)
@@ -820,29 +856,29 @@ void sec_debug_set_suspend_device(const char *fname, const char *dname)
 
 static void init_ess_info(unsigned int index, char *key)
 {
-	char *ptr = sdn->ss_info.item[index].key;
-	unsigned long offset;
-	unsigned int nr;
+	struct ess_info_offset *p;
 
-	sec_debug_get_kevent_info(index, &offset, &nr);
+	p = &(sdn->ss_info.item[index]);
 
-	memset(ptr, 0, SD_ESSINFO_KEY_SIZE);
-	snprintf(ptr, SD_ESSINFO_KEY_SIZE, key);
+	sec_debug_get_kevent_info(p, index);
 
-	sdn->ss_info.item[index].offset = offset;
-	sdn->ss_info.item[index].nr = nr;
+	memset(p->key, 0, SD_ESSINFO_KEY_SIZE);
+	snprintf(p->key, SD_ESSINFO_KEY_SIZE, key);
 }
 
 static void sec_debug_set_essinfo(void)
 {
 	unsigned int index = 0;
 
-	init_ess_info(index++, "kevnt-baddr");
+	memset(&(sdn->ss_info), 0, sizeof(struct sec_debug_ess_info));
+
 	init_ess_info(index++, "kevnt-task");
 	init_ess_info(index++, "kevnt-work");
 	init_ess_info(index++, "kevnt-irq");
 	init_ess_info(index++, "kevnt-freq");
 	init_ess_info(index++, "kevnt-idle");
+	init_ess_info(index++, "kevnt-thrm");
+	init_ess_info(index++, "kevnt-acpm");
 
 	for (; index < SD_NR_ESSINFO_ITEMS;)
 		init_ess_info(index++, "empty");
@@ -850,7 +886,7 @@ static void sec_debug_set_essinfo(void)
 	for (index = 0; index < SD_NR_ESSINFO_ITEMS; index++)
 		printk("%s: key: %s offset: %llx nr: %x\n", __func__,
 				sdn->ss_info.item[index].key,
-				sdn->ss_info.item[index].offset,
+				sdn->ss_info.item[index].base,
 				sdn->ss_info.item[index].nr);
 }
 
@@ -983,6 +1019,9 @@ static int __init sec_debug_next_init(void)
 	sdn->magic[0] = SEC_DEBUG_MAGIC0;
 	sdn->magic[1] = SEC_DEBUG_MAGIC1;
 
+	sdn->version[1] = SEC_DEBUG_KERNEL_UPPER_VERSION << 16;
+	sdn->version[1] += SEC_DEBUG_KERNEL_LOWER_VERSION;
+
 	/* set kernel symbols */
 	sec_debug_set_kallsyms_info(&(sdn->ksyms), SEC_DEBUG_MAGIC1);
 
@@ -996,7 +1035,7 @@ static int __init sec_debug_next_init(void)
 	sec_debug_set_task_in_sys_reboot((uint64_t)NULL);
 	sec_debug_set_task_in_sys_shutdown((uint64_t)NULL);
 	sec_debug_set_task_in_dev_shutdown((uint64_t)NULL);
-	sec_debug_set_task_in_sysrq_crash((uint64_t)NULL);
+	sec_debug_set_sysrq_crash(NULL);
 	sec_debug_set_task_in_soft_lockup((uint64_t)NULL);
 	sec_debug_set_cpu_in_soft_lockup((uint64_t)0);
 	sec_debug_set_task_in_hard_lockup((uint64_t)NULL);

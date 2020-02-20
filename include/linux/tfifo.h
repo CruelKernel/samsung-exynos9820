@@ -50,7 +50,9 @@ struct __tfifo {
 ({									\
 	typeof((fifo) + 1) __tmp = (fifo);				\
 	if (__tmp->data)	kfree(__tmp->data);			\
-	__tmp->length = 0;						\
+	__tmp->length	= 0;						\
+	__tmp->in	= 0;						\
+	__tmp->out	= 0;						\
 })
 
 #define tfifo_in(fifo, val)						\

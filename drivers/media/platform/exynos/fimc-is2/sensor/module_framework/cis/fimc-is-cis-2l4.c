@@ -2988,7 +2988,9 @@ int sensor_2l4_cis_long_term_exposure(struct v4l2_subdev *subdev)
 	struct fimc_is_long_term_expo_mode *lte_mode;
 	unsigned char cit_lshift_val = 0;
 	unsigned char shift_count = 0;
-
+#ifdef USE_SENSOR_LONG_EXPOSURE_SHOT
+	u32 lte_expousre = 0;
+#endif
 	WARN_ON(!subdev);
 
 	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
@@ -2998,13 +3000,24 @@ int sensor_2l4_cis_long_term_exposure(struct v4l2_subdev *subdev)
 	/* LTE mode or normal mode set */
 	if (lte_mode->sen_strm_off_on_enable) {
 		if (lte_mode->expo[0] > 125000) {
+#ifdef USE_SENSOR_LONG_EXPOSURE_SHOT
+			lte_expousre = lte_mode->expo[0];
 			cit_lshift_val = (unsigned char)(lte_mode->expo[0] / 125000);
 			while (cit_lshift_val) {
 				cit_lshift_val = cit_lshift_val / 2;
-				if (cit_lshift_val > 0)
-					shift_count++;
+				lte_expousre = lte_expousre / 2;
+				shift_count++;
+			}
+			lte_mode->expo[0] = lte_expousre;
+#else
+			cit_lshift_val = (unsigned char)(lte_mode->expo[0] / 125000);
+			while (cit_lshift_val) {
+			    cit_lshift_val = cit_lshift_val / 2;
+			    if (cit_lshift_val > 0)
+			        shift_count++;
 			}
 			lte_mode->expo[0] = 125000;
+#endif 
 			ret |= fimc_is_sensor_write16(cis->client, 0xFCFC, 0x4000);
 			ret |= fimc_is_sensor_write8(cis->client, 0x0701, shift_count);
 			ret |= fimc_is_sensor_write8(cis->client, 0x0702, shift_count);

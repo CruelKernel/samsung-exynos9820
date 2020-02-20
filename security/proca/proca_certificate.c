@@ -16,13 +16,19 @@
 
 #include "proca_log.h"
 #include "proca_certificate.h"
-#include "proca_certificate-asn1.h"
 
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/err.h>
 #include <crypto/hash.h>
 #include <crypto/sha.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 42)
+#include "proca_certificate.asn1.h"
+#else
+#include "proca_certificate-asn1.h"
+#endif
 
 static struct crypto_shash *g_validation_shash;
 

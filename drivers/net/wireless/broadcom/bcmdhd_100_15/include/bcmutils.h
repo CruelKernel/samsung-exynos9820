@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: bcmutils.h 813798 2019-04-08 10:20:21Z $
+ * $Id: bcmutils.h 843609 2019-09-30 08:37:41Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -637,7 +637,7 @@ extern int bcm_find_fsb(uint32 num);
 
 #define	isbitset(a, i)	(((a) & (1 << (i))) != 0)
 
-#define	NBITS(type)	(sizeof(type) * 8)
+#define	NBITS(type)	(uint32)(sizeof(type) * 8)
 #define NBITVAL(nbits)	(1 << (nbits))
 #define MAXBITVAL(nbits)	((1 << (nbits)) - 1)
 #define	NBITMASK(nbits)	MAXBITVAL(nbits)

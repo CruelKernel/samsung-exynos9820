@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: brcm_nl80211.h 787269 2018-11-01 11:46:31Z $
+ * $Id: brcm_nl80211.h 837543 2019-08-26 10:32:19Z $
  *
  */
 
@@ -41,7 +41,8 @@ enum wl_vendor_subcmd {
 	BRCM_VENDOR_SCMD_BCM_PSK	= 3,
 	BRCM_VENDOR_SCMD_SET_PMK	= 4,
 	BRCM_VENDOR_SCMD_GET_FEATURES	= 5,
-	BRCM_VENDOR_SCMD_MAX		= 6
+	BRCM_VENDOR_SCMD_SET_MAC	= 6,
+	BRCM_VENDOR_SCMD_MAX		= 7
 };
 
 struct bcm_nlmsg_hdr {

@@ -261,6 +261,7 @@ config EXYNOS_PPMPU_ILLEGAL_ACCESS_PANIC
 source "drivers/soc/samsung/secure_boot/Kconfig"
 source "drivers/soc/samsung/debug/Kconfig"
 source "drivers/soc/samsung/exynos-hdcp/Kconfig"
+source "drivers/soc/samsung/exynos_cpu_perf/Kconfig"
 
 config SENSORS_FP_USI_NUMBER
 	depends on SENSORS_FINGERPRINT

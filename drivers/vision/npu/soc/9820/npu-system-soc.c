@@ -721,8 +721,8 @@ static int npu_cpu_on(struct npu_system *system)
 		/* NPU0_CM7_CFG1, SysTick Callibration, use external OSC, 26MHz */
 		{&system->sfr_npu0,	0x1040c,	0x3f79f,	0xffffffff},
 #ifdef FORCE_HWACG_DISABLE
-		{&system->sfr_npu0,	0x800,	0x00,	0x10000000},	/* NPU0_CMU_NPU0_CONTROLLER_OPTION */
-		{&system->sfr_npu1,	0x800,	0x00,	0x10000000},	/* NPU1_CMU_NPU1_CONTROLLER_OPTION */
+		{&system->sfr_npu0,	0x800,	0x00,	0x30000000},	/* NPU0_CMU_NPU0_CONTROLLER_OPTION */
+		{&system->sfr_npu1,	0x800,	0x00,	0x30000000},	/* NPU1_CMU_NPU1_CONTROLLER_OPTION */
 #endif
 		{&system->pmu_npu_cpu,	0x00,	0x01,	0x01},	/* NPU0_CPU_CONFIGURATION */
 #ifdef NPU_CM7_RELEASE_HACK
@@ -753,20 +753,24 @@ static int npu_cpu_off(struct npu_system *system)
 {
 	int ret;
 
-	const static struct reg_set_map cpu_on_regs[] = {
-#ifdef NPU_CM7_RELEASE_HACK
-		{0x20,	0x00,	0x01},	/* NPU0_CPU_OUT */
+	const struct reg_set_map_2 cpu_off_regs[] = {
+#ifdef FORCE_HWACG_DISABLE
+		{&system->sfr_npu0,	0x800,	0x30000000,	0x30000000},	/* NPU0_CMU_NPU0_CONTROLLER_OPTION */
+		{&system->sfr_npu1,	0x800,	0x30000000,	0x30000000},	/* NPU1_CMU_NPU1_CONTROLLER_OPTION */
 #endif
-		{0x00,	0x00,	0x01},	/* NPU0_CPU_CONFIGURATION */
+#ifdef NPU_CM7_RELEASE_HACK
+		{&system->pmu_npu_cpu,  0x20,	0x00,	0x01},	/* NPU0_CPU_OUT */
+#endif
+		{&system->pmu_npu_cpu,  0x00,	0x00,	0x01},	/* NPU0_CPU_CONFIGURATION */
 	};
 
 	BUG_ON(!system);
 	BUG_ON(!system->pdev);
 
 	npu_info("start in npu_cpu_off\n");
-	ret = npu_set_hw_reg(&system->pmu_npu_cpu, cpu_on_regs, ARRAY_SIZE(cpu_on_regs), 0);
+	ret = npu_set_hw_reg_2(cpu_off_regs, ARRAY_SIZE(cpu_off_regs), 0);
 	if (ret) {
-		npu_err("fail(%d) in npu_set_hw_reg(cpu_on_regs)\n", ret);
+		npu_err("fail(%d) in npu_set_hw_reg2(cpu_off_regs)\n", ret);
 		goto err_exit;
 	}
 	npu_info("complete in npu_cpu_off\n");

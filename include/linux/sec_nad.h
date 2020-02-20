@@ -443,6 +443,7 @@ typedef struct {
 typedef struct {
 	char nad_name[8];
 	char nad_result[8];
+	unsigned int  nadc_is_excuted;
 	unsigned int  nad_inform1;
 	unsigned int  nad_inform2;
 	unsigned int  nad_inform3;
