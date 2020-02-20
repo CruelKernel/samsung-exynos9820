@@ -66,7 +66,7 @@ int proca_fcntl_setxattr(struct file *file, void __user *lv_xattr)
 	inode_lock(inode);
 
 	if (task_integrity_allow_sign(current->integrity)) {
-		rc = __vfs_setxattr_noperm(file->f_path.dentry,
+		rc = __vfs_setxattr_noperm(d_real_comp(file->f_path.dentry),
 						XATTR_NAME_PA,
 						x,
 						lv_hdr.length,

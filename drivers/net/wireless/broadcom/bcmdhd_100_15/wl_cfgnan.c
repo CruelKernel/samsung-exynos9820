@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.c 850586 2019-11-14 01:49:36Z $
+ * $Id: wl_cfgnan.c 854674 2019-12-10 03:31:41Z $
  */
 
 #ifdef WL_NAN
@@ -2407,17 +2407,30 @@ fail:
 }
 
 int
-wl_cfgnan_check_nan_disable_pending(struct bcm_cfg80211 *cfg, bool force_disable)
+wl_cfgnan_check_nan_disable_pending(struct bcm_cfg80211 *cfg,
+	bool force_disable, bool is_sync_reqd)
 {
 	int ret = BCME_OK;
 	struct net_device *ndev = NULL;
 
 	if (delayed_work_pending(&cfg->nan_disable)) {
 		WL_DBG(("Cancel nan_disable work\n"));
-		cancel_delayed_work_sync(&cfg->nan_disable);
+		/*
+		 * Nan gets disabled from dhd_stop(dev_close) and other frameworks contexts.
+		 * Can't use cancel_work_sync from dhd_stop context for
+		 * wl_cfgnan_delayed_disable since both contexts uses
+		 * rtnl_lock resulting in deadlock. If dhd_stop gets invoked,
+		 * rely on dhd_stop context to do the nan clean up work and
+		 * just do return from delayed WQ based on state check.
+		 */
+		if (is_sync_reqd == true) {
+			cancel_delayed_work_sync(&cfg->nan_disable);
+		} else {
+			cancel_delayed_work(&cfg->nan_disable);
+		}
 		force_disable = true;
 	}
-	if (force_disable == true) {
+	if ((force_disable == true) && (cfg->nan_enable == true)) {
 		ret = wl_cfgnan_disable(cfg);
 		if (ret != BCME_OK) {
 			WL_ERR(("failed to disable nan, error[%d]\n", ret));
@@ -2942,10 +2955,15 @@ wl_cfgnan_delayed_disable(struct work_struct *work)
 	BCM_SET_CONTAINER_OF(cfg, work, struct bcm_cfg80211, nan_disable.work);
 
 	rtnl_lock();
-	wl_cfgnan_disable(cfg);
-	ndev = bcmcfg_to_prmry_ndev(cfg);
-	wl_cfgvendor_nan_send_async_disable_resp(ndev->ieee80211_ptr);
+	if (cfg->nan_enable == true) {
+		wl_cfgnan_disable(cfg);
+		ndev = bcmcfg_to_prmry_ndev(cfg);
+		wl_cfgvendor_nan_send_async_disable_resp(ndev->ieee80211_ptr);
+	} else {
+		WL_INFORM_MEM(("nan is in disabled state\n"));
+	}
 	rtnl_unlock();
+	return;
 }
 
 int

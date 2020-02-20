@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 851174 2019-11-18 12:13:55Z $
+ * $Id: dhd_linux.c 854462 2019-12-09 02:29:44Z $
  */
 
 #include <typedefs.h>
@@ -3097,7 +3097,7 @@ dhd_set_mac_address(struct net_device *dev, void *addr)
 			return ret;
 		}
 #endif /* WL_STATIC_IF */
-		 return _dhd_set_mac_address(dhd, ifidx, dhdif->mac_addr);
+		return _dhd_set_mac_address(dhd, ifidx, dhdif->mac_addr);
 	}
 #endif /* WL_CFG80211 */
 
@@ -6781,9 +6781,6 @@ dhd_stop(struct net_device *net)
 			if ((dhd->dhd_state & DHD_ATTACH_STATE_ADD_IF) &&
 				(dhd->dhd_state & DHD_ATTACH_STATE_CFG80211)) {
 				int i;
-#ifdef WL_CFG80211_P2P_DEV_IF
-				wl_cfg80211_del_p2p_wdev(net);
-#endif /* WL_CFG80211_P2P_DEV_IF */
 #ifdef DHD_4WAYM4_FAIL_DISCONNECT
 				dhd_cleanup_m4_state_work(&dhd->pub, ifidx);
 #endif /* DHD_4WAYM4_FAIL_DISCONNECT */
@@ -17624,7 +17621,12 @@ dhd_print_buf_addr(dhd_pub_t *dhdp, char *name, void *buf, unsigned int size)
 {
 	if ((dhdp->memdump_enabled == DUMP_MEMONLY) ||
 		(dhdp->memdump_enabled == DUMP_MEMFILE_BUGON) ||
-		(dhdp->memdump_type == DUMP_TYPE_SMMU_FAULT)) {
+		(dhdp->memdump_type == DUMP_TYPE_SMMU_FAULT) ||
+#ifdef DHD_DETECT_CONSECUTIVE_MFG_HANG
+		(dhdp->op_mode & DHD_FLAG_MFG_MODE &&
+			(dhdp->hang_count >= MAX_CONSECUTIVE_MFG_HANG_COUNT-1)) ||
+#endif /* DHD_DETECT_CONSECUTIVE_MFG_HANG */
+		FALSE) {
 #if defined(CONFIG_ARM64)
 		DHD_ERROR(("-------- %s: buf(va)=%llx, buf(pa)=%llx, bufsize=%d\n",
 			name, (uint64)buf, (uint64)__virt_to_phys((ulong)buf), size));

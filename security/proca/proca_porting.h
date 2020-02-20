@@ -119,4 +119,30 @@ static inline u64 get_kimage_voffset(void)
 }
 #endif
 
+#ifndef OVERLAYFS_SUPER_MAGIC
+#define OVERLAYFS_SUPER_MAGIC 0x794c7630
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return d_real(dentry);
+}
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return d_real(dentry, NULL, 0);
+}
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return d_real(dentry, NULL, 0, 0);
+}
+#else
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return d_real(dentry, NULL);
+}
+#endif
+
 #endif /* __LINUX_PROCA_PORTING_H */

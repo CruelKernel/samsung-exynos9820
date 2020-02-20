@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 850437 2019-11-13 13:01:26Z $
+ * $Id: wl_cfgvendor.c 854674 2019-12-10 03:31:41Z $
  */
 
 /*
@@ -5617,7 +5617,7 @@ wl_cfgvendor_nan_start_handler(struct wiphy *wiphy,
 	}
 	NAN_DBG_ENTER();
 
-	ret = wl_cfgnan_check_nan_disable_pending(cfg, false);
+	ret = wl_cfgnan_check_nan_disable_pending(cfg, false, true);
 	if (ret != BCME_OK) {
 		WL_ERR(("failed to disable nan, error[%d]\n", ret));
 		goto exit;
@@ -6334,7 +6334,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	COMPAT_STRUCT_IFACE(wifi_iface_stat, iface);
 
-	WL_INFORM_MEM(("%s: Enter \n", __func__));
+	WL_TRACE(("%s: Enter \n", __func__));
 	RETURN_EIO_IF_NOT_UP(cfg);
 
 	BCM_REFERENCE(if_stats);

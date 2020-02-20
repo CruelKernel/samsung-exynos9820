@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 850666 2019-11-14 09:29:37Z $
+ * $Id: wl_cfg80211.c 854674 2019-12-10 03:31:41Z $
  */
 /* */
 #include <typedefs.h>
@@ -2498,7 +2498,7 @@ wl_cfg80211_handle_discovery_config(struct bcm_cfg80211 *cfg,
 	if (disable_nan) {
 #ifdef WL_NAN
 		/* Disable nan to avoid conflict with p2p */
-		ret = wl_cfgnan_check_nan_disable_pending(cfg, true);
+		ret = wl_cfgnan_check_nan_disable_pending(cfg, true, true);
 		if (ret != BCME_OK) {
 			WL_ERR(("failed to disable nan, error[%d]\n", ret));
 			return ret;
@@ -6685,16 +6685,18 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 			WPS_STATE_DISCONNECT, curbssid) == BCME_OK) {
 			WL_INFORM_MEM(("[WPS] Disconnect done.\n"));
 			wl_clr_drv_status(cfg, DISCONNECTING, dev);
+			goto exit;
 		}
 #endif /* WPS_SYNC */
 		wl_cfg80211_wait_for_disconnection(cfg, dev);
-	} else {
-		/* Not in connecting or connected state. However since disconnect came
-		 * from upper layer, indicate connect fail to clear any state mismatch
+	}
+
+	if (dev->ieee80211_ptr->current_bss) {
+		/* If current_bss is still valid, indicate connect fail to clear state mismatch.
 		 */
-		WL_INFORM_MEM(("act is false. report connect result fail.\n"));
+		WL_INFORM_MEM(("report connect result fail.\n"));
 		CFG80211_CONNECT_RESULT(dev, NULL, NULL, NULL, 0, NULL, 0,
-				WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_KERNEL);
+			WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_KERNEL);
 	}
 #ifdef CUSTOM_SET_CPUCORE
 	/* set default cpucore */
@@ -12462,7 +12464,7 @@ wl_cfg80211_set_country_code(struct net_device *net, char *country_code,
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	if (cfg->nan_enable) {
 		mutex_lock(&cfg->if_sync);
-		ret = wl_cfgnan_check_nan_disable_pending(cfg, true);
+		ret = wl_cfgnan_check_nan_disable_pending(cfg, true, true);
 		mutex_unlock(&cfg->if_sync);
 		if (ret != BCME_OK) {
 			WL_ERR(("failed to disable nan, error[%d]\n", ret));
@@ -18845,7 +18847,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 
 #ifdef WL_NAN
 	mutex_lock(&cfg->if_sync);
-	wl_cfgnan_check_nan_disable_pending(cfg, true);
+	wl_cfgnan_check_nan_disable_pending(cfg, true, false);
 	mutex_unlock(&cfg->if_sync);
 #endif /* WL_NAN */
 

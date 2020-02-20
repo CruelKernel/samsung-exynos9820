@@ -772,7 +772,7 @@ exit:
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
-	defined(SUPPORT_RANDOM_MAC_SCAN) && !defined(WL_USE_RANDOMIZED_SCAN)
+	defined(SUPPORT_RANDOM_MAC_SCAN)
 static const u8 *
 wl_retrieve_wps_attribute(const u8 *buf, u16 element_id)
 {
@@ -1189,34 +1189,26 @@ wl_run_escan(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) && \
 	defined(SUPPORT_RANDOM_MAC_SCAN)
-#if !defined(WL_USE_RANDOMIZED_SCAN)
-	if ((request != NULL) && !ETHER_ISNULLADDR(request->mac_addr) &&
-		!ETHER_ISNULLADDR(request->mac_addr_mask) &&
-		!wl_is_wps_enrollee_active(ndev, request->ie, request->ie_len)) {
-		/* Call scanmac only for valid configuration */
-		err = wl_cfg80211_scan_mac_enable(ndev, request->mac_addr,
-			request->mac_addr_mask);
-	}
-#elif defined(WL_USE_RANDOMIZED_SCAN) && defined(RANDOM_MAC_CONTROL)
 	if (request) {
 		bool randmac_enable = (request->flags & NL80211_SCAN_FLAG_RANDOM_ADDR);
+		if (wl_is_wps_enrollee_active(ndev, request->ie, request->ie_len)) {
+			randmac_enable = false;
+		}
 		err = wl_rand_mac_ctrl(ndev, cfg, randmac_enable);
-	}
-#endif /* WL_USE_RANDOMIZED_SCAN */
-#if (!defined(WL_USE_RANDOMIZED_SCAN) || defined(RANDOM_MAC_CONTROL))
-	if (err < 0) {
-		if (err == BCME_UNSUPPORTED) {
-			/* Ignore if chip doesnt support the feature */
-			err = BCME_OK;
-		} else {
-			/* For errors other than unsupported fail the scan */
-			WL_ERR(("%s : failed to set random mac for host scan, %d\n",
-				__FUNCTION__, err));
-			err = -EAGAIN;
-			goto exit;
+
+		if (err < 0) {
+			if (err == BCME_UNSUPPORTED) {
+				/* Ignore if chip doesnt support the feature */
+				err = BCME_OK;
+			} else {
+				/* For errors other than unsupported fail the scan */
+				WL_ERR(("%s : failed to set random mac for host scan, %d\n",
+					__FUNCTION__, err));
+				err = -EAGAIN;
+				goto exit;
+			}
 		}
 	}
-#endif	/* !WL_USE_RANDOMIZED_SCAN || RANDOM_MAC_CONTROL */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0) && defined(SUPPORT_RANDOM_MAC_SCAN) */
 
 	if (!cfg->p2p_supported || !p2p_scan(cfg)) {
@@ -2802,7 +2794,7 @@ wl_cfg80211_scan_mac_disable(struct net_device *dev)
 
 	return err;
 }
-#if defined(RANDOM_MAC_CONTROL)
+
 int
 wl_rand_mac_ctrl(struct net_device *dev, struct bcm_cfg80211 *cfg, bool randmac_enable)
 {
@@ -2819,7 +2811,7 @@ wl_rand_mac_ctrl(struct net_device *dev, struct bcm_cfg80211 *cfg, bool randmac_
 
 	return err;
 }
-#endif /* RANDOM_MAC_CONTROL */
+
 #endif /* SUPPORT_RANDOM_MAC_SCAN */
 
 #ifdef WL_SCHED_SCAN

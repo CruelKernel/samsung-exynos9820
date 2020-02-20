@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 849471 2019-11-07 10:44:09Z $
+ * $Id: dhd_common.c 853025 2019-11-28 04:39:05Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -319,6 +319,7 @@ enum {
 	IOV_RTT_GEOFENCE_TYPE_OVRD,
 #endif /* RTT_SUPPORT && WL_NAN */
 #endif /* RTT_GEOFENCE_CONT */
+	IOV_FW_VBS,
 	IOV_LAST
 };
 
@@ -412,6 +413,7 @@ const bcm_iovar_t dhd_iovars[] = {
 	{"rtt_geofence_type_ovrd", IOV_RTT_GEOFENCE_TYPE_OVRD, (0), 0, IOVT_BOOL, 0},
 #endif /* RTT_SUPPORT && WL_NAN */
 #endif /* RTT_GEOFENCE_CONT */
+	{"fw_verbose", IOV_FW_VBS, 0, 0, IOVT_UINT32, 0},
 	{NULL, 0, 0, 0, 0, 0 }
 };
 
@@ -1552,11 +1554,18 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		/* Need to have checked buffer length */
 		dhd_ver_len = strlen(dhd_version);
 		bus_api_rev_len = strlen(bus_api_revision);
-		if (dhd_ver_len)
-			bcm_strncpy_s((char*)arg, dhd_ver_len, dhd_version, dhd_ver_len);
-		if (bus_api_rev_len)
-			bcm_strncat_s((char*)arg + dhd_ver_len, bus_api_rev_len, bus_api_revision,
-				bus_api_rev_len);
+		if (len > dhd_ver_len + bus_api_rev_len) {
+			bcmerror = memcpy_s((char *)arg, len, dhd_version, dhd_ver_len);
+			if (bcmerror != BCME_OK) {
+				break;
+			}
+			bcmerror = memcpy_s((char *)arg + dhd_ver_len, len - dhd_ver_len,
+				bus_api_revision, bus_api_rev_len);
+			if (bcmerror != BCME_OK) {
+				break;
+			}
+			*((char *)arg + dhd_ver_len + bus_api_rev_len) = '\0';
+		}
 		break;
 
 	case IOV_GVAL(IOV_MSGLEVEL):
@@ -2229,6 +2238,18 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 	}
 #endif /* RTT_SUPPORT && WL_NAN */
 #endif /* RTT_GEOFENCE_CONT */
+	case IOV_GVAL(IOV_FW_VBS): {
+		*(uint32 *)arg = (uint32)dhd_dbg_get_fwverbose(dhd_pub);
+		break;
+	}
+
+	case IOV_SVAL(IOV_FW_VBS): {
+		if (int_val < 0) {
+			int_val = 0;
+		}
+		dhd_dbg_set_fwverbose(dhd_pub, (uint32)int_val);
+		break;
+	}
 	default:
 		bcmerror = BCME_UNSUPPORTED;
 		break;
@@ -2550,7 +2571,7 @@ dhd_ioctl(dhd_pub_t * dhd_pub, dhd_ioctl_t *ioc, void *buf, uint buflen)
 				for (arg = buf, arglen = buflen; *arg && arglen; arg++, arglen--)
 					;
 
-				if (*arg) {
+				if (arglen == 0 || *arg) {
 					bcmerror = BCME_BUFTOOSHORT;
 					goto unlock_exit;
 				}
