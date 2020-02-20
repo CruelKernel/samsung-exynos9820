@@ -2209,7 +2209,7 @@ struct common_panel_info s6e3ha9_davinci2_a3_s0_default_panel_info = {
 	.rev = 0,
 	.ddi_props = {
 		.gpara = (DDI_SUPPORT_WRITE_GPARA | DDI_SUPPORT_POINT_GPARA),
-		.support_partial_disp = true,
+		.support_partial_disp = false,
 	},
 	.maptbl = davinci2_a3_s0_maptbl,
 	.nr_maptbl = ARRAY_SIZE(davinci2_a3_s0_maptbl),
