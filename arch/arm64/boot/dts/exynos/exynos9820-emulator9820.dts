@@ -1,0 +1,42 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2016 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+#include "emulator9820.dts"
+
+/ {
+	model = "Samsung EMULATOR9820 board based on EXYNOS9820";
+	compatible = "samsung,exynos9820", "samsung,EMULATOR9820";
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x40000000>;
+	};
+
+	chosen {
+		bootargs = "earlycon=exynos4210,0x10440000 console=ttySAC0,115200n8 root=/dev/ram0 rw ramdisk=8192 initrd=0x84000000,8M init=/linuxrc mem=512M clk_ignore_unused";
+		linux,initrd-start = <0x84000000>;
+		linux,initrd-end = <0x841FFFFF>;
+	};
+
+	fixed-rate-clocks {
+		oscclk {
+			compatible = "samsung,exynos9820-oscclk";
+			clock-frequency = <26000000>;
+		};
+	};
+
+	serial_0: uart@10440000 {
+		status = "okay";
+	};
+
+};
+

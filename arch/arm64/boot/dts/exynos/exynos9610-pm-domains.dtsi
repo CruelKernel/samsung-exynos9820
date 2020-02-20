@@ -1,0 +1,125 @@
+/*
+ * SAMSUNG EXYNOS9810 SoC PM Domains device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS9810 SoC PM domains device nodes are listed in this file.
+ * EXYNOS9810 based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+#include <dt-bindings/power/exynos-power.h>
+
+/ {
+	pd_cam: pd-cam@11864020 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x11864020 0x20>;
+		cal_id = <0xB1380000>;
+		need_smc = <0x14510204>;
+		status = "okay";
+	};
+
+	pd_isp: pd-isp@11864080 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x11864080 0x20>;
+		cal_id = <0xB1380001>;
+		need_smc = <0x14710204>;
+		status = "okay";
+		parent = <&pd_cam>;
+	};
+
+	pd_vipx1: pd-vipx1@118640e0 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x118640e0 0x20>;
+		cal_id = <0xB1380002>;
+		need_smc = <0x10C10204>;
+		status = "okay";
+	};
+
+	pd_vipx2: pd-vipx2@118640e0 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x118640e0 0x20>;
+		cal_id = <0xB1380003>;
+		need_smc = <0x10e10204>;
+		status = "okay";
+		parent = <&pd_vipx1>;
+	};
+
+	pd_g2d: pd-g2d@11864040 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x11864040 0x20>;
+		cal_id = <0xB1380004>;
+		need_smc = <0x12e10204>;
+		status = "okay";
+	};
+
+	pd_g3d: pd-g3d@11864060 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x11864060 0x20>;
+		cal_id = <0xB1380005>;
+		need_smc = <0x11410204>;
+		status = "okay";
+	};
+
+	pd_dispaud: pd-dispaud@11864000 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x11864000 0x20>;
+		cal_id = <0xB1380006>;
+		need_smc = <0x14810204>;
+		status = "okay";
+		power-down-ok = <PD_OK_AUD>;
+	};
+
+	pd_mfc: pd-mfc@118640a0 {
+		compatible = "samsung,exynos-pd";
+		reg = <0x0 0x118640a0 0x20>;
+		cal_id = <0xB1380007>;
+		need_smc = <0x12C10204>;
+		status = "okay";
+	};
+
+	dbgdev-pd-cam {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_cam>;
+	};
+
+	dbgdev-pd-isp {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_isp>;
+	};
+
+	dbgdev-pd-vipx1 {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_vipx1>;
+	};
+
+	dbgdev-pd-vipx2 {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_vipx2>;
+	};
+
+	dbgdev-pd-g2d {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_g2d>;
+	};
+
+	dbgdev-pd-g3d {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_g3d>;
+	};
+
+	dbgdev-pd-dispaud {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_dispaud>;
+	};
+
+	dbgdev-pd-mfc {
+		compatible = "samsung,exynos-pd-dbg";
+		samsung,power-domain = <&pd_mfc>;
+	};
+
+};

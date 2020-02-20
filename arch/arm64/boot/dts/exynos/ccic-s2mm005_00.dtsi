@@ -1,0 +1,56 @@
+/*
+ * SAMSUNG Hero Type C S2MM005 CCIC Device Tree Source
+ *
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+&pinctrl_0 {
+	usbpd_irq: usbpd-irq {
+		samsung,pins = "gpa2-1";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <3>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&pinctrl_6 {
+	hard_reset: scl_sda_low {
+		samsung,pins = "gpp2-6", "gpp2-7";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-val = <0>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&hsi2c_15  {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	pinctrl-names = "default","hard_reset";
+	pinctrl-1 = <&hard_reset>;
+	clock-frequency = <100000>;
+	/*
+	   samsung,hs-mode;
+	   clock-frequency = <3000000>;
+	 */
+	usbpd-s2mm005@33 {
+		compatible = "sec-s2mm005,i2c";
+		reg = <0x33>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usbpd_irq>;
+		interrupt-parent = <&gpa2>;
+		usbpd,usbpd_int = <&gpa2 1 0>;
+		usbpd,s2mm005_sda = <&gpp2 7 1>;
+		usbpd,s2mm005_scl = <&gpp2 6 1>;
+	};
+};
+
+&usbdrd_dwc3 {
+	maximum-speed = "super-speed";
+};

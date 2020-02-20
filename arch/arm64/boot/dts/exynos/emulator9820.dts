@@ -1,0 +1,241 @@
+/*
+ * SAMSUNG EXYNOS9820 SoC device tree source
+ *
+ * Copyright (c) 2014 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * SAMSUNG EXYNOS9820 SoC device nodes are listed in this file.
+ * EXYNOS based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+//#include <dt-bindings/clock/exynos8895.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/exynos9820.h>
+#include "exynos9820-pinctrl.dtsi"
+#include "exynos9820-rmem.dtsi"
+
+/ {
+	compatible = "samsung,armv8", "samsung,exynos9820";
+	interrupt-parent = <&gic>;
+	#address-cells = <2>;
+	#size-cells = <1>;
+
+	aliases {
+		pinctrl0 = &pinctrl_0;
+		pinctrl1 = &pinctrl_1;
+		pinctrl3 = &pinctrl_3;
+#if 0
+		pinctrl4 = &pinctrl_4;
+		pinctrl5 = &pinctrl_5;
+		pinctrl6 = &pinctrl_6;
+		pinctrl7 = &pinctrl_7;
+#endif
+
+		uart0 = &serial_0;
+
+	};
+
+	chipid@10000000 {
+		compatible = "samsung,exynos9810-chipid";
+		reg = <0x0 0x10000000 0x100>;
+	};
+
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		cpu@0000 {
+			device_type = "cpu";
+			compatible = "arm,ananke", "arm,armv8";
+			reg = <0x0 0x0000>;
+			enable-method = "psci";
+		};
+	};
+
+	gic:interrupt-controller@10100000 {
+		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		interrupt-controller;
+		reg =	<0x0 0x10101000 0x1000>,
+			<0x0 0x10102000 0x1000>,
+			<0x0 0x10104000 0x2000>,
+			<0x0 0x10106000 0x2000>;
+		interrupts = <1 9 0xf04>;
+	};
+
+	timer {
+	        compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13
+				(GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14
+				(GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11
+				(GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10
+				(GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
+	        clock-frequency = <26000000>;
+		use-clocksource-only;
+		use-physical-timer;
+	};
+
+	clock: clock-controller@0x15a80000 {
+		compatible = "samsung,emulator-clock";
+		reg = <0x0 0x15a80000 0x8000>;
+		#clock-cells = <1>;
+	};
+
+	mct@10040000 {
+		compatible = "samsung,exynos4210-mct";
+		reg = <0x0 0x10040000 0x800>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		interrupt-parent = <&mct_map>;
+		interrupts =	<0>, <1>, <2>, <3>,
+				<4>, <5>, <6>, <7>,
+				<8>, <9>, <10>, <11>;
+		clocks = <&clock 1>, <&clock 15>;
+		clock-names = "fin_pll", "mct";
+		use-clockevent-only;
+
+		mct_map: mct-map {
+			#interrupt-cells = <1>;
+			#address-cells = <0>;
+			#size-cells = <0>;
+			interrupt-map = <0 &gic 0 466 0>,
+					<1 &gic 0 467 0>,
+					<2 &gic 0 468 0>,
+					<3 &gic 0 469 0>,
+					<4 &gic 0 470 0>,
+					<5 &gic 0 471 0>,
+					<6 &gic 0 472 0>,
+					<7 &gic 0 473 0>,
+					<8 &gic 0 474 0>,
+					<9 &gic 0 475 0>,
+					<10 &gic 0 476 0>,
+					<11 &gic 0 477 0>;
+		};
+	};
+
+	serial_0: uart@10440000 {
+		compatible = "samsung,exynos-uart";
+		samsung,separate-uart-clk;
+		reg = <0x0 0x10440000 0x100>;
+		samsung,fifo-size = <64>;
+		interrupts = <0 381 0>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&uart0_bus>;
+		clocks = <&clock 30>, <&clock 20>, <&clock 10>;
+		clock-names = "gate_pclk0", "gate_uart0", "sclk_uart0";
+		status = "disabled";
+	};
+
+	dwmmc_2: dwmmc2@13D00000 {
+		compatible = "samsung,exynos-dw-mshc";
+		reg = <0x0 0x13D00000 0x2000>;
+		reg-names = "dw_mmc";
+		interrupts = <0 250 0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+/*
+		clocks = <&clock MMC_CARD>, <&clock GATE_MMC_CARD>;
+		clock-names = "ciu", "ciu_gate";
+*/
+		status = "disabled";
+	 };
+
+	/* ALIVE */
+	pinctrl_0: pinctrl@15850000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x15850000 0x1000>;
+		interrupts = <0 INTREQ__ALIVE_EINT0 0>, <0 INTREQ__ALIVE_EINT1 0>, <0 INTREQ__ALIVE_EINT2 0>,
+			     <0 INTREQ__ALIVE_EINT3 0>, <0 INTREQ__ALIVE_EINT4 0>, <0 INTREQ__ALIVE_EINT5 0>,
+			     <0 INTREQ__ALIVE_EINT6 0>, <0 INTREQ__ALIVE_EINT7 0>, <0 INTREQ__ALIVE_EINT8 0>,
+			     <0 INTREQ__ALIVE_EINT9 0>, <0 INTREQ__ALIVE_EINT10 0>, <0 INTREQ__ALIVE_EINT11 0>,
+			     <0 INTREQ__ALIVE_EINT12 0>, <0 INTREQ__ALIVE_EINT13 0>, <0 INTREQ__ALIVE_EINT14 0>,
+			     <0 INTREQ__ALIVE_EINT15 0>, <0 INTREQ__ALIVE_EINT16 0>, <0 INTREQ__ALIVE_EINT17 0>,
+			     <0 INTREQ__ALIVE_EINT18 0>, <0 INTREQ__ALIVE_EINT19 0>, <0 INTREQ__ALIVE_EINT20 0>,
+			     <0 INTREQ__ALIVE_EINT21 0>, <0 INTREQ__ALIVE_EINT22 0>, <0 INTREQ__ALIVE_EINT23 0>,
+			     <0 INTREQ__ALIVE_EINT24 0>, <0 INTREQ__ALIVE_EINT25 0>, <0 INTREQ__ALIVE_EINT26 0>,
+			     <0 INTREQ__ALIVE_EINT27 0>, <0 INTREQ__ALIVE_EINT28 0>, <0 INTREQ__ALIVE_EINT29 0>,
+			     <0 INTREQ__ALIVE_EINT30 0>, <0 INTREQ__ALIVE_EINT31 0>, <0 INTREQ__ALIVE_EINT32 0>,
+			     <0 INTREQ__ALIVE_EINT33 0>;
+
+		wakeup-interrupt-controller {
+			compatible = "samsung,exynos7-wakeup-eint";
+		};
+	};
+
+	/* AUD */
+	pinctrl_1: pinctrl@18C60000{
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x18C60000 0x1000>;
+	};
+
+	/* CMGP */
+	pinctrl_3: pinctrl@15C30000{
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x15C30000 0x1000>;
+		interrupts = <0 INTREQ__EXT_INTM0_0 0>, <0 INTREQ__EXT_INTM0_1 0>,
+			     <0 INTREQ__EXT_INTM0_2 0>, <0 INTREQ__EXT_INTM0_3 0>,
+			     <0 INTREQ__EXT_INTM0_4 0>, <0 INTREQ__EXT_INTM0_5 0>,
+			     <0 INTREQ__EXT_INTM0_6 0>, <0 INTREQ__EXT_INTM0_7 0>,
+			     <0 INTREQ__EXT_INTM1_0 0>, <0 INTREQ__EXT_INTM1_1 0>,
+			     <0 INTREQ__EXT_INTM1_2 0>, <0 INTREQ__EXT_INTM1_3 0>,
+			     <0 INTREQ__EXT_INTM1_4 0>, <0 INTREQ__EXT_INTM1_5 0>,
+			     <0 INTREQ__EXT_INTM1_6 0>, <0 INTREQ__EXT_INTM1_7 0>,
+			     <0 INTREQ__EXT_INTM1_8 0>, <0 INTREQ__EXT_INTM1_9 0>,
+			     <0 INTREQ__EXT_INTM2_0 0>, <0 INTREQ__EXT_INTM2_1 0>,
+			     <0 INTREQ__EXT_INTM2_2 0>, <0 INTREQ__EXT_INTM2_3 0>,
+			     <0 INTREQ__EXT_INTM2_4 0>, <0 INTREQ__EXT_INTM2_5 0>,
+			     <0 INTREQ__EXT_INTM2_6 0>, <0 INTREQ__EXT_INTM2_7 0>,
+			     <0 INTREQ__EXT_INTM2_8 0>, <0 INTREQ__EXT_INTM2_9 0>,
+			     <0 INTREQ__EXT_INTM3_0 0>, <0 INTREQ__EXT_INTM3_1 0>;
+
+		wakeup-interrupt-controller {
+			compatible = "samsung,exynos7-wakeup-eint";
+		};
+	};
+
+#if 0
+	/* FSYS0 */
+	pinctrl_4: pinctrl@13030000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x13030000 0x1000>;
+		interrupts = <0 INTREQ__GPIO_FSYS0 0>;
+	};
+
+	/* FSYS1 */
+	pinctrl_5: pinctrl@13C40000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x13C40000 0x1000>;
+		interrupts = <0 INTREQ__GPIO_FSYS1 0>;
+	};
+
+	/* PERIC0 */
+	pinctrl_6: pinctrl@10430000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x10430000 0x1000>;
+		interrupts = <0 INTREQ__GPIO_PERIC0 0>;
+	};
+
+	/* PERIC1 */
+	pinctrl_7: pinctrl@10830000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x10830000 0x1000>;
+		interrupts = <0 INTREQ__GPIO_PERIC1 0>;
+	};
+
+	/* VTS */
+	pinctrl_8: pinctrl@15580000 {
+		compatible = "samsung,exynos9820-pinctrl";
+		reg = <0x0 0x15580000 0x1000>;
+	};
+#endif
+
+};

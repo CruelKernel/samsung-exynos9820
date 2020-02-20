@@ -1,0 +1,115 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+/plugin/;
+#include "modem-s5000ap-sipc-pdata.dtsi"
+#include "exynos9820-universal9820_common.dtsi"
+#include "exynos9820-rmem_s5000ap.dtsi"
+#include "exynos9820-universal9820-camera_rev5.dtsi"
+#include "exynos9820-mali.dtsi"
+
+/ {
+	compatible = "samsung,exynos9820", "samsung,UNIVERSAL9820";
+	board_id = <0x1>;
+	board_rev = <0x4>;
+
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			model = "Samsung UNIVERSAL9820 Rev5 board based on EXYNOS9820";
+
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+}; /* end of root */
+
+&pinctrl_0 {
+	s_pmic_irq1: s-pmic-irq1 {
+		samsung,pins = "gpa2-5";
+		samsung,pin-pud = <3>;
+		samsung,pin-drv = <3>;
+	};
+};
+
+&speedy1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	s2mps20mfd@00 {
+		compatible = "samsung,s2mps20mfd";
+		acpm-ipc-channel = <2>;
+		i2c-speedy-address;
+		s2mps20,wakeup = "enabled";
+		s2mps20,irq-gpio = <&gpa2 5 0>;
+		reg = <0x00>;
+		interrupts = <5 0 0>;
+		interrupt-parent = <&gpa2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&s_pmic_irq1>;
+	};
+};
+
+
+&pinctrl_6 {
+	cs35l41_r_reset: cs35l41-r-reset {
+		samsung,pins ="gph1-1";
+		samsung,pin-con-pdn =<3>;
+		samsung,pin-pud-pdn = <0>;
+	};
+	cs35l41_l_reset: cs35l41-l-reset {
+		samsung,pins ="gph1-2";
+		samsung,pin-con-pdn =<3>;
+		samsung,pin-pud-pdn = <0>;
+	};
+};
+
+&hsi2c_38 {
+	cs35l41@40 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l41_r_reset>;
+		interrupt-parent = <&gpm24>;
+		interrupts = <0 0 0>;
+		reset-gpios = <&gph1 1 0>;
+	};
+
+	cs35l41@41 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l41_l_reset>;
+		interrupt-parent = <&gpm24>;
+		interrupts = <0 0 0>;
+		reset-gpios = <&gph1 2 0>;
+	};
+};
+
+&speedy {
+	s2mps19mfd@00 {
+		smpl_warn_dev2= <0>;
+	};
+};
+
+&dsim_0 {
+	lcd_info = <&s6e3ha8>;
+	/* rev5 : 0, revC01 & s5100 : 1 */
+	board_info = <0>;
+	/* reset, power */
+	gpios = <&gpa3 4 0x1>;
+};
+
+&usbdrd_phy0 {
+	status = "okay";
+
+	pmu_offset_tcxobuf = <0x724>;
+	pmu_mask_tcxobuf = <16>;
+};
+
