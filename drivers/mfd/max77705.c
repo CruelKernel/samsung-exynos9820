@@ -569,6 +569,8 @@ int max77705_usbc_fw_update(struct max77705_dev *max77705,
 	int vcell = 0;
 	u8 vbvolt = 0;
 	u8 wcin_dtls = 0;
+	u8 chg_curr = 0;
+	u8 vchgin = 0;
 	int error = 0;
 
 
@@ -667,6 +669,16 @@ retry:
 			pr_info("%s: +change chg_mode(0x9), vcell(%dmv)\n",
 						__func__, vcell);
 		} else {
+			max77705_update_reg(max77705->charger,
+				MAX77705_CHG_REG_CNFG_12, 0x18, 0x18);
+			max77705_read_reg(max77705->charger, MAX77705_CHG_REG_CNFG_12, &vchgin);
+			pr_info("%s: -set aicl, (0x%02x)\n", __func__, vchgin);
+
+			max77705_update_reg(max77705->charger,
+				MAX77705_CHG_REG_CNFG_02, 0x0, 0x3F);
+			max77705_read_reg(max77705->charger, MAX77705_CHG_REG_CNFG_02, &chg_curr);
+			pr_info("%s: -set charge curr 100mA, (0x%02x)\n", __func__, chg_curr);
+
 			if (chg_mode_changed) {
 				chg_mode_changed = false;
 				/* Auto skip mode */

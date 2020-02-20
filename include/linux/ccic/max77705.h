@@ -179,6 +179,23 @@
 #define BIT_PD_PSRDY			BIT(4)
 #define BIT_FCT_ID				BITS(3, 0)
 
+
+/** opcode reg **/
+
+/*
+ * CC Control1 Write
+ */
+#define BIT_CCSrcCurCh			BIT(7)
+#define BIT_CCSrcCur			BITS(6, 5)
+#define BIT_CCSrcSnk			BIT(4)
+#define BIT_CCSnkSrc			BIT(3)
+#define BIT_CCDbgEn				BIT(2)
+#define BIT_CCAudEn				BIT(1)
+#define BIT_CCDetEn				BIT(0)
+
+
+
+
 /*
  * max77766 role
  */
@@ -542,6 +559,7 @@ typedef enum {
 	OPCODE_SAMSUNG_ACC_COMMAND_RECIEVED,
 	OPCODE_SAMSUNG_ACC_COMMAND_RESPOND,
 	OPCODE_SAMSUNG_SECURE_KEY_REVOCATION,
+	OPCODE_SAMSUNG_FACTORY_TEST = 0x54,
 	OPCODE_SET_ALTERNATEMODE = 0x55,
 	OPCODE_SAMSUNG_FW_AUTOIBUS = 0x57,
 	OPCODE_READ_SELFTEST = 0x59,

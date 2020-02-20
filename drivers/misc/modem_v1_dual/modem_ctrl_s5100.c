@@ -283,7 +283,6 @@ static void pcie_clean_dislink(struct modem_ctl *mc)
 	int __maybe_unused usage_cnt;
 	int i;
 
-
 	usage_cnt = atomic_read(&mc->dev->power.usage_count);
 	mif_info("pm usage_cnt=%d boot_done_cnt=%d\n", usage_cnt,
 			mc->boot_done_cnt);
@@ -779,6 +778,9 @@ static int s5100_boot_on(struct modem_ctl *mc)
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
 	reset_cp_upload_cnt();
 #endif
+
+	del_timer(&mld->cp_not_work);
+
 	mif_info("---\n");
 	return 0;
 }
@@ -963,7 +965,7 @@ static int s5100_runtime_suspend(struct modem_ctl *mc)
 	int __maybe_unused usage_cnt = atomic_read(&mc->dev->power.usage_count);
 	struct link_device *ld = get_current_link(mc->iod);
 	struct mem_link_device *mld = to_mem_link_device(ld);
-
+	int ret = 0;
 	mif_info("[S5100] Runtime SUSPEND(%d)\n", usage_cnt);
 
 	mutex_lock(&ap_status_lock);
@@ -975,9 +977,8 @@ static int s5100_runtime_suspend(struct modem_ctl *mc)
 	s5100pcie.suspend_try = true;
 
 	if (mc->device_reboot == true) {
-		mutex_unlock(&ap_status_lock);
 		mif_info("skip runtime_suspend : device is rebooting..!!!\n");
-		return 0;
+		goto done;
 	}
 
 	mif_info("set s5100_gpio_cp_wakeup to 0\n");
@@ -1016,13 +1017,15 @@ static int s5100_runtime_suspend(struct modem_ctl *mc)
 	atomic_set(&mc->pcie_pwron, 0);
 
 	s5100pcie.suspend_try = false;
-
+done:
 	mutex_unlock(&ap_status_lock);
 
 	if (wake_lock_active(&mc->mc_wake_lock))
 		wake_unlock(&mc->mc_wake_lock);
 
-	return 0;
+	del_timer(&mld->cp_not_work);
+
+	return ret;
 }
 
 static int s5100_runtime_resume(struct modem_ctl *mc)
@@ -1071,7 +1074,8 @@ static int s5100_runtime_resume(struct modem_ctl *mc)
 	}
 
 	if (exynos_pcie_host_v1_poweron(mc->pcie_ch_num) != 0) {
-		goto resume_exit;
+		mutex_unlock(&ap_status_lock);
+		return 0;
 	}
 	atomic_set(&mc->pcie_pwron, 1);
 
@@ -1144,8 +1148,9 @@ static int s5100_runtime_resume(struct modem_ctl *mc)
 						   "fail to send doorbell [3]");
 	}
 
-resume_exit:
 	mutex_unlock(&ap_status_lock);
+
+	mod_timer(&mld->cp_not_work, jiffies + 5 * 60 * HZ);
 	return 0;
 }
 

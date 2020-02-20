@@ -1361,6 +1361,29 @@ static ssize_t sd_data_show(struct device *dev,
 out:
 	return len;
 }
+
+static ssize_t sd_cid_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dw_mci *host = dev_get_drvdata(dev);
+	struct mmc_card *cur_card = NULL;
+	int len = 0;
+
+	if (host->slot && host->slot->mmc && host->slot->mmc->card)
+		cur_card = host->slot->mmc->card;
+	else {
+		len = snprintf(buf, PAGE_SIZE, "No Card\n");
+		goto out;
+	}
+
+	len = snprintf(buf, PAGE_SIZE,
+			"%08x%08x%08x%08x\n",
+			cur_card->raw_cid[0], cur_card->raw_cid[1],
+			cur_card->raw_cid[2], cur_card->raw_cid[3]);
+out:
+	return len;
+}
+
 static DEVICE_ATTR(status, 0444, sd_detection_cmd_show, NULL);
 static DEVICE_ATTR(cd_cnt, 0444, sd_detection_cnt_show, NULL);
 static DEVICE_ATTR(max_mode, 0444, sd_detection_maxmode_show, NULL);
@@ -1368,6 +1391,7 @@ static DEVICE_ATTR(current_mode, 0444, sd_detection_curmode_show, NULL);
 static DEVICE_ATTR(sdcard_summary, 0444, sdcard_summary_show, NULL);
 static DEVICE_ATTR(sd_count, 0444, sd_count_show, NULL);
 static DEVICE_ATTR(sd_data, 0444, sd_data_show, NULL);
+static DEVICE_ATTR(data, 0444, sd_cid_show, NULL);
 
 /* Callback function for SD Card IO Error */
 static int sdcard_uevent(struct mmc_card *card)
@@ -1479,6 +1503,10 @@ static void dw_mci_exynos_add_sysfs(struct dw_mci *host)
 				pr_err("Fail to create sysfs dev\n");
 			if (device_create_file(sd_info_cmd_dev,
 						&dev_attr_sd_count) < 0)
+				pr_err("Fail to create status sysfs file\n");
+
+			if (device_create_file(sd_info_cmd_dev,
+						&dev_attr_data) < 0)
 				pr_err("Fail to create status sysfs file\n");
 		}
 

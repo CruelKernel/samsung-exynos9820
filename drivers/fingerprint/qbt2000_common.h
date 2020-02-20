@@ -60,9 +60,7 @@
 #ifdef CONFIG_EPEN_WACOM_W9020
 #define QBT2000_AVOID_NOISE
 #define QBT2000_NOISE_OFF_DELAY 40
-#ifndef ENABLE_SENSORS_FPRINT_SECURE // only for factory
-#define QBT2000_NOISE_SENSORTEST_DELAY 25000
-#endif
+#define QBT2000_NOISE_RECOVER_WACOM_DELAY 30000
 #endif
 
 enum qbt2000_commands {
@@ -189,9 +187,7 @@ struct qbt2000_drvdata {
 	struct mutex	fod_event_mutex;
 	struct work_struct work_ipc_noise_status;
 	struct work_struct work_noise_control;
-#ifndef ENABLE_SENSORS_FPRINT_SECURE
 	struct delayed_work delayed_work_noiseon;
-#endif
 #endif
 	struct pinctrl *p;
 	struct pinctrl_state *pins_poweron;

@@ -313,26 +313,31 @@ static int panel_regulator_set_short_detection(struct panel_device *panel, int s
 {
 	struct panel_regulator *regulator = panel->regulator;
 	int i, ret, new_ua;
+	bool en = true;
 
 	for (i = 0; i < PANEL_REGULATOR_MAX; i++) {
 		if (regulator[i].type != PANEL_REGULATOR_TYPE_SSD)
 			continue;
+
+		//for ha9: ssd off when exit lpm
+		if (state == PANEL_STATE_OFF)
+			en = false;
 
 		new_ua = (state == PANEL_STATE_ALPM) ?
 			regulator[i].lpm_current : regulator[i].def_current;
 		if (new_ua == 0)
 			continue;
 
-		ret = regulator_set_short_detection(regulator[i].reg, true, new_ua);
+		ret = regulator_set_short_detection(regulator[i].reg, en, new_ua);
 		if (ret < 0) {
-			panel_err("PANEL:%s:faield to set short detection regulator(%d:%s), ret:%d\n",
-					__func__, i, regulator[i].name, new_ua);
+			panel_err("PANEL:%s:faield to set short detection regulator(%d:%s), ret:%d enable:%s\n",
+					__func__, i, regulator[i].name, new_ua, (en ? "true" : "false"));
 			regulator_put(regulator[i].reg);
 			return ret;
 		}
 
-		panel_info("PANEL:INFO:%s:set regulator(%s) SSD:%duA, state:%d\n",
-				__func__, regulator[i].name, new_ua, state);
+		panel_info("PANEL:INFO:%s:set regulator(%s) SSD:%duA, state:%d enable:%s\n",
+				__func__, regulator[i].name, new_ua, state, (en ? "true" : "false"));
 	}
 
 	return 0;
@@ -607,6 +612,12 @@ static int __panel_seq_exit_alpm(struct panel_device *panel)
 		panel_err("PANEL:ERR:%s:failed to exit_lpm ops\n", __func__);
 #endif
 
+	if (panel->panel_data.ddi_props.ssd_off_lpm_to_normal) {
+		ret = panel_regulator_set_short_detection(panel, PANEL_STATE_OFF);
+		if (ret < 0)
+			panel_err("PANEL:ERR:%s:failed to set ssd current, ret:%d\n", __func__, ret);
+	}
+	
 	mutex_lock(&panel_bl->lock);
 	mutex_lock(&panel->op_lock);
 	ret = panel_regulator_set_voltage(panel, PANEL_STATE_NORMAL);

@@ -980,12 +980,40 @@ out_power_off:
 static void wacom_i2c_reply_handler(struct wacom_i2c *wac_i2c, char *data)
 {
 	char pack_sub_id;
+#if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+	char buff;
+	int ret;
+#endif
 
 	pack_sub_id = data[1];
 
 	switch (pack_sub_id) {
 	case ELEC_TEST_PACKET:
 		wac_i2c->check_elec++;
+#if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+		buff = COM_SAMPLERATE_STOP;
+		ret = wacom_i2c_send(wac_i2c, &buff, 1, WACOM_I2C_MODE_NORMAL);
+		if (ret != 1) {
+			input_err(true, &wac_i2c->client->dev,
+				  "%s: failed to send data(%02x %02x)\n",
+				  __func__, buff, ret);
+		} else {
+			wac_i2c->samplerate_state = false;
+		}
+
+		msleep(50);
+
+		buff = COM_SAMPLERATE_133;
+		ret = wacom_i2c_send(wac_i2c, &buff, 1, WACOM_I2C_MODE_NORMAL);
+		if (ret != 1) {
+			input_err(true, &wac_i2c->client->dev,
+				  "%s: failed to send data(%02x %02x)\n",
+				  __func__, buff, ret);
+			return;
+		} else {
+			wac_i2c->samplerate_state = true;
+		}
+#endif
 		break;
 	default:
 		input_info(true, &wac_i2c->client->dev, "%s: unexpected packet %d\n",

@@ -502,6 +502,13 @@ int f2fs_build_stats(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+void f2fs_update_sec_stats(struct f2fs_sb_info *sbi)
+{
+	update_general_status(sbi);
+	update_sit_info(sbi);
+	update_mem_info(sbi);
+}
+
 void f2fs_destroy_stats(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_stat_info *si = F2FS_STAT(sbi);

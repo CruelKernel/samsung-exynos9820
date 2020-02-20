@@ -408,6 +408,14 @@ static void shmem_forced_cp_crash(struct mem_link_device *mld,
 				crash_reason_owner, crash_reason_string,
 				CALLER);
 }
+
+void handle_cp_not_work(unsigned long arg)
+{
+	struct mem_link_device *mld = (struct mem_link_device *)arg;
+
+	shmem_forced_cp_crash(mld, CRASH_REASON_MIF_MDM_CTRL,
+				   "cp not working for a while");
+}
 #endif
 
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
@@ -2431,6 +2439,10 @@ static int mld_rx_int_poll(struct napi_struct *napi, int budget)
 	}
 #endif
 
+	if (total_ps_rcvd) {
+		mod_timer(&mld->cp_not_work, jiffies + 5 * 60 * HZ);
+	}
+
 	if (total_ps_rcvd < total_budget) {
 #ifdef CONFIG_CP_DIT
 		dit_check_kick(&mld->dit, 1); /* if more than 1 packet prepared */
@@ -3918,6 +3930,12 @@ struct link_device *pcie_create_link_device(struct platform_device *pdev)
 	if (sysfs_create_group(&pdev->dev.kobj, &napi_group))
 		mif_err("failed to create sysfs node related napi\n");
 #endif
+
+	/* register pcie link state monitor */
+	init_timer(&mld->cp_not_work);
+	mld->cp_not_work.expires = jiffies;
+	mld->cp_not_work.function = handle_cp_not_work;
+	mld->cp_not_work.data = (unsigned long)mld;
 
 	mif_err("---\n");
 	return ld;

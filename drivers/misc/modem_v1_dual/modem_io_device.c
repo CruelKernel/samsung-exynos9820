@@ -209,6 +209,18 @@ enqueue:
 	skb_queue_tail(rxq, skb);
 
 exit:
+#ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
+	if (iod->link_types == LINKTYPE(LINKDEV_PCIE)) {
+		struct modem_ctl *mc = iod->mc;
+		struct link_device *ld = get_current_link(iod);
+		struct mem_link_device *mld = ld_to_mem_link_device(ld);
+
+		if (atomic_read(&mc->pcie_pwron)) {
+			mod_timer(&mld->cp_not_work, jiffies + 5 * 60 * HZ);
+		}
+	}
+#endif
+
 	wake_up(&iod->wq);
 	return len;
 }

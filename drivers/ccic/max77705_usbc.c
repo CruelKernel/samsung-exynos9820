@@ -262,7 +262,7 @@ void max77705_usbc_enable_auto_vbus(struct max77705_usbc_platform_data *usbc_dat
 	usbc_cmd_data write_data;
 
 	init_usbc_cmd_data(&write_data);
-	write_data.opcode = 0x54;
+	write_data.opcode = OPCODE_SAMSUNG_FACTORY_TEST;
 	write_data.write_data[0] = 0x2;
 	write_data.write_length = 0x1;
 	write_data.read_length = 0x1;
@@ -276,7 +276,7 @@ void max77705_usbc_disable_auto_vbus(struct max77705_usbc_platform_data *usbc_da
 	usbc_cmd_data write_data;
 
 	init_usbc_cmd_data(&write_data);
-	write_data.opcode = 0x54;
+	write_data.opcode = OPCODE_SAMSUNG_FACTORY_TEST;
 	write_data.write_data[0] = 0x0;
 	write_data.write_length = 0x1;
 	write_data.read_length = 0x1;
@@ -289,9 +289,12 @@ void max77705_usbc_enable_audio(struct max77705_usbc_platform_data *usbc_data)
 {
 	usbc_cmd_data write_data;
 
+	/* we need new function for BIT_CCDbgEn */
+	usbc_data->op_ctrl1_w |= (BIT_CCDbgEn | BIT_CCAudEn);
+		
 	init_usbc_cmd_data(&write_data);
-	write_data.opcode = 0x0C;
-	write_data.write_data[0] = 0x1F;
+	write_data.opcode = OPCODE_CCCTRL1_W;
+	write_data.write_data[0] = usbc_data->op_ctrl1_w;
 	write_data.write_length = 0x1;
 	write_data.read_length = 0x1;
 	max77705_usbc_opcode_write(usbc_data, &write_data);
@@ -1517,6 +1520,65 @@ static void max77705_get_version_info(struct max77705_usbc_platform_data *usbc_d
 	store_ccic_version(&hw_rev[0], &sw_main[0], &sw_boot);
 }
 
+static void max77705_init_opcode
+		(struct max77705_usbc_platform_data *usbc_data, int reset)
+{
+	struct max77705_platform_data *pdata = usbc_data->max77705_data;
+	
+	max77705_usbc_disable_auto_vbus(usbc_data);
+	if (pdata && pdata->support_audio)
+		max77705_usbc_enable_audio(usbc_data);
+	if (reset)
+		max77705_set_enable_alternate_mode(ALTERNATE_MODE_START);
+}
+
+static bool max77705_check_recover_opcode(u8 opcode)
+{
+	bool ret = false;
+	
+	switch (opcode) {
+	case OPCODE_CCCTRL1_W:
+	case OPCODE_SAMSUNG_FACTORY_TEST:
+	case OPCODE_SET_ALTERNATEMODE:
+		ret = true;
+		break;
+	default:
+		ret = false;
+		break;
+	}
+	return ret;
+}
+static void max77705_recover_opcode
+		(struct max77705_usbc_platform_data *usbc_data, bool opcode_list[])
+{
+	int i;
+
+	for (i = 0; i < OPCODE_NONE; i++) {
+		if (opcode_list[i]) {
+			msg_maxim("opcode = 0x%02x", i);
+			switch (i) {
+			case OPCODE_CCCTRL1_W:
+				if (usbc_data->op_ctrl1_w & BIT_CCAudEn)
+					max77705_usbc_enable_audio(usbc_data);
+				break;
+			case OPCODE_SAMSUNG_FACTORY_TEST:
+				if (usbc_data->auto_vbus_en)
+					max77705_usbc_enable_auto_vbus(usbc_data);
+				else
+					max77705_usbc_disable_auto_vbus(usbc_data);
+				break;
+			case OPCODE_SET_ALTERNATEMODE:
+				max77705_set_enable_alternate_mode
+					(usbc_data->set_altmode);
+				break;
+			default:
+				break;
+			}
+			opcode_list[i] = false;
+		}
+	}
+}
+
 void init_usbc_cmd_data(usbc_cmd_data *cmd_data)
 {
 	cmd_data->opcode = OPCODE_NONE;
@@ -2003,7 +2065,10 @@ void max77705_usbc_clear_queue(struct max77705_usbc_platform_data *usbc_data)
 
 	while (!is_empty_usbc_cmd_queue(cmd_queue)) {
 		init_usbc_cmd_data(&cmd_data);
-		dequeue_usbc_cmd(cmd_queue, &cmd_data);
+		dequeue_usbc_cmd(cmd_queue, &cmd_data); 
+		if (max77705_check_recover_opcode(cmd_data.opcode))
+			usbc_data->recover_opcode_list[cmd_data.opcode]
+				= usbc_data->need_recover = true;
 	}
 	usbc_data->opcode_stamp = 0;
 	msg_maxim("OUT");
@@ -2437,7 +2502,7 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 		max77705_write_reg(usbc_data->muic, REG_VDM_INT_M, REG_VDM_INT_M_INIT);
 		max77705_usbc_clear_queue(usbc_data);
 		usbc_data->is_first_booting = 1;
-		max77705_set_enable_alternate_mode(ALTERNATE_MODE_START);
+		max77705_init_opcode(usbc_data, 1);
 		max77705_usbc_umask_irq(usbc_data);
 #ifdef MAX77705_RAM_TEST
 		if(usbc_data->ram_test_enable == MAX77705_RAM_TEST_RETRY_MODE) {
@@ -2467,7 +2532,7 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 		msg_maxim("SYSERROR_BOOT_POR: %d, UIC_INT:0x%02x", usbc_data->por_count, interrupt);
 		max77705_usbc_clear_queue(usbc_data);
 		usbc_data->is_first_booting = 1;
-		max77705_set_enable_alternate_mode(ALTERNATE_MODE_START);
+		max77705_init_opcode(usbc_data, 1);
 		max77705_usbc_umask_irq(usbc_data);
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 		event = NOTIFY_EXTRA_SYSMSG_BOOT_POR;
@@ -2671,6 +2736,12 @@ static irqreturn_t max77705_apcmd_irq(int irq, void *data)
 	mutex_lock(&usbc_data->op_lock);
 	max77705_usbc_cmd_run(usbc_data);
 	mutex_unlock(&usbc_data->op_lock);
+
+	if (usbc_data->need_recover) {
+		max77705_recover_opcode(usbc_data,
+			usbc_data->recover_opcode_list);
+		usbc_data->need_recover = false;
+	}
 
 	msg_maxim("IRQ(%d)_OUT", irq);
 
@@ -3255,6 +3326,8 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	usbc_data->ccrp_state = 0;
 	usbc_data->set_altmode = 0;
 	usbc_data->set_altmode_error = 0;
+	usbc_data->need_recover = false;
+	usbc_data->op_ctrl1_w = (BIT_CCSrcSnk | BIT_CCSnkSrc | BIT_CCDetEn);
 #if defined(CONFIG_USB_HOST_NOTIFY)
 	send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
 #endif
@@ -3294,9 +3367,7 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	max77705_pd_init(usbc_data);
 	max77705_write_reg(usbc_data->muic, REG_PD_INT_M, 0x1C);
 	max77705_write_reg(usbc_data->muic, REG_VDM_INT_M, 0xFF);
-	max77705_usbc_disable_auto_vbus(usbc_data);
-	if (pdata->support_audio)
-		max77705_usbc_enable_audio(usbc_data);
+	max77705_init_opcode(usbc_data, 0);
 	INIT_DELAYED_WORK(&usbc_data->vbus_hard_reset_work,
 				vbus_control_hard_reset);
 	/* turn on the VBUS automatically. */

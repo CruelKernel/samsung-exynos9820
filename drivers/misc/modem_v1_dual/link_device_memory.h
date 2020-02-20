@@ -552,6 +552,7 @@ struct mem_link_device {
 
 	atomic_t forced_cp_crash;
 	struct timer_list crash_ack_timer;
+	struct timer_list cp_not_work;
 
 	spinlock_t state_lock;
 	enum link_state state;

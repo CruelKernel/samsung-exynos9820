@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.c 829185 2019-07-09 08:26:05Z $
+ * $Id: wl_cfgnan.c 840095 2019-09-10 08:21:07Z $
  */
 
 #ifdef WL_NAN

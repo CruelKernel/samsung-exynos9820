@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 829185 2019-07-09 08:26:05Z $
+ * $Id: wl_cfg80211.c 840111 2019-09-10 08:44:18Z $
  */
 /* */
 #include <typedefs.h>
@@ -1236,7 +1236,7 @@ static const rsn_akm_wpa_auth_entry_t rsn_akm_wpa_auth_lookup_tbl[] = {
 #ifdef WL_SAE
 	{WLAN_AKM_SUITE_SAE, WPA3_AUTH_SAE_PSK},
 #endif /* WL_SAE */
-	{WLAN_AKM_SUITE_FT_8021X_SHA384, WPA3_AUTH_1X_SHA384 | WPA2_AUTH_FT}
+	{WLAN_AKM_SUITE_FT_8021X_SHA384, WPA3_AUTH_1X_SUITE_B_SHA384 | WPA2_AUTH_FT}
 };
 
 #define BUFSZ 8
@@ -6538,33 +6538,6 @@ exit:
 	return err;
 }
 
-static void wl_cfg80211_disconnect_state_sync(struct bcm_cfg80211 *cfg, struct net_device *dev)
-{
-	struct wireless_dev *wdev;
-	uint8 wait_cnt;
-
-	if (!dev || !dev->ieee80211_ptr) {
-		WL_ERR(("wrong ndev\n"));
-		return;
-	}
-
-	wdev = dev->ieee80211_ptr;
-	wait_cnt = WAIT_FOR_DISCONNECT_STATE_SYNC;
-	while ((wdev->current_bss) && wait_cnt) {
-		WL_DBG(("Waiting for disconnect sync, wait_cnt: %d\n", wait_cnt));
-		wait_cnt--;
-		OSL_SLEEP(50);
-	}
-
-	if (wait_cnt == 0) {
-		/* state didn't get cleared within given timeout */
-		WL_INFORM_MEM(("cfg80211 state. wdev->current_bss non null\n"));
-	} else {
-		WL_MEM(("cfg80211 disconnect state sync done\n"));
-	}
-
-}
-
 static void wl_cfg80211_wait_for_disconnection(struct bcm_cfg80211 *cfg, struct net_device *dev)
 {
 	uint8 wait_cnt;
@@ -8016,6 +7989,7 @@ wl_update_pmklist(struct net_device *dev, struct wl_pmk_list *pmk_list,
 	else if (cfg->wlc_ver.wlc_ver_major == MIN_PMKID_LIST_V2_FW_MAJOR) {
 		u32 v2_list_size = (u32)(sizeof(pmkid_list_v2_t) + npmkids*sizeof(pmkid_v2_t));
 		pmkid_list_v2_t *pmkid_v2_list = (pmkid_list_v2_t *)MALLOCZ(cfg->osh, v2_list_size);
+		pmkid_list_v3_t *spmk_list = &cfg->spmk_info_list->pmkids;
 
 		if (pmkid_v2_list == NULL) {
 			WL_ERR(("failed to allocate pmkid list\n"));
@@ -8060,8 +8034,25 @@ wl_update_pmklist(struct net_device *dev, struct wl_pmk_list *pmk_list,
 			(void)memcpy_s(pmkid_v2_list->pmkid[i].fils_cache_id,
 					FILS_CACHE_ID_LEN, &pmk_list->pmkids.pmkid[i].fils_cache_id,
 					FILS_CACHE_ID_LEN);
+			for (j = 0; j < spmk_list->count; j++) {
+				if (memcmp(&pmkid_v2_list->pmkid[i].BSSID,
+					&spmk_list->pmkid[j].bssid, ETHER_ADDR_LEN)) {
+					continue; /* different MAC */
+				}
+				WL_DBG(("SPMK replace idx:%d bssid: "MACF " to SSID: %d\n", i,
+					ETHER_TO_MACF(pmkid_v2_list->pmkid[i].BSSID),
+					spmk_list->pmkid[j].ssid_len));
+				bzero(&pmkid_v2_list->pmkid[i].BSSID, ETHER_ADDR_LEN);
+				pmkid_v2_list->pmkid[i].ssid.ssid_len =
+					spmk_list->pmkid[j].ssid_len;
+				(void)memcpy_s(pmkid_v2_list->pmkid[i].ssid.ssid,
+					spmk_list->pmkid[j].ssid_len,
+					spmk_list->pmkid[j].ssid,
+					spmk_list->pmkid[j].ssid_len);
+			}
 			pmkid_v2_list->pmkid[i].length = PMKID_ELEM_V2_LENGTH;
 		}
+
 		err = wldev_iovar_setbuf(dev, "pmkid_info", (char *)pmkid_v2_list,
 				v2_list_size, cfg->ioctl_buf,
 				WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
@@ -13108,51 +13099,158 @@ done:
 }
 
 static s32
+wl_bss_handle_sae_auth_v1(struct bcm_cfg80211 *cfg, struct net_device *ndev,
+	const wl_event_msg_t *event, void *data)
+{
+	int err = BCME_OK;
+	wl_auth_event_t *auth_data;
+	wl_sae_key_info_t sae_key;
+	uint16 tlv_buf_len;
+	auth_data = (wl_auth_event_t *)data;
+
+	tlv_buf_len = auth_data->length - WL_AUTH_EVENT_FIXED_LEN_V1;
+
+	/* check if PMK info present */
+	sae_key.pmk = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+		WL_AUTH_PMK_TLV_ID, &(sae_key.pmk_len), BCM_XTLV_OPTION_ALIGN32);
+	if (!sae_key.pmk || !sae_key.pmk_len) {
+		WL_ERR(("Mandatory PMK info not present"));
+		err = BCME_NOTFOUND;
+		goto done;
+	}
+	/* check if PMKID info present */
+	sae_key.pmkid = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+		WL_AUTH_PMKID_TLV_ID, &(sae_key.pmkid_len), BCM_XTLV_OPTION_ALIGN32);
+	if (!sae_key.pmkid || !sae_key.pmkid_len) {
+		WL_ERR(("Mandatory PMKID info not present\n"));
+		err = BCME_NOTFOUND;
+		goto done;
+	}
+	memcpy_s(sae_key.peer_mac, ETHER_ADDR_LEN, event->addr.octet, ETHER_ADDR_LEN);
+	err = wl_cfg80211_event_sae_key(cfg, ndev, &sae_key);
+	if (err) {
+		WL_ERR(("Failed to event sae key info\n"));
+	}
+done:
+	return err;
+}
+
+static s32
+wl_bss_handle_sae_auth_v2(struct bcm_cfg80211 *cfg, struct net_device *ndev,
+	const wl_event_msg_t *event, void *data)
+{
+	int err = BCME_OK;
+	wl_auth_event_t *auth_data;
+	wl_sae_key_info_t sae_key;
+	uint16 tlv_buf_len;
+	uint8 ssid[DOT11_MAX_SSID_LEN];
+	const uint8 *tmp_buf;
+	uint16 ssid_len;
+	uint16 type_len;
+	uint32 type;
+	pmkid_v3_t *t_pmkid = NULL;
+
+	auth_data = (wl_auth_event_t *)data;
+
+	tlv_buf_len = auth_data->length - WL_AUTH_EVENT_FIXED_LEN_V2;
+
+	/* check if PMK info present */
+	sae_key.pmk = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+		WL_AUTH_PMK_TLV_ID, &(sae_key.pmk_len), BCM_XTLV_OPTION_ALIGN32);
+	if (!sae_key.pmk || !sae_key.pmk_len) {
+		WL_ERR(("Mandatory PMK info not present"));
+		err = BCME_NOTFOUND;
+		goto done;
+	}
+	/* check if PMKID info present */
+	sae_key.pmkid = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+		WL_AUTH_PMKID_TLV_ID, &(sae_key.pmkid_len), BCM_XTLV_OPTION_ALIGN32);
+	if (!sae_key.pmkid || !sae_key.pmkid_len) {
+		WL_ERR(("Mandatory PMKID info not present\n"));
+		err = BCME_NOTFOUND;
+		goto done;
+	}
+	memcpy_s(sae_key.peer_mac, ETHER_ADDR_LEN, event->addr.octet, ETHER_ADDR_LEN);
+
+	tmp_buf = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+		WL_AUTH_PMKID_TYPE_TLV_ID, &type_len, BCM_XTLV_OPTION_ALIGN32);
+
+	memcpy(&type, tmp_buf, MIN(type_len, sizeof(type)));
+	if (type == WL_AUTH_PMKID_TYPE_SSID) {
+		int idx;
+		int idx2;
+		pmkid_list_v3_t *spmk_list = &cfg->spmk_info_list->pmkids;
+
+		tmp_buf = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
+			WL_AUTH_SSID_TLV_ID, &ssid_len, BCM_XTLV_OPTION_ALIGN32);
+		bzero(ssid, sizeof(ssid));
+		(void)memcpy_s(ssid, sizeof(ssid), tmp_buf, MIN(sizeof(ssid), ssid_len));
+		for (idx = 0; idx < spmk_list->count; idx++) {
+			t_pmkid = &spmk_list->pmkid[idx];
+			if (ssid_len == t_pmkid->ssid_len &&
+				!memcmp(ssid, t_pmkid->ssid, ssid_len)) {
+				break;
+			}
+		}
+		if (idx >= spmk_list->count) {
+			if (spmk_list->count == MAXPMKID) {
+				/* remove oldest PMK info */
+				for (idx2 = 0; idx2 < spmk_list->count - 1; idx2++) {
+					(void)memcpy_s(&spmk_list->pmkid[idx2], sizeof(pmkid_v3_t),
+						&spmk_list->pmkid[idx2 + 1], sizeof(pmkid_v3_t));
+				}
+				t_pmkid = &spmk_list->pmkid[spmk_list->count - 1];
+			} else {
+				t_pmkid = &spmk_list->pmkid[spmk_list->count++];
+			}
+		}
+		if (!t_pmkid) {
+			WL_ERR(("SPMK TPMKID is null\n"));
+			return BCME_NOTFOUND;
+		}
+		bzero(t_pmkid, sizeof(pmkid_v3_t));
+		memcpy(&t_pmkid->bssid, event->addr.octet, 6);
+		t_pmkid->ssid_len = ssid_len;
+		memcpy(t_pmkid->ssid, ssid, ssid_len);
+
+		/* COPY but not used */
+		t_pmkid->pmkid_len = sae_key.pmkid_len;
+		memcpy(t_pmkid->pmkid, sae_key.pmkid, sae_key.pmkid_len);
+		t_pmkid->pmk_len = sae_key.pmk_len;
+		memcpy(t_pmkid->pmk, sae_key.pmk, sae_key.pmk_len);
+	}
+
+	err = wl_cfg80211_event_sae_key(cfg, ndev, &sae_key);
+	if (err) {
+		WL_ERR(("Failed to event sae key info\n"));
+	}
+done:
+	return err;
+}
+
+static s32
 wl_bss_handle_sae_auth(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	const wl_event_msg_t *event, void *data)
 {
 	int err = BCME_OK;
 	uint status = ntoh32(event->status);
 	wl_auth_event_t *auth_data;
-	wl_sae_key_info_t sae_key;
-	uint16 tlv_buf_len;
 
 	if (status == WLC_E_STATUS_SUCCESS) {
 		auth_data = (wl_auth_event_t *)data;
-		if (auth_data->version != WL_AUTH_EVENT_DATA_V1) {
-			WL_ERR(("unknown auth event data version %x\n",
-				auth_data->version));
+		if (auth_data->version == WL_AUTH_EVENT_DATA_V1) {
+			err = wl_bss_handle_sae_auth_v1(cfg, ndev, event, data);
+		} else if (auth_data->version == WL_AUTH_EVENT_DATA_V2) {
+			err = wl_bss_handle_sae_auth_v2(cfg, ndev, event, data);
+		} else {
+			printf("unknown auth event data version %x\n",
+				auth_data->version);
 			err = BCME_VERSION;
-			goto done;
-		}
-
-		tlv_buf_len = auth_data->length - WL_AUTH_EVENT_FIXED_LEN_V1;
-
-		/* check if PMK info present */
-		sae_key.pmk = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
-			WL_AUTH_PMK_TLV_ID, &(sae_key.pmk_len), BCM_XTLV_OPTION_ALIGN32);
-		if (!sae_key.pmk || !sae_key.pmk_len) {
-			WL_ERR(("Mandatory PMK info not present"));
-			err = BCME_NOTFOUND;
-			goto done;
-		}
-		/* check if PMKID info present */
-		sae_key.pmkid = bcm_get_data_from_xtlv_buf(auth_data->xtlvs, tlv_buf_len,
-			WL_AUTH_PMKID_TLV_ID, &(sae_key.pmkid_len), BCM_XTLV_OPTION_ALIGN32);
-		if (!sae_key.pmkid || !sae_key.pmkid_len) {
-			WL_ERR(("Mandatory PMKID info not present\n"));
-			err = BCME_NOTFOUND;
-			goto done;
-		}
-		memcpy_s(sae_key.peer_mac, ETHER_ADDR_LEN, event->addr.octet, ETHER_ADDR_LEN);
-		err = wl_cfg80211_event_sae_key(cfg, ndev, &sae_key);
-		if (err) {
-			WL_ERR(("Failed to event sae key info\n"));
 		}
 	} else {
-		WL_ERR(("sae auth status failure:%d\n", status));
+		printf("sae auth status failure:%d\n", status);
 	}
-done:
+	printf("SAE AUTH result: %d\n", err);
 	return err;
 }
 #endif /* WL_SAE */
@@ -14069,6 +14167,11 @@ wl_cfg80211_handle_deauth_ind(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	uint8 bssid[ETHER_ADDR_LEN];
 	struct cfg80211_pmksa pmksa;
 	s32 val = 0;
+	struct wlc_ssid *curssid;
+	pmkid_list_v3_t *spmk_list = &cfg->spmk_info_list->pmkids;
+	pmkid_v3_t *t_pmkid = NULL;
+	int idx;
+	bool bFound = FALSE;
 
 	err = wldev_iovar_getint(ndev, "wpa_auth", &val);
 	if (unlikely(err)) {
@@ -14083,6 +14186,23 @@ wl_cfg80211_handle_deauth_ind(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		WL_INFORM_MEM(("Deleting the PMKSA for SAE AP "MACDBG,
 			MAC2STRDBG(e->addr.octet)));
 		wl_cfg80211_del_pmksa(cfg->wdev->wiphy, ndev, &pmksa);
+		curssid = wl_read_prof(cfg, ndev, WL_PROF_SSID);
+		for (idx = 0; idx < spmk_list->count; idx++) {
+			t_pmkid = &spmk_list->pmkid[idx];
+			if (curssid->SSID_len == t_pmkid->ssid_len &&
+				!memcmp(curssid->SSID, t_pmkid->ssid, curssid->SSID_len)) {
+				bFound = TRUE;
+				break;
+			}
+		}
+		if (!bFound) {
+			goto done;
+		}
+		for (; idx < spmk_list->count - 1; idx++) {
+			memcpy_s(&spmk_list->pmkid[idx], sizeof(pmkid_v3_t),
+				&spmk_list->pmkid[idx + 1], sizeof(pmkid_v3_t));
+		}
+		spmk_list->count--;
 	}
 done:
 #endif /* WL_SAE */
@@ -14550,11 +14670,6 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					"from " MACDBG "\n",
 					ndev->name,	event, ntoh32(e->reason), reason, ie_len,
 					MAC2STRDBG((const u8*)(&e->addr))));
-
-				/* Wait for status to be cleared to prevent race condition
-				 * issues with connect context
-				 */
-				wl_cfg80211_disconnect_state_sync(cfg, ndev);
 				wl_link_down(cfg);
 				wl_init_prof(cfg, ndev);
 			}
@@ -16681,6 +16796,12 @@ static s32 wl_init_priv_mem(struct bcm_cfg80211 *cfg)
 		cfg->tdls_mgmt_frame_len = 0;
 	}
 #endif /* WLTDLS */
+	cfg->spmk_info_list = (void *)MALLOCZ(cfg->osh, sizeof(*cfg->spmk_info_list));
+	if (unlikely(!cfg->spmk_info_list)) {
+		WL_ERR(("Single PMK info list allocation falure\n"));
+		goto init_priv_mem_out;
+	}
+
 	return 0;
 
 init_priv_mem_out:
@@ -16707,6 +16828,7 @@ static void wl_deinit_priv_mem(struct bcm_cfg80211 *cfg)
 		cancel_work_sync(&cfg->afx_hdl->work);
 		MFREE(cfg->osh, cfg->afx_hdl, sizeof(*cfg->afx_hdl));
 	}
+	MFREE(cfg->osh, cfg->spmk_info_list, sizeof(*cfg->spmk_info_list));
 
 }
 
@@ -18899,6 +19021,7 @@ s32 wl_cfg80211_up(struct net_device *net)
 #ifdef WLAIBSS_MCHAN
 	bcm_cfg80211_add_ibss_if(cfg->wdev->wiphy, IBSS_IF_NAME);
 #endif /* WLAIBSS_MCHAN */
+	cfg->spmk_info_list->pmkids.count = 0;
 	return err;
 }
 

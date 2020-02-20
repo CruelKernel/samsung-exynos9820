@@ -648,6 +648,8 @@ endif
 # Update WIPS event to framework
   DHDCFLAGS += -DWL_WIPSEVT
   DHDCFLAGS += -DSUPPORT_SOFTAP_ELNA_BYPASS
+# Latency critical data
+  DHDCFLAGS += -DSUPPORT_LATENCY_CRITICAL_DATA
 endif
 
 # Chipsets supported both SDIO and PCIE

@@ -113,3 +113,12 @@ config F2FS_FAULT_INJECTION
 	  Test F2FS to inject faults such as ENOMEM, ENOSPC, and so on.
 
 	  If unsure, say N.
+
+config F2FS_SEC_BLOCK_OPERATIONS_DEBUG
+	bool "SEC Collect logs for debugging block_operations()"
+	depends on F2FS_FS
+	default y
+	help
+	  Collect block_operations() log for debugging
+
+	  If unsure, say N.

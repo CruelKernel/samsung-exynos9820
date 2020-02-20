@@ -682,6 +682,8 @@ struct brt_map {
 struct ddi_properties {
 	u32 gpara;
 	bool support_partial_disp;
+	//D2: avoid abnormal screen issue
+	bool ssd_off_lpm_to_normal;
 };
 
 struct common_panel_info {
