@@ -514,8 +514,8 @@ int f2fs_try_to_free_nats(struct f2fs_sb_info *sbi, int nr_shrink)
 /*
  * This function always returns success
  */
-int f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
-						struct node_info *ni)
+int __f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
+					struct node_info *ni, int op_flags)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
@@ -539,6 +539,13 @@ int f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
 		ni->version = nat_get_version(e);
 		up_read(&nm_i->nat_tree_lock);
 		return 0;
+	}
+
+	//readahead && cp_mutex locked?
+	if (unlikely((op_flags & REQ_RAHEAD) &&
+				mutex_is_locked(&sbi->cp_mutex))) {
+		up_read(&nm_i->nat_tree_lock);
+		return -EBUSY;
 	}
 
 	memset(&ne, 0, sizeof(struct f2fs_nat_entry));
@@ -1279,7 +1286,7 @@ static int read_node_page(struct page *page, int op_flags)
 		return LOCKED_PAGE;
 	}
 
-	err = f2fs_get_node_info(sbi, page->index, &ni);
+	err = __f2fs_get_node_info(sbi, page->index, &ni, op_flags);
 	if (err)
 		return err;
 

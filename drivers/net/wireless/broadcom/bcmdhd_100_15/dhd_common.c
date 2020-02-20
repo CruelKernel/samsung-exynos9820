@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 827635 2019-06-27 08:09:10Z $
+ * $Id: dhd_common.c 840097 2019-09-10 08:22:49Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -2670,6 +2670,10 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 		} else if (status == WLC_E_STATUS_FAIL) {
 			DHD_EVENT(("MACEVENT: %s, MAC %s, FAILURE, status %d reason %d\n",
 			       event_name, eabuf, (int)status, (int)reason));
+		} else if (status == WLC_E_STATUS_SUPPRESS) {
+			DHD_EVENT(("MACEVENT: %s, MAC %s, SUPPRESS\n", event_name, eabuf));
+		} else if (status == WLC_E_STATUS_NO_ACK) {
+			DHD_EVENT(("MACEVENT: %s, MAC %s, NOACK\n", event_name, eabuf));
 		} else {
 			DHD_EVENT(("MACEVENT: %s, MAC %s, unexpected status %d\n",
 			       event_name, eabuf, (int)status));
@@ -2706,6 +2710,9 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 		} else if (status == WLC_E_STATUS_FAIL) {
 			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, FAILURE, status %d reason %d\n",
 			       event_name, eabuf, auth_str, (int)status, (int)reason));
+		} else if (status == WLC_E_STATUS_SUPPRESS) {
+			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, SUPPRESS\n",
+			       event_name, eabuf, auth_str));
 		} else if (status == WLC_E_STATUS_NO_ACK) {
 			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, NOACK\n",
 			       event_name, eabuf, auth_str));

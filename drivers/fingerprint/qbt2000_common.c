@@ -229,6 +229,10 @@ static int fps_qbt2000_noise_control(struct qbt2000_drvdata *drvdata, int contro
 
 	if (control == 1) {
 		drvdata->noise_onoff_flag = QBT2000_NOISE_ON;
+		if (drvdata->delayed_work_on_flag == true) {
+			cancel_delayed_work(&drvdata->delayed_work_noiseon);
+			drvdata->delayed_work_on_flag= false;
+		}
 		while(retry--) {
 			rc = set_wacom_ble_charge_mode(true);
 			pr_info("%d, retry:%d, rc:%d\n", control, retry, rc);
@@ -238,6 +242,9 @@ static int fps_qbt2000_noise_control(struct qbt2000_drvdata *drvdata, int contro
 		}
 	} else if ((control == 0) && (drvdata->noise_onoff_flag == QBT2000_NOISE_ON)) {
 		drvdata->noise_onoff_flag = QBT2000_NOISE_OFF;
+		schedule_delayed_work(&drvdata->delayed_work_noiseon,
+				msecs_to_jiffies(QBT2000_NOISE_RECOVER_WACOM_DELAY));
+		drvdata->delayed_work_on_flag = true;
 		while(retry--) {
 			rc = set_wacom_ble_charge_mode(false);
 			pr_info("%d, retry:%d, rc:%d\n", control, retry, rc);
@@ -618,16 +625,9 @@ static long fps_qbt2000_ioctl(
 		if (data == QBT2000_SENSORTEST_DONE) {
 			pr_info("SENSORTEST Finished\n");
 			fps_qbt2000_noise_control(drvdata, QBT2000_NOISE_ON);
-			if (drvdata->delayed_work_on_flag == true) {
-				cancel_delayed_work(&drvdata->delayed_work_noiseon);
-				drvdata->delayed_work_on_flag= false;
-			}
 		} else {
-			int delay_time = QBT2000_NOISE_SENSORTEST_DELAY;
-			pr_info("SENSORTEST Start : 0x%x, delay_time:%d\n", data, delay_time);
+			pr_info("SENSORTEST Start : 0x%x\n", data);
 			fps_qbt2000_noise_control(drvdata, QBT2000_NOISE_OFF);
-			schedule_delayed_work(&drvdata->delayed_work_noiseon, msecs_to_jiffies(delay_time));
-			drvdata->delayed_work_on_flag = true;
 		}
 #endif
 #endif
@@ -1065,16 +1065,15 @@ static void fps_qbt2000_wuhb_delayed_work_func(struct work_struct *work)
 	pm_relax(drvdata->dev);
 }
 
-#ifndef ENABLE_SENSORS_FPRINT_SECURE
 static void fps_qbt2000_noiseon_delayed_work_func(struct work_struct *work)
 {
 	struct qbt2000_drvdata *drvdata =
 		container_of(work, struct qbt2000_drvdata, delayed_work_noiseon.work);
 
+	pr_info("entry\n");
 	drvdata->delayed_work_on_flag = false;
 	fps_qbt2000_noise_control(drvdata, QBT2000_NOISE_ON);
 }
-#endif
 #endif
 
 static irqreturn_t fps_qbt2000_wuhb_irq_handler(int irq, void *dev_id)
@@ -1194,6 +1193,7 @@ static int fps_qbt2000_setup_fd_gpio_irq(struct platform_device *pdev,
 	INIT_DELAYED_WORK(&drvdata->fd_gpio.delayed_noise_down_work, fps_qbt2000_wuhb_delayed_work_func);
 	INIT_WORK(&drvdata->work_ipc_noise_status, fps_qbt2000_ipc_handler_noise_status);
 	INIT_WORK(&drvdata->work_noise_control, fps_qbt2000_work_noise_control);
+	INIT_DELAYED_WORK(&drvdata->delayed_work_noiseon, fps_qbt2000_noiseon_delayed_work_func);
 #endif
 	rc = devm_request_any_context_irq(&pdev->dev, drvdata->fd_gpio.irq,
 		fps_qbt2000_wuhb_irq_handler, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
@@ -1485,10 +1485,6 @@ static int fps_qbt2000_probe(struct platform_device *pdev)
 #else
 	drvdata->enabled_clk = true;
 	drvdata->tz_mode = false;
-#ifdef QBT2000_AVOID_NOISE  //only factory
-	drvdata->delayed_work_on_flag = false;
-	INIT_DELAYED_WORK(&drvdata->delayed_work_noiseon, fps_qbt2000_noiseon_delayed_work_func);
-#endif
 #endif
 	drvdata->sensortype = SENSOR_QBT2000;
 	drvdata->cbge_count = 0;
@@ -1499,6 +1495,7 @@ static int fps_qbt2000_probe(struct platform_device *pdev)
 	drvdata->i2c_charging = 0;
 	drvdata->noise_status = QBT2000_NOISE_NO_CHARGING;
 	drvdata->noise_onoff_flag = QBT2000_NOISE_ON;
+	drvdata->delayed_work_on_flag = false;
 #endif
 	drvdata->wuhb_count = 0;
 	drvdata->reset_count = 0;

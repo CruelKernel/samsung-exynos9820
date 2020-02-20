@@ -342,6 +342,8 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 	if (wac_i2c->pdata->use_garage) {
 		mutex_lock(&wac_i2c->mode_lock);
 		wacom_i2c_set_survey_mode(wac_i2c, EPEN_SURVEY_MODE_NONE);
+		// prevent I2C fail
+		msleep(300);
 		mutex_unlock(&wac_i2c->mode_lock);
 	}
 

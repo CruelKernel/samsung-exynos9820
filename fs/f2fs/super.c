@@ -23,6 +23,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/sysfs.h>
 #include <linux/quota.h>
+#include <linux/nls.h>
 
 #include "f2fs.h"
 #include "node.h"
@@ -115,6 +116,7 @@ enum {
 	Opt_data_flush,
 	Opt_reserve_root,
 	Opt_reserve_core,
+	Opt_flush_group,
 	Opt_resgid,
 	Opt_resuid,
 	Opt_mode,
@@ -175,6 +177,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_data_flush, "data_flush"},
 	{Opt_reserve_root, "reserve_root=%u"},
 	{Opt_reserve_core, "reserve_core=%u"},
+	{Opt_flush_group, "flush_group=%u"},
 	{Opt_resgid, "resgid=%u"},
 	{Opt_resuid, "resuid=%u"},
 	{Opt_mode, "mode=%s"},
@@ -468,6 +471,11 @@ static int f2fs_check_quota_options(struct f2fs_sb_info *sbi)
 }
 #endif
 
+static int f2fs_keypress_callback_fn(struct super_block *sb)
+{
+	return blkdev_issue_flush(sb->s_bdev, GFP_KERNEL, NULL);
+}
+
 static int parse_options(struct super_block *sb, char *options)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
@@ -674,6 +682,17 @@ static int parse_options(struct super_block *sb, char *options)
 				return -EINVAL;
 			}
 			F2FS_OPTION(sbi).s_resgid = gid;
+			break;
+		case Opt_flush_group:
+			if (args->from && match_int(args, &arg))
+				return -EINVAL;
+			gid = make_kgid(current_user_ns(), arg);
+			if (!gid_valid(gid)) {
+				f2fs_msg(sb, KERN_ERR,
+					"Invalid gid value %d", arg);
+				return -EINVAL;
+			}
+			F2FS_OPTION(sbi).flush_group = gid;
 			break;
 		case Opt_mode:
 			name = match_strdup(&args[0]);
@@ -973,6 +992,18 @@ static int parse_options(struct super_block *sb, char *options)
 	 */
 	if (F2FS_OPTION(sbi).active_logs != NR_CURSEG_TYPE)
 		F2FS_OPTION(sbi).whint_mode = WHINT_MODE_OFF;
+
+	if (F2FS_OPTION(sbi).fsync_mode == FSYNC_MODE_NOBARRIER) {
+		char volume_name[MAX_VOLUME_NAME];
+
+		utf16s_to_utf8s(sbi->raw_super->volume_name, MAX_VOLUME_NAME,
+					UTF16_LITTLE_ENDIAN, volume_name, MAX_VOLUME_NAME);
+		if (!strcmp(volume_name, "data")) {
+			keypress_callback_sb = sb;
+			keypress_callback_fn = f2fs_keypress_callback_fn;
+		}
+	}
+
 	return 0;
 }
 
@@ -1537,6 +1568,12 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_printf(seq, ",fsync_mode=%s", "strict");
 	else if (F2FS_OPTION(sbi).fsync_mode == FSYNC_MODE_NOBARRIER)
 		seq_printf(seq, ",fsync_mode=%s", "nobarrier");
+
+	if (!gid_eq(F2FS_OPTION(sbi).flush_group,
+			make_kgid(&init_user_ns, F2FS_DEF_FLUSHGROUP)))
+		seq_printf(seq, ",flush_group=%u",
+				from_kgid_munged(&init_user_ns,
+					F2FS_OPTION(sbi).flush_group));
 	return 0;
 }
 
@@ -1551,6 +1588,7 @@ static void default_options(struct f2fs_sb_info *sbi)
 	F2FS_OPTION(sbi).test_dummy_encryption = false;
 	F2FS_OPTION(sbi).s_resuid = make_kuid(&init_user_ns, F2FS_DEF_RESUID);
 	F2FS_OPTION(sbi).s_resgid = make_kgid(&init_user_ns, F2FS_DEF_RESGID);
+	F2FS_OPTION(sbi).flush_group = make_kgid(&init_user_ns, F2FS_DEF_FLUSHGROUP);
 
 	set_opt(sbi, BG_GC);
 	set_opt(sbi, INLINE_XATTR);
@@ -3412,7 +3450,8 @@ try_onemore:
 	/* For write statistics */
 	if (sb->s_bdev->bd_part)
 		sbi->sectors_written_start =
-			(u64)part_stat_read(sb->s_bdev->bd_part, sectors[1]);
+			(u64)part_stat_read(sb->s_bdev->bd_part, sectors[1])
+			- (u64)part_stat_read(sb->s_bdev->bd_part, discard_sectors);
 
 	/* Read accumulated write IO statistics if exists */
 	seg_i = CURSEG_I(sbi, CURSEG_HOT_NODE);

@@ -19,6 +19,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/security.h>
 #include <linux/posix_acl_xattr.h>
+#include <linux/fslog.h>
 #include "f2fs.h"
 #include "xattr.h"
 
@@ -585,6 +586,16 @@ static int __f2fs_setxattr(struct inode *inode, int index,
 
 	if (size > MAX_VALUE_LEN(inode))
 		return -E2BIG;
+
+	if (!strcmp(name, "selinux")) {
+		if (!value || !strcmp(value, "") ||
+				strstr(value, "unlabeled")) {
+			SE_LOG("%s : ino(%lu) label set, value : %s.",
+					__func__, inode->i_ino, value?value:"NuLL");
+			dump_stack();
+			fslog_kmsg_selog(__func__, 12);
+		}			
+	}
 
 	error = read_all_xattrs(inode, ipage, &base_addr);
 	if (error)

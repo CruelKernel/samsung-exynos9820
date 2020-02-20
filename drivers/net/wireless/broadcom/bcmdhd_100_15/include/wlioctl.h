@@ -28,8 +28,6 @@
  *
  *
  * <<Broadcom-WL-IPTag/Open:>>
- *
- * $Id: wlioctl.h 824212 2019-06-07 07:38:44Z $
  */
 
 #ifndef _wlioctl_h_
@@ -61,6 +59,7 @@
 #ifdef BCMUTILS_ERR_CODES
 #include <bcmerror.h>
 #endif	/* BCMUTILS_ERR_CODES */
+#include <bcmtlv.h>
 
 /* NOTE re: Module specific error codes.
  *
@@ -403,7 +402,8 @@ typedef struct wl_bss_info {
 	int16		RSSI;			/**< receive signal strength (in dBm) */
 	int8		phy_noise;		/**< noise (in dBm) */
 	uint8		n_cap;			/**< BSS is 802.11N Capable */
-	uint16		freespace1;		/* make implicit padding explicit */
+	uint8		freespace1;		/* make implicit padding explicit */
+	uint8		load;			/**< BSS Load from QBSS load IE if available */
 	uint32		nbss_cap;		/**< 802.11N+AC BSS Capabilities */
 	uint8		ctl_ch;			/**< 802.11N BSS control channel number */
 	uint8		padding1[3];		/**< explicit struct alignment padding */
@@ -451,7 +451,7 @@ typedef struct wl_bss_info_v109_1 {
 	int8		phy_noise;		/**< noise (in dBm) */
 	uint8		n_cap;			/**< BSS is 802.11N Capable */
 	uint8		he_cap;			/**< BSS is he capable */
-	uint8		freespace1;		/* make implicit padding explicit */
+	uint8		load;			/**< BSS Load from QBSS load IE if available */
 	uint32		nbss_cap;		/**< 802.11N+AC BSS Capabilities */
 	uint8		ctl_ch;			/**< 802.11N BSS control channel number */
 	uint8		padding1[3];		/**< explicit struct alignment padding */
@@ -502,7 +502,7 @@ typedef struct wl_bss_info_v109_2 {
 	int8		phy_noise;		/**< noise (in dBm) */
 	uint8		n_cap;			/**< BSS is 802.11N Capable */
 	uint8		he_cap;			/**< BSS is he capable */
-	uint8		freespace1;		/* make implicit padding explicit */
+	uint8		load;			/**< BSS Load from QBSS load IE if available */
 	uint32		nbss_cap;		/**< 802.11N+AC BSS Capabilities */
 	uint8		ctl_ch;			/**< 802.11N BSS control channel number */
 	uint8		padding1[3];		/**< explicit struct alignment padding */
@@ -1538,24 +1538,41 @@ typedef struct wl_wsec_key {
 #define WSEC_MAX_PSK_LEN	64
 /* Max length of supported passphrases for SAE */
 #define WSEC_MAX_PASSPHRASE_LEN 256u
+/* Max length of SAE password ID */
+#define WSEC_MAX_SAE_PASSWORD_ID 255u
 
 /* Flag for key material needing passhash'ing */
 #define WSEC_PASSPHRASE		1u
 /* Flag indicating an SAE passphrase */
-#define WSEC_SAE_PASSPHRASE 2u
+#define WSEC_SAE_PASSPHRASE	2u
 
 /**receptacle for WLC_SET_WSEC_PMK parameter */
+
 typedef struct wsec_pmk {
 	ushort	key_len;		/* octets in key material */
 	ushort	flags;			/* key handling qualification */
 	uint8	key[WSEC_MAX_PASSPHRASE_LEN];	/* PMK material */
+	uint16	opt_len;		/* optional field length */
+	uint8	opt_tlvs[1];		/* optional filed in bcm_xtlv_t format */
 } wsec_pmk_t;
 
+typedef enum {
+	WL_PMK_TLV_PASSWORD_ID  = 1,
+	WL_PMK_TLV_SSID		= 2,
+	WL_PMK_TLV_BSSID	= 3
+} wl_pmk_tlv_types_t;
+
 #define WL_AUTH_EVENT_DATA_V1		0x1
+#define WL_AUTH_EVENT_DATA_V2		0x2
 
 /* tlv ids for auth event */
-#define WL_AUTH_PMK_TLV_ID	1
-#define WL_AUTH_PMKID_TLV_ID	2
+#define WL_AUTH_PMK_TLV_ID			1u
+#define WL_AUTH_PMKID_TLV_ID		2u
+#define WL_AUTH_PMKID_TYPE_TLV_ID	3u
+#define WL_AUTH_SSID_TLV_ID			4u
+
+#define WL_AUTH_PMKID_TYPE_BSSID	1u
+#define WL_AUTH_PMKID_TYPE_SSID		2u
 /* AUTH event data
 * pmk and pmkid in case of SAE auth
 * xtlvs will be 32 bit alligned
@@ -1567,6 +1584,7 @@ typedef struct wl_auth_event {
 } wl_auth_event_t;
 
 #define WL_AUTH_EVENT_FIXED_LEN_V1	OFFSETOF(wl_auth_event_t, xtlvs)
+#define WL_AUTH_EVENT_FIXED_LEN_V2	OFFSETOF(wl_auth_event_t, xtlvs)
 
 #define WL_PMKSA_EVENT_DATA_V1	1u
 
@@ -2271,7 +2289,7 @@ typedef struct _wl_assoc_result {
 } wl_assoc_result_t;
 /* EXT_STA */
 
-#define WL_PHY_PAVARS_LEN	32	/**< Phytype, Bandrange, chain, a[0], b[0], c[0], d[0] .. */
+#define WL_PHY_PAVARS_LEN	64	/**< Phytype, Bandrange, chain, a[0], b[0], c[0], d[0] .. */
 
 #define WL_PHY_PAVAR_VER	1	/**< pavars version */
 #define WL_PHY_PAVARS2_NUM	3	/**< a1, b0, b1 */
@@ -3013,6 +3031,8 @@ enum {
 #define WL_MIMO_PS_STATUS_HW_STATE_NONE			0
 #define WL_MIMO_PS_STATUS_HW_STATE_LTECOEX		(0x1 << 0)
 #define WL_MIMO_PS_STATUS_HW_STATE_MIMOPS_BSS		(0x1 << 1)
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 #define WL_MIMO_PS_STATUS_HW_STATE_SCAN			(0x1 << 3)
 #define WL_MIMO_PS_STATUS_HW_STATE_TXPPR		(0x1 << 4)
 #define WL_MIMO_PS_STATUS_HW_STATE_PWRTHOTTLE		(0x1 << 5)
@@ -3100,7 +3120,8 @@ typedef struct wl_mws_ocl_override {
 #define OCL_DISABLED_SISO		0x08   /* Disabled while in SISO mode */
 #define OCL_DISABLED_CAL		0x10   /* Disabled during active calibration */
 #define OCL_DISABLED_CHANSWITCH		0x20   /* Disabled during active channel switch */
-#define OCL_DISABLED_ASPEND     0x40   /* Disabled due to assoc pending */
+#define OCL_DISABLED_ASPEND		0x40   /* Disabled due to assoc pending */
+#define OCL_DISABLED_SEQ_RANGE		0x80   /* Disabled during SEQ Ranging */
 
 /* Bits for hw_status */
 #define OCL_HWCFG			0x01   /* State of OCL config bit in phy HW */
@@ -3996,6 +4017,7 @@ typedef struct {
 	uint32	txbar_notx;	/* number of TX BAR not sent (maybe supressed or muted) */
 	uint32	txbar_noack;	/* number of TX BAR sent, but not acknowledged by peer */
 	uint32	rxfrag_agedout;	/**< # of aged out rx fragmentation */
+	uint32	pmkid_mismatch_cnt; /* number of EAPOL msg1 PMKID mismatch */
 
 	/* Do not remove or rename in the middle of this struct.
 	 * All counter variables have to be of uint32.
@@ -6686,6 +6708,8 @@ typedef struct dfsp_stats {
 	uint32  dfsp_evtresume;
 } dfsp_stats_t;
 #endif /* WLDFSP */
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 
 /*
  * ptk_start: iovar to start 4-way handshake for secured ranging
@@ -7726,6 +7750,8 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_pwrstats {
 #define WLC_PMD_TX_PEND_WAR		0x400   /* obsolete, can be reused */
 #define WLC_PMD_NAN_AWAKE		0x400   /* Reusing for NAN */
 #define WLC_PMD_GPTIMER_STAY_AWAKE	0x800
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 #define WLC_PMD_PM2_RADIO_SOFF_PEND	0x2000
 #define WLC_PMD_NON_PRIM_STA_UP		0x4000
 #define WLC_PMD_AP_UP			0x8000
@@ -8112,7 +8138,8 @@ typedef struct wl_pwr_phy_stats {
 	uint32 tx_dur;	    /**< TX Active duration in us */
 	uint32 rx_dur;	    /**< RX Active duration in us */
 } wl_pwr_phy_stats_t;
-
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 typedef struct wl_mimo_meas_metrics_v1 {
 	uint16 type;
 	uint16 len;
@@ -8860,6 +8887,22 @@ typedef struct {
 	uint32 count;
 	chanim_stats_t stats[1];
 } wl_chanim_stats_t;
+
+#define WL_SC_CHANIM_STATS_V1	 1
+/* sc chanim interface stats */
+typedef struct sc_chanim_stats_v1 {
+	uint32 version;
+	uint32 length;
+	uint32 stats_ms;
+	chanspec_t chanspec;
+	uint16 PAD;
+	uint32 sc_only_rx_dur;		/* rx only on sc */
+	uint32 sc_rx_mc_rx_dur;		/* Rx on SC when MC is active */
+	uint32 sc_rx_ac_rx_dur;		/* Rx on SC when AC is active */
+	uint32 sc_rx_mc_tx_dur;		/* sc rx with MC tx */
+	uint32 sc_rx_ac_bt_tx_dur;	/* sc rx with AC-BT tx */
+	uint32 sc_rx_bt_rx_dur;		/* sc rx when BT is active */
+} sc_chanim_stats_v1_t;
 
 #define WL_CHANIM_STATS_FIXED_LEN OFFSETOF(wl_chanim_stats_t, stats)
 
@@ -10077,8 +10120,8 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_proxd_collect_header {
  * NOTE: These are only ready-only bits for host.
  * All sets to these bits from host are masked off
  */
-#define WL_NAN_PROTO_INIT_DONE		(1 << 31)
-#define WL_NAN_CFG_CREATE_DONE		(1 << 30)
+#define WL_NAN_PROTO_INIT_DONE		(1u << 31u)
+#define WL_NAN_CFG_CREATE_DONE		(1u << 30u)
 
 #define WL_NAN_GET_PROTO_INIT_STATUS(x) \
 		(((x) & WL_NAN_PROTO_INIT_DONE) ? TRUE:FALSE)
@@ -10889,6 +10932,11 @@ typedef struct wl_nan_slot_info_s {
 	uint8	slot_seq_no;	/* slot seq no. */
 } wl_nan_slot_info_t;
 
+/* WL_NAN_XTLV_DAM_STATS */
+typedef struct wl_nan_dam_stats {
+	uint32 cnt_rej_crb_inuse;		/* DAM rejections because of crb in use already */
+} wl_nan_dam_stats_t;
+
 /* WL_NAN_EVENT_MR_CHANGED */
 typedef uint8 wl_nan_mr_changed_t;
 #define WL_NAN_AMR_CHANGED	1
@@ -11084,9 +11132,11 @@ enum wl_nan_cfg_ctrl2_flags1 {
 	/* Allows the device to send schedule update automatically on local schedule change */
 	WL_NAN_CTRL2_FLAG1_AUTO_SCHEDUPD		= 0x00000004,
 	/* Allows the device to handle slot pre_close operations */
-	WL_NAN_CTRL2_FLAG1_SLOT_PRE_CLOSE		= 0x00000008
+	WL_NAN_CTRL2_FLAG1_SLOT_PRE_CLOSE		= 0x00000008,
+	/* Control flag to enable/disable NDPE capability */
+	WL_NAN_CTRL2_FLAG1_NDPE_CAP			= 0x000000010
 };
-#define WL_NAN_CTRL2_FLAGS1_MASK	0x0000000F
+#define WL_NAN_CTRL2_FLAGS1_MASK	0x0000001F
 
 #define WL_NAN_CTRL2_FLAGS2_MASK	0x00000000
 
@@ -11314,7 +11364,8 @@ typedef struct nan_sync_master {
 	uint8 amr[WL_NAN_MASTER_RANK_LEN];
 	uint32 ambtt;
 } nan_sync_master_t;
-
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 /* NAN advertiser structure */
 /* TODO RSDB: add chspec to indicates core corresponds correct core */
 typedef struct nan_adv_entry {
@@ -12292,7 +12343,8 @@ enum wl_nan_fw_cap_flag1 {
 	WL_NAN_FW_CAP_FLAG1_DP_OPAQUE_DATA	= 0x00008000,
 	WL_NAN_FW_CAP_FLAG1_NSR2		= 0x00010000,
 	WL_NAN_FW_CAP_FLAG1_NSR2_SAVE		= 0x00020000,
-	WL_NAN_FW_CAP_FLAG1_NANHO		= 0x00040000
+	WL_NAN_FW_CAP_FLAG1_NANHO		= 0x00040000,
+	WL_NAN_FW_CAP_FLAG1_NDPE		= 0x00080000
 };
 
 /* WL_NAN_XTLV_GEN_FW_CAP */
@@ -13919,7 +13971,14 @@ typedef enum wl_gpaio_option {
 	GPAIO_BIQ2_DC_MEAS,
 	GPAIO_BIQ2_DC_CLEAR,
 	GPAIO_VBATMONITOR,
-	GPAIO_PA5G_VCAS_GMDRAIN
+	GPAIO_PA5G_VCAS_GMDRAIN,
+	GPAIO_PMU_ROLDO,
+	GPAIO_PMU_PFDLDO,
+	GPAIO_PMU_LCHLDO,
+	GPAIO_PMU_MMDLDO,
+	GPAIO_PMU_VCOCORELDO,
+	GPAIO_PMU_PLLLDO,
+	GPAIO_PMU_RXLDO
 } wl_gpaio_option_t;
 
 /** IO Var Operations - the Value of iov_op In wlc_ap_doiovar */
@@ -14176,6 +14235,7 @@ enum {
 	WL_PROXD_SESSION_FLAG_TX_AUTO_BURST	= 0x00000200,  /**< Same as proxd flags above */
 	WL_PROXD_SESSION_FLAG_NAN_BSS		= 0x00000400,  /**< Use NAN BSS, if applicable */
 	WL_PROXD_SESSION_FLAG_TS1		= 0x00000800,  /**< e.g. FTM1 - ASAP-capable */
+	WL_PROXD_SESSION_FLAG_RANDMAC		= 0x00001000,  /**< use random mac */
 	WL_PROXD_SESSION_FLAG_REPORT_FAILURE	= 0x00002000, /**< report failure to target */
 	WL_PROXD_SESSION_FLAG_INITIATOR_RPT	= 0x00004000, /**< report distance to target */
 	WL_PROXD_SESSION_FLAG_NOCHANSWT		= 0x00008000,
@@ -15210,6 +15270,8 @@ typedef struct wnm_roam_trigger_cfg {
 typedef enum wl_interface_type {
 	WL_INTERFACE_TYPE_STA = 0,
 	WL_INTERFACE_TYPE_AP = 1,
+	//MOG-ON: WLAWDL
+	//MOG-OFF: WLAWDL
 	WL_INTERFACE_TYPE_NAN = 3,
 	WL_INTERFACE_TYPE_P2P_GO = 4,
 	WL_INTERFACE_TYPE_P2P_GC = 5,
@@ -16843,6 +16905,8 @@ typedef enum {
 	CHANSW_IOVAR = 7,	/* channel switch due to IOVAR */
 	CHANSW_CSA_DFS = 8,	/* channel switch due to chan switch  announcement from AP */
 	CHANSW_APCS = 9,	/* Channel switch from AP channel select module */
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 	CHANSW_FBT = 11,	/* Channel switch from FBT module for action frame response */
 	CHANSW_UPDBW = 12,	/* channel switch at update bandwidth */
 	CHANSW_ULB = 13,	/* channel switch at ULB */
@@ -17493,6 +17557,10 @@ typedef enum wl_hc_dd_type {
 	WL_HC_DD_REINIT		= 6,	/* Reinit due to other reasons */
 	WL_HC_DD_TXQ_STALL	= 7,	/* TXQ stall */
 	WL_HC_DD_RX_STALL_V2	= 8,	/* RX stall check v2 */
+// MOG-ON: WLAWDL
+// MOG-OFF: WLAWDL
+	WL_HC_DD_SBSS		=10,	/* Slotted bss health check */
+	WL_HC_DD_NAN		=11,	/* NAN health check */
 	WL_HC_DD_MAX
 } wl_hc_dd_type_t;
 
@@ -18261,6 +18329,8 @@ typedef struct wlc_leaked_infra_guard_marker {
 #define WL_LEAKED_GUARD_TIME_NONE	0               /* Not in any guard time */
 #define WL_LEAKED_GUARD_TIME_FRTS	(0x01 << 0)     /* Normal FRTS power save */
 #define WL_LEAKED_GUARD_TIME_SCAN	(0x01 << 1)     /* Channel switch due to scanning */
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 #define WL_LEAKED_GUARD_TIME_INFRA_STA	(0x01 << 4)	/* generic type infra sta channel switch */
 #define WL_LEAKED_GUARD_TIME_TERMINATED (0x01 << 7)     /* indicate a GT is terminated early */
 
@@ -18855,6 +18925,8 @@ enum wl_ifstats_xtlv_id {
 	/* AMPDU stats on per-IF */
 	WL_IFSTATS_XTLV_AMPDU_DUMP = 0x505,
 	WL_IFSTATS_XTLV_IF_SPECIFIC = 0x506,
+	//MOG-ON: WLAWDL
+	//MOG-OFF: WLAWDL
 	WL_IFSTATS_XTLV_IF_LQM = 0x508,
 	/* Interface specific state capture in periodic fashion */
 	WL_IFSTATS_XTLV_IF_PERIODIC_STATE = 0x509,
@@ -20156,6 +20228,8 @@ typedef struct wl_omi_req {
 
 /* Bits for ULMU disable reason */
 #define OMI_ULMU_DISABLED_HOST			0x01u   /* Host has disabled through he omi */
+//MOG-ON: WLAWDL
+//MOG-OFF: WLAWDL
 #define OMI_ULMU_DISABLED_NAN			0x04u   /* Disabled due to NAN enabled */
 #define OMI_ULMU_DISABLED_BTCOEX		0x08u   /* Disabled while in BT Coex activity */
 #define OMI_ULMU_DISABLED_LTECOEX		0x10u   /* Disabled due to LTE Coex activity */

@@ -38,7 +38,11 @@
 #endif
 
 extern int ignore_fs_panic;
+extern int hard_reset_key_pressed;
 extern void (*ufs_debug_func)(void *);
+
+extern struct super_block *keypress_callback_sb;
+extern int (*keypress_callback_fn)(struct super_block *sb);
 
 #define f2fs_bug_on(sbi, condition)						\
 	do {									\
@@ -142,6 +146,7 @@ struct f2fs_mount_info {
 	block_t core_reserved_blocks;	/* core reserved blocks */
 	kuid_t s_resuid;		/* reserved blocks for uid */
 	kgid_t s_resgid;		/* reserved blocks for gid */
+	kgid_t flush_group;		/* should issue flush for gid */
 	int active_logs;		/* # of active logs */
 	int inline_xattr_size;		/* inline xattr size */
 #ifdef CONFIG_F2FS_FAULT_INJECTION
@@ -184,6 +189,7 @@ struct f2fs_mount_info {
  */
 #define	F2FS_DEF_RESUID		0
 #define	F2FS_DEF_RESGID		0
+#define	F2FS_DEF_FLUSHGROUP	5666
 
 /*
  * For checkpoint manager
@@ -269,7 +275,8 @@ struct discard_entry {
 };
 
 /* default discard granularity of inner discard thread, unit: block count */
-#define DEFAULT_DISCARD_GRANULARITY		16
+// P190708-00895
+#define DEFAULT_DISCARD_GRANULARITY		1
 
 /* max discard pend list number */
 #define MAX_PLIST_NUM		512
@@ -1290,6 +1297,31 @@ struct f2fs_sec_fsck_info {
 	u32 valid_inode_count;
 };
 
+#ifdef CONFIG_F2FS_SEC_BLOCK_OPERATIONS_DEBUG
+#define F2FS_SEC_BLKOPS_ENTRIES		10
+#define F2FS_SEC_BLKOPS_LOGGING_THR	5		// > 5 Secs -> logging
+enum sec_blkops_dbg_type {
+	F2FS_SEC_DBG_DENTS,
+	F2FS_SEC_DBG_IMETA,
+	F2FS_SEC_DBG_NODES,
+
+	NR_F2FS_SEC_DBG_ENTRY,
+};
+
+struct f2fs_sec_blkops_entry {
+	unsigned int nr_ops;
+	unsigned long long cumulative_jiffies;
+};
+
+struct f2fs_sec_blkops_dbg {
+	unsigned long long start_time;
+	unsigned long long end_time;
+	unsigned int entry_idx;
+	unsigned int step;
+	int ret_val;
+	struct f2fs_sec_blkops_entry entry[NR_F2FS_SEC_DBG_ENTRY];
+};
+#endif
 struct f2fs_sb_info {
 	struct super_block *sb;			/* pointer to VFS super block */
 	struct proc_dir_entry *s_proc;		/* proc entry */
@@ -1482,6 +1514,13 @@ struct f2fs_sb_info {
 	unsigned int s_sec_defrag_writes_kb;
 	unsigned int s_sec_num_apps;
 	unsigned int s_sec_capacity_apps_kb;
+
+#ifdef CONFIG_F2FS_SEC_BLOCK_OPERATIONS_DEBUG
+	unsigned int s_sec_blkops_total;
+	unsigned long long s_sec_blkops_max_elapsed;
+	struct f2fs_sec_blkops_dbg s_sec_dbg_entries[F2FS_SEC_BLKOPS_ENTRIES];
+	struct f2fs_sec_blkops_dbg s_sec_dbg_max_entry;
+#endif
 };
 
 #ifdef CONFIG_F2FS_FAULT_INJECTION
@@ -1518,8 +1557,9 @@ static inline bool time_to_inject(struct f2fs_sb_info *sbi, int type)
  * and the return value is in kbytes. s is of struct f2fs_sb_info.
  */
 #define BD_PART_WRITTEN(s)						 \
-(((u64)part_stat_read((s)->sb->s_bdev->bd_part, sectors[1]) -		 \
-		(s)->sectors_written_start) >> 1)
+((((u64)part_stat_read((s)->sb->s_bdev->bd_part, sectors[1]) -		 \
+	(u64)part_stat_read((s)->sb->s_bdev->bd_part, discard_sectors))	 \
+	- (s)->sectors_written_start) >> 1)
 
 static inline void f2fs_update_time(struct f2fs_sb_info *sbi, int type)
 {
@@ -3099,8 +3139,8 @@ void f2fs_reset_fsync_node_info(struct f2fs_sb_info *sbi);
 int f2fs_need_dentry_mark(struct f2fs_sb_info *sbi, nid_t nid);
 bool f2fs_is_checkpointed_node(struct f2fs_sb_info *sbi, nid_t nid);
 bool f2fs_need_inode_block_update(struct f2fs_sb_info *sbi, nid_t ino);
-int f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
-						struct node_info *ni);
+int __f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
+					struct node_info *ni, int op_flags);
 pgoff_t f2fs_get_next_page_offset(struct dnode_of_data *dn, pgoff_t pgofs);
 int f2fs_get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode);
 int f2fs_truncate_inode_blocks(struct inode *inode, pgoff_t from);
@@ -3135,6 +3175,12 @@ int f2fs_build_node_manager(struct f2fs_sb_info *sbi);
 void f2fs_destroy_node_manager(struct f2fs_sb_info *sbi);
 int __init f2fs_create_node_manager_caches(void);
 void f2fs_destroy_node_manager_caches(void);
+
+static inline int f2fs_get_node_info(struct f2fs_sb_info *sbi, nid_t nid,
+						struct node_info *ni)
+{
+	return __f2fs_get_node_info(sbi, nid, ni, 0);
+}
 
 /*
  * segment.c
@@ -3475,6 +3521,7 @@ static inline struct f2fs_stat_info *F2FS_STAT(struct f2fs_sb_info *sbi)
 	} while (0)
 
 int f2fs_build_stats(struct f2fs_sb_info *sbi);
+void f2fs_update_sec_stats(struct f2fs_sb_info *sbi);
 void f2fs_destroy_stats(struct f2fs_sb_info *sbi);
 int __init f2fs_create_root_stats(void);
 void f2fs_destroy_root_stats(void);

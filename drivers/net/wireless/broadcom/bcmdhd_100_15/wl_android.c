@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.c 828073 2019-07-01 09:33:21Z $
+ * $Id: wl_android.c 840101 2019-09-10 08:28:49Z $
  */
 
 #include <linux/module.h>
@@ -358,9 +358,9 @@ typedef struct android_wifi_af_params {
 #define DEFAULT_WBTEXT_WEIGHT_ESTM_DL_B	"ESTM_DL b 70"
 #ifdef WBTEXT_SCORE_V2
 #define DEFAULT_WBTEXT_TABLE_RSSI_A	"RSSI a 0 55 100 55 60 90 \
-60 70 60 70 80 20 80 128 20"
+60 70 60 70 80 20 80 90 0 90 128 0"
 #define DEFAULT_WBTEXT_TABLE_RSSI_B	"RSSI b 0 55 100 55 60 90 \
-60 70 60 70 80 20 80 128 20"
+60 70 60 70 80 20 80 90 0 90 128 0"
 #define DEFAULT_WBTEXT_TABLE_CU_A	"CU a 0 30 100 30 80 20 \
 80 100 20"
 #define DEFAULT_WBTEXT_TABLE_CU_B	"CU b 0 10 100 10 70 20 \
@@ -931,6 +931,11 @@ static android_restore_scan_params_t restore_params[] =
 	{ "\0", 0, RESTORE_TYPE_UNSPECIFIED, .cmd_handler = NULL}
 };
 #endif /* SUPPORT_RESTORE_SCAN_PARAMS */
+
+#ifdef SUPPORT_LATENCY_CRITICAL_DATA
+#define CMD_GET_LATENCY_CRITICAL_DATA	"GET_LATENCY_CRT_DATA"
+#define CMD_SET_LATENCY_CRITICAL_DATA	"SET_LATENCY_CRT_DATA"
+#endif	/* SUPPORT_LATENCY_CRITICAL_DATA */
 
 /**
  * Local (static) functions and variables
@@ -8763,6 +8768,50 @@ wl_android_set_rtt_geofence_interval(struct net_device *ndev, char *command)
 #endif /* RTT_SUPPORT && WL_NAN */
 #endif /* RTT_GEOFENCE_INTERVAL */
 
+#ifdef SUPPORT_LATENCY_CRITICAL_DATA
+#define DISABLE_LATENCY_CRT_DATA	0
+#define ENABLE_LATENCY_CRT_DATA		1
+
+static int
+wl_android_set_latency_crt_data(struct net_device *dev, int enable)
+{
+	int ret;
+
+	if (!(enable == DISABLE_LATENCY_CRT_DATA ||
+		enable == ENABLE_LATENCY_CRT_DATA)) {
+		return BCME_BADARG;
+	}
+
+	ret = wldev_iovar_setint(dev, "latency_critical_data", enable);
+	if (ret != BCME_OK) {
+		WL_ERR(("failed to set latency_critical_data enable %d, error = %d\n",
+			enable, ret));
+		return ret;
+	}
+
+	return ret;
+}
+
+static int
+wl_android_get_latency_crt_data(struct net_device *dev, char *command, int total_len)
+{
+	int ret;
+	int enable = DISABLE_LATENCY_CRT_DATA;
+	int bytes_written;
+
+	ret = wldev_iovar_getint(dev, "latency_critical_data", &enable);
+	if (ret != BCME_OK) {
+		WL_ERR(("failed to get latency_critical_data error = %d\n", ret));
+		return ret;
+	}
+
+	bytes_written = snprintf(command, total_len, "%s %d",
+		CMD_GET_LATENCY_CRITICAL_DATA, enable);
+
+	return bytes_written;
+}
+#endif	/* SUPPORT_LATENCY_CRITICAL_DATA */
+
 #ifdef SUPPORT_SOFTAP_ELNA_BYPASS
 int
 wl_android_set_softap_elna_bypass(struct net_device *dev, char *command, int total_len)
@@ -9897,6 +9946,17 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 		bytes_written = wl_nan_ranging_bw(net, bw_cmd, command);
 	}
 #endif /* SUPPORT_NAN_RANGING_TEST_BW */
+#ifdef SUPPORT_LATENCY_CRITICAL_DATA
+	else if (strnicmp(command, CMD_SET_LATENCY_CRITICAL_DATA,
+		strlen(CMD_SET_LATENCY_CRITICAL_DATA)) == 0) {
+		int enable = *(command + strlen(CMD_SET_LATENCY_CRITICAL_DATA) + 1) - '0';
+		bytes_written = wl_android_set_latency_crt_data(net, enable);
+	}
+	else if  (strnicmp(command, CMD_GET_LATENCY_CRITICAL_DATA,
+		strlen(CMD_GET_LATENCY_CRITICAL_DATA)) == 0) {
+		bytes_written = wl_android_get_latency_crt_data(net, command, priv_cmd.total_len);
+	}
+#endif	/* SUPPORT_LATENCY_CRITICAL_DATA */
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		bytes_written = scnprintf(command, sizeof("FAIL"), "FAIL");

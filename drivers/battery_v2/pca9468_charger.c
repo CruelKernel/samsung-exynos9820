@@ -1641,8 +1641,17 @@ static int pca9468_check_error(struct pca9468_charger *pca9468)
 		/* PCA9468 is in charging */
 		/* Check whether the battery voltage is over the minimum voltage level or not */
 		if (vbatt > PCA9468_DC_VBAT_MIN) {
-			/* Normal charging battery level */
-			ret = 0;
+			/* Check temperature regulation loop */
+			/* Read INT1_STS register */
+			ret = pca9468_read_reg(pca9468, PCA9468_REG_INT1_STS, &reg_val);
+			if (reg_val & PCA9468_BIT_TEMP_REG_STS) {				
+				/* Over temperature protection */
+				pr_err("%s: Device is in temperature regulation", __func__);
+				ret = -EINVAL;
+			} else {
+				/* Normal temperature */
+				ret = 0;
+			}
 		} else {
 			/* Abnormal battery level */
 			pr_err("%s: Error abnormal battery voltage=%d\n", __func__, vbatt);
@@ -1745,7 +1754,7 @@ static int pca9468_check_error(struct pca9468_charger *pca9468)
 				    PCA9468 should stop checking RCP condition and exit timer_work
 				*/
 				if (pca9468->charging_state == DC_STATE_NO_CHARGING) {
-					pr_err("%s: other driver forced to stop direct charing\n", __func__);
+					pr_err("%s: other driver forced to stop direct charging\n", __func__);
 					ret = -EINVAL;
 				} else {
 					/* Keep the current charging state */
@@ -1927,6 +1936,10 @@ static int pca9468_charge_adjust_ccmode(struct pca9468_charger *pca9468)
 #else
 	pca9468->charging_state = DC_STATE_ADJUST_CC;
 #endif
+
+	ret = pca9468_check_error(pca9468);
+	if (ret != 0)
+		goto error;	// This is not active mode.
 
 	ccmode = pca9468_check_ccmode_status(pca9468);
 	if (ccmode < 0) {
@@ -2312,6 +2325,10 @@ static int pca9468_charge_start_cvmode(struct pca9468_charger *pca9468)
 #else
 	pca9468->charging_state = DC_STATE_START_CV;
 #endif
+
+	ret = pca9468_check_error(pca9468);
+	if (ret != 0)
+		goto error;	// This is not active mode.
 
 	cvmode = pca9468_check_cvmode_status(pca9468);
 	if (cvmode < 0) {
@@ -4615,4 +4632,4 @@ module_i2c_driver(pca9468_charger_driver);
 MODULE_AUTHOR("Clark Kim <clark.kim@nxp.com>");
 MODULE_DESCRIPTION("PCA9468 charger driver");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("3.4.9S");
+MODULE_VERSION("3.4.10S");

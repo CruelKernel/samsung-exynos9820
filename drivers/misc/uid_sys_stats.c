@@ -105,17 +105,17 @@ struct bg_iostat_attr {
 
 #define BG_IOSTAT_RO_ATTR(name, func) \
 static struct bg_iostat_attr bg_iostat_attr_##name = { \
-	.attr = __ATTR(name, 0444, func, NULL), \
+	.attr = __ATTR(name, 0440, func, NULL), \
 }
 
 #define BG_IOSTAT_WO_ATTR(name, func) \
 static struct bg_iostat_attr bg_iostat_attr_##name = { \
-	.attr = __ATTR(name, 0644, NULL, func), \
+	.attr = __ATTR(name, 0640, NULL, func), \
 }
 
 #define BG_IOSTAT_GENERAL_RW_ATTR(name, val) \
 static struct bg_iostat_attr bg_iostat_attr_##name = { \
-	.attr = __ATTR(name, 0644, bg_iostat_generic_show, bg_iostat_generic_store), \
+	.attr = __ATTR(name, 0640, bg_iostat_generic_show, bg_iostat_generic_store), \
 	.value = val, \
 }
 
@@ -126,7 +126,7 @@ static struct bg_iostat_attr bg_iostat_attr_##name = { \
 #define UID_ENTRY_DAILY_BG_WRITE(entry)	\
 	(entry->io[UID_STATE_BACKGROUND].write_bytes - entry->last_bg_write_bytes)
 
-#define BtoM(val)	((val)/(1024*1024))
+#define BtoM(val)	((val) >> 20)
 
 #define NR_ENTRIES_IN_ARR(v)	(sizeof(v) / sizeof(*v))
 
@@ -720,6 +720,7 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 	int len = 0;
 	u64 total_fg_bytes=0;
 	u64 total_bg_bytes=0;
+	u64 daily_bg_writes, daily_fg_writes;
 	unsigned int nr_apps=0, nr_apps_bg=0, nr_apps_thr=0;
 
 	rt_mutex_lock(&uid_lock);
@@ -730,40 +731,47 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 	hash_for_each(hash_table, bkt, uid_entry, hash) {
 		nr_apps++;
-		total_fg_bytes+=UID_ENTRY_DAILY_FG_WRITE(uid_entry);
-		total_bg_bytes+=UID_ENTRY_DAILY_BG_WRITE(uid_entry);
-		if (UID_ENTRY_DAILY_BG_WRITE(uid_entry) != 0)
-			nr_apps_bg++;
 
-		if (BtoM(UID_ENTRY_DAILY_BG_WRITE(uid_entry)) > ATTR_VALUE(write_threshold))
+		daily_fg_writes = UID_ENTRY_DAILY_FG_WRITE(uid_entry);
+		daily_bg_writes = UID_ENTRY_DAILY_BG_WRITE(uid_entry);
+
+		if (ATTR_VALUE(auto_reset_daily_stat))
+			update_daily_writes(uid_entry);
+
+		total_fg_bytes += daily_fg_writes;
+		total_bg_bytes += daily_bg_writes;
+
+		if (uid_entry->is_whitelist || daily_bg_writes == 0)
+			continue;
+		
+		nr_apps_bg++;
+
+		if (BtoM(daily_bg_writes) > ATTR_VALUE(write_threshold))
 			nr_apps_thr++;
 
-		if (uid_entry->is_whitelist) 
-			continue;
-
-		if (UID_ENTRY_DAILY_BG_WRITE(uid_entry) > smallest_bg_io) {
+		if (daily_bg_writes > smallest_bg_io) {
 			list_for_each_entry(cur_entry, &top_n_head, top_n_list) {
-				if(UID_ENTRY_DAILY_BG_WRITE(cur_entry) >
-						UID_ENTRY_DAILY_BG_WRITE(uid_entry))
+				if (cur_entry->daily_bg_write > daily_bg_writes)
 					break;
 			}
 
-			list_add_tail(&uid_entry->top_n_list, &cur_entry->top_n_list);
-			uid_entry->daily_fg_write = UID_ENTRY_DAILY_FG_WRITE(uid_entry);
-			uid_entry->daily_bg_write = UID_ENTRY_DAILY_BG_WRITE(uid_entry);
+			__list_add(&uid_entry->top_n_list,
+					cur_entry->top_n_list.prev,
+					&cur_entry->top_n_list);
+
+			uid_entry->daily_fg_write = daily_fg_writes;
+			uid_entry->daily_bg_write = daily_bg_writes;
 			
 			if (nr_entries >= NR_TOP_BG_ENTRIES) {
-				list_del(top_n_head.next);
+				cur_entry = list_first_entry(&top_n_head, struct uid_entry, top_n_list);
+				list_del(&cur_entry->top_n_list);
 
-				cur_entry = container_of(top_n_head.next, struct uid_entry, top_n_list);
-				smallest_bg_io = UID_ENTRY_DAILY_BG_WRITE(cur_entry);
+				cur_entry = list_first_entry(&top_n_head, struct uid_entry, top_n_list);
+				smallest_bg_io = cur_entry->daily_bg_write;
 			} else {
 				nr_entries++;
 			}
 		}
-
-		if(ATTR_VALUE(auto_reset_daily_stat))
-			update_daily_writes(uid_entry);
 	}
 
 	len += snprintf(buf, PAGE_SIZE,

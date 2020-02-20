@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 829185 2019-07-09 08:26:05Z $
+ * $Id: wl_cfg80211.h 840111 2019-09-10 08:44:18Z $
  */
 
 /**
@@ -1398,6 +1398,7 @@ struct bcm_cfg80211 {
 #ifdef SUPPORT_AP_BWCTRL
 	u32 bw_cap_5g;
 #endif /* SUPPORT_AP_BWCTRL */
+	struct wl_pmk_list *spmk_info_list;	/* single pmk info list */
 };
 #define WL_STATIC_IFIDX	(DHD_MAX_IFS + DHD_MAX_STATIC_IFS - 1)
 enum static_ndev_states {
