@@ -998,11 +998,20 @@
 					net_boost,table= <
 						30 0 0 1144000 0 1170000 0 0 0 0 0 0
 						90 0 0 1872000 0 1586000 0 0 255000 0 0 0
-						300 2080000 0 2080000 0 1586000 0 546000 255000 1 1 1
+						300 0 0 2080000 0 1586000 0 546000 255000 1 1 1
 						>;
 				};
-
 				boot_device@8 {
+					net_boost,label="NAN";
+					net_boost,node="aware_data0";
+					net_boost,table_size = <3>;
+					net_boost,table= <
+						30 0 0 1144000 0 1170000 0 0 0 0 0 0
+						90 0 0 1872000 0 1586000 0 0 255000 0 0 0
+						300 0 0 2080000 0 1586000 0 546000 255000 1 1 1
+						>;
+				};
+				boot_device@9 {
 					net_boost,label="USB";
 					net_boost,node="rndis0";
 					net_boost,table_size = <3>;
