@@ -93,3 +93,12 @@ config USB_INTERFACE_LPM_LIST
           The device needs to support L1 for audio class devices
           But L1 mode has some issues. 
 	  So we will apply L1 mode to the device that has specific interface classes
+
+config USB_AUDIO_ENHANCED_DETECT_TIME
+	bool "USB audio enhanced detect time"
+	depends on USB_NOTIFY_LAYER
+	help
+	  Added uevent for usb audio device(bundle)
+	  uevent includes path, card number, vid, pid
+	  The usb framework gets this uevent.
+	  It is made by samsung.

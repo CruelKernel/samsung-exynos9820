@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.h 837542 2019-08-26 10:22:28Z $
+ * $Id: wl_cfgvendor.h 850395 2019-11-13 09:33:56Z $
  */
 
 #ifndef _wl_cfgvendor_h_
@@ -214,6 +214,7 @@ enum andr_vendor_subcmd {
 	NAN_WIFI_SUBCMD_DATA_PATH_END,						 /* 0x170F */
 	NAN_WIFI_SUBCMD_DATA_PATH_SEC_INFO,					 /* 0x1710 */
 	NAN_WIFI_SUBCMD_VERSION_INFO,						 /* 0x1711 */
+	NAN_WIFI_SUBCMD_ENABLE_MERGE,						 /* 0x1712 */
 	APF_SUBCMD_GET_CAPABILITIES = ANDROID_NL80211_SUBCMD_PKT_FILTER_RANGE_START,
 	APF_SUBCMD_SET_FILTER,
 	/* Add more sub commands here */
@@ -453,7 +454,6 @@ typedef enum {
 	DUMP_LEN_ATTR_AXI_ERROR,
 	DUMP_FILENAME_ATTR_AXI_ERROR_DUMP,
 	DUMP_LEN_ATTR_RTT_LOG,
-	/* XXX: Please add new attributes from here to sync up old HAL */
 	DUMP_EVENT_ATTR_MAX
 } EWP_DUMP_EVENT_ATTRIBUTE;
 
@@ -484,7 +484,6 @@ typedef enum {
 	DUMP_BUF_ATTR_STATUS_LOG,
 	DUMP_BUF_ATTR_AXI_ERROR,
 	DUMP_BUF_ATTR_RTT_LOG,
-	/* XXX: Please add new attributes from here to sync up old HAL */
 	DUMP_BUF_ATTR_MAX
 } EWP_DUMP_CMD_ATTRIBUTE;
 

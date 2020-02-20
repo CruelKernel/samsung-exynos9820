@@ -263,11 +263,18 @@
 				battery,battery_full_capacity = <3500>;
 
 				/* cycle, chg_float_voltage, recharge_condition_vcell, full_condition_vcell, full_condition_soc, step charging condition */
-				battery,age_data = <0 4350 4280 4300 93 45
-						300 4330 4260 4280 92 45
-						400 4310 4240 4260 91 45
-						700 4290 4220 4240 90 45
-						1000 4240 4170 4190 89 45>;
+				battery,age_data = <0 4350 4280 4300 93 15
+						300 4330 4260 4280 92 15
+						400 4310 4240 4260 91 15
+						700 4290 4220 4240 90 15
+						1000 4240 4170 4190 89 15>;
+
+				battery,health_condition = <
+						/* CYCLE ASOC */
+						900 75	/* GOOD */
+						1200 65 /* NORMAL */
+						1500 55 /* AGED */
+						>;
 
 				/* step charging option */
 				battery,step_charging_type = <0x3E>;

@@ -230,6 +230,8 @@ DHDCFLAGS += -DCUSTOM_BSSID_BLACKLIST_NUM=0
 DHDCFLAGS += -DCUSTOM_SSID_WHITELIST_NUM=0
 # Extended HANG event with reason codes
 DHDCFLAGS += -DDHD_USE_EXTENDED_HANG_REASON
+# Override HANG detect on MFG Test
+DHDCFLAGS += -DDHD_DETECT_CONSECUTIVE_MFG_HANG
 
 # For special PNO Event keep wake lock for 10sec
 DHDCFLAGS += -DCUSTOM_PNO_EVENT_LOCK_xTIME=10
@@ -286,7 +288,7 @@ DHDCFLAGS += -DKEEP_JP_REGREV
 # NAN feature
 #Until SDK update, uncoditionally enabling NAN for now
 #ifeq ($(CONFIG_WL_NAN),y)
-DHDCFLAGS += -DWL_NAN -DWL_NAN_DISC_CACHE
+DHDCFLAGS += -DWL_NAN -DWL_NAN_DISC_CACHE -DWL_NAN_ENABLE_MERGE
 #endif // endif
 
 # FCC power limit control on ch12/13.
@@ -835,6 +837,10 @@ ifeq ($(CONFIG_BCM4361),y)
   DHDCFLAGS += -DUSE_LATE_INITCALL_SYNC
   DRIVER_TYPE = y
 endif
+
+# Update WIPS event to framework
+  DHDCFLAGS += -DWL_WIPSEVT
+  DHDCFLAGS += -DWL_DISABLE_EVENT_ECNT
 endif
 
 ifneq ($(CONFIG_BCM4359),)

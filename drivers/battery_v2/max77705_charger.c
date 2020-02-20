@@ -989,11 +989,11 @@ static void max77705_charger_initialize(struct max77705_charger_data *charger)
 	/* Auto skip mode */
 	max77705_set_skipmode(charger, 1);
 
-	/* disable auto shipmode */
+	/* disable shipmode */
 	max77705_set_ship_mode(charger, 0);
 
-	/* enable auto shipmode, this should work under 2.6V */
-	max77705_set_auto_ship_mode(charger, 1);
+	/* disable auto shipmode */
+	max77705_set_auto_ship_mode(charger, 0);
 
 	max77705_test_read(charger);
 }
@@ -2792,6 +2792,8 @@ static void max77705_charger_shutdown(struct platform_device *pdev)
 	} else {
 		pr_err("%s: no max77705 i2c client\n", __func__);
 	}
+	/* enable auto shipmode, this should work under 2.6V */
+	max77705_set_auto_ship_mode(charger, 1);
 
 	pr_info("%s: --\n", __func__);
 }

@@ -149,7 +149,7 @@ static const char *umount_exit_str[UMOUNT_STATUS_MAX] = {
 };
 
 static const char *exception_process[] = {
-	"main", "usap32", "usap64", NULL,
+	"main", "ch_zygote", "usap32", "usap64", NULL,
 };
 
 static inline void sys_umount_trace_set_status(unsigned int status)

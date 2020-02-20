@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 848794 2019-11-05 02:27:28Z $
+ * $Id: dhd_linux.c 851174 2019-11-18 12:13:55Z $
  */
 
 #include <typedefs.h>
@@ -15303,6 +15303,9 @@ void dhd_host_recover_link(void)
 EXPORT_SYMBOL(dhd_host_recover_link);
 #endif /* EXYNOS_PCIE_LINKDOWN_RECOVERY */
 
+#ifdef DHD_DETECT_CONSECUTIVE_MFG_HANG
+#define MAX_CONSECUTIVE_MFG_HANG_COUNT 2
+#endif /* DHD_DETECT_CONSECUTIVE_MFG_HANG */
 int dhd_os_send_hang_message(dhd_pub_t *dhdp)
 {
 	int ret = 0;
@@ -15357,6 +15360,16 @@ int dhd_os_send_hang_message(dhd_pub_t *dhdp)
 #endif /* DHD_HANG_SEND_UP_TEST */
 
 	if (!dhdp->hang_was_sent) {
+#ifdef DHD_DETECT_CONSECUTIVE_MFG_HANG
+		if (dhdp->op_mode & DHD_FLAG_MFG_MODE) {
+			dhdp->hang_count++;
+			if (dhdp->hang_count >= MAX_CONSECUTIVE_MFG_HANG_COUNT) {
+				DHD_ERROR(("%s, Consecutive hang from Dongle :%u\n",
+					__FUNCTION__, dhdp->hang_count));
+				BUG_ON(1);
+			}
+		}
+#endif /* DHD_DETECT_CONSECUTIVE_MFG_HANG */
 #ifdef DHD_DEBUG_UART
 		/* If PCIe lane has broken, execute the debug uart application
 		 * to gether a ramdump data from dongle via uart
@@ -17965,7 +17978,7 @@ dhd_get_dhd_dump_len(void *ndev, dhd_pub_t *dhdp)
 		length += (uint32)(CONCISE_DUMP_BUFLEN - remain_len);
 	}
 
-	length += (strlen(DHD_DUMP_LOG_HDR) + sizeof(sec_hdr));
+	length += (uint32)(strlen(DHD_DUMP_LOG_HDR) + sizeof(sec_hdr));
 	return length;
 }
 
