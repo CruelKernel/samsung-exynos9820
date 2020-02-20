@@ -491,6 +491,7 @@ static int reader_mmap_mremap(struct vm_area_struct *const vma)
  * Returns:
  * * 0 - successful mapping
  * * -EINVAL - a pointer was invalid
+ * * -EBADF - the file descriptor did not have an attached reader
  * * VM_FAULT_NOPAGE - there was no memory available for the address
  */
 static int reader_mmap_fault(struct vm_fault *const vmf)
@@ -516,7 +517,7 @@ static int reader_mmap_fault(struct vm_fault *const vmf)
 
 	reader = file->private_data;
 	if (unlikely(!reader))
-		return -EINVAL;
+		return -EBADF;
 	changes = &reader->changes;
 
 	buffer = smp_load_acquire(&changes->buffer.data);
@@ -557,9 +558,12 @@ static const struct vm_operations_struct vm_operations = {
  * Return:
  * * 0 - successful mapping
  * * -EINVAL - a pointer was invalid
+ * * -EBADF - the file descriptor did not have an attached reader
  * * -EADDRINUSE - the memory was already mapped for the reader file descriptor
  * * -ENXIO - the offset for the page was invalid, we only allow the whole
  *            buffer to be mapped
+ * * -EACCES - the virtual memory flags were invalid, especially that writable
+ * *           memory was asked for
  * * -ENOMEM - we could not allocate the backing memory for the mapping
  */
 static int reader_mmap(struct file *const file,
@@ -572,7 +576,7 @@ static int reader_mmap(struct file *const file,
 	unsigned long offset;
 	unsigned short flags;
 
-	if (!file || !vma)
+	if (unlikely(!file || !vma))
 		return -EINVAL;
 
 	reader = file->private_data;
@@ -580,8 +584,8 @@ static int reader_mmap(struct file *const file,
 	offset = vma->vm_pgoff << PAGE_SHIFT;
 	flags = vma->vm_flags;
 
-	if (!reader)
-		return -EINVAL;
+	if (unlikely(!reader))
+		return -EBADF;
 
 	buffer = &reader->changes.buffer;
 	data = smp_load_acquire(&buffer->data);
@@ -591,9 +595,11 @@ static int reader_mmap(struct file *const file,
 		return -EADDRINUSE;
 	}
 
-	if ((flags & VM_EXEC) || (flags & VM_WRITE) || (flags & VM_SHARED)) {
+	if ((flags & VM_WRITE) || (flags & VM_SHARED) ||
+	    (!(current->personality & READ_IMPLIES_EXEC) &&
+	     (flags & VM_EXEC))) {
 		pr_warn(PR_ "can only map private read only memory\n");
-		return -EINVAL;
+		return -EACCES;
 	}
 
 	vma->vm_flags &= ~(VM_MAYWRITE | VM_MAYEXEC);
@@ -635,6 +641,8 @@ static int reader_mmap(struct file *const file,
  * Return:
  * * 0 - no data ready
  * * POLLIN - state changes have been buffered
+ * * -EBADF - the file descriptor did not have an attached reader
+ * * -EINVAL - the IO control arguments were invalid
  */
 static __poll_t reader_poll(struct file *const file,
 			    struct poll_table_struct *const wait)
@@ -642,12 +650,12 @@ static __poll_t reader_poll(struct file *const file,
 	struct reader *reader;
 	u16 threshold;
 
-	if (!file || !wait)
+	if (unlikely(!file || !wait))
 		return -EINVAL;
 
 	reader = file->private_data;
-	if (!reader)
-		return -EINVAL;
+	if (unlikely(!reader))
+		return -EBADF;
 
 	threshold = reader_changes_threshold(&reader->changes);
 
@@ -811,6 +819,7 @@ static long reader_ioctl_layout(struct reader *const reader,
  * @arg: The IO control argument
  * Return:
  * * -EINVAL - invalid IO control command
+ * * -EBADF - the file descriptor did not have an attached reader
  */
 static long reader_ioctl(struct file *const file, const unsigned int cmd,
 			 const unsigned long arg)
@@ -823,7 +832,7 @@ static long reader_ioctl(struct file *const file, const unsigned int cmd,
 
 	reader = file->private_data;
 	if (unlikely(!reader))
-		return -EINVAL;
+		return -EBADF;
 
 	switch (cmd) {
 	case KBASE_KINSTR_JM_READER_VIEW:

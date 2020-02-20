@@ -80,6 +80,8 @@
 #include <linux/freecess.h>
 #endif
 
+int system_server_pid = 0;
+
 static HLIST_HEAD(binder_deferred_list);
 static DEFINE_MUTEX(binder_deferred_lock);
 
@@ -2849,7 +2851,7 @@ static void print_binder_proc_inner(struct binder_proc *proc)
 		p_thread = rb_entry(pn, struct binder_thread, rb_node);
 		t = p_thread->transaction_stack;                   
 		if (t) {
-                        spin_lock(&t->lock);  
+			spin_lock(&t->lock);  
 			if (t->from != p_thread && t->to_thread == p_thread) { //incoming transaction
 				buffer = t->buffer;
 				if (buffer != NULL) {
@@ -2859,18 +2861,16 @@ static void print_binder_proc_inner(struct binder_proc *proc)
 						t->to_proc ? t->to_proc->pid : 0,
 						t->to_thread ? t->to_thread->pid : 0,
 						buffer->data_size, buffer->offsets_size);
-
 				} else {
 					pr_info("[%d] from %d:%d to %d:%d\n",
 						cnt, t->from ? t->from->proc->pid : 0,
 						t->from ? t->from->pid : 0,
 						t->to_proc ? t->to_proc->pid : 0,
 						t->to_thread ? t->to_thread->pid : 0);
-
 				}      
-                                cnt++;
+				cnt++;
 			}
-                        spin_unlock(&t->lock);
+			spin_unlock(&t->lock);
 		}                
 	}
 	binder_inner_proc_unlock(proc);
@@ -3400,11 +3400,14 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		t->buffer = NULL;
 		//[SAnP
-		if (return_error_param == -ENOSPC) {
-			mutex_lock(&binder_procs_lock);
-			print_binder_proc_inner(target_proc);  
-			mutex_unlock(&binder_procs_lock);   
-		}
+		// if (return_error_param == -ENOSPC) {
+		//	mutex_lock(&binder_procs_lock);
+		//	print_binder_proc_inner(target_proc);  
+		// 	mutex_unlock(&binder_procs_lock);   
+		// }
+        mutex_lock(&binder_procs_lock);
+        print_binder_proc_inner(target_proc);  
+        mutex_unlock(&binder_procs_lock);   
 		//SAnP]
 		goto err_binder_alloc_buf_failed;
 	}
@@ -5167,6 +5170,14 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (copy_to_user(ubuf, &info, sizeof(info))) {
 			ret = -EFAULT;
+			goto err;
+		}
+		break;
+	}
+	case BINDER_SET_SYSTEM_SERVER_PID: {
+		if (copy_from_user(&system_server_pid, ubuf,
+					sizeof(system_server_pid))) {
+			ret = -EINVAL;
 			goto err;
 		}
 		break;

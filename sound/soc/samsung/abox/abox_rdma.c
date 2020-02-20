@@ -428,10 +428,13 @@ static int abox_rdma_compr_isr_handler(void *priv)
 		break;
 	case INTR_EOS:
 		if (data->eos) {
-			if (data->copied_total != data->received_total)
+			if (data->copied_total != data->received_total) {
 				dev_err(dev, "%s: EOS is not sync!(%llu/%llu)\n",
 						__func__, data->copied_total,
 						data->received_total);
+				data->copied_total = data->received_total;
+				snd_compr_fragment_elapsed(data->cstream);
+			}
 
 			/* ALSA Framework callback to notify drain complete */
 			snd_compr_drain_notify(data->cstream);

@@ -235,6 +235,9 @@ void max77705_notify_dr_status(struct max77705_usbc_platform_data *usbpd_data, u
 			}
 			if (usbpd_data->is_host == HOST_OFF) {
 				usbpd_data->is_host = HOST_ON;
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+				max77705_clk_booster_set(usbpd_data, 1);
+#endif
 				/* muic */
 				max77705_ccic_event_work(usbpd_data,
 					CCIC_NOTIFY_DEV_MUIC,
@@ -262,6 +265,9 @@ void max77705_notify_dr_status(struct max77705_usbc_platform_data *usbpd_data, u
 				schedule_delayed_work(&usbpd_data->acc_detach_work,
 					msecs_to_jiffies(0));
 		}
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+		max77705_clk_booster_set(usbpd_data, 0);
+#endif
 		usbpd_data->mdm_block = 0;
 		usbpd_data->is_host = HOST_OFF;
 		usbpd_data->is_client = CLIENT_OFF;

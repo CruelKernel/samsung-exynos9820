@@ -4291,7 +4291,11 @@ int hub_port_debounce(struct usb_hub *hub, int port1, bool must_be_connected)
 
 		if (total_time >= HUB_DEBOUNCE_TIMEOUT)
 			break;
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+		usleep_range(23000, 24000);
+#else
 		msleep(HUB_DEBOUNCE_STEP);
+#endif
 	}
 
 	dev_dbg(&port_dev->dev, "debounce total %dms stable %dms status 0x%x\n",
@@ -4635,7 +4639,12 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 			 *  - let SET_ADDRESS settle, some device hardware wants it
 			 *  - read ep0 maxpacket even for high and low speed,
 			 */
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+			usleep_range(10000, 11000);
+#else
 			msleep(10);
+#endif
+
 			/* use_new_scheme() checks the speed which may have
 			 * changed since the initial look so we cache the result
 			 * in did_new_scheme

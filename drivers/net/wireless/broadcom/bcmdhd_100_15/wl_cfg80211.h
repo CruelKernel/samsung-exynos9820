@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 848264 2019-10-31 09:09:19Z $
+ * $Id: wl_cfg80211.h 850437 2019-11-13 13:01:26Z $
  */
 
 /**
@@ -1052,10 +1052,10 @@ typedef struct wl_nancfg
 	wait_queue_head_t nan_event_wait;
 	bool notify_user;
 	bool mac_rand;
-	int range_type;
 	uint8 max_ndp_count;       /* Max no. of NDPs */
 	nan_ndp_peer_t *nan_ndp_peer_info;
 	nan_data_path_id ndp_id[NAN_MAX_NDP_PEER];
+	bool ranging_enable;
 } wl_nancfg_t;
 
 #endif /* WL_NAN */

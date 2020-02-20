@@ -3238,6 +3238,99 @@ void factory_execute_monitor(int type)
 }
 #endif
 
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+static struct kpp kpp_ta;
+static struct kpp kpp_fg;
+
+static void remove_qos(void *req)
+{
+	struct pm_qos_request *rq;
+
+	rq = req;
+	if (pm_qos_request_active(rq))
+		pm_qos_remove_request(rq);
+	else
+		msg_maxim("[PDIC Booster] is not activation");
+
+}
+
+static void set_qos(void *req, int pm_qos_class, int val)
+{
+	struct pm_qos_request *rq;
+
+	rq = req;
+	if (val) {
+		if (pm_qos_request_active(rq)) {
+			msg_maxim("[PDIC Booster] update_req val:%d", val);
+			pm_qos_update_request(rq, val);
+		} else {
+			msg_maxim("[PDIC Booster] add_req class:%d val:%d",
+					pm_qos_class, val);
+			pm_qos_add_request(rq, pm_qos_class, val);
+		}
+	} else {
+		msg_maxim("[PDIC Booster] remove_qos\n");
+		remove_qos(rq);
+	}
+}
+
+void max77705_clk_booster_set(void *data, int on)
+{
+	struct max77705_usbc_platform_data *usbpd_data = data;
+
+	if (system_state < SYSTEM_RUNNING) {
+		msg_maxim("[PDIC Booster] %d is not ready", on);
+		return;
+	}
+	msg_maxim("[PDIC Booster] %d", on);
+	cancel_delayed_work_sync(&usbpd_data->acc_booster_off_work);
+
+	if (on) {
+		set_qos(&usbpd_data->cpu1_qos, PM_QOS_CLUSTER1_FREQ_MIN,
+				PM_QOS_CLUSTER1_FREQ_MAX_DEFAULT_VALUE);
+		set_qos(&usbpd_data->cpu2_qos, PM_QOS_CLUSTER2_FREQ_MIN,
+				PM_QOS_CLUSTER2_FREQ_MAX_DEFAULT_VALUE);
+		set_qos(&usbpd_data->kfc_qos, PM_QOS_CLUSTER0_FREQ_MIN,
+				PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE);
+		set_qos(&usbpd_data->mif_qos, PM_QOS_BUS_THROUGHPUT,
+				PM_QOS_BUS_THROUGHPUT_MAX_DEFAULT_VALUE);
+		usbpd_data->set_booster = true;
+
+		kpp_request(STUNE_TOPAPP, &kpp_ta, 2);
+		kpp_request(STUNE_FOREGROUND, &kpp_fg, 2);
+
+		schedule_delayed_work(&usbpd_data->acc_booster_off_work,
+			msecs_to_jiffies(CLK_BOOSTER_OFF_WAIT_MS));
+	} else {
+		if (usbpd_data->set_booster) {
+			schedule_delayed_work(&usbpd_data->acc_booster_off_work,
+					msecs_to_jiffies(0));
+		} else
+			msg_maxim("[PDIC Booster]have already turned off");
+	}
+}
+
+void max77705_clk_booster_off(struct work_struct *wk)
+{
+	struct delayed_work *delay_work =
+		container_of(wk, struct delayed_work, work);
+	struct max77705_usbc_platform_data *usbpd_data =
+		container_of(delay_work, struct max77705_usbc_platform_data,
+				acc_booster_off_work);
+
+	msg_maxim("[PDIC Booster]+");
+	usbpd_data->set_booster = false;
+	remove_qos(&usbpd_data->kfc_qos);
+	remove_qos(&usbpd_data->cpu1_qos);
+	remove_qos(&usbpd_data->cpu2_qos);
+	remove_qos(&usbpd_data->mif_qos);
+	kpp_request(STUNE_TOPAPP, &kpp_ta, 0);
+	kpp_request(STUNE_FOREGROUND, &kpp_fg, 0);
+	msg_maxim("[PDIC Booster]-");
+
+}
+#endif
+
 static int max77705_usbc_probe(struct platform_device *pdev)
 {
 	struct max77705_dev *max77705 = dev_get_drvdata(pdev->dev.parent);
@@ -3369,6 +3462,9 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	usbc_data->set_altmode_error = 0;
 	usbc_data->need_recover = false;
 	usbc_data->op_ctrl1_w = (BIT_CCSrcSnk | BIT_CCSnkSrc | BIT_CCDetEn);
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+	usbc_data->set_booster = false;
+#endif
 #if defined(CONFIG_USB_HOST_NOTIFY)
 	send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
 #endif
@@ -3414,6 +3510,9 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	/* turn on the VBUS automatically. */
 	// max77705_usbc_enable_auto_vbus(usbc_data);
 	INIT_DELAYED_WORK(&usbc_data->acc_detach_work, max77705_acc_detach_check);
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+	INIT_DELAYED_WORK(&usbc_data->acc_booster_off_work, max77705_clk_booster_off);
+#endif
 	ccic_register_switch_device(1);
 	INIT_DELAYED_WORK(&usbc_data->usb_external_notifier_register_work,
 				  delayed_external_notifier_init);

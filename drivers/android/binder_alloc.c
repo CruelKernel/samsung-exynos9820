@@ -36,7 +36,7 @@
 
 struct list_lru binder_alloc_lru;
 
-int system_server_pid;
+extern int system_server_pid;
 
 static DEFINE_MUTEX(binder_alloc_mmap_lock);
 
@@ -769,10 +769,6 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 	buffer->free = 1;
 	binder_insert_free_buffer(alloc, buffer);
 	alloc->free_async_space = alloc->buffer_size / 2;
-	if (alloc->free_async_space == 1044480) {
-		// This is system_server
-		system_server_pid = alloc->pid;
-	}
 	binder_alloc_set_vma(alloc, vma);
 	mmgrab(alloc->vma_vm_mm);
 

@@ -48,7 +48,9 @@ int update_encryption_context_with_dd_policy(
 	} else if (ret == sizeof(ctx)) {
 		ctx.knox_flags |= policy->flags << FSCRYPT_KNOX_FLG_DDAR_SHIFT & FSCRYPT_KNOX_FLG_DDAR_MASK;
 		dd_verbose("fscrypt_context.knox_flag:0x%08x\n", ctx.knox_flags);
-		ret = inode->i_sb->s_cop->set_context(inode, &ctx, sizeof(ctx), NULL);
+//		ret = inode->i_sb->s_cop->set_context(inode, &ctx, sizeof(ctx), NULL);
+		ret = inode->i_sb->s_cop->set_knox_context(inode, NULL, &ctx, sizeof(ctx), NULL);
+		dd_info("result of set knox context for ino(%ld) : %d\n", inode->i_ino, ret);
 	} else {
 		dd_error("failed to set dd policy. get_context rc:%d\n", ret);
 		ret = -EEXIST;

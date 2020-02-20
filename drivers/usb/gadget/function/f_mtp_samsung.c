@@ -776,7 +776,6 @@ requeue_req:
 			r = ret;
 			printk(KERN_DEBUG "[%s]\t%d after ret=%d brk ret=%d\n",
 						 __func__, __LINE__, ret, r);
-			dev->cancel_io = 1;
 			break;
 		}
 	}

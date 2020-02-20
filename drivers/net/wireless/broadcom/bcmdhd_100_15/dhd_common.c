@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 848301 2019-10-31 10:55:43Z $
+ * $Id: dhd_common.c 849471 2019-11-07 10:44:09Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -6199,6 +6199,9 @@ static ecounters_cfg_t ecounters_cfg_tbl[] = {
 	{ECOUNTERS_STATS_TYPES_FLAG_IFACE, 0x0, WL_IFSTATS_XTLV_GENERIC},
 	{ECOUNTERS_STATS_TYPES_FLAG_IFACE, 0x0, WL_IFSTATS_XTLV_INFRA_SPECIFIC},
 	{ECOUNTERS_STATS_TYPES_FLAG_IFACE, 0x0, WL_IFSTATS_XTLV_MGT_CNT},
+#ifdef WL_DISABLE_EVENT_ECNT
+	{ECOUNTERS_STATS_TYPES_FLAG_IFACE, 0x0, WL_IFSTATS_XTLV_IF_EVENT_STATS},
+#endif /* WL_DISABLE_EVENT_ECNT */
 
 	/* secondary interface */
 };
@@ -6341,16 +6344,22 @@ dhd_ecounter_configure(dhd_pub_t *dhd, bool enable)
 		if (dhd_ecounter_autoconfig(dhd) != BCME_OK) {
 			if ((rc = dhd_start_ecounters(dhd)) != BCME_OK) {
 				DHD_ERROR(("%s Ecounters start failed\n", __FUNCTION__));
-			} else if ((rc = dhd_start_event_ecounters(dhd)) != BCME_OK) {
+			}
+#ifndef WL_DISABLE_EVENT_ECNT
+			else if ((rc = dhd_start_event_ecounters(dhd)) != BCME_OK) {
 				DHD_ERROR(("%s Event_Ecounters start failed\n", __FUNCTION__));
 			}
+#endif /* !WL_DISABLE_EVENT_ECNT */
 		}
 	} else {
 		if ((rc = dhd_stop_ecounters(dhd)) != BCME_OK) {
 			DHD_ERROR(("%s Ecounters stop failed\n", __FUNCTION__));
-		} else if ((rc = dhd_stop_event_ecounters(dhd)) != BCME_OK) {
+		}
+#ifndef WL_DISABLE_EVENT_ECNT
+		else if ((rc = dhd_stop_event_ecounters(dhd)) != BCME_OK) {
 			DHD_ERROR(("%s Event_Ecounters stop failed\n", __FUNCTION__));
 		}
+#endif /* !WL_DISABLE_EVENT_ECNT */
 	}
 	return rc;
 }

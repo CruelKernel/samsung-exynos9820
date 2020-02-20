@@ -24,6 +24,10 @@
 #if defined(CONFIG_TYPEC)
 #include <linux/usb/typec.h>
 #endif
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+#include <linux/ems_service.h>
+#include <linux/pm_qos.h>
+#endif
 
 struct max77705_opcode {
 	unsigned char opcode;
@@ -140,7 +144,7 @@ struct max77705_usbc_platform_data {
 	usbc_cmd_data last_opcode;
 	unsigned long opcode_stamp;
 	struct mutex op_lock;
-
+	
 	/* F/W opcode command data */
 	usbc_cmd_queue_t usbc_cmd_queue;
 
@@ -245,6 +249,15 @@ struct max77705_usbc_platform_data {
 	
 	bool recover_opcode_list[OPCODE_NONE];
 	int need_recover;
+
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+	bool set_booster;
+	struct pm_qos_request kfc_qos;
+	struct pm_qos_request cpu1_qos;
+	struct pm_qos_request cpu2_qos;
+	struct pm_qos_request mif_qos;
+	struct delayed_work acc_booster_off_work;
+#endif
 };
 
 /* Function Status from s2mm005 definition */
@@ -267,6 +280,9 @@ typedef enum {
 #define ROLE_ACCEPT			0x1
 #define ROLE_REJECT			0x2
 #define ROLE_BUSY			0x3
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+#define CLK_BOOSTER_OFF_WAIT_MS (5000)
+#endif
 
 int max77705_pd_init(struct max77705_usbc_platform_data *usbc_data);
 int max77705_cc_init(struct max77705_usbc_platform_data *usbc_data);
@@ -311,6 +327,10 @@ extern void max77705_set_host_turn_on_event(int mode);
 extern void pdic_manual_ccopen_request(int is_on);
 #if defined(CONFIG_TYPEC)
 int max77705_get_pd_support(struct max77705_usbc_platform_data *usbc_data);
+#endif
+#if defined(CONFIG_USB_AUDIO_ENHANCED_DETECT_TIME)
+void max77705_clk_booster_set(void *data, int on);
+void max77705_clk_booster_off(struct work_struct *wk);
 #endif
 
 extern const uint8_t BOOT_FLASH_FW_PASS2[];

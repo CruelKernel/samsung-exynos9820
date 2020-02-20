@@ -246,6 +246,9 @@ static void store_log(struct dentry *dentry, struct inode *inode,
 	}
 
 	full_path = dentry_path_raw(dentry, buf, PATH_MAX);
+	if (IS_ERR(full_path))
+		goto out;
+
 	make_prefix(part_id, &prefix);
 	if (isize >> 10) {
 		isize >>= 10;
