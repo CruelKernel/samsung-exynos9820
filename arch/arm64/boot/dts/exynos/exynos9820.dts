@@ -4475,7 +4475,7 @@
 		interrupt-map-mask = <0 0 0 0>;
 		interrupt-map = <0 0 0 0 &gic 0 INTREQ__PCIE_GEN3A 0x4>;
 		ip-ver = <0x982000>;
-		num-lanes = <1>;
+		num-lanes = <2>;
 		ch-num = <1>;
 		pcie-clk-num = <0>;
 		phy-clk-num = <0>;

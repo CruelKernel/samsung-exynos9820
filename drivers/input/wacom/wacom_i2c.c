@@ -2270,8 +2270,10 @@ end_fw_update:
 	wacom_i2c_unload_fw(wac_i2c);
 #ifndef CONFIG_SEC_FACTORY
 	ret = wacom_open_test(wac_i2c);
-	if (ret)
-		input_err(true, &client->dev, "open test check failed\n");
+	if (ret) {
+		input_err(true, &client->dev, "open test check failed %d\n", ret);
+		wacom_reset_hw(wac_i2c);
+	}
 #endif
 
 	wake_unlock(&wac_i2c->fw_wakelock);

@@ -1114,6 +1114,23 @@ static void mfc_set_vrect_adjust(struct mfc_charger_data *charger, int set)
 	}
 }
 
+static bool is_sleep_mode_active(int pad_id)
+{
+	if ((pad_id >= 0x17 && pad_id <= 0x1f) ||
+		(pad_id >= 0x25 && pad_id <= 0x2f) ||
+		(pad_id >= 0x34 && pad_id <= 0x3f) ||
+		(pad_id >= 0x46 && pad_id <= 0x4f) ||
+		(pad_id >= 0x90 && pad_id <= 0x9f) ||
+		(pad_id >= 0xa1 && pad_id <= 0xbf) ||
+		(pad_id >= 0xc0 && pad_id <= 0xef)) {
+		pr_info("%s: this pad applies auto mode\n", __func__);
+		return 1;
+	} else {
+	pr_info("%s: this pad applies no auto mode\n", __func__);
+		return 0;
+	}
+}
+
 static void mfc_mis_align(struct mfc_charger_data *charger)
 {
 	pr_info("%s: Reset M0\n", __func__);
@@ -2763,29 +2780,29 @@ static int mfc_chg_set_property(struct power_supply *psy,
 			//default enabled state. no need to config.
 			//mfc_reg_update(charger->client, MFC_RX_COMM_MOD_FET_REG, 0x00, 0x00);
 		} else if (val->intval == WIRELESS_SLEEP_MODE_ENABLE) {
-                  if (is_sleep_mode_active(charger->tx_id)) {
-                    pr_info("%s: sleep_mode enable\n", __func__);
+			if (is_sleep_mode_active(charger->tx_id)) {
+				pr_info("%s: sleep_mode enable\n", __func__);
 
-                    pr_info("%s: led dimming\n", __func__);
-                    mfc_led_control(charger, MFC_LED_CONTROL_DIMMING);
+				pr_info("%s: led dimming\n", __func__);
+				mfc_led_control(charger, MFC_LED_CONTROL_DIMMING);
 
-                    pr_info("%s: fan off\n", __func__);
-                    mfc_fan_control(charger, 0);
-                  } else {
-                    pr_info("%s: sleep_mode inactive\n", __func__);
-                  }
+				pr_info("%s: fan off\n", __func__);
+				mfc_fan_control(charger, 0);
+			} else {
+				pr_info("%s: sleep_mode inactive\n", __func__);
+			}
 		} else if (val->intval == WIRELESS_SLEEP_MODE_DISABLE) {
-                  if (is_sleep_mode_active(charger->tx_id)) {
-                    pr_info("%s: sleep_mode disable\n", __func__);
+			if (is_sleep_mode_active(charger->tx_id)) {
+				pr_info("%s: sleep_mode disable\n", __func__);
 
-                    pr_info("%s: led on\n", __func__);
-                    mfc_led_control(charger, MFC_LED_CONTROL_ON);
+				pr_info("%s: led on\n", __func__);
+				mfc_led_control(charger, MFC_LED_CONTROL_ON);
 
-                    pr_info("%s: fan on\n", __func__);
-                    mfc_fan_control(charger, 1);
-                  } else {
-                    pr_info("%s: sleep_mode inactive\n", __func__);
-                  }
+				pr_info("%s: fan on\n", __func__);
+				mfc_fan_control(charger, 1);
+			} else {
+				pr_info("%s: sleep_mode inactive\n", __func__);
+			}
 		} else {
 			pr_info("%s: Unknown Command(%d)\n", __func__, val->intval);
 		}
@@ -3234,7 +3251,7 @@ static void mfc_wpc_det_work(struct work_struct *work)
 		} else {
 			wake_lock(&charger->wpc_tx_id_lock);
 			queue_delayed_work(charger->wqueue, &charger->wpc_tx_id_work, msecs_to_jiffies(500));
-                }
+		}
 #endif
 		/* set rpp scaling factor for LED cover */
 		mfc_rpp_set(charger);

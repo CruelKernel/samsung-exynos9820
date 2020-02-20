@@ -3462,7 +3462,7 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	if (!test_and_set_bit(port1, hub->child_usage_bits)) {
 		status = pm_runtime_get_sync(&port_dev->dev);
 		if (status < 0) {
-			dev_dbg(&udev->dev, "can't resume usb port, status %d\n",
+			dev_err(&udev->dev, "can't resume usb port, status %d\n",
 					status);
 			return status;
 		}
@@ -3485,7 +3485,7 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 		status = usb_clear_port_feature(hub->hdev,
 				port1, USB_PORT_FEAT_SUSPEND);
 	if (status) {
-		dev_dbg(&port_dev->dev, "can't resume, status %d\n", status);
+		dev_err(&port_dev->dev, "can't resume, status %d\n", status);
 	} else {
 		/* drive resume for USB_RESUME_TIMEOUT msec */
 		dev_dbg(&udev->dev, "usb %sresume\n",
@@ -3525,7 +3525,7 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 	if (status == 0)
 		status = finish_port_resume(udev);
 	if (status < 0) {
-		dev_dbg(&udev->dev, "can't resume, status %d\n", status);
+		dev_err(&udev->dev, "can't resume, status %d\n", status);
 		hub_port_logical_disconnect(hub, port1);
 	} else  {
 		/* Try to enable USB2 hardware LPM */

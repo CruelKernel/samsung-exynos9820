@@ -1124,7 +1124,7 @@ static int exynos_pcie_establish_link(struct pcie_port *pp)
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct exynos_pcie *exynos_pcie = to_exynos_pcie(pci);
 	struct device *dev = pci->dev;
-	u32 val, busdev, lane_num;
+	u32 val, busdev;
 	int count = 0, try_cnt = 0;
 retry:
 	/* avoid checking rx elecidle when access DBI */
@@ -1284,10 +1284,6 @@ retry:
 		exynos_pcie_prog_viewport_cfg0(pp, busdev);
 		exynos_pcie_prog_viewport_mem_outbound(pp);
 
-		exynos_pcie_rd_own_conf(pp, 0x80, 4, &lane_num);
-		lane_num &= 0x3f00000;
-		lane_num = lane_num >> 20;
-		dev_info(dev, "Current lane_num(0x80) : %d\n", lane_num);
 	}
 	return 0;
 }

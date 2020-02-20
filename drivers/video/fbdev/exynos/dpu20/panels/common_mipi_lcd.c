@@ -724,6 +724,12 @@ static int common_set_df_default(struct dsim_device *dsim)
 	status->target_df = df_info->dft_index;
 	status->current_df = df_info->dft_index;
 
+	if (dsim->df_mode == DSIM_MODE_POWER_OFF) {
+		status->target_df = MAX_DYNAMIC_FREQ;
+		status->current_df = MAX_DYNAMIC_FREQ;
+		status->ffc_df = MAX_DYNAMIC_FREQ;
+	}
+
 	return ret;
 }
 #endif

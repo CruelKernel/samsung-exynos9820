@@ -642,12 +642,31 @@ static u8 davinci2_a3_s0_gram_inv_img_pattern_table[][1] = {
 #endif
 
 #ifdef CONFIG_DYNAMIC_FREQ
-static u8 davinci2_a3_s0_dyn_ffc_table[][5] = {
-	{0x09, 0x10, 0x96, 0x19, 0xDA},//897 Mbps
-	{0x09, 0x10, 0x96, 0x19, 0xAB}, //903.5Mbps
-	{0x09, 0x10, 0x96, 0x19, 0x7C}, //910 Mbps
-	{0x09, 0x10, 0x96, 0x18, 0xF3}, //925 Mbps
-
+static u8 davinci2_a3_s0_dyn_ffc_table[][19] = {
+	{
+		/* 897 */
+		0x0D, 0x10, 0x64, 0x22, 0x78, 0x09, 0x00, 0x1A,
+		0xFC, 0x24, 0xD2, 0x7A, 0x00, 0x10, 0x00, 0x33,
+		0x00, 0xFF, 0x3C
+	},
+	{
+		/* 903.5 */
+		0x0D, 0x10, 0x64, 0x22, 0x39, 0x09, 0x00, 0x1A,
+		0xFC, 0x24, 0xD2, 0x7A, 0x00, 0x10, 0x00, 0x33,
+		0x00, 0xFF, 0x3C
+	},
+	{
+		/* 910 */
+		0x0D, 0x10, 0x64, 0x21, 0xFA, 0x09, 0x00, 0x1A,
+		0xFC, 0x24, 0xD2, 0x7A, 0x00, 0x10, 0x00, 0x33,
+		0x00, 0xFF, 0x3C
+	},
+	{
+		/* 929.5Mbps */
+		0x0D, 0x10, 0x64, 0x21, 0x44, 0x09, 0x00, 0x1A,
+		0xFC, 0x24, 0xD2, 0x7A, 0x00, 0x10, 0x00, 0x33,
+		0x00, 0xFF, 0x3C
+	},
 };
 #endif
 static struct maptbl davinci2_a3_s0_maptbl[MAX_MAPTBL] = {
@@ -824,7 +843,9 @@ static u8 DAVINCI2_A3_S0_TE_OFF[] = { 0x34 };
 static u8 DAVINCI2_A3_S0_ERR_FG[] = { 0xED, 0x04, 0x4C };
 static u8 DAVINCI2_A3_S0_FFC[] = {
 	0xC5,
-	0x0D, 0x10, 0xB4, 0x3E, 0x01,
+	0x0D, 0x10, 0x64, 0x21, 0xFA, 0x09, 0x00, 0x1A,
+	0xFC, 0x24, 0xD2, 0x7A, 0x00, 0x10, 0x00, 0x33,
+	0x00, 0xFF, 0x3C
 };
 
 static u8 DAVINCI2_A3_S0_TSP_HSYNC[] = {
@@ -1085,6 +1106,10 @@ static DEFINE_STATIC_PACKET(davinci2_a3_s0_err_fg, DSI_PKT_TYPE_WR, DAVINCI2_A3_
 #ifdef CONFIG_DYNAMIC_FREQ
 static DEFINE_PKTUI(davinci2_a3_s0_ffc, &davinci2_a3_s0_maptbl[DYN_FFC_MAPTBL], 1);
 static DEFINE_VARIABLE_PACKET(davinci2_a3_s0_ffc, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_FFC, 0);
+static u8 DAVINCI2_A3_S0_FFC_OFF[] = {
+	0xC5, 0x08, 0x10
+};
+static DEFINE_STATIC_PACKET(davinci2_a3_s0_ffc_off, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_FFC_OFF, 0);
 #else
 static DEFINE_STATIC_PACKET(davinci2_a3_s0_ffc, DSI_PKT_TYPE_WR, DAVINCI2_A3_S0_FFC, 0);
 #endif
@@ -1411,9 +1436,11 @@ static void *davinci2_a3_s0_init_cmdtbl[] = {
 	&KEYINFO(davinci2_a3_s0_level1_key_disable),
 	&KEYINFO(davinci2_a3_s0_level2_key_enable),
 	&PKTINFO(davinci2_a3_s0_err_fg),
+#ifdef CONFIG_DYNAMIC_FREQ
 	&KEYINFO(davinci2_a3_s0_level3_key_enable),
-	&PKTINFO(davinci2_a3_s0_ffc),
+	&PKTINFO(davinci2_a3_s0_ffc_off),
 	&KEYINFO(davinci2_a3_s0_level3_key_disable),
+#endif
 	&PKTINFO(davinci2_a3_s0_tsp_hsync),
 	&PKTINFO(davinci2_a3_s0_isc),
 	&PKTINFO(davinci2_a3_s0_stm_enable),
@@ -2079,17 +2106,16 @@ static void *davinci2_a3_s0_dummy_cmdtbl[] = {
 };
 
 #ifdef CONFIG_DYNAMIC_FREQ
-
-static DEFINE_STATIC_PACKET(d2_no_wake_level3_key_enable, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_KEY3_ENABLE, 0);
-static DEFINE_PANEL_KEY(d2_no_wake_level3_key_enable, CMD_LEVEL_3, KEY_ENABLE, &PKTINFO(d2_no_wake_level3_key_enable));
-
-static DEFINE_STATIC_PACKET(d2_no_wake_level3_key_disable, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_KEY3_DISABLE, 0);
-static DEFINE_PANEL_KEY(d2_no_wake_level3_key_disable, CMD_LEVEL_3, KEY_DISABLE, &PKTINFO(d2_no_wake_level3_key_disable));
+static DEFINE_STATIC_PACKET(davinci2_a3_s0_level3_key_enable_no_wake, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_KEY3_ENABLE, 0);
+static DEFINE_PANEL_KEY(davinci2_a3_s0_level3_key_enable_no_wake, CMD_LEVEL_3, KEY_ENABLE, &PKTINFO(davinci2_a3_s0_level3_key_enable_no_wake));
+static DEFINE_STATIC_PACKET(davinci2_a3_s0_level3_key_disable_no_wake, DSI_PKT_TYPE_WR_NO_WAKE, DAVINCI2_A3_S0_KEY3_DISABLE, 0);
+static DEFINE_PANEL_KEY(davinci2_a3_s0_level3_key_disable_no_wake, CMD_LEVEL_3, KEY_DISABLE, &PKTINFO(davinci2_a3_s0_level3_key_disable_no_wake));
 
 static void *davinci2_a3_s0_dynamic_ffc_cmdtbl[] = {
-	&KEYINFO(d2_no_wake_level3_key_enable),
+	&KEYINFO(davinci2_a3_s0_level3_key_enable_no_wake),
+	&PKTINFO(davinci2_a3_s0_ffc_off),
 	&PKTINFO(davinci2_a3_s0_ffc),
-	&KEYINFO(d2_no_wake_level3_key_disable),
+	&KEYINFO(davinci2_a3_s0_level3_key_disable_no_wake),
 };
 #endif
 static struct seqinfo davinci2_a3_s0_seqtbl[MAX_PANEL_SEQ] = {

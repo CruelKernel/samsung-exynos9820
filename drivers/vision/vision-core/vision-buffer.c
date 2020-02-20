@@ -206,16 +206,15 @@ static int __vb_unmap_dmabuf(struct vb_queue *q, struct vb_buffer *buffer)
 {
 	int ret = 0;
 
-	if (buffer->vaddr)
+	if (!IS_ERR_OR_NULL(buffer->vaddr))
 		dma_buf_vunmap(buffer->dma_buf, buffer->vaddr);
-	if (buffer->daddr)
+	if (buffer->daddr && !IS_ERR_VALUE(buffer->daddr))
 		ion_iovmm_unmap(buffer->attachment, buffer->daddr);
-	if (buffer->sgt)
-		dma_buf_unmap_attachment(
-			buffer->attachment, buffer->sgt, DMA_BIDIRECTIONAL);
-	if (buffer->attachment)
+	if (!IS_ERR_OR_NULL(buffer->sgt))
+		dma_buf_unmap_attachment(buffer->attachment, buffer->sgt, DMA_BIDIRECTIONAL);
+	if (!IS_ERR_OR_NULL(buffer->attachment) && !IS_ERR_OR_NULL(buffer->dma_buf))
 		dma_buf_detach(buffer->dma_buf, buffer->attachment);
-	if (buffer->dma_buf)
+	if (!IS_ERR_OR_NULL(buffer->dma_buf))
 		dma_buf_put(buffer->dma_buf);
 
 	buffer->attachment = NULL;

@@ -335,13 +335,13 @@
 #define TX_ID_DREAM_DOWN			0x14
 #define TX_ID_UNO_TX				0x72
 
-#define TX_ID_NON_AUTH_PAD			0x90
-#define TX_ID_NON_AUTH_PAD_END		0x9F
 #define TX_ID_AUTH_PAD				0xA0
 #define TX_ID_DAVINCI_PAD_V			0xA1
 #define TX_ID_DAVINCI_PAD_H			0xA2
 #define TX_ID_AUTH_PAD_ACLASS_END	0xAF
 #define TX_ID_AUTH_PAD_END			0xBF /* reserved 0xA1 ~ 0xBF for auth pad */
+#define TX_ID_NON_AUTH_PAD			0xF0
+#define TX_ID_NON_AUTH_PAD_END		0xFF
 
 /* value of WPC_TX_COM_CHG_ERR(0x05) */
 #define TX_CHG_ERR_OTP			0x12
@@ -1144,10 +1144,4 @@ struct mfc_charger_data {
 	int i2c_error_count;
 	unsigned long gear_start_time;
 };
-
-#define is_sleep_mode_active(pad_id) ( \
-    pad_id == TX_ID_DAVINCI_PAD_H ||    \
-    pad_id == TX_ID_DAVINCI_PAD_V)
-
-
 #endif /* __WIRELESS_CHARGER_MFC_H */

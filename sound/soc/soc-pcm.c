@@ -2872,10 +2872,10 @@ EXPORT_SYMBOL_GPL(snd_soc_dpcm_be_set_state);
 int snd_soc_dpcm_can_be_free_stop(struct snd_soc_pcm_runtime *fe,
 		struct snd_soc_pcm_runtime *be, int stream)
 {
-	struct snd_soc_dpcm *dpcm;
+	struct snd_soc_dpcm *dpcm, *tmp;
 	int state;
 
-	list_for_each_entry(dpcm, &be->dpcm[stream].fe_clients, list_fe) {
+	list_for_each_entry_safe(dpcm, tmp, &be->dpcm[stream].fe_clients, list_fe) {
 
 		if (dpcm->fe == fe)
 			continue;

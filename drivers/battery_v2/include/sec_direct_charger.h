@@ -69,10 +69,6 @@ struct sec_direct_charger_info {
 	unsigned int charger_mode_direct;
 	unsigned int dc_retry_cnt;
 
-	struct workqueue_struct *direct_wqueue;
-	struct wake_lock ta_alert_wake_lock;
-	struct delayed_work ta_alert_work;
-
 	int cable_type;
 	int input_current;
 	int charging_current;

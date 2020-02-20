@@ -124,6 +124,7 @@ struct sx9360_p {
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 	int mcc;
 	u8 default_threshold;
+	u8 mcc_threshold;
 #endif	
 };
 
@@ -986,7 +987,7 @@ static ssize_t sx9360_mcc_store(struct device *dev,
 		threshold = data->default_threshold; /* DEFAULT KOR THRESHOLD > 1912  */
 		sx9360_i2c_write(data, SX9360_PROXCTRL5_REG, threshold);
 	} else {
-		threshold = 0x5C; /* EUR THRESHOLD > 4540 */
+		threshold = data->mcc_threshold;
 		sx9360_i2c_write(data, SX9360_PROXCTRL5_REG, threshold);
 	}
 
@@ -1388,6 +1389,11 @@ static int sx9360_parse_dt(struct sx9360_p *data, struct device *dev)
 		setup_reg[SX9360_PROXTHRESH_REG_IDX].val = (u8)val;
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 		data->default_threshold = val;
+	}
+	if (!sx9360_read_setupreg(dNode, SX9360_PROXTHRESH_MCC, &val)) {
+		data->mcc_threshold = val;
+	} else {
+		data->mcc_threshold = data->default_threshold;
 #endif
 	}
 

@@ -827,6 +827,7 @@ static int _dsim_enable(struct dsim_device *dsim, enum dsim_state state)
 	ret = dsim_reg_init(dsim->id, &dsim->lcd_info, &dsim->clks, panel_ctrl);
 
 #ifdef CONFIG_DYNAMIC_FREQ
+	dsim->df_mode = DSIM_MODE_POWER_OFF;
 	call_panel_ops(dsim, set_df_default, dsim);
 #endif
 
@@ -1083,6 +1084,7 @@ static int dsim_exit_ulps(struct dsim_device *dsim)
 	dsim_reg_init(dsim->id, &dsim->lcd_info, &dsim->clks, false);
 
 #ifdef CONFIG_DYNAMIC_FREQ
+	dsim->df_mode = DSIM_MODE_HIBERNATION;
 	call_panel_ops(dsim, set_df_default, dsim);
 #endif
 	ret = dsim_reg_exit_ulps_and_start(dsim->id, dsim->lcd_info.ddi_type,

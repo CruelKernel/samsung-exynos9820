@@ -857,6 +857,9 @@ static const struct file_operations conn_gadget_fops = {
 	.write = conn_gadget_write,
 	.poll = conn_gadget_poll,
 	.unlocked_ioctl = conn_gadget_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = conn_gadget_ioctl,
+#endif
 	.open = conn_gadget_open,
 	.release = conn_gadget_release,
 	.flush = conn_gadget_flush,

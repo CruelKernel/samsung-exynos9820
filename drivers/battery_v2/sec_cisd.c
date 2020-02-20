@@ -39,6 +39,7 @@ const char *cisd_data_str_d[] = {
 
 const char *cisd_cable_data_str[] = {"TA", "AFC", "AFC_FAIL", "QC", "QC_FAIL", "PD", "PD_HIGH", "HV_WC_20"};
 const char *cisd_tx_data_str[] = {"ON", "OTHER", "GEAR", "PHONE", "BUDS"};
+const char *cisd_event_data_str[] = {"DC_ERR", "TA_OCP_DET", "TA_OCP_ON"};
 
 bool sec_bat_cisd_check(struct sec_battery_info *battery)
 {

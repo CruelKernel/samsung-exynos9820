@@ -104,6 +104,10 @@ struct brightness_table {
 	u32 sz_ui_lum;
 	u32 sz_hbm_lum;
 	u32 sz_ext_hbm_lum;
+
+	u32 sz_panel_dim_ui_lum;
+	u32 sz_panel_dim_hbm_lum;
+	u32 sz_panel_dim_ext_hbm_lum;
 	u32 vtotal;
 };
 

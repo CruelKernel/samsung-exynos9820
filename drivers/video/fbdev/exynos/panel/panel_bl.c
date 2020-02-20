@@ -610,9 +610,10 @@ int panel_bl_aor_interpolation(struct panel_bl_device *panel_bl,
 
 	return aor_interpolation(brt_tbl->brt, brt_tbl->lum,
 			aor_tbl, brt_tbl->sz_lum,
-			brt_tbl->sz_ui_lum, brt_tbl->vtotal, brightness);
+			(brt_tbl->sz_panel_dim_ui_lum != 0) ?
+			brt_tbl->sz_panel_dim_ui_lum : brt_tbl->sz_ui_lum,
+			brt_tbl->vtotal, brightness);
 }
-
 
 int panel_bl_irc_interpolation(struct panel_bl_device *panel_bl, int id, struct panel_irc_info *irc_info)
 {

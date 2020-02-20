@@ -330,7 +330,7 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 	struct i2c_client *client = wac_i2c->client;
 	u8 cmd = 0;
 	u8 buf[COM_COORD_NUM + 1] = { 0, };
-	int ret = 0, retry = 0;
+	int ret = 0, retry = 0, retval = 0;
 
 	wac_i2c->connection_check = false;
 	wac_i2c->fail_channel = 0;
@@ -349,8 +349,8 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 	ret = wacom_i2c_send(wac_i2c, &cmd, 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
 		input_err(true, &client->dev, "failed to send data(%02x)\n", cmd);
-		ret = -1;
-		goto out;
+		retval = -1;
+		goto err;
 	}
 
 	wac_i2c->samplerate_state = false;
@@ -386,15 +386,15 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 	ret = wacom_i2c_send(wac_i2c, &cmd, 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
 		input_err(true, &client->dev, "failed to send data(%02x)\n", cmd);
-		ret = -1;
+		retval = -1;
 	
 		wacom_enable_irq(wac_i2c, true);
 		wacom_enable_pdct_irq(wac_i2c, true);
 
-		goto out;
+		goto err;
 	}
 
-	msleep(50);
+	msleep(2000);
 
 	retry = 10;
 	cmd = COM_OPEN_CHECK_STATUS;
@@ -421,7 +421,7 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 			input_err(true, &client->dev,
 				  "invalid packet(%02x %02x %02x)\n",
 				  buf[0], buf[1], buf[3]);
-			usleep_range(4500, 5500);
+			msleep(50);
 			continue;
 		}
 		/*
@@ -449,8 +449,8 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 			wac_i2c->connection_check = (buf[2] == 1);
 	} else {
 		wac_i2c->connection_check = false;
-		ret = -1;
-		goto out;
+		retval = -1;
+		goto err;
 	}
 
 	wac_i2c->fail_channel = buf[3];
@@ -463,16 +463,15 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 		   __func__, wac_i2c->connection_check ? "Pass" : "Fail",
 		   buf[3], buf[4], buf[5], buf[6], buf[7], buf[8]);
 
-	if (!wac_i2c->connection_check) {
-		ret = -1;
-		goto out;
-	}
+	if (!wac_i2c->connection_check)
+		retval = -1;
 
+err:
 	cmd = COM_SAMPLERATE_STOP;
 	ret = wacom_i2c_send(wac_i2c, &cmd, 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
 		input_err(true, &client->dev, "failed to send data(%02x)\n", cmd);
-		ret = -2;
+		retval = -2;
 		goto out;
 	}
 
@@ -480,19 +479,18 @@ int wacom_open_test(struct wacom_i2c *wac_i2c)
 	ret = wacom_i2c_send(wac_i2c, &cmd, 1, WACOM_I2C_MODE_NORMAL);
 	if (ret != 1) {
 		input_err(true, &client->dev, "failed to send data(%02x)\n", cmd);
-		ret = -2;
+		retval = -2;
 		goto out;
 	}
 
 	wac_i2c->samplerate_state = true;
 
-	ret = 0;
 out:
 	/* recovery wacom mode */
 	if (wac_i2c->pdata->use_garage)
 		wacom_select_survey_mode(wac_i2c, wac_i2c->screen_on);
 
-	return ret;
+	return retval;
 }
 
 static ssize_t epen_connection_show(struct device *dev,

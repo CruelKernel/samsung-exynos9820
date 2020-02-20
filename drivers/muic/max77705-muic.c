@@ -2151,6 +2151,13 @@ static void max77705_muic_free_irqs(struct max77705_muic_data *muic_data)
 {
 	pr_info("%s\n", __func__);
 
+	disable_irq(muic_data->irq_uiadc);
+	disable_irq(muic_data->irq_chgtyp);
+	disable_irq(muic_data->irq_fakvb);
+	disable_irq(muic_data->irq_dcdtmo);
+	disable_irq(muic_data->irq_vbadc);
+	disable_irq(muic_data->irq_vbusdet);
+
 	/* free MUIC IRQ */
 	FREE_IRQ(muic_data->irq_uiadc, muic_data, "muic-uiadc");
 	FREE_IRQ(muic_data->irq_chgtyp, muic_data, "muic-chgtyp");
