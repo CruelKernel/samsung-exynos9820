@@ -43,6 +43,7 @@
 		battery,fod_data_cv = <150 94 142 84 150 71 150 70 155 57 156 54>;
 		battery,fod_hero_5v_data = <150 2 142 (-6) 150 (-20) 150 (-28) 165 185 156 (-39)>;
 		battery,wc_cover_rpp = <0x44>;
+		battery,oc_fod1 = <1100>;
 		battery,phone_fod_threshold = <0x3b>;
 		battery,wireless20_vout_list = <9 9 9>; /* WIRELESS_VOUT_11V, 11V, 11V */
 		battery,wireless20_vrect_list = <10 11 11>; /* MFC_AFC_CONF_12V_TX, 12.5V, 12.5V */

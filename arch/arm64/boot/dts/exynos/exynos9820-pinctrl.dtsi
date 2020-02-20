@@ -110,16 +110,16 @@
 			samsung,pin-pud = <3>;
 		};
 
-		uart1_rxd_pull: uart1-bus-rxd {
-			samsung,pins = "gpq0-0";
-			samsung,pin-pud = <3>;
-		};
-
 		uart1_bus_rts: uart1-bus-rts {
 			samsung,pins = "gpq0-2";
 			samsung,pin-function = <1>;
 			samsung,pin-pud = <0>;
 			samsung,pin-val = <1>;
+		};
+
+		uart1_rxd_pull: uart1-bus-rxd {
+			samsung,pins = "gpq0-0";
+			samsung,pin-pud = <3>;
 		};
 
 		uart1_bus_tx_input: uart1-bus-tx-input {
