@@ -520,7 +520,7 @@ int decon_tui_protection(bool tui_en)
 	int ret;
 	struct decon_device *decon = decon_drvdata[0];
 
-	if (decon->state == DECON_STATE_OFF || 
+	if (decon->state == DECON_STATE_OFF ||
 		decon->state == DECON_STATE_DOZE_SUSPEND) {
 		decon_err("DECON:ERR:%s:decon state is off. skip tui setting\n",
 			__func__);
@@ -2463,7 +2463,7 @@ video_emul_check_done:
 			err = decon_wait_fence(decon,
 					regs->dma_buf_data[i][0].fence,
 					regs->dpp_config[i].acq_fence);
-			if (err < 0) {
+			if (err <= 0) {
 				decon_save_cur_buf_info(decon, regs);
 				decon_wait_for_vsync(decon, VSYNC_TIMEOUT_MSEC);
 				goto fence_err;

@@ -2980,7 +2980,7 @@ static void mfc_wpc_vout_mode_work(struct work_struct *work)
 	}
 #if !defined(CONFIG_SEC_FACTORY)
 	if ((is_hv_wireless_pad_type(charger->pdata->cable_type)) &&
-            (charger->pdata->vout_status <= MFC_VOUT_5_5V && charger->is_full_status)) {
+            (charger->pdata->vout_status <= MFC_VOUT_5_5V && (charger->is_full_status || sleep_mode))) {
 		mfc_send_command(charger, MFC_AFC_CONF_5V_TX);
 		pr_info("%s: set TX 5V after cs100\n", __func__);
 		charger->is_afc_tx = false;
@@ -4177,6 +4177,7 @@ static void mfc_wpc_isr_work(struct work_struct *work)
 				}
 				break;
 			case TX_ID_UNO_TX:
+			case TX_ID_UNO_TX_B0 ... TX_ID_UNO_TX_MAX:
 				charger->pdata->cable_type = value.intval = SEC_WIRELESS_PAD_TX;
 				pr_info("@Tx_Mode %s: TX by UNO\n", __func__);
 				if (charger->device_event & BATT_EXT_EVENT_CALL) {

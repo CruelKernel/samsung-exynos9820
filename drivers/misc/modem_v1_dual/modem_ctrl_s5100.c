@@ -1105,12 +1105,17 @@ static int s5100_runtime_resume(struct modem_ctl *mc)
 				gpio_get_value(mc->s5100_gpio_ap_wakeup));
 		mif_err("Make CP crash\n");
 		mutex_unlock(&ap_status_lock);
+
+		mld->crash_reason.owner = CRASH_REASON_CP_PCI_LINK_FAIL;
+		sprintf(mld->crash_reason.string, "CP2AP wakeup is not asserted");
 		s5100_force_crash_exit(mc);
 		return 0;
 	}
 
 	if (exynos_pcie_host_v1_poweron(mc->pcie_ch_num) != 0) {
+		mif_err("PCIE Link powerup failed!!!\n");
 		mutex_unlock(&ap_status_lock);
+
 		return 0;
 	}
 	atomic_set(&mc->pcie_pwron, 1);

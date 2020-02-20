@@ -964,6 +964,7 @@ struct ext4_inode_info {
 	__le32	i_data[15];	/* unconverted */
 	__u32	i_dtime;
 	ext4_fsblk_t	i_file_acl;
+	spinlock_t	i_file_acl_debug_lock;
 
 	/*
 	 * i_block_group is the number of the block group which contains
@@ -1584,6 +1585,7 @@ enum {
 	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
 	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
 	EXT4_STATE_LUSTRE_EA_INODE,	/* Lustre-style ea_inode */
+	EXT4_STATE_HAS_EXTENDED_EA_BLOCK,
 };
 
 #define EXT4_INODE_BIT_FNS(name, field, offset)				\

@@ -4889,6 +4889,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 	if (ext4_has_feature_64bit(sb))
 		ei->i_file_acl |=
 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+	if (ei->i_file_acl)
+		ext4_set_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK);
+
 	inode->i_size = ext4_isize(sb, raw_inode);
 	if ((size = i_size_read(inode)) < 0) {
 		print_iloc_info(sb, iloc);
@@ -5177,6 +5180,11 @@ static int ext4_do_update_inode(handle_t *handle,
 	 * initialise them to zero for new inodes. */
 	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+
+	spin_lock(&ei->i_file_acl_debug_lock);
+	BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK) &&
+			ei->i_file_acl == 0);
+	spin_unlock(&ei->i_file_acl_debug_lock);
 
 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
 	i_uid = i_uid_read(inode);

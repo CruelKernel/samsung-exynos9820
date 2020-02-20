@@ -2358,7 +2358,7 @@ wl_cfgnan_set_disc_beacon_interval_handler(struct net_device *ndev, struct bcm_c
 			size_of_iov, &subcmd_len);
 	if (unlikely(ret)) {
 		WL_ERR(("nan_sub_cmd check failed\n"));
-		return ret;
+		goto fail;
 	}
 
 	/* Choose default value discovery beacon interval  if value is zero */
@@ -2375,7 +2375,7 @@ wl_cfgnan_set_disc_beacon_interval_handler(struct net_device *ndev, struct bcm_c
 			&disc_beacon_interval, size_of_iov);
 	if (ret != BCME_OK) {
 		WL_ERR(("Failed to copy disc_beacon_interval\n"));
-		return ret;
+		goto fail;
 	}
 
 	nan_iov_data->nan_iov_len -= subcmd_len;

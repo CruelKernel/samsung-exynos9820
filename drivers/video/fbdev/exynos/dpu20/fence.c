@@ -312,14 +312,21 @@ int decon_create_fence(struct decon_device *decon, struct sync_file **sync_file)
 #define FENCE_WARN_TIMEOUT_MS		(50)
 int decon_wait_fence(struct decon_device *decon, struct dma_fence *fence, int fd)
 {
-	int err = 0;
-	int fence_err = 0;
-	int ret = 0;
+	/* Positive values(ret, fence_err, err) mean normal or success */
+	int err = 1;
+	int fence_err = 1;
+	int ret = 1;
 	struct dpu_fence_info acquire;
 	ktime_t s_time = ktime_get(), e_time;
 
+	dpu_save_fence_info(fd, fence, &acquire);
+	DPU_F_EVT_LOG(DPU_F_EVT_WAIT_ACQUIRE_FENCE, &decon->sd, &acquire);
+	DPU_DEBUG_FENCE("[%s] %s: ctx(%llu), seqno(%d), fd(%d), flags(0x%lx)\n",
+		fence_evt[DPU_F_EVT_WAIT_ACQUIRE_FENCE], acquire.name,
+		acquire.context, acquire.seqno, acquire.fd, acquire.flags);
 	err = dma_fence_wait_timeout(fence, false, msecs_to_jiffies(600));
-	if (err < 0) {
+
+	if (err <= 0) {
 		decon_err("%s: waiting on acquire fence timeout\n", __func__);
 		ret = err;
 	}
@@ -340,25 +347,20 @@ int decon_wait_fence(struct decon_device *decon, struct dma_fence *fence, int fd
 	 */
 	if (decon->dt.psr_mode == DECON_MIPI_COMMAND_MODE) {
 		fence_err = dma_fence_get_status(fence);
-		if (fence_err < 0) {
+		if (fence_err <= 0) {
 			decon_err("%s: get acquire fence error status\n",
 					__func__);
 			ret = fence_err;
 		}
 	}
 
-	dpu_save_fence_info(fd, fence, &acquire);
-	if ((err < 0) || (fence_err < 0) ||
+	if ((err <= 0) || (fence_err <= 0) ||
 			(ktime_after(e_time, ktime_add_ms(s_time, FENCE_WARN_TIMEOUT_MS)))) {
-		decon_err("\t%s: ctx(%llu), seqno(%d), fd(%d), flags(0x%lx), err(%d:%d)\n",
+		decon_err("\t%s: ctx(%llu), seqno(%d), fd(%d), flags(0x%lx), err(%d:%d), remain_frame(%d)\n",
 				acquire.name, acquire.context, acquire.seqno,
-				acquire.fd, acquire.flags, err, fence_err);
+				acquire.fd, acquire.flags, err, fence_err,
+				atomic_read(&decon->up.remaining_frame));
 	}
-
-	DPU_F_EVT_LOG(DPU_F_EVT_WAIT_ACQUIRE_FENCE, &decon->sd, &acquire);
-	DPU_DEBUG_FENCE("[%s] %s: ctx(%llu), seqno(%d), fd(%d), flags(0x%lx)\n",
-			fence_evt[DPU_F_EVT_WAIT_ACQUIRE_FENCE], acquire.name,
-			acquire.context, acquire.seqno, acquire.fd, acquire.flags);
 
 	return ret;
 }

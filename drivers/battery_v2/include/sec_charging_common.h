@@ -1442,17 +1442,12 @@ static inline struct power_supply *get_power_supply_by_name(char *name)
 #define is_slate_mode(battery) ((battery->current_event & SEC_BAT_CURRENT_EVENT_SLATE) \
 		== SEC_BAT_CURRENT_EVENT_SLATE)
 
-#if defined(CONFIG_PDIC_PD30)
 #define is_pd_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC || \
 	cable_type == SEC_BATTERY_CABLE_PDIC_APDO)
 
 #define is_pd_apdo_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC_APDO)
-#else
-#define is_pd_wire_type(cable_type) ( \
-	cable_type == SEC_BATTERY_CABLE_PDIC)
-#endif
 #define is_pd_fpdo_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC)
 #endif /* __SEC_CHARGING_COMMON_H */

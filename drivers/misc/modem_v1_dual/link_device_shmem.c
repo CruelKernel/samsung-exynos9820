@@ -410,15 +410,18 @@ static void shmem_forced_cp_crash(struct mem_link_device *mld,
 	/* Update crash type to msg box */
 	mbox_update_value(MCU_CP, ap_status, mld->crash_reason.owner,
 			mc->sbi_crash_type_mask, mc->sbi_crash_type_pos);
+	mbox_update_value(MCU_CP, ap_status, nr_crash_reason->owner,
+			mc->sbi_nr_crash_type_mask, mc->sbi_nr_crash_type_pos);
 
 	/* Send CRASH_EXIT command to a CP */
 	mcu_ipc_reg_dump(0);
 	send_ipc_irq(mld, cmd2int(CMD_CRASH_EXIT));
 	mcu_ipc_reg_dump(0);
 
-	mif_err("%s->%s: CP_CRASH_REQ by %d, %s <%pf>\n",
+	mif_err("%s->%s: CP_CRASH_REQ by %d-%d, %s <%pf>\n",
 				ld->name, mc->name,
-				crash_reason_owner, crash_reason_string,
+				crash_reason_owner, nr_crash_reason->owner,
+				crash_reason_string,
 				CALLER);
 }
 
@@ -675,7 +678,7 @@ static void cmd_phone_start_handler(struct mem_link_device *mld)
 				mcu_ipc_reg_dump(0);
 			} else {
 				shmem_forced_cp_crash(mld,
-					CRASH_REASON_CP_RSV_0,
+					CRASH_REASON_CP_ABNORMAL_START,
 					"Abnormal CP_START from CP");
 			}
 			return;

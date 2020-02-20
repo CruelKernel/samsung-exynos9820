@@ -521,8 +521,14 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
 		  name_index, name, buffer, (long)buffer_size);
 
-	if (!EXT4_I(inode)->i_file_acl)
+	spin_lock(&EXT4_I(inode)->i_file_acl_debug_lock);
+	if (!EXT4_I(inode)->i_file_acl) {
+		BUG_ON(ext4_test_inode_state(inode,
+					EXT4_STATE_HAS_EXTENDED_EA_BLOCK));
+		spin_unlock(&EXT4_I(inode)->i_file_acl_debug_lock);
 		return -ENODATA;
+	}
+	spin_unlock(&EXT4_I(inode)->i_file_acl_debug_lock);
 	ea_idebug(inode, "reading block %llu",
 		  (unsigned long long)EXT4_I(inode)->i_file_acl);
 	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);
@@ -1853,6 +1859,10 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
 			return error;
 		bs->s.not_found = error;
 	}
+	spin_lock(&EXT4_I(inode)->i_file_acl_debug_lock);
+	BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK) &&
+			EXT4_I(inode)->i_file_acl == 0);
+	spin_unlock(&EXT4_I(inode)->i_file_acl_debug_lock);
 	return 0;
 }
 
@@ -2145,8 +2155,15 @@ getblk_failed:
 	if (old_ea_inode_quota)
 		ext4_xattr_inode_free_quota(inode, NULL, old_ea_inode_quota);
 
+	spin_lock(&EXT4_I(inode)->i_file_acl_debug_lock);
+	if (new_bh) {
+		BUG_ON(new_bh->b_blocknr == 0);
+		ext4_set_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK);
+	} else
+		ext4_clear_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK);
 	/* Update the inode. */
 	EXT4_I(inode)->i_file_acl = new_bh ? new_bh->b_blocknr : 0;
+	spin_unlock(&EXT4_I(inode)->i_file_acl_debug_lock);
 
 	/* Drop the previous xattr block. */
 	if (bs->bh && bs->bh != new_bh) {
@@ -2976,11 +2993,14 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
 
 		ext4_xattr_release_block(handle, inode, bh, ea_inode_array,
 					 extra_credits);
+		spin_lock(&EXT4_I(inode)->i_file_acl_debug_lock);
+		ext4_clear_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK);
 		/*
 		 * Update i_file_acl value in the same transaction that releases
 		 * block.
 		 */
 		EXT4_I(inode)->i_file_acl = 0;
+		spin_unlock(&EXT4_I(inode)->i_file_acl_debug_lock);
 		error = ext4_mark_inode_dirty(handle, inode);
 		if (error) {
 			EXT4_ERROR_INODE(inode, "mark inode dirty (error %d)",
