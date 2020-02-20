@@ -1,0 +1,40 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+/plugin/;
+#include "modem-s5000ap-sipc-pdata.dtsi"
+#include "exynos9820_evt0-universal9820_common.dtsi"
+#include "exynos9820-rmem_s5000ap.dtsi"
+#include "exynos9820_evt0-universal9820-camera.dtsi"
+
+/ {
+	compatible = "samsung,exynos9820", "samsung,UNIVERSAL9820";
+	board_id = <0x0>;
+	board_rev = <0x0>;
+
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			model = "Samsung UNIVERSAL9820 Rev0 board based on EXYNOS9820";
+
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+}; /* end of root */
+
+&speedy {
+	s2mps19mfd@00 {
+		smpl_warn_dev2= <0>;
+	};
+};

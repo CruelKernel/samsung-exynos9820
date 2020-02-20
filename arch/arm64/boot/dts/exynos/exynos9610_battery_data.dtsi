@@ -1,0 +1,157 @@
+/*
+ * SAMSUNG UNIVERSAL5433 board device tree source
+ *
+ * Copyright (c) 2013 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/ {
+	battery {
+		status = "okay";
+		compatible = "samsung,sec-battery";
+
+		pinctrl-names = "default";
+		/* battery,irq_gpio = <&gpa1 6 0>; */
+
+		battery,vendor = "SDI SDI";
+		battery,charger_name = "s2mu004-charger";
+		battery,fuelgauge_name = "s2mu004-fuelgauge";
+		battery,wireless_charger_name = "mfc-charger";
+		battery,technology = <2>; /* POWER_SUPPLY_TECHNOLOGY_LION */
+
+		battery,temp_check_count = <1>;
+		battery,temp_highlimit_threshold_normal = <800>;
+		battery,temp_highlimit_recovery_normal = <750>;
+		battery,temp_high_threshold_normal = <550>;
+		battery,temp_high_recovery_normal = <500>;
+		battery,temp_low_threshold_normal = <(-50)>;
+		battery,temp_low_recovery_normal = <0>;
+
+		battery,full_check_count = <1>;
+		battery,chg_full_vcell = <4310>;
+		battery,chg_recharge_vcell = <4100>;
+		battery,chg_high_temp = <500>;
+		battery,chg_high_temp_recovery = <495>;
+
+		battery,max_input_voltage = <12000>; /* mV */
+		battery,max_input_current = <3000>;  /* mA */
+
+		battery,default_input_current = <1500>;
+		battery,default_charging_current = <1500>;
+		battery,default_full_check_current = <300>;
+
+		battery,input_current_limit = <1200 450 450 1200 500 900 1500 450 1000 450 900 900 900 1900 1200 450 450 400 700 1300 300 1000 1500 450 1650 2100 500 1650 80 1200 1650 1400 1000 1000 700 900 900 900 500 1800 1650 3000 450>;
+		battery,fast_charging_current = <1500 450 450 1500 800 1200 1500 450 1200 450 1500 1500 1500 1600 1500 450 450 400 700 1300 300 1000 1500 450 2400 3500 500 2400 80 1800 1000 1400 450 1000 1500 1500 1500 1500 450 1500 2400 3000 450>;
+		battery,full_check_current = <300 0 0 300 300 300 300 300 300 0 300 300 300 300 300 0 0 300 300 300 300 300 300 0 300 300 300 300 0 300 300 300 0 300 300 300 300 300 300 300 300 300 0>;
+
+		battery,battery_table3 = <204 11 61 11 175 10 34 10 169 9
+			55 9 206 8 107 8 230 7 166 7
+			77 7 234 6 174 6 130 6 95 6
+			67 6 36 6 253 5 197 5 147 5
+			42 5 168 1 247 8 136 8 24 8
+			169 7 58 7 202 6 91 6 236 5
+			124 5 13 5 158 4 47 4 191 3
+			80 3 225 2 113 2 2 2 147 1
+			36 1 180 0 69 0 214 15>;
+
+		battery,battery_table4 = <62 62 61 60 61 60 59 60 60 58
+			58 58 58 58 58 58 59 60 62 64
+			76 154>;
+
+		battery,batcap = <0xA0 0x28 0x28 0x0A>; /* [0x0E] [0x0F] [0x10] [0x11] */
+		battery,accum = <0x8 0x00>; /* [0x45] [0x44] */
+
+		battery,soc_arr_val = <11205 10662 10119 9575 9032 8488 7945 7402 6858 6315 5771 5228 4685 4141 3598 3054 2511 1968 1424 881 337 (-206)>;
+		battery,ocv_arr_val = <44747 44050 43353 42664 42077 41520 41006 40522 39872 39562 39127 38645 38349 38135 37966 37828 37676 37485 37211 36970 36454 32069>;
+	};
+
+
+
+
+/* battery cable number
+ *   0	UNKNOWN,
+ *   1	NONE,
+ *   2	PREPARE_TA,
+ *   3	TA,
+ *   4	USB,
+ *   5	USB_CDP,
+ *   6	9V_TA,
+ *   7	9V_ERR,
+ *   8	9V_UNKNOWN,
+ *   9	12V_TA,
+ *  10	WIRELESS,
+ *  11	HV_WIRELESS,
+ *  12	PMA_WIRELESS,
+ *  13	WIRELESS_PACK,
+ *  14	WIRELESS_PACK_TA,
+ *  15	WIRELESS_STAND,
+ *  16	WIRELESS_HV_STAND,
+ *  17	QC20,
+ *  18	QC30,
+ *  19	PDIC,
+ *  20	UARTOFF,
+ *  21	OTG,
+ *  22	LAN_HUB,
+ *  23	POWER_SHARING,
+ *  24	HMT_CONNECTED,
+ *  25	HMT_CHARGE,
+ *  26	HV_TA_CHG_LIMIT,
+ *  27	CABLE_MAX,
+*/
+	cable-info {
+		default_input_current = <2000>;
+		default_charging_current = <2100>;
+		full_check_current_1st = <350>;
+		full_check_current_2nd = <150>;
+
+		current_group_1 {
+			cable_number = <1 4 19 21 22 23>;
+			input_current = <500>;
+			charging_current = <800>;
+		};
+		current_group_2 {
+			cable_number = <2 25>;
+			input_current = <1000>;
+			charging_current = <1000>;
+		};
+		current_group_3 {
+			cable_number = <5>;
+			input_current = <1500>;
+			charging_current = <1500>;
+		};
+		current_group_4 {
+			cable_number = <6 7 8>;
+			input_current = <1675>;
+			charging_current = <3000>;
+		};
+		current_group_5 {
+			cable_number = <9>;
+			input_current = <2000>;
+			charging_current = <3500>;
+		};
+		current_group_6 {
+			cable_number = <10 11 12 14 15 16>;
+			input_current = <900>;
+			charging_current = <2100>;
+		};
+		current_group_7 {
+			cable_number = <13>;
+			input_current = <700>;
+			charging_current = <2100>;
+		};
+		current_group_8 {
+			cable_number = <24>;
+			input_current = <1000>;
+			charging_current = <450>;
+		};
+		current_group_9 {
+			cable_number = <26>;
+			input_current = <2000>;
+			charging_current = <3000>;
+		};
+	};
+};

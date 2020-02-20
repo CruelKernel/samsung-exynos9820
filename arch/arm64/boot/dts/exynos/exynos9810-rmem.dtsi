@@ -1,0 +1,116 @@
+/*
+ * SAMSUNG EXYNOS device tree source for reserved-memory
+ *
+ * Copyright (c) 2015 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "../../../../../include/generated/autoconf.h"
+#include <dt-bindings/soc/samsung/exynos-ss-table.h>
+
+/ {
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		ranges;
+
+		abox_rmem: abox_rmem@0xEA800000 {
+			compatible = "exynos,abox_rmem";
+			reg = <0x0 0xFB200000 0x2800000>;
+		};
+
+		modem_if {
+			compatible = "exynos,modem_if";
+			reg = <0x0 0xF0000000 0x9200000>;
+		};
+
+		cp_ram_logging {
+			compatible = "exynos,cp_ram_logging";
+			reg = <0x0 0xF9200000 0x2000000>;
+		};
+
+		ion_video_fw {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vfw_heap";
+			ion,secure;
+			ion,reusable;
+			ion,protection_id = <2>;
+			size = <0x400000>;
+			alloc-ranges = <0x0 0x40000000 0xB0000000>;
+			alignment = <0x0 0x00400000>;
+		};
+
+		ion_video_nfw {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vnfw_heap";
+			ion,reusable;
+			ion,protection_id = <7>;
+			size = <0x400000>;
+			alloc-ranges = <0x0 0x40000000 0xB0000000>;
+			alignment = <0x0 0x00400000>;
+		};
+
+		ion_video_stream {
+			compatible = "exynos9820-ion";
+			ion,heapname = "vstream_heap";
+			ion,secure;
+			ion,reusable;
+			ion,protection_id = <3>;
+			size = <0x6C00000>;
+			alloc-ranges = <0x0 0x40000000 0xB0000000>;
+			alignment = <0x0 0x00400000>;
+		};
+
+		ion_crypto{
+			compatible = "exynos9820-ion";
+			ion,heapname = "crypto_heap";
+			size = <0x1100000>;
+		};
+
+		exynos_ss {
+			compatible = "exynos,exynos_ss";
+			reg = <0x0 ESS_START_ADDR ESS_TOTAL_SIZE>;
+			#address-cells = <2>;
+			#size-cells = <1>;
+			/* If this property exist, these are modified by bootloader. */
+			//bootloader;
+
+			header {
+				compatible = "exynos_ss,header";
+				reg = <0 ESS_HEADER_ADDR ESS_HEADER_SIZE>;
+			};
+			log_kernel {
+				compatible = "exynos_ss,log_kernel";
+				reg = <0 ESS_LOG_KERNEL_ADDR ESS_LOG_KERNEL_SIZE>;
+			};
+			log_platform {
+				compatible = "exynos_ss,log_platform";
+				reg = <0 ESS_LOG_PLATFORM_ADDR ESS_LOG_PLATFORM_SIZE>;
+			};
+			log_sfr {
+				compatible = "exynos_ss,log_sfr";
+				reg = <0 ESS_LOG_SFR_ADDR ESS_LOG_SFR_SIZE>;
+			};
+			log_cachedump {
+				compatible = "exynos_ss,log_cachedump";
+				reg = <0 ESS_LOG_CACHEDUMP_ADDR ESS_LOG_CACHEDUMP_SIZE>;
+			};
+			log_etm {
+				compatible = "exynos_ss,log_etm";
+				reg = <0 ESS_LOG_ETM_ADDR ESS_LOG_ETM_SIZE>;
+			};
+			log_pstore {
+				compatible = "exynos_ss,log_pstore";
+				reg = <0 ESS_LOG_PSTORE_ADDR ESS_LOG_PSTORE_SIZE>;
+			};
+			log_kevents {
+				compatible = "exynos_ss,log_kevents";
+				reg = <0 ESS_LOG_KEVENTS_ADDR ESS_LOG_KEVENTS_SIZE>;
+			};
+		};
+	};
+};
