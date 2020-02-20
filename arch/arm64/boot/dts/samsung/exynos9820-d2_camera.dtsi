@@ -576,6 +576,18 @@
 			front_preview_high_speed_fps_int = <DVFS_INT_L4>;
 			front_preview_high_speed_fps_hpg = <1>;
 
+			front_video_high_speed_120fps_int_cam = <DVFS_INT_CAM_L3>;
+			front_video_high_speed_120fps_cam = <DVFS_CAM_L1>;
+			front_video_high_speed_120fps_mif = <DVFS_MIF_L3>;
+			front_video_high_speed_120fps_int = <DVFS_INT_L4>;
+			front_video_high_speed_120fps_hpg = <1>;
+
+			front_video_high_speed_240fps_int_cam = <DVFS_INT_CAM_L3>;
+			front_video_high_speed_240fps_cam = <DVFS_CAM_L1>;
+			front_video_high_speed_240fps_mif = <DVFS_MIF_L3>;
+			front_video_high_speed_240fps_int = <DVFS_INT_L4>;
+			front_video_high_speed_240fps_hpg = <1>;
+
 			rear3_preview_fhd_int_cam = <DVFS_INT_CAM_L5>;
 			rear3_preview_fhd_cam = <DVFS_CAM_L1>;
 			rear3_preview_fhd_mif = <DVFS_MIF_L4>;
@@ -1241,7 +1253,7 @@
 		/* x y z sx sy */
 		/* range max_err avg_err dll_version*/
 		rom_dualcal_slave0_tilt_list = <0xB060 0xB064 0xB068 0xB0C0 0xB0C4
-										0xB7E0 0xB7E4 0xB7E8 0xB000>;
+										0xB7E0 0xB7E4 0xB7E8 0xB000 0xB742>;
 
 		/* Dual cal slave 1 - Tele */
 		rom_dualcal_slave1_start_addr = <0xE910>;
@@ -1249,7 +1261,7 @@
 		/* x y z sx sy */
 		/* range max_err avg_err dll_version*/
 		rom_dualcal_slave1_tilt_list = <0xE970 0xE974 0xE978 0xE9D0 0xE9D4
-										0xF0F0 0xF0F4 0xF0F8 0xE910>;
+										0xF0F0 0xF0F4 0xF0F8 0xE910 0xF052>;
 
 		/* sensor ois - xgg ygg xcoef ycoef xsupper ysupper calmark */
 		/* sensor2 ois - xgg ygg xcoef ycoef xsupper ysupper calmark */

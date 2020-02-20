@@ -34,6 +34,7 @@
 #include "exynos9820-pmucal-dbg.dtsi"
 #include "exynos9820-mfc.dtsi"
 #include "exynos9820-mali_common.dtsi"
+#include "exynos_perf_ncmemcpy.dtsi"
 
 / {
 	compatible = "samsung,armv8", "samsung,exynos9820";
@@ -1218,6 +1219,7 @@
 		#size-cells = <1>;
 		data-base = <0x204bc00>;
 		data-size = <0x400>;
+		reg = <0x0 0x15950000 0x1000>;
 	};
 
 	exynos-ocp {
@@ -5022,6 +5024,20 @@
 		};
 	};
 
+	cpuidle-ucc {
+		ucc-config0 {
+			index = <0>;
+		};
+		ucc-config1 {
+			index = <1>;
+			cstate = "6-7";
+		};
+		ucc-config2 {
+			index = <2>;
+			cstate = "4-5";
+		};
+	};
+
 	cpufreq-ufc {
 		/* Ctrl Type */	
 		#define PM_QOS_MIN_LIMIT		0
@@ -5037,6 +5053,7 @@
 
 			user-default-qos = <806000>;
 			user-boost = <0>;
+			ucc-index = <0>;
 			user-boost-game = <0>;
 		};
 
@@ -5046,6 +5063,7 @@
 
 			user-default-qos = <845000>;
 			user-boost = <3>;
+			ucc-index = <1>;
 			user-boost-game = <1>;
 
 			min-limit {
@@ -5104,6 +5122,7 @@
 
 			user-default-qos = <936000>;
 			user-boost = <2>;
+			ucc-index = <2>;
 			user-boost-game = <2>;
 
 			min-limit {
@@ -5401,7 +5420,7 @@
 
 			use_alt_dvfs;
 			polling_ms = <0>;
-			target_load = "60 676000:84 845000:87 1014000:90 1352000:95 2093000:99";
+			target_load = "60 676000:84 845000:87 1014000:90 1352000:95 1794000:97 2093000:99";
 			min_sample_time = <50>;
 			hold_sample_time = <100>;
 			hispeed_load = <98>;
