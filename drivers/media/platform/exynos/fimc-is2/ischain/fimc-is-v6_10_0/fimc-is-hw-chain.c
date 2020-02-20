@@ -1412,3 +1412,29 @@ exit:
 	return ret;
 }
 #endif
+
+void fimc_is_hw_djag_get_input(struct fimc_is_device_ischain *ischain, u32 *djag_in)
+{
+	struct fimc_is_global_param *g_param;
+
+	if (!ischain) {
+		err_hw("device is NULL");
+		return;
+	}
+
+	g_param = &ischain->resourcemgr->global_param;
+
+	dbg_hw(2, "%s:video_mode %d\n", __func__, g_param->video_mode);
+
+	if (g_param->video_mode)
+		*djag_in = MCSC_DJAG_IN_VIDEO_MODE;
+	else
+		*djag_in = MCSC_DJAG_IN_CAPTURE_MODE;
+}
+
+void fimc_is_hw_djag_adjust_out_size(struct fimc_is_device_ischain *ischain,
+					u32 in_width, u32 in_height,
+					u32 *out_width, u32 *out_height)
+{
+	/* Do nothing. */
+}

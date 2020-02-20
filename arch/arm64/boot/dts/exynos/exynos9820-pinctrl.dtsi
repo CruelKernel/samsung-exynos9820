@@ -1355,7 +1355,7 @@
 		spi5_bus: spi5-bus {
 			samsung,pins = "gpp2-2", "gpp2-1", "gpp2-0";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <3>;
+			samsung,pin-pud = <0>;
 			samsung,pin-drv = <0>;
 		};
 
@@ -1487,7 +1487,7 @@
 		uart2_bus_single: uart2-bus {
 			samsung,pins = "gpp0-0", "gpp0-1", "gpp0-2", "gpp0-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart2_bus_dual: uart2-bus-dual {
@@ -1500,7 +1500,7 @@
 		uart3_bus_single: uart3-bus {
 			samsung,pins = "gpp0-4", "gpp0-5", "gpp0-6", "gpp0-7";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart3_bus_dual: uart3-bus-dual {
@@ -1513,7 +1513,7 @@
 		uart4_bus_single: uart4-bus {
 			samsung,pins = "gpp1-0", "gpp1-1", "gpp1-2", "gpp1-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart4_bus_dual: uart4-bus-dual {
@@ -1526,7 +1526,7 @@
 		uart5_bus_single: uart5-bus {
 			samsung,pins = "gpp1-4", "gpp1-5", "gpp1-6", "gpp1-7";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart5_bus_dual: uart5-bus-dual {
@@ -1539,7 +1539,7 @@
 		uart6_bus_single: uart6-bus {
 			samsung,pins = "gpp2-0", "gpp2-1", "gpp2-2", "gpp2-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart6_bus_dual: uart6-bus-dual {
@@ -1552,7 +1552,7 @@
 		uart7_bus_single: uart7-bus {
 			samsung,pins = "gpp2-4", "gpp2-5", "gpp2-6", "gpp2-7";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart7_bus_dual: uart7-bus-dual {
@@ -1565,7 +1565,7 @@
 		uart14_bus_single: uart14-bus {
 			samsung,pins = "gpg0-4", "gpg0-5", "gpg0-6", "gpg0-7";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart14_bus_dual: uart14-bus-dual {
@@ -1578,7 +1578,7 @@
 		uart15_bus_single: uart15-bus {
 			samsung,pins = "gpg1-0", "gpg1-1", "gpg1-2", "gpg1-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart15_bus_dual: uart15-bus-dual {
@@ -1591,7 +1591,7 @@
 		uart16_bus_single: uart16-bus {
 			samsung,pins = "gpg1-4", "gpg1-5", "gpg1-6", "gpg1-7";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart16_bus_dual: uart16-bus-dual {
@@ -1604,7 +1604,7 @@
 		uart17_bus_single: uart17-bus {
 			samsung,pins = "gpg2-0", "gpg2-1", "gpg2-2", "gpg2-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart17_bus_dual: uart17-bus-dual {
@@ -2141,7 +2141,7 @@
 		uart8_bus_single: uart8-bus {
 			samsung,pins = "gpp4-3", "gpp4-2", "gpp4-1", "gpp4-0";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart8_bus_dual: uart8-bus-dual {
@@ -2154,7 +2154,7 @@
 		uart9_bus_single: uart9-bus {
 			samsung,pins = "gpp4-7", "gpp4-6", "gpp4-5", "gpp4-4";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart9_bus_dual: uart9-bus-dual {
@@ -2167,7 +2167,7 @@
 		uart10_bus_single: uart10-bus {
 			samsung,pins = "gpp5-3", "gpp5-2", "gpp5-1", "gpp5-0";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart10_bus_dual: uart10-bus-dual {
@@ -2180,7 +2180,7 @@
 		uart11_bus_single: uart11-bus {
 			samsung,pins = "gpp5-7", "gpp5-6", "gpp5-5", "gpp5-4";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart11_bus_dual: uart11-bus-dual {
@@ -2193,7 +2193,7 @@
 		uart12_bus_single: uart12-bus {
 			samsung,pins = "gpp6-3", "gpp6-2", "gpp6-1", "gpp6-0";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart12_bus_dual: uart12-bus-dual {
@@ -2206,7 +2206,7 @@
 		uart13_bus_single: uart13-bus {
 			samsung,pins = "gpg3-6", "gpg3-5", "gpg3-4", "gpg3-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart13_bus_dual: uart13-bus-dual {
@@ -2219,7 +2219,7 @@
 		uart18_bus_single: uart18-bus {
 			samsung,pins = "gph0-3", "gph0-2", "gph0-1", "gph0-0";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart18_bus_dual: uart18-bus-dual {
@@ -2232,7 +2232,7 @@
 		uart19_bus_single: uart19-bus {
 			samsung,pins = "gph0-7", "gph0-6", "gph0-5", "gph0-4";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
+			samsung,pin-pud = <3>;
 		};
 
 		uart19_bus_dual: uart19-bus-dual {

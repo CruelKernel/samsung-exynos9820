@@ -33,8 +33,10 @@
 #define F_FIVE_VERIFY_ASYNC	(F_LINUX_SPECIFIC_BASE + 101)
 #define F_FIVE_VERIFY_SYNC	(F_LINUX_SPECIFIC_BASE + 102)
 #if defined(CONFIG_FIVE_PA_FEATURE) || defined(CONFIG_PROCA)
-#define F_FIVE_PA_SETXATTR      (F_LINUX_SPECIFIC_BASE + 103)
+#define F_FIVE_PA_SETXATTR	(F_LINUX_SPECIFIC_BASE + 103)
 #endif
+#define F_FIVE_EDIT		(F_LINUX_SPECIFIC_BASE + 104)
+#define F_FIVE_CLOSE		(F_LINUX_SPECIFIC_BASE + 105)
 #endif
 
 /*
@@ -50,7 +52,6 @@
 #define F_SEAL_SHRINK	0x0002	/* prevent file from shrinking */
 #define F_SEAL_GROW	0x0004	/* prevent file from growing */
 #define F_SEAL_WRITE	0x0008	/* prevent writes */
-#define F_SEAL_FUTURE_WRITE	0x0010	/* prevent writes */
 /* (1U << 31) is reserved for signed error codes */
 
 /*

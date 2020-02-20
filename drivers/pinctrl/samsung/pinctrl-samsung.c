@@ -1735,7 +1735,6 @@ static struct gpio_dvs_t exynos9820_secgpio_dvs = {
 	.result = &gpiomap_result,
 	.check_gpio_status = check_gpio_status,
 	.skip_grps = "gpb gpv", /* AUDIO, VTS */
-	.read_gpio = gpio_get_value,
 };
 
 const struct secgpio_dvs_data exynos9820_secgpio_dvs_data __initconst = {

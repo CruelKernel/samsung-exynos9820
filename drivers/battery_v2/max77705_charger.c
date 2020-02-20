@@ -775,6 +775,31 @@ static void max77705_set_skipmode(struct max77705_charger_data *charger, int ena
 	}
 }
 
+static void max77705_set_b2sovrc(struct max77705_charger_data *charger, u32 ocp_current, u32 ocp_dtc)
+{
+	u8 reg_data = MAX77705_B2SOVRC_4_6A;
+
+	if (ocp_current == 0)
+		reg_data = MAX77705_B2SOVRC_DISABLE;
+	else
+		reg_data += (ocp_current - 4600) / 200;
+
+	max77705_update_reg(charger->i2c, MAX77705_CHG_REG_CNFG_05,
+		(reg_data << CHG_CNFG_05_REG_B2SOVRC_SHIFT),
+		CHG_CNFG_05_REG_B2SOVRC_MASK);
+
+	max77705_update_reg(charger->i2c, MAX77705_CHG_REG_CNFG_06,
+		((ocp_dtc == 100 ? MAX77705_B2SOVRC_DTC_100MS : 0) << CHG_CNFG_06_B2SOVRC_DTC_SHIFT),
+		CHG_CNFG_06_B2SOVRC_DTC_MASK);
+
+	max77705_read_reg(charger->i2c, MAX77705_CHG_REG_CNFG_05, &reg_data);
+	pr_info("%s : CHG_CNFG_05(0x%02x)\n", __func__, reg_data);
+	max77705_read_reg(charger->i2c, MAX77705_CHG_REG_CNFG_06, &reg_data);
+	pr_info("%s : CHG_CNFG_06(0x%02x)\n", __func__, reg_data);
+
+	return;
+}
+
 static int max77705_check_wcin_before_otg_on(struct max77705_charger_data *charger)
 {
     union power_supply_propval value = {0,};
@@ -968,11 +993,14 @@ static void max77705_charger_initialize(struct max77705_charger_data *charger)
 			CHG_CNFG_02_OTG_ILIM_MASK);
 #endif
 
-	/* BAT to SYS OCP 5.6A, UNO ILIM 1.0A */
+	/* UNO ILIM 1.0A */
 	max77705_update_reg(charger->i2c, MAX77705_CHG_REG_CNFG_05,
-			(MAX77705_B2SOVRC_5_6A << CHG_CNFG_05_REG_B2SOVRC_SHIFT) |
-			(MAX77705_UNOILIM_1000 << CHG_CNFG_05_REG_UNOILIM_SHIFT),
-			CHG_CNFG_05_REG_B2SOVRC_MASK |CHG_CNFG_05_REG_UNOILIM_MASK);
+			MAX77705_UNOILIM_1000 << CHG_CNFG_05_REG_UNOILIM_SHIFT,
+			CHG_CNFG_05_REG_UNOILIM_MASK);
+
+	/* BAT to SYS OCP */
+	max77705_set_b2sovrc(charger, charger->pdata->chg_ocp_current, charger->pdata->chg_ocp_dtc);
+
 	/*
 	 * top off current 150mA
 	 * top off timer 30min
@@ -1195,6 +1223,12 @@ static void max77705_set_uno(struct max77705_charger_data *charger, int en)
 			value.intval = BATT_TX_EVENT_WIRELESS_TX_ETC;
 			psy_do_property("wireless", set, POWER_SUPPLY_EXT_PROP_WIRELESS_TX_ERR, value);
 		}
+		return;
+	}
+
+	max77705_read_reg(charger->i2c, MAX77705_CHG_REG_INT_OK, &reg);
+	if (en && (reg & MAX77705_WCIN_OK)) {
+		pr_info("%s: WCIN is already valid by wireless charging, then skip UNO Control\n", __func__);
 		return;
 	}
 
@@ -1439,6 +1473,14 @@ static int max77705_chg_get_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_MONITOR_WORK:
 			max77705_test_read(charger);
 			max77705_chg_monitor_work(charger);
+			break;
+		case POWER_SUPPLY_EXT_PROP_CHARGE_BOOST:
+			max77705_read_reg(charger->i2c, MAX77705_CHG_REG_CNFG_00, &reg_data);
+			reg_data &= CHG_CNFG_00_MODE_MASK;
+			if (reg_data & MAX77705_MODE_BOOST)
+				val->intval = 1;
+			else
+				val->intval = 0;
 			break;
 		default:
 			return -EINVAL;
@@ -1810,6 +1852,11 @@ static int max77705_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_WIRELESS_TX_IOUT:
 			max77705_set_uno_iout(charger, val->intval);
 			break;
+		case POWER_SUPPLY_EXT_PROP_PAD_VOLT_CTRL:
+			wake_unlock(&charger->wc_current_wake_lock);
+			cancel_delayed_work(&charger->wc_current_work);
+			max77705_set_input_current(charger, val->intval);
+			break;
 		case POWER_SUPPLY_EXT_PROP_SHIPMODE_TEST:
 			if (val->intval) {
 				pr_info("%s: ship mode is enabled \n", __func__);
@@ -1864,26 +1911,31 @@ static int max77705_otg_set_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		max77705_set_otg(charger, val->intval);
-		if (val->intval && (charger->irq_aicl_enabled == 1)) {
-			u8 reg;
-			charger->irq_aicl_enabled = 0;
-			disable_irq_nosync(charger->irq_aicl);
-			cancel_delayed_work(&charger->aicl_work);
-			wake_unlock(&charger->aicl_wake_lock);
-			max77705_read_reg(charger->i2c,
-					  MAX77705_CHG_REG_INT_MASK, &reg);
-			pr_info("%s : disable aicl : 0x%x\n", __func__, reg);
-			charger->prev_aicl_mode = false;
-			charger->aicl_on = false;
-			charger->slow_charging = false;
-		} else if (!val->intval && (charger->irq_aicl_enabled == 0)) {
-			u8 reg;
-			charger->irq_aicl_enabled = 1;
-			enable_irq(charger->irq_aicl);
-			max77705_read_reg(charger->i2c,
-					  MAX77705_CHG_REG_INT_MASK, &reg);
-			pr_info("%s : enable aicl : 0x%x\n", __func__, reg);
+		if (!mfc_fw_update) {
+			max77705_set_otg(charger, val->intval);
+			if (val->intval && (charger->irq_aicl_enabled == 1)) {
+				u8 reg;
+				charger->irq_aicl_enabled = 0;
+				disable_irq_nosync(charger->irq_aicl);
+				cancel_delayed_work(&charger->aicl_work);
+				wake_unlock(&charger->aicl_wake_lock);
+				max77705_read_reg(charger->i2c,
+						  MAX77705_CHG_REG_INT_MASK, &reg);
+				pr_info("%s : disable aicl : 0x%x\n", __func__, reg);
+				charger->prev_aicl_mode = false;
+				charger->aicl_on = false;
+				charger->slow_charging = false;
+			} else if (!val->intval && (charger->irq_aicl_enabled == 0)) {
+				u8 reg;
+				charger->irq_aicl_enabled = 1;
+				enable_irq(charger->irq_aicl);
+				max77705_read_reg(charger->i2c,
+						  MAX77705_CHG_REG_INT_MASK, &reg);
+				pr_info("%s : enable aicl : 0x%x\n", __func__, reg);
+			}
+		} else {
+			pr_info("%s : max77705_set_otg skip, mfc_fw_update(%d)\n",
+				__func__, mfc_fw_update);
 		}
 		break;
 	default:
@@ -2527,6 +2579,24 @@ static int max77705_charger_parse_dt(struct max77705_charger_data *charger)
 		pr_info("%s: battery,chg_float_voltage is %d\n", __func__,
 			pdata->chg_float_voltage);
 		charger->float_voltage = pdata->chg_float_voltage;
+
+		ret = of_property_read_u32(np, "battery,chg_ocp_current",
+					   &pdata->chg_ocp_current);
+		if (ret) {
+			pr_info("%s: battery,chg_ocp_current is Empty\n", __func__);
+			pdata->chg_ocp_current = 5600; /* mA */
+		}
+		pr_info("%s: battery,chg_ocp_current is %d\n", __func__,
+			pdata->chg_ocp_current);
+
+		ret = of_property_read_u32(np, "battery,chg_ocp_dtc",
+					   &pdata->chg_ocp_dtc);
+		if (ret) {
+			pr_info("%s: battery,chg_ocp_dtc is Empty\n", __func__);
+			pdata->chg_ocp_dtc = 6; /* ms */
+		}
+		pr_info("%s: battery,chg_ocp_dtc is %d\n", __func__,
+			pdata->chg_ocp_dtc);
 
 		ret = of_property_read_string(np,
 					      "battery,wireless_charger_name",

@@ -114,8 +114,8 @@ int pio_rx_dit_on_pktproc(struct link_device *ld, u32 num_frames)
 		mif_info("reinit dit hw\n");
 		dit_init_hw();
 	}
-	writel(virt_to_phys(dit_pd) & 0xffffffff, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_0);
-	writel((virt_to_phys(dit_pd) >> 32) & 0xf, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_1);
+	writel(dit_dev.dma & 0xffffffff, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_0);
+	writel((dit_dev.dma >> 32) & 0xf, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_1);
 	writel(0x4, dit_dev.reg_base + DIT_SW_COMMAND);
 
 	/* wait */
@@ -155,6 +155,7 @@ int pio_rx_dit_on_pktproc(struct link_device *ld, u32 num_frames)
 		skbpriv(dit_skb[i])->iod = link_get_iod_with_channel(ld, skbpriv(dit_skb[i])->sipc_ch);
 		skbpriv(dit_skb[i])->ld = ld;
 		dit_skb[i]->ip_summed = CHECKSUM_UNNECESSARY;
+		skb_trim(dit_skb[i], dit_pd[i].size);
 
 		counter++;
 		pktproc_gdesc->rear_ptr = circ_new_ptr(pktproc_gdesc->num_of_desc, pktproc_gdesc->rear_ptr, 1);
@@ -333,8 +334,8 @@ int sbd_pio_rx_dit_on_zerocopy(struct sbd_ring_buffer *rb, u32 num_frames)
 		mif_info("reinit dit hw\n");
 		dit_init_hw();
 	}
-	writel(virt_to_phys(dit_pd) & 0xffffffff, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_0);
-	writel((virt_to_phys(dit_pd) >> 32) & 0xf, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_1);
+	writel(dit_dev.dma & 0xffffffff, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_0);
+	writel((dit_dev.dma >> 32) & 0xf, dit_dev.reg_base + DIT_NAT_RX_DESC_ADDR_1);
 	writel(0x4, dit_dev.reg_base + DIT_SW_COMMAND);
 
 	/* wait */
@@ -373,6 +374,7 @@ int sbd_pio_rx_dit_on_zerocopy(struct sbd_ring_buffer *rb, u32 num_frames)
 		ret = set_skb_priv_zerocopy_adaptor_for_dit(rb, dit_skb[i], zdptr->pre_rp);
 		check_more(rb, dit_skb[i]);
 		dit_skb[i]->ip_summed = CHECKSUM_UNNECESSARY;
+		skb_trim(dit_skb[i], dit_pd[i].size);
 
 		zdptr->pre_rp = circ_new_ptr(qlen, zdptr->pre_rp, 1);
 		counter++;
@@ -458,8 +460,8 @@ void dit_init_hw(void)
 	writel(0x0, dit_dev.reg_base + DIT_RX_PKT_CTRL);
 	writel(0x30, dit_dev.reg_base + DIT_RX_CHKSUM_CTRL);
 
-	writel(virt_to_phys(dit_pd) & 0xffffffff, dit_dev.reg_base + DIT_RX_RING_ST_ADDR_0);
-	writel((virt_to_phys(dit_pd) >> 32) & 0xf, dit_dev.reg_base + DIT_RX_RING_ST_ADDR_1);
+	writel(dit_dev.dma & 0xffffffff, dit_dev.reg_base + DIT_RX_RING_ST_ADDR_0);
+	writel((dit_dev.dma >> 32) & 0xf, dit_dev.reg_base + DIT_RX_RING_ST_ADDR_1);
 
 #ifdef DIT_CLOCK_ALWAYS_ON
 	writel(0x3f, dit_dev.reg_base + DIT_CLK_GT_OFF);
@@ -727,9 +729,9 @@ int dit_init(struct platform_device *pdev)
 	spin_lock_init(&dit_dev.lock);
 
 	alloc_size = sizeof(struct packet_descriptor) * MAX_DIT_SKB_NUM;
-	dit_pd = kzalloc(alloc_size, GFP_KERNEL);
+	dit_pd = dma_zalloc_coherent(&pdev->dev, alloc_size, &dit_dev.dma, GFP_KERNEL);
 	if (!dit_pd) {
-		mif_err("kzalloc() error\n");
+		mif_err("dma alloc() error\n");
 		goto init_error;
 	}
 

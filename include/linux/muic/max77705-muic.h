@@ -86,6 +86,14 @@ enum max77705_muic_command_opcode {
 
 #define AFC_OP_OUT_LEN 11 /* OPCODE(1) + Result(1) + VBADC(1) + RX Data(8) */
 
+#if defined(CONFIG_HICCUP_CHARGER)
+enum MUIC_HICCUP_MODE {
+	MUIC_HICCUP_MODE_OFF	=	0,
+	MUIC_HICCUP_MODE_NOTY,
+	MUIC_HICCUP_MODE_ON,
+};
+#endif
+
 #if defined(CONFIG_MUIC_MAX77705_CCIC)
 #define MUIC_CCIC_NOTI_ATTACH (1)
 #define MUIC_CCIC_NOTI_DETACH (-1)

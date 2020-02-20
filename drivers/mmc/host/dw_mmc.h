@@ -280,6 +280,9 @@ struct dw_mci {
 	struct timer_list cmd11_timer;
 	struct timer_list cto_timer;
 	struct timer_list dto_timer;
+
+	/* channel id */
+	u32 ch_id;
 };
 
 /* DMA ops for Internal/External DMAC interface */

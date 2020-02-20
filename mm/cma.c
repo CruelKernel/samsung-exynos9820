@@ -42,7 +42,6 @@
 struct cma cma_areas[MAX_CMA_AREAS];
 unsigned cma_area_count;
 static DEFINE_MUTEX(cma_mutex);
-static DEFINE_MUTEX(rbin_mutex);
 
 phys_addr_t cma_get_base(const struct cma *cma)
 {
@@ -103,11 +102,6 @@ static int __init cma_activate_area(struct cma *cma)
 	unsigned long base_pfn = cma->base_pfn, pfn = base_pfn;
 	unsigned i = cma->count >> pageblock_order;
 	struct zone *zone;
-#ifdef CONFIG_RBIN
-	bool is_rbin = cma->is_rbin;
-#else
-	bool is_rbin = false;
-#endif
 
 	cma->bitmap = kzalloc(bitmap_size, GFP_KERNEL);
 
@@ -132,7 +126,7 @@ static int __init cma_activate_area(struct cma *cma)
 			if (page_zone(pfn_to_page(pfn)) != zone)
 				goto not_in_zone;
 		}
-		init_cma_reserved_pageblock(pfn_to_page(base_pfn), is_rbin);
+		init_cma_reserved_pageblock(pfn_to_page(base_pfn));
 	} while (--i);
 
 	mutex_init(&cma->lock);
@@ -224,13 +218,6 @@ int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
 
 	return 0;
 }
-
-#ifdef CONFIG_RBIN
-void cma_set_rbin(struct cma *cma)
-{
-	cma->is_rbin = true;
-}
-#endif
 
 /**
  * cma_declare_contiguous() - reserve custom contiguous area
@@ -417,12 +404,6 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 	unsigned long start = 0;
 	unsigned long bitmap_maxno, bitmap_no, bitmap_count;
 	struct page *page = NULL;
-#ifdef CONFIG_RBIN
-	bool is_rbin = cma ? cma->is_rbin : false;
-	bool need_mutex = (align < (MAX_ORDER - 1)) ? true : false;
-#else
-	bool is_rbin = false;
-#endif
 	int ret = -ENOMEM;
 
 	if (!cma || !cma->count)
@@ -460,20 +441,10 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align,
 		mutex_unlock(&cma->lock);
 
 		pfn = cma->base_pfn + (bitmap_no << cma->order_per_bit);
-		if (!is_rbin) {
-			mutex_lock(&cma_mutex);
-			ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA, gfp_mask);
-			mutex_unlock(&cma_mutex);
-		}
-#ifdef CONFIG_RBIN
-		else {
-			if (need_mutex)
-				mutex_lock(&rbin_mutex);
-			ret = alloc_contig_range_fast(pfn, pfn + count, MIGRATE_RBIN);
-			if (need_mutex)
-				mutex_unlock(&rbin_mutex);
-		}
-#endif
+		mutex_lock(&cma_mutex);
+		ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA,
+					GFP_KERNEL | (gfp_mask & __GFP_NOWARN));
+		mutex_unlock(&cma_mutex);
 		if (ret == 0) {
 			page = pfn_to_page(pfn);
 			break;

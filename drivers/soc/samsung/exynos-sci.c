@@ -12,6 +12,7 @@
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/debug-snapshot-helper.h>
 
 #include <asm/map.h>
 
@@ -496,24 +497,104 @@ EXPORT_SYMBOL(llc_dump);
 #define SCI_ErrAddrHi	0x010C
 #define SCI_ErrAddrLo	0x0110
 
+/* for SCI_ErrCnt */
+static struct err_variant sci_err_type_1[] = {
+	ERR_VAR("MaxOtherCount", 31, 24),
+	ERR_VAR("MaxCount", 23, 16),
+	ERR_VAR("ClrOtherCount", 15, 15),
+	ERR_VAR("ClrCount", 14, 14),
+	ERR_VAR("RspErrEn", 13, 13),
+	ERR_VAR("ProtErrEn", 12, 12),
+	ERR_VAR("MemArrayErrEn", 11, 11),
+	ERR_VAR("SfArrayErrEn", 10, 10),
+	ERR_VAR("LlcArrayErrEn", 9, 9),
+	ERR_VAR("FatalUnContErrEn", 8, 8),
+	ERR_VAR("FatalUcErrEn", 7, 7),
+	ERR_VAR("CountCorrErrEn", 6, 6),
+	ERR_VAR("CountUnCorrErrEn", 5, 5),
+	ERR_VAR("IntOtherCountErrEn", 4, 4),
+	ERR_VAR("IntCountErrEn", 3, 3),
+	ERR_VAR("IntCorrErrEn", 2, 2),
+	ERR_VAR("IntUnCorrErrEn", 1, 1),
+	ERR_VAR("LogErrEn", 0, 0),
+	ERR_VAR("END", 64, 64),
+};
+
+/* for SCI_ErrStatLo */
+static struct err_variant sci_err_type_2[] = {
+	ERR_VAR("SType", 31, 16),
+	ERR_VAR("ErrType", 15, 12),
+	ERR_VAR("MultiErrorValid", 5, 5),
+	ERR_VAR("SynValid", 4, 4),
+	ERR_VAR("AddrValid", 3, 3),
+	ERR_VAR("UnContained", 2, 2),
+	ERR_VAR("UC", 1, 1),
+	ERR_VAR("Vaild", 0, 0),
+	ERR_VAR("END", 64, 64),
+};
+
+/* for SCI_ErrStatHi */
+static struct err_variant sci_err_type_3[] = {
+	ERR_VAR("OtherCount", 31, 24),
+	ERR_VAR("Count", 23, 16),
+	ERR_VAR("ErrSyn", 8, 0),
+	ERR_VAR("END", 64, 64),
+};
+
+enum {
+	SCI_ERRCNT = 0,
+	SCI_ERRSTATLO,
+	SCI_ERRSTATHI
+};
+
+static struct err_variant_data exynos_sci_err_table[] = {
+	ERR_REG(sci_err_type_1, 0, "SCI_ErrCnt"),
+	ERR_REG(sci_err_type_2, 0, "SCI_ErrStatLo"),
+	ERR_REG(sci_err_type_3, 0xff, "SCI_ErrStatHi"),
+};
+
+static void exynos_sci_err_parse(u32 reg_idx, u64 reg)
+{
+	if (reg_idx >= ARRAY_SIZE(exynos_sci_err_table)) {
+		pr_err("%s: there is no parse data\n", __func__);
+		return;
+	}
+
+	exynos_err_parse(reg_idx, reg, &exynos_sci_err_table[reg_idx]);
+}
+
+#define MSB_MASKING		(0x0000FF0000000000)
+#define MSB_PADDING		(0xFFFFFF0000000000)
+#define ERR_INJ_DONE		(1 << 31)
+#define ERR_NS			(1 << 8)
+
+extern void exynos_dump_common_cpu_reg(void);
+
 void sci_error_dump(void)
 {
 	void __iomem *sci_base;
+	unsigned int sci_reg, sci_ns, sci_err_inj;
+	unsigned long sci_reg_addr, sci_reg_hi;
 
 	sci_base = sci_data->sci_base;
 
-	pr_info("============== SCI Error Logging Info=====================\n"
-		"SCI_ErrCnt    : %08x\n"
-		"SCI_ErrStatHi : %08x\n"
-		"SCI_ErrStatLo : %08x\n"
-		"SCI_ErrAddrHi : %08x\n"
-		"SCI_ErrAddrLo : %08x\n"
-		"============================================================\n"
-		, __raw_readl(sci_base + SCI_ErrCnt)
-		, __raw_readl(sci_base + SCI_ErrStatHi)
-		, __raw_readl(sci_base + SCI_ErrStatLo)
-		, __raw_readl(sci_base + SCI_ErrAddrHi)
-		, __raw_readl(sci_base + SCI_ErrAddrLo));
+	pr_info("============== SCI Error Logging Info=====================\n");
+	pr_info("SCI_ErrCnt    : %08x\n", sci_reg = __raw_readl(sci_base + SCI_ErrCnt));
+	exynos_sci_err_parse(SCI_ERRCNT, sci_reg);
+	pr_info("SCI_ErrStatHi : %08x\n", sci_reg = __raw_readl(sci_base + SCI_ErrStatHi));
+	exynos_sci_err_parse(SCI_ERRSTATHI, sci_reg);
+	pr_info("SCI_ErrStatLo : %08x\n", sci_reg = __raw_readl(sci_base + SCI_ErrStatLo));
+	exynos_sci_err_parse(SCI_ERRSTATLO, sci_reg);
+	pr_info("SCI_ErrAddr(Hi,Lo): %08x %08x\n",
+			sci_reg_hi = __raw_readl(sci_base + SCI_ErrAddrHi),
+			sci_reg = __raw_readl(sci_base + SCI_ErrAddrLo));
+
+	sci_reg_addr = sci_reg + (MSB_MASKING & (sci_reg_hi << 32L));
+	sci_ns = (ERR_NS & sci_reg_hi) >> 8;
+	sci_err_inj = (ERR_INJ_DONE & sci_reg_hi) >> 31;
+	pr_info("SCI_ErrAddr : %016lx (NS:%d, ERR_INJ:%d)\n", sci_reg_addr, sci_err_inj);
+	exynos_dump_common_cpu_reg();
+	pr_info("============================================================\n");
 }
 EXPORT_SYMBOL(sci_error_dump);
 

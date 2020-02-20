@@ -1267,6 +1267,12 @@ static void *beyond0_a3_s0_dsu_mode_cmdtbl[] = {
 };
 #endif
 
+static void *beyond0_a3_s0_check_condition_cmdtbl[] = {
+	&KEYINFO(beyond0_a3_s0_level2_key_enable),
+	&s6e3fa7_dmptbl[DUMP_RDDPM],
+	&KEYINFO(beyond0_a3_s0_level2_key_disable),
+};
+
 static void *beyond0_a3_s0_mcd_on_cmdtbl[] = {
 	&KEYINFO(beyond0_a3_s0_level2_key_enable),
 	&PKTINFO(beyond0_a3_s0_mcd_on_01),
@@ -1648,6 +1654,7 @@ static struct seqinfo beyond0_a3_s0_seqtbl[MAX_PANEL_SEQ] = {
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 	[PANEL_FFC_SEQ] = SEQINFO_INIT("ffc-seq", beyond0_a3_s0_ffc_cmdtbl),
 #endif
+	[PANEL_CHECK_CONDITION_SEQ] = SEQINFO_INIT("check-condition-seq", beyond0_a3_s0_check_condition_cmdtbl),
 	[PANEL_DUMP_SEQ] = SEQINFO_INIT("dump-seq", beyond0_a3_s0_dump_cmdtbl),
 	[PANEL_DUMMY_SEQ] = SEQINFO_INIT("dummy-seq", beyond0_a3_s0_dummy_cmdtbl),
 };

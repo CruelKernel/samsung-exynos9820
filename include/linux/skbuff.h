@@ -822,6 +822,11 @@ struct sk_buff {
 	__u32			priomark;
 #endif
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	__u16			dropmask;
+	__u8			dropid;
+#endif
+
 	union {
 		__u32		mark;
 		__u32		reserved_tailroom;

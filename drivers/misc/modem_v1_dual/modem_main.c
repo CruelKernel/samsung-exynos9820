@@ -16,6 +16,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/kobject.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
@@ -40,6 +41,12 @@
 #include <linux/mfd/syscon.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/dma-contiguous.h>
+#ifdef CONFIG_LINK_FORWARD
+#include <linux/linkforward.h>
+#endif
+#include <uapi/linux/in.h>
+#include <linux/inet.h>
+#include <net/ipv6.h>
 
 #ifdef CONFIG_LINK_DEVICE_SHMEM
 #include <linux/shm_ipc.h>
@@ -50,13 +57,19 @@
 #include <linux/mipi-lli.h>
 #endif
 
+#include <soc/samsung/exynos-modem-ctrl.h>
 #include "modem_prj.h"
 #include "modem_variation.h"
 #include "modem_utils.h"
+#include "modem_klat.h"
 
 #define FMT_WAKE_TIME   (HZ/2)
 #define RAW_WAKE_TIME   (HZ*6)
 #define NET_WAKE_TIME	(HZ/2)
+
+#ifdef CONFIG_LINK_FORWARD
+#define KOBJ_CLAT "clat"
+#endif
 
 static struct modem_shared *create_modem_shared_data(
 				struct platform_device *pdev)
@@ -727,12 +740,8 @@ static enum mif_sim_mode get_sim_mode(struct device_node *of_node)
 
 static ssize_t do_cp_crash_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	unsigned long flags;
-	struct modem_ctl *mc = dev_get_drvdata(dev);
-	spin_lock_irqsave(&mc->lock, flags);
-	if (mc->bootd && atomic_read(&mc->bootd->opened) > 0)
-		mc->bootd->modem_state_changed(mc->bootd, STATE_CRASH_EXIT);
-	spin_unlock_irqrestore(&mc->lock, flags);
+	modem_force_crash_exit_ext();
+
 	return count;
 }
 
@@ -743,12 +752,221 @@ static ssize_t modem_state_show(struct device *dev,
 	return sprintf(buf, "%s\n", cp_state_str(mc->phone_state));
 }
 
+#ifdef CONFIG_LINK_FORWARD
+static ssize_t linkforward_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return linkforward_get_state(buf);
+}
+
+static ssize_t linkforward_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "linkforward global mode:%d\n", get_linkforward_mode());
+}
+
+static ssize_t linkforward_mode_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+	int val = 0;
+
+	ret = sscanf(buf, "%u", &val);
+	if ((ret > 3) || (val < 0))
+		return -EINVAL;
+
+	set_linkforward_mode(val);
+
+	ret = count;
+	return ret;
+}
+
+static ssize_t xlat_plat_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+#ifdef CONFIG_CP_DIT
+	return sprintf(buf, "plat prefix: %pI6\n", &nf_linkfwd.plat_prfix);
+#else
+	return sprintf(buf, "DIT NOT supported\n");
+#endif
+}
+
+static ssize_t xlat_plat_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+#ifdef CONFIG_CP_DIT
+	struct in6_addr val;
+	char *ptr = NULL;
+
+	mif_err("-- plat prefix: %s\n", buf);
+
+	ptr = strstr(buf, "@");
+	if (!ptr)
+		return -EINVAL;
+	*ptr++ = '\0';
+
+	if (in6_pton(buf, strlen(buf), val.s6_addr, '\0', NULL) == 0)
+		return -EINVAL;
+
+	nf_linkfwd.plat_prfix = val;
+
+	if (strstr(ptr, "rmnet0")) {
+		dit_set_clat_plat_prfix(0, val);
+	} else if (strstr(ptr, "rmnet1")) {
+		dit_set_clat_plat_prfix(1, val);
+	} else {
+		mif_err("-- unhandled plat prefix for device %s\n", ptr);
+	}
+
+	*(--ptr) = '@';
+	(void)klat_plat_store(kobj, attr, buf, count);
+
+	mif_err("plat prefix: %pI6\n", &nf_linkfwd.plat_prfix);
+#else
+	mif_err("DIT NOT supported\n");
+#endif
+
+	return count;
+}
+
+static ssize_t xlat_addrs_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+#ifdef CONFIG_CP_DIT
+	return sprintf(buf, "%pI6\n%pI6\n", &nf_linkfwd.ctun[0].v6.in.addr6, &nf_linkfwd.ctun[1].v6.in.addr6);
+#else
+	return sprintf(buf, "DIT NOT supported\n");
+#endif
+}
+
+static ssize_t xlat_addrs_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+#ifdef CONFIG_CP_DIT
+	struct in6_addr val;
+	char *ptr = NULL;
+
+	mif_err("-- v6 addr: %s\n", buf);
+
+	ptr = strstr(buf, "@");
+	if (!ptr)
+		return -EINVAL;
+	*ptr++ = '\0';
+
+	if (in6_pton(buf, strlen(buf), val.s6_addr, '\0', NULL) == 0)
+		return -EINVAL;
+
+	if (strstr(ptr, "rmnet0")) {
+		nf_linkfwd.ctun[0].v6.in.addr6 = val;
+		dit_set_clat_saddr(0, val);
+		mif_err("clat rmnet0: %pI6\n", &nf_linkfwd.ctun[0].v6.in.addr6);
+	} else if (strstr(ptr, "rmnet1")) {
+		nf_linkfwd.ctun[1].v6.in.addr6 = val;
+		dit_set_clat_saddr(1, val);
+		mif_err("clat rmnet0: %pI6\n", &nf_linkfwd.ctun[1].v6.in.addr6);
+	} else {
+		mif_err("-- unhandled clat addr for device %s\n", ptr);
+	}
+
+	*(--ptr) = '@';
+	(void)klat_addrs_store(kobj, attr, buf, count);
+#else
+	mif_err("DIT NOT supported\n");
+#endif
+	return count;
+}
+
+static ssize_t xlat_v4_addrs_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+#ifdef CONFIG_CP_DIT
+	return sprintf(buf, "%pI4\n%pI4\n", &nf_linkfwd.ctun[0].v4.in.addr4, &nf_linkfwd.ctun[1].v4.in.addr4);
+#else
+	return sprintf(buf, "DIT NOT supported\n");
+#endif
+}
+
+static ssize_t xlat_v4_addrs_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+#ifdef CONFIG_CP_DIT
+	struct in_addr val;
+	char *ptr = NULL;
+
+	mif_err("-- v4 addr: %s\n", buf);
+
+	ptr = strstr(buf, "@");
+	if (!ptr)
+		return -EINVAL;
+	*ptr++ = '\0';
+
+	if (in4_pton(buf, strlen(buf), (u8 *)&val.s_addr, '\0', NULL) == 0)
+		return -EINVAL;
+
+	if (strstr(ptr, "rmnet0")) {
+		nf_linkfwd.ctun[0].v4.in.addr4.s_addr = val.s_addr;
+		mif_err("clat v4_rmnet0: %pI4\n", &nf_linkfwd.ctun[0].v4.in.addr4.s_addr);
+		dit_set_clat_filter(0, val.s_addr);
+	} else if (strstr(ptr, "rmnet1")) {
+		nf_linkfwd.ctun[1].v4.in.addr4.s_addr = val.s_addr;
+		mif_err("clat v4_rmnet1: %pI4\n", &nf_linkfwd.ctun[1].v4.in.addr4.s_addr);
+		dit_set_clat_filter(1, val.s_addr);
+	} else {
+		mif_err("-- unhandled clat v4 addr for device %s\n", ptr);
+	}
+
+	*(--ptr) = '@';
+	(void)klat_v4_addrs_store(kobj, attr, buf, count);
+#else
+	mif_err("DIT NOT supported\n");
+#endif
+	return count;
+}
+#endif
+
 static DEVICE_ATTR_WO(do_cp_crash);
 static DEVICE_ATTR_RO(modem_state);
+
+#ifdef CONFIG_LINK_FORWARD
+static DEVICE_ATTR_RO(linkforward_state);
+static DEVICE_ATTR_RW(linkforward_mode);
+
+static struct kobject *clat_kobject;
+static struct kobj_attribute xlat_plat_attribute = {
+	.attr = {.name = "xlat_plat", .mode = 0660},
+	.show = xlat_plat_show,
+	.store = xlat_plat_store,
+};
+static struct kobj_attribute xlat_addrs_attribute = {
+	.attr = {.name = "xlat_addrs", .mode = 0660},
+	.show = xlat_addrs_show,
+	.store = xlat_addrs_store,
+};
+static struct kobj_attribute xlat_v4_addrs_attribute = {
+	.attr = {.name = "xlat_v4_addrs", .mode = 0660},
+	.show = xlat_v4_addrs_show,
+	.store = xlat_v4_addrs_store,
+};
+static struct attribute *clat_attrs[] = {
+	&xlat_plat_attribute.attr,
+	&xlat_addrs_attribute.attr,
+	&xlat_v4_addrs_attribute.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(clat);
+#endif
 
 static struct attribute *modem_attrs[] = {
 	&dev_attr_do_cp_crash.attr,
 	&dev_attr_modem_state.attr,
+#ifdef CONFIG_LINK_FORWARD
+	&dev_attr_linkforward_state.attr,
+	&dev_attr_linkforward_mode.attr,
+#endif
 	NULL,
 };
 ATTRIBUTE_GROUPS(modem);
@@ -765,6 +983,9 @@ static int modem_probe(struct platform_device *pdev)
 	struct link_device *ld;
 	enum mif_sim_mode sim_mode;
 	int err;
+#ifdef CONFIG_LINK_FORWARD
+	u32 support_dit = 0;
+#endif
 
 	mif_err("%s: +++ (%s)\n",
 		pdev->name, CONFIG_OPTION_REGION);
@@ -862,6 +1083,20 @@ static int modem_probe(struct platform_device *pdev)
 	if (err < 0)
 		mif_err("failed to initialize argos_notifier(%d)\n", err);
 
+#ifdef CONFIG_LINK_FORWARD
+#ifdef CONFIG_CP_DIT
+	mif_dt_read_u32_noerr(dev->of_node, "dit_support", support_dit);
+#endif
+	if (support_dit) {
+		clat_kobject = kobject_create_and_add(KOBJ_CLAT, kernel_kobj); /* ipv4_kobject */
+		if (!clat_kobject)
+			mif_err("%s: done ---\n", KOBJ_CLAT);
+
+		if (sysfs_create_groups(clat_kobject, clat_groups))
+			mif_err("failed to create clat groups node\n");
+	}
+#endif
+
 	mif_err("%s: done ---\n", pdev->name);
 	return 0;
 
@@ -889,9 +1124,23 @@ static void modem_shutdown(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct modem_ctl *mc = dev_get_drvdata(dev);
+#ifdef CONFIG_LINK_FORWARD
+#ifdef CONFIG_CP_DIT
+	u32 support_dit = 0;
+#endif
+#endif
 
 	mc->ops.modem_shutdown(mc);
 	mc->phone_state = STATE_OFFLINE;
+
+#ifdef CONFIG_LINK_FORWARD
+#ifdef CONFIG_CP_DIT
+	mif_dt_read_u32_noerr(dev->of_node, "dit_support", support_dit);
+
+	if (support_dit)
+		kobject_put(clat_kobject);
+#endif
+#endif
 
 	mif_err("%s\n", mc->name);
 }
@@ -899,10 +1148,6 @@ static void modem_shutdown(struct platform_device *pdev)
 static int modem_suspend(struct device *pdev)
 {
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
-#ifdef CONFIG_LINK_DEVICE_SHMEM
-	struct modem_mbox *mbox = mc->mdm_data->mbx;
-	struct utc_time t;
-#endif
 
 #if !defined(CONFIG_LINK_DEVICE_HSIC)
 	if (mc->gpio_pda_active)
@@ -914,27 +1159,9 @@ static int modem_suspend(struct device *pdev)
 	mipi_lli_suspend();
 #endif
 
-#ifdef CONFIG_LINK_DEVICE_SHMEM
-	get_utc_time(&t);
-	mif_err("time = %d.%d\n", t.sec + (t.min * 60), t.us);
-	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime,
-			t.sec + (t.min * 60),
-			mbox->sbi_ap2cp_kerneltime_sec_mask,
-			mbox->sbi_ap2cp_kerneltime_sec_pos);
-	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime, t.us,
-			mbox->sbi_ap2cp_kerneltime_usec_mask,
-			mbox->sbi_ap2cp_kerneltime_usec_pos);
-
-	mif_err("%s: pda_active:0\n", mc->name);
-	mbox_update_value(MCU_CP, mc->mbx_ap_status, 0,
-			mc->sbi_pda_active_mask, mc->sbi_pda_active_pos);
-	mbox_set_interrupt(MCU_CP, mc->int_pda_active);
-#endif
-
-#ifdef CONFIG_LINK_DEVICE_PCIE
 	if (mc->ops.modem_suspend)
 		mc->ops.modem_suspend(mc);
-#endif
+
 	mif_err("%s\n", mc->name);
 	set_wakeup_packet_log(true);
 
@@ -944,10 +1171,6 @@ static int modem_suspend(struct device *pdev)
 static int modem_resume(struct device *pdev)
 {
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
-#ifdef CONFIG_LINK_DEVICE_SHMEM
-	struct modem_mbox *mbox = mc->mdm_data->mbx;
-	struct utc_time t;
-#endif
 
 	set_wakeup_packet_log(false);
 
@@ -968,27 +1191,8 @@ static int modem_resume(struct device *pdev)
 	}
 #endif
 
-#ifdef CONFIG_LINK_DEVICE_SHMEM
-	get_utc_time(&t);
-	mif_err("time = %d.%d\n", t.sec + (t.min * 60), t.us);
-	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime,
-			t.sec + (t.min * 60),
-			mbox->sbi_ap2cp_kerneltime_sec_mask,
-			mbox->sbi_ap2cp_kerneltime_sec_pos);
-	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime, t.us,
-			mbox->sbi_ap2cp_kerneltime_usec_mask,
-			mbox->sbi_ap2cp_kerneltime_usec_pos);
-
-	mif_err("%s: pda_active:1\n", mc->name);
-	mbox_update_value(MCU_CP, mc->mbx_ap_status, 1,
-			mc->sbi_pda_active_mask, mc->sbi_pda_active_pos);
-	mbox_set_interrupt(MCU_CP, mc->int_pda_active);
-#endif
-
-#ifdef CONFIG_LINK_DEVICE_PCIE
 	if (mc->ops.modem_resume)
 		mc->ops.modem_resume(mc);
-#endif
 
 	mif_err("%s\n", mc->name);
 
@@ -1001,7 +1205,7 @@ static int modem_runtime_suspend(struct device *pdev)
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
 
 	if (mc->ops.modem_runtime_suspend != NULL)
-		mc->ops.modem_runtime_suspend(mc);
+		return mc->ops.modem_runtime_suspend(mc);
 
 	return 0;
 }
@@ -1011,7 +1215,7 @@ static int modem_runtime_resume(struct device *pdev)
 	struct modem_ctl *mc = dev_get_drvdata(pdev);
 
 	if (mc->ops.modem_runtime_resume != NULL)
-		mc->ops.modem_runtime_resume(mc);
+		return mc->ops.modem_runtime_resume(mc);
 
 	return 0;
 }

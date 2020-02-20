@@ -36,6 +36,9 @@ int isl91128_probe(struct i2c_client *client,
 {
 	struct fimc_is_core *core;
 	static bool probe_retried = false;
+	u32 voltage_option = 0;
+	struct device *dev;
+	struct device_node *dnode;
 	int ret;
 
 	if (!fimc_is_dev)
@@ -45,13 +48,31 @@ int isl91128_probe(struct i2c_client *client,
 	if (!core)
 		goto probe_defer;
 
+	dev = &client->dev;
+	dnode = dev->of_node;
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		probe_err("No I2C functionality found\n");
 		return -ENODEV;
 	}
 
+	ret = of_property_read_u32(dnode, "voltage_option", &voltage_option);
+	if (ret < 0) {
+		probe_info("%s : voltage_option get fail", dev_driver_string(&client->dev));
+		voltage_option = 0;
+	}
+
 	fimc_is_i2c_pin_config(client, I2C_PIN_STATE_ON);
-	ret = fimc_is_sensor_addr8_write8(client, 0x01, 0x20);
+
+	if (voltage_option == 1) { /* set 3.35V */
+		probe_info("%s : output level is 3.35V", dev_driver_string(&client->dev));
+		ret = fimc_is_sensor_addr8_write8(client, 0x00, 0x1D);
+		ret = fimc_is_sensor_addr8_write8(client, 0x00, 0x9E);
+	} else {
+		probe_info("%s : output level is 3.3V", dev_driver_string(&client->dev));
+	}
+
+	ret = fimc_is_sensor_addr8_write8(client, 0x01, 0x30);
 	if (ret < 0) {
 		probe_err("i2c write fail %d", ret);
 		goto probe_defer;

@@ -72,6 +72,14 @@ config PROC_PAGE_MONITOR
 	  /proc/kpagecount, and /proc/kpageflags. Disabling these
           interfaces will reduce the size of the kernel by approximately 4kb.
 
+config PROC_AVC
+	bool "support (/proc/avc_msg)"
+	default n
+	help
+	  support logging audit avc message
+          When PROC_AVC config is turned on, proc/avc_msg path is created and then,
+          can use it to analyze the SEandroid denial.
+
 config PROC_CHILDREN
 	bool "Include /proc/<pid>/task/<tid>/children file"
 	default n

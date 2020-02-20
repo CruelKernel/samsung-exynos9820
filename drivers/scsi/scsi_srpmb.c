@@ -313,8 +313,8 @@ int init_wsm(struct device *dev)
 			&rpmb_ctx->phy_addr, GFP_KERNEL);
 
 	if (rpmb_ctx->vir_addr && rpmb_ctx->phy_addr) {
-		dev_info(dev, "srpmb dma addr: virt(%llx), phy(%llx)\n",
-			(uint64_t)rpmb_ctx->vir_addr, (uint64_t)rpmb_ctx->phy_addr);
+		dev_info(dev, "srpmb dma addr: virt_pK(%pK), phy(%llx)\n",
+			rpmb_ctx->vir_addr, (uint64_t)rpmb_ctx->phy_addr);
 
 		rpmb_ctx->irq = irq_of_parse_and_map(sr_pdev->dev.of_node, 0);
 		if (rpmb_ctx->irq <= 0) {

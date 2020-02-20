@@ -35,6 +35,11 @@
 
 #define MIF_INIT_TIMEOUT	(15 * HZ)
 
+#ifdef CONFIG_EXYNOS_DECON_LCD
+#define DEFAULT_DSP_TYPE	0x01	// disconnected + C type
+extern int get_lcd_info(char *arg);
+#endif
+
 /*
  * CP_WDT interrupt handler
  */
@@ -70,6 +75,7 @@ static irqreturn_t cp_wdt_handler(int irq, void *arg)
 static void cp_active_handler(void *arg)
 {
 	struct modem_ctl *mc = (struct modem_ctl *)arg;
+	struct link_device *ld = get_current_link(mc->iod);
 	struct io_device *iod;
 	int cp_on = cal_cp_status();
 	int cp_active = mbox_extract_value(MCU_CP, mc->mbx_cp_status,
@@ -91,6 +97,7 @@ static void cp_active_handler(void *arg)
 
 	if (old_state != new_state) {
 		mif_info("new_state = %s\n", cp_state_str(new_state));
+		set_cp_crash_link(ld->link_type);
 
 		if (old_state == STATE_ONLINE)
 			modem_notify_event(MODEM_EVENT_RESET, mc);
@@ -254,8 +261,52 @@ static int init_mailbox_regs(struct modem_ctl *mc)
 				sbi_sys_rev_mask, sbi_sys_rev_pos);
 	mif_info("hw_rev:%d\n", hw_rev);
 
+#ifdef CONFIG_EXYNOS_DECON_LCD
+	{//////* Detect and deliver device type to CP */
+	unsigned int sbi_device_type_mask, sbi_device_type_pos;
+	unsigned int value = 0;
+	int dsp_connected = 0;
+	int dsp_type = 0;
+
+	mif_dt_read_u32(np, "sbi_device_type_mask", sbi_device_type_mask);
+	mif_dt_read_u32(np, "sbi_device_type_pos", sbi_device_type_pos);
+
+	dsp_connected = get_lcd_info("connected");
+	if (dsp_connected < 0) {
+		mif_err("Failed to get dsp_info(%d)\n", dsp_connected);
+		value = DEFAULT_DSP_TYPE;
+	} else {
+		/* 1: dsp_connect, 0: dsp_disconnect */
+		if (dsp_connected) {
+			dsp_type = get_lcd_info("id");
+			if (dsp_type < 0) {
+				mif_err("Failed to get dsp_type(%d)\n", dsp_type);
+				value = DEFAULT_DSP_TYPE;
+			} else {
+				/* [3:0] display type, [4] connected or not */
+				value |= ((dsp_connected & 0x1) << 4);
+				/* DSP ID1 value is located in [19:16] */
+				value |= ((dsp_type >> 16) & 0xf);
+			}
+		} else {
+			mif_err("display disconnected, set default value\n");
+			value = DEFAULT_DSP_TYPE;
+		}
+	}
+
+	mbox_update_value(MCU_CP, mbx_ap_status, value,
+		sbi_device_type_mask, sbi_device_type_pos);
+
+	mif_info("dsp_type:0x%x, conn:0x%x, get_val: 0x%x\n",
+		dsp_type, dsp_connected,
+		mbox_get_value(MCU_CP, mbx_ap_status));
+	}/* Detect and deliver device type to CP *//////
+#endif
 	return 0;
 }
+
+
+static struct modem_ctl *g_mc;
 
 static int s5000ap_on(struct modem_ctl *mc)
 {
@@ -368,6 +419,7 @@ static int s5000ap_reset(struct modem_ctl *mc)
 	/* 2cp dump WA */
 	if (timer_pending(&mld->crash_ack_timer))
 		del_timer(&mld->crash_ack_timer);
+	atomic_set(&mld->forced_cp_crash, 0);
 
 	/* mc->phone_state = STATE_OFFLINE; */
 	if (mc->phone_state == STATE_OFFLINE)
@@ -485,21 +537,31 @@ static int s5000ap_force_crash_exit(struct modem_ctl *mc)
 	return 0;
 }
 
+int s5000ap_force_crash_exit_ext(u32 owner, char *reason)
+{
+	if (g_mc) {
+		struct link_device *ld = get_current_link(g_mc->bootd);
+		struct mem_link_device *mld = to_mem_link_device(ld);
+
+		mld->crash_reason.owner = owner;
+		sprintf(mld->crash_reason.string, "%s", reason);
+
+		s5000ap_force_crash_exit(g_mc);
+	}
+
+	return 0;
+}
+
 /*
  * Notify AP crash status to CP
  */
-static struct modem_ctl *g_mc;
 int modem_force_crash_exit_ext(void)
 {
-	if (!g_mc) {
-		mif_err("g_mc is null\n");
-		return -1;
-	}
-
-	mif_info("Make forced crash exit\n");
-	s5000ap_force_crash_exit(g_mc);
+	s5000ap_force_crash_exit_ext(CRASH_REASON_MIF_MDM_CTRL, 
+				     "forced crash by external");
 
 #if defined(SEC_SIPC_DUAL_MODEM_IF) && defined(SEC_MODEM_S5100)
+	// not compiled, todo fix???
 	s5100_force_crash_exit_ext();
 #endif
 	return 0;
@@ -525,6 +587,7 @@ int modem_send_panic_noti_ext(void)
 	send_ipc_irq(modem->mld, cmd2int(CMD_KERNEL_PANIC));
 
 #if defined(SEC_SIPC_DUAL_MODEM_IF) && defined(SEC_MODEM_S5100)
+	// not compiled, todo fix???
 	s5100_send_panic_noti_ext();
 #endif
 	return 0;
@@ -579,6 +642,52 @@ static void s5000ap_modem_boot_confirm(struct modem_ctl *mc)
 			mc->sbi_ap_status_mask, mc->sbi_ap_status_pos));
 }
 
+static int s5000ap_suspend(struct modem_ctl *mc)
+{
+	struct modem_mbox *mbox = mc->mdm_data->mbx;
+	struct utc_time t;
+
+	get_utc_time(&t);
+	mif_err("time = %d.%d\n", t.sec + (t.min * 60), t.us);
+	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime,
+			t.sec + (t.min * 60),
+			mbox->sbi_ap2cp_kerneltime_sec_mask,
+			mbox->sbi_ap2cp_kerneltime_sec_pos);
+	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime, t.us,
+			mbox->sbi_ap2cp_kerneltime_usec_mask,
+			mbox->sbi_ap2cp_kerneltime_usec_pos);
+
+	mif_err("%s: pda_active:0\n", mc->name);
+	mbox_update_value(MCU_CP, mc->mbx_ap_status, 0,
+			mc->sbi_pda_active_mask, mc->sbi_pda_active_pos);
+	mbox_set_interrupt(MCU_CP, mc->int_pda_active);
+
+	return 0;
+}
+
+static int s5000ap_resume(struct modem_ctl *mc)
+{
+	struct modem_mbox *mbox = mc->mdm_data->mbx;
+	struct utc_time t;
+
+	get_utc_time(&t);
+	mif_err("time = %d.%d\n", t.sec + (t.min * 60), t.us);
+	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime,
+			t.sec + (t.min * 60),
+			mbox->sbi_ap2cp_kerneltime_sec_mask,
+			mbox->sbi_ap2cp_kerneltime_sec_pos);
+	mbox_update_value(MCU_CP, mbox->mbx_ap2cp_kerneltime, t.us,
+			mbox->sbi_ap2cp_kerneltime_usec_mask,
+			mbox->sbi_ap2cp_kerneltime_usec_pos);
+
+	mif_err("%s: pda_active:1\n", mc->name);
+	mbox_update_value(MCU_CP, mc->mbx_ap_status, 1,
+			mc->sbi_pda_active_mask, mc->sbi_pda_active_pos);
+	mbox_set_interrupt(MCU_CP, mc->int_pda_active);
+
+	return 0;
+}
+
 static void s5000ap_get_ops(struct modem_ctl *mc)
 {
 	mc->ops.modem_on = s5000ap_on;
@@ -591,6 +700,8 @@ static void s5000ap_get_ops(struct modem_ctl *mc)
 	mc->ops.modem_force_crash_exit = s5000ap_force_crash_exit;
 	mc->ops.modem_dump_start = s5000ap_dump_start;
 	mc->ops.modem_boot_confirm = s5000ap_modem_boot_confirm;
+	mc->ops.modem_suspend = s5000ap_suspend;
+	mc->ops.modem_resume = s5000ap_resume;
 }
 
 static void s5000ap_get_pdata(struct modem_ctl *mc, struct modem_data *modem)
@@ -633,6 +744,7 @@ static int s5000ap_modem_notifier(struct notifier_block *nb,
 		unsigned long action, void *nb_data)
 {
 	struct modem_ctl *mc = container_of(nb, struct modem_ctl, modem_nb);
+	struct link_device *ld = get_current_link(mc->iod);
 	struct modem_ctl *origin_mc = nb_data;
 
 	mif_info("action:%lu\n", action);
@@ -641,8 +753,12 @@ static int s5000ap_modem_notifier(struct notifier_block *nb,
 	case MODEM_EVENT_EXIT:
 	case MODEM_EVENT_WATCHDOG:
 		if (origin_mc != mc) {
-					s5000ap_force_crash_exit(mc);
-					break;
+			if (ld->link_type == cp_crash_link)
+				s5000ap_force_crash_exit(mc);
+			else
+				s5000ap_force_crash_exit_ext(CRASH_REASON_MIF_MDM_CTRL,
+							     "triggered by another modem");
+			break;
 		}
 		break;
 	}

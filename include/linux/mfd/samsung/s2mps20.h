@@ -95,6 +95,7 @@ struct s2mps20_platform_data {
 	int				ocp_warn3_cnt;
 	bool			ocp_warn3_dvs_mask;
 	int				ocp_warn3_lv;
+	bool			buck1s_pwm;
 
 	bool	use_i2c_speedy;
 };

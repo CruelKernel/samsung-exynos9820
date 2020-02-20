@@ -72,7 +72,7 @@ void dd_info_try_free(struct dd_info *info);
 extern void *dd_get_info(const struct inode *inode);
 int dd_is_user_deamon_locked(void);
 
-int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy);
+int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy, void *fs_data);
 
 struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, void *key);
 

@@ -30,6 +30,7 @@
 
 static atomic_t smfc_hwfc_state;
 static wait_queue_head_t smfc_hwfc_sync_wq;
+static wait_queue_head_t smfc_suspend_wq;
 
 enum {
 	SMFC_HWFC_STANDBY = 0,
@@ -142,6 +143,8 @@ static irqreturn_t exynos_smfc_irq_handler(int irq, void *priv)
 			spin_lock(&smfc->flag_lock);
 			smfc->flags &= ~SMFC_DEV_SUSPENDING;
 			spin_unlock(&smfc->flag_lock);
+
+			wake_up(&smfc_suspend_wq);
 		}
 	} else {
 		dev_err(smfc->dev, "Spurious interrupt on H/W JPEG occurred\n");
@@ -196,13 +199,16 @@ static void smfc_timedout_handler(unsigned long arg)
 			v4l2_m2m_job_finish(smfc->m2mdev, ctx->fh.m2m_ctx);
 		} else {
 			spin_lock(&smfc->flag_lock);
+			smfc->flags &= ~SMFC_DEV_SUSPENDING;
 			spin_unlock(&smfc->flag_lock);
+
+			wake_up(&smfc_suspend_wq);
 		}
 	}
 
 	spin_lock_irqsave(&smfc->flag_lock, flags);
-	/* finished timedout handling and suspend() can return */
-	smfc->flags &= ~(SMFC_DEV_TIMEDOUT | SMFC_DEV_SUSPENDING);
+	/* finished timedout handling */
+	smfc->flags &= ~SMFC_DEV_TIMEDOUT;
 	spin_unlock_irqrestore(&smfc->flag_lock, flags);
 }
 
@@ -285,18 +291,6 @@ static int smfc_vb2_buf_prepare(struct vb2_buffer *vb)
 					return -EINVAL;
 				}
 			}
-
-			/*
-			 * FIXME: handle this
-			 * There is no chance to clean CPU caches if HWFC is
-			 * enabled because the compression starts before the
-			 * image producer completes writing.
-			 * Therefore, the image producer (MCSC) and the read DMA
-			 * of JPEG/SMFC should access the memory with the same
-			 * shareability attributes.
-			if (ctx->enable_hwfc)
-				clean_cache = false;
-			 */
 		} else {
 			/* buffer contains JPEG stream to decompress */
 			int ret = smfc_parse_jpeg_header(ctx, vb);
@@ -381,6 +375,31 @@ static void smfc_vb2_stop_streaming(struct vb2_queue *vq)
 	vb2_wait_for_all_buffers(vq);
 }
 
+static int smfc_vb2_dma_sg_flags(struct vb2_buffer *vb)
+{
+	int flags = 0;
+	struct vb2_queue *vq = vb->vb2_queue;
+
+	/*
+	 * There is no chance to clean CPU caches if HWFC is
+	 * enabled because the compression starts before the
+	 * image producer completes writing.
+	 * Therefore, the image producer (MCSC) and the read DMA
+	 * of JPEG/SMFC should access the memory with the same
+	 * shareability attributes.
+	 * MCSC does use shareable memory access for now. Let's make
+	 * unshareable to the shared buffer with MSCS here.
+	 */
+	if (V4L2_TYPE_IS_OUTPUT(vq->type)) {
+		struct smfc_ctx *ctx = vq->drv_priv;
+
+		if (!!(ctx->flags & SMFC_CTX_COMPRESS) && ctx->enable_hwfc)
+			flags = VB2_DMA_SG_MEMFLAG_IOMMU_UNCACHED;
+	}
+
+	return flags;
+}
+
 static struct vb2_ops smfc_vb2_ops = {
 	.queue_setup	= smfc_vb2_queue_setup,
 	.buf_prepare	= smfc_vb2_buf_prepare,
@@ -390,6 +409,7 @@ static struct vb2_ops smfc_vb2_ops = {
 	.wait_finish	= vb2_ops_wait_finish,
 	.wait_prepare	= vb2_ops_wait_prepare,
 	.stop_streaming	= smfc_vb2_stop_streaming,
+	.mem_flags	= smfc_vb2_dma_sg_flags,
 };
 
 static int smfc_queue_init(void *priv, struct vb2_queue *src_vq,
@@ -875,6 +895,7 @@ static int exynos_smfc_probe(struct platform_device *pdev)
 
 	atomic_set(&smfc_hwfc_state, SMFC_HWFC_STANDBY);
 	init_waitqueue_head(&smfc_hwfc_sync_wq);
+	init_waitqueue_head(&smfc_suspend_wq);
 
 	smfc = devm_kzalloc(&pdev->dev, sizeof(*smfc), GFP_KERNEL);
 	if (!smfc) {
@@ -989,7 +1010,6 @@ static int exynos_smfc_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int smfc_suspend(struct device *dev)
 {
-	DECLARE_WAIT_QUEUE_HEAD_ONSTACK(smfc_suspend_wq);
 	struct smfc_dev *smfc = dev_get_drvdata(dev);
 	unsigned long flags;
 
@@ -1049,7 +1069,6 @@ static int smfc_runtime_suspend(struct device *dev)
 
 static void exynos_smfc_shutdown(struct platform_device *pdev)
 {
-	DECLARE_WAIT_QUEUE_HEAD_ONSTACK(smfc_suspend_wq);
 	struct smfc_dev *smfc = platform_get_drvdata(pdev);
 	unsigned long flags;
 

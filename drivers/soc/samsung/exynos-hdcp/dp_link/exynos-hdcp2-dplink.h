@@ -32,6 +32,12 @@ enum drm_state {
 	DRM_SAME_STREAM_TYPE = 0x2	/* If the previous contents and stream_type id are the same flag */
 };
 
+enum dp_state {
+	DP_DISCONNECT,
+	DP_CONNECT,
+	DP_HDCP_READY,
+};
+
 /* Do hdcp2.2 authentication with DP Receiver
  * and enable encryption if authentication is succeed.
  * @return

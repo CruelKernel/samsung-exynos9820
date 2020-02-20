@@ -169,6 +169,7 @@ struct mmc_host_ops {
 	 */
 	int	(*multi_io_quirk)(struct mmc_card *card,
 				  unsigned int direction, int blk_size);
+	void	(*ssclk_control)(struct mmc_host *host, int enable);
 };
 
 struct mmc_cqe_ops {
@@ -359,7 +360,8 @@ struct mmc_host {
 #define MMC_CAP2_NO_MMC		(1 << 22)	/* Do not send (e)MMC commands during initialization */
 #define MMC_CAP2_CQE		(1 << 23)	/* Has eMMC command queue engine */
 #define MMC_CAP2_CQE_DCMD	(1 << 24)	/* CQE can issue a direct command */
-#define MMC_CAP2_DETECT_ON_ERR	(1 << 25)	/* On I/O err check card removal */
+#define MMC_CAP2_SKIP_INIT_SCAN		(1 << 25)       /* skip init mmc scan */
+#define MMC_CAP2_DETECT_ON_ERR	(1 << 26)	/* On I/O err check card removal */
 
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 

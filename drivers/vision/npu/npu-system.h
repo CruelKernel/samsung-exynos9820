@@ -37,19 +37,6 @@
 
 #include "npu-fw-test-handler.h"
 
-//#define CLKGate1_DRCG_EN
-#define CLKGate23_SOC_HWACG
-#define CLKGate4_IP_HWACG
-//#define CLKGate5_IP_DRCG_EN
-
-#if defined(CONFIG_SOC_EMULATOR9820) || defined(CONFIG_SOC_EXYNOS9820)
-struct npu_iomem_area {
-	void __iomem		*vaddr;
-	u32			paddr;
-	resource_size_t		size;
-};
-#endif
-
 struct npu_system {
 #if defined(CONFIG_SOC_EMULATOR9820) || defined(CONFIG_SOC_EXYNOS9820)
 	struct platform_device	*pdev;
@@ -92,6 +79,7 @@ struct npu_system {
 
 	/* Open status (Bitfield of npu_system_resume_steps) */
 	unsigned long			resume_steps;
+	unsigned long			resume_soc_steps;
 };
 
 int npu_system_probe(struct npu_system *system, struct platform_device *pdev);

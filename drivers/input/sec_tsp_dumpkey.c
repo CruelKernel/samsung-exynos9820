@@ -13,6 +13,9 @@
 #include <linux/input.h>
 #include <linux/gpio_keys.h>
 #include <linux/sec_debug.h>
+#ifdef CONFIG_SEC_KEY_NOTIFIER
+#include "../samsung/sec_key_notifier.h"
+#endif
 
 /* Input sequence 9530 */
 #define CRASH_COUNT_FIRST 3
@@ -46,6 +49,15 @@ struct tsp_dump_key_state tsp_dump_key_states[] = {
 	{KEY_POWER, KEY_STATE_UP},
 	{KEY_HOMEPAGE, KEY_STATE_UP},
 };
+
+#ifdef CONFIG_SEC_KEY_NOTIFIER
+static unsigned int __tsp_dump_keys[] = {
+	KEY_POWER,
+	KEY_VOLUMEDOWN,
+	KEY_VOLUMEUP,
+	KEY_HOMEPAGE
+};
+#endif
 
 static unsigned int hold_key = KEY_VOLUMEUP;
 static unsigned int hold_key_hold = KEY_STATE_UP;
@@ -176,10 +188,16 @@ static void reset_count(void)
 }
 
 static int check_tsp_crash_keys(struct notifier_block *nb,
-				    unsigned long c, void *v)
+				unsigned long type, void *data)
 {
-	unsigned int code = (unsigned int)c;
-	int state = *(int *)v;
+#ifndef CONFIG_SEC_KEY_NOTIFIER
+	unsigned int code = (unsigned int)type;
+	int state = *(int *)data;
+#else
+	struct sec_key_notifier_param *param = data;
+	unsigned int code = param->keycode;
+	int state = param->down;
+#endif
 
 	if (!is_crash_keys(code))
 		return NOTIFY_DONE;
@@ -216,15 +234,26 @@ static int check_tsp_crash_keys(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+#ifndef CONFIG_SEC_KEY_NOTIFIER
 static struct notifier_block nb_gpio_keys = {
 	.notifier_call = check_tsp_crash_keys
 };
+#else
+static struct notifier_block seccmn_tsp_crash_key_notifier = {
+	.notifier_call = check_tsp_crash_keys
+};
+#endif
 
 static int __init sec_tsp_dumpkey_init(void)
 {
 	/* only work for debug level is low */
 //	if (!sec_debug_enter_upload())
-		register_gpio_keys_notifier(&nb_gpio_keys);
+#ifndef CONFIG_SEC_KEY_NOTIFIER
+	register_gpio_keys_notifier(&nb_gpio_keys);
+#else
+	sec_kn_register_notifier(&seccmn_tsp_crash_key_notifier,
+			__tsp_dump_keys, ARRAY_SIZE(__tsp_dump_keys));
+#endif
 	return 0;
 }
 

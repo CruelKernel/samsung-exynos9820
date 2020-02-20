@@ -117,24 +117,26 @@ struct vb2_mem_ops {
 	void		*(*alloc)(struct device *dev, unsigned long attrs,
 				  unsigned long size,
 				  enum dma_data_direction dma_dir,
-				  gfp_t gfp_flags);
+				  gfp_t gfp_flags, int memflags);
 	void		(*put)(void *buf_priv);
 	struct dma_buf *(*get_dmabuf)(void *buf_priv, unsigned long flags);
 
 	void		*(*get_userptr)(struct device *dev, unsigned long vaddr,
 					unsigned long size,
-					enum dma_data_direction dma_dir);
+					enum dma_data_direction dma_dir,
+					int memflags);
 	void		(*put_userptr)(void *buf_priv);
 
-	void		(*prepare)(void *buf_priv, size_t size);
-	void		(*finish)(void *buf_priv, size_t size);
+	void		(*prepare)(void *buf_priv, size_t size, int memflags);
+	void		(*finish)(void *buf_priv, size_t size, int memflags);
 
 	void		*(*attach_dmabuf)(struct device *dev,
 					  struct dma_buf *dbuf,
 					  unsigned long size,
 					  enum dma_data_direction dma_dir);
 	void		(*detach_dmabuf)(void *buf_priv);
-	int		(*map_dmabuf)(void *buf_priv, size_t size);
+	int		(*map_dmabuf)(void *buf_priv, size_t size,
+				      int memflags);
 	void		(*unmap_dmabuf)(void *buf_priv, size_t size);
 
 	void		*(*vaddr)(void *buf_priv);
@@ -400,6 +402,10 @@ struct vb2_buffer {
  *			ioctl; might be called before @start_streaming callback
  *			if user pre-queued buffers before calling
  *			VIDIOC_STREAMON().
+ * @mem_flags:		called before events of buffer manipulations including
+ *			buffer acquisition and mappin to study extra information
+ *			vb2 mem implementations. The return values of
+ *			@mem_flags are implementation specific.
  */
 struct vb2_ops {
 	int (*queue_setup)(struct vb2_queue *q,
@@ -419,6 +425,7 @@ struct vb2_ops {
 	bool (*is_unordered)(struct vb2_queue *q);
 
 	void (*buf_queue)(struct vb2_buffer *vb);
+	int (*mem_flags)(struct vb2_buffer *vb);
 };
 
 /**
@@ -595,6 +602,7 @@ struct vb2_queue {
 	u32				cnt_start_streaming;
 	u32				cnt_stop_streaming;
 	u32				cnt_is_unordered;
+	u32				cnt_mem_flags;
 #endif
 };
 

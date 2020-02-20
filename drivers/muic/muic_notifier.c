@@ -3,7 +3,7 @@
 #include <linux/notifier.h>
 #include <linux/muic/muic.h>
 #include <linux/muic/muic_notifier.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 #define NOTI_ADDR_DST (0xf)
 #define NOTI_ID_ATTACH (1)

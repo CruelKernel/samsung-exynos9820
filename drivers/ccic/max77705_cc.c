@@ -384,6 +384,14 @@ static irqreturn_t max77705_ccpinstat_irq(int irq, void *data)
 	switch (ccpinstat) {
 	case NO_DETERMINATION:
 			msg_maxim("CCPINSTAT (NO_DETERMINATION)");
+#if defined(CONFIG_CCIC_NOTIFIER)
+		if (usbc_data->ccrp_state) {
+			usbc_data->ccrp_state = 0;
+			max77705_ccic_event_work(usbc_data,
+				CCIC_NOTIFY_DEV_BATTERY, CCIC_NOTIFY_ID_WATER_CABLE,
+				CCIC_NOTIFY_DETACH, 0/*rprd*/, 0);
+		}
+#endif
 			break;
 	case CC1_ACTIVE:
 			msg_maxim("CCPINSTAT (CC1_ACTIVE)");

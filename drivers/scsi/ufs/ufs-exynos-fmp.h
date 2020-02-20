@@ -18,7 +18,7 @@ int exynos_ufs_fmp_cfg(struct ufs_hba *hba,
 				struct ufshcd_lrb *lrbp,
 				struct scatterlist *sg,
 				uint32_t index,
-				int sector_offset);
+				int sector_offset, int page_index);
 int exynos_ufs_fmp_clear(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 int exynos_ufs_fmp_sec_cfg(struct exynos_ufs *ufs);
 #else
@@ -26,7 +26,7 @@ inline int exynos_ufs_fmp_cfg(struct ufs_hba *hba,
 				struct ufshcd_lrb *lrbp,
 				struct scatterlist *sg,
 				uint32_t index,
-				int sector_offset)
+				int sector_offset, int page_index)
 {
 	return 0;
 }

@@ -3208,6 +3208,12 @@ static int submit_bh_wbc(int op, int op_flags, struct buffer_head *bh,
 	if (bio->bi_opf & REQ_CRYPT)
 		bio->bi_cryptd = bh->b_private;
 #endif
+
+#ifdef CONFIG_SUBMIT_BH_IO_ACCOUNTING
+	if (op & REQ_OP_WRITE)
+		task_io_account_submit_bh_write(bh->b_size);
+#endif
+
 	submit_bio(bio);
 	return 0;
 }

@@ -42,9 +42,9 @@ struct light_coef_predefine_item light_coef_predefine_table[COLOR_NUM+1] = {
 };
 #else
 struct light_coef_predefine_item light_coef_predefine_table[COLOR_NUM+1] = {
-	{181204,	COLOR_ID_DEFAULT,	{-947, -425, -1777, 1754, 3588, 1112, 1370},	{0, 0}, 550},
-	{181204,	COLOR_ID_UTYPE,		{-947, -425, -1777, 1754, 3588, 1112, 1370},	{0, 0}, 550},
-	{181204,	COLOR_ID_BLACK,		{-947, -425, -1777, 1754, 3588, 1112, 1370},	{0, 0}, 550},
+	{190610,	COLOR_ID_DEFAULT,	{-888, 217, -444, 1115, 3673, 1112, 1370},	{0, 0}, 550},
+	{190610,	COLOR_ID_UTYPE,		{-888, 217, -444, 1115, 3673, 1112, 1370},	{0, 0}, 550},
+	{190610,	COLOR_ID_BLACK,		{-888, 217, -444, 1115, 3673, 1112, 1370},	{0, 0}, 550},
 };
 #endif
 

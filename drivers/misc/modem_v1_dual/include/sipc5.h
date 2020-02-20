@@ -16,7 +16,7 @@
 #define __SIPC5_H__
 
 #include <linux/types.h>
-#include "../modem_v1.h"
+#include "modem_v1.h"
 
 /* SIPC5 link-layer header */
 struct __packed sipc5_link_header {
@@ -206,6 +206,16 @@ static inline bool sipc5_udl_ch(u8 ch)
 static inline bool sipc5_ipc_ch(u8 ch)
 {
 	return (ch > 0 && (ch < SIPC5_CH_ID_BOOT_0 || ch > SIPC5_CH_ID_DUMP_9))
+		? true : false;
+}
+
+/**
+@param ch	the channel ID
+@return		true if the channel ID is for MISC channel want to logging
+*/
+static inline bool sipc5_misc_ch(u8 ch)
+{
+	return (ch == SIPC_CH_ID_CASS)
 		? true : false;
 }
 

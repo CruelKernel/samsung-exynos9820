@@ -37,7 +37,6 @@
 #define PROCESS_CHKSUM1_ERR			0x81
 #define PROCESS_CHKSUM2_ERR			0x82
 #define PROCESS_TIMEOUT_ERR			0x87
-#define RETRY_COUNT				5
 
 
 

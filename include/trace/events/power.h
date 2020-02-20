@@ -247,12 +247,13 @@ TRACE_EVENT(cpu_frequency_filter,
 
 TRACE_EVENT(sugov_kair_freq,
 	    TP_PROTO(unsigned int cpu, unsigned long util, unsigned long max,
-		     unsigned int legacy_freq, unsigned int freq),
-	    TP_ARGS(cpu, util, max, legacy_freq, freq),
+		     int l1_rand, unsigned int legacy_freq, unsigned int freq),
+	    TP_ARGS(cpu, util, max, l1_rand, legacy_freq, freq),
 	    TP_STRUCT__entry(
 		    __field(	unsigned int,	cpu)
 		    __field(	unsigned long,	util)
 		    __field(	unsigned long,	max)
+		    __field(	int,		l1_rand)
 		    __field(	unsigned int,	legacy_freq)
 		    __field(	unsigned int,	freq)
 	    ),
@@ -260,13 +261,15 @@ TRACE_EVENT(sugov_kair_freq,
 		    __entry->cpu = cpu;
 		    __entry->util = util;
 		    __entry->max = max;
+		    __entry->l1_rand = l1_rand;
 		    __entry->legacy_freq = legacy_freq;
 		    __entry->freq = freq;
 	    ),
-	    TP_printk("cpu=%u util=%lu max=%lu legacy_freq=%u kair_freq=%u",
+	    TP_printk("cpu=%u util=%lu max=%lu l1_rand=%d legacy_freq=%u kair_freq=%u",
 		      __entry->cpu,
 		      __entry->util,
 		      __entry->max,
+		      __entry->l1_rand,
 		      __entry->legacy_freq,
 		      __entry->freq)
 );

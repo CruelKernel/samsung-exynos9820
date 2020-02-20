@@ -416,5 +416,6 @@ extern bool is_muic_usb_path_cp_usb(void);
 /* for charger api */
 extern void max77705_hv_muic_charger_init(void);
 extern int max77705_usbc_fw_update(struct max77705_dev *max77705, const u8 *fw_bin, int fw_bin_len, int enforce_do);
+extern void max77705_usbc_fw_setting(struct max77705_dev *max77705, int enforce_do);
 #endif /* __LINUX_MFD_MAX77705_PRIV_H */
 

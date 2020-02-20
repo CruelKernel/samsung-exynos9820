@@ -321,8 +321,10 @@ int fimc_is_hw_camif_cfg(void *sensor_data);
 int fimc_is_hw_camif_open(void *sensor_data);
 #ifdef USE_CAMIF_FIX_UP
 int fimc_is_hw_camif_fix_up(struct fimc_is_device_sensor *sensor);
+int fimc_is_hw_camif_pdp_in_enable(struct fimc_is_device_sensor *sensor, bool enable);
 #else
-#define fimc_is_hw_camif_fix_up(a) ({ int __retval = 0; do {} while(0); __retval; })
+#define fimc_is_hw_camif_fix_up(a) ({ int __retval = 0; do {} while (0); __retval; })
+#define fimc_is_hw_camif_pdp_in_enable(a, b) ({ int __retval = 0; do {} while (0); __retval; })
 #endif
 void fimc_is_hw_ischain_qe_cfg(void);
 int fimc_is_hw_ischain_cfg(void *ischain_data);
@@ -412,6 +414,13 @@ int fimc_is_runtime_suspend_post(struct device *dev);
 #ifdef ENABLE_VIRTUAL_OTF
 void fimc_is_hw_cip_clk_enable(bool enable);
 void fimc_is_hw_c2sync_ring_clock(enum c2sync_type type, bool enable);
+#endif
+
+#ifdef CONFIG_CAMERA_MC_SCALER_VER2_USE
+void fimc_is_hw_djag_get_input(struct fimc_is_device_ischain *ischain, u32 *djag_in);
+void fimc_is_hw_djag_adjust_out_size(struct fimc_is_device_ischain *ischain,
+					u32 in_width, u32 in_height,
+					u32 *out_width, u32 *out_height);
 #endif
 
 #endif

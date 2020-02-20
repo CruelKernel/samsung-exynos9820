@@ -625,9 +625,8 @@ int dwc3_event_buffers_setup(struct dwc3 *dwc)
 	evt = dwc->ev_buf;
 	if (evt == NULL) {
 		dev_err(dwc->dev, "Event buffer is NULL!!!\n");
-		return -EFAULT;
+		return -ENOMEM;
 	}
-
 	evt->lpos = 0;
 	dwc3_writel(dwc->regs, DWC3_GEVNTADRLO(0),
 			lower_32_bits(evt->dma));

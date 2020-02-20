@@ -54,6 +54,11 @@ struct fscrypt_name {
 #define fname_name(p)		((p)->disk_name.name)
 #define fname_len(p)		((p)->disk_name.len)
 
+/* device unit number for iv sector */
+#define FSCRYPT_DUN(i,pg_index) \
+	((((i)->i_ino & 0xffffffff) << 32) | ((pg_index) & 0xffffffff))
+#define FSCRYPT_PG_DUN(i,p)	FSCRYPT_DUN(i, (p)->index)
+
 /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
 #if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
 #define FSCRYPT_SET_CONTEXT_MAX_SIZE	32
@@ -270,16 +275,21 @@ static inline int fscrypt_encrypt_symlink(struct inode *inode,
 	return 0;
 }
 
-#endif	/* _LINUX_FSCRYPT_H */
-
 /* inline.c */
+#define fscrypt_set_bio_cryptd(inode, bio) fscrypt_set_bio_cryptd_dun(inode, bio, 0)
 #ifdef CONFIG_FS_INLINE_ENCRYPTION
-extern void fscrypt_set_bio_cryptd(const struct inode *inode, struct bio *bio);
+extern void fscrypt_set_bio_cryptd_dun(const struct inode *inode, struct bio *bio, u64 dun);
 extern void *fscrypt_get_bio_cryptd(const struct inode *inode);
 extern int fscrypt_inline_encrypted(const struct inode *inode);
 extern int fscrypt_submit_bh(int op, int op_flags, struct buffer_head *bh, struct inode *inode);
+extern unsigned long long fscrypt_get_dun(const struct inode *, pgoff_t pg_idx);
+
+static inline unsigned long long __fscrypt_make_dun(const struct inode *inode, pgoff_t pg_idx)
+{
+	return FSCRYPT_DUN(inode, pg_idx);
+}
 #else
-static inline void fscrypt_set_bio_cryptd(const struct inode *inode, struct bio *bio)
+static inline void fscrypt_set_bio_cryptd_dun(const struct inode *inode, struct bio *bio, u64 dun)
 {
 }
 
@@ -297,5 +307,16 @@ static inline int fscrypt_submit_bh(int op, int op_flags, struct buffer_head *bh
 {
 	return -EOPNOTSUPP;
 }
+
+static inline unsigned long long fscrypt_get_dun(const struct inode *, pgoff_t p)
+{
+	return 0;
+}
+
+static inline unsigned long long __fscrypt_make_dun(const struct inode *inode, pgoff_t pg_idx)
+{
+	return 0;
+}
 #endif
 
+#endif	/* _LINUX_FSCRYPT_H */

@@ -116,11 +116,11 @@
 /* for panel dump */
 #define S6E3HA9_RDDPM_REG			0x0A
 #define S6E3HA9_RDDPM_OFS			0
-#define S6E3HA9_RDDPM_LEN			3
+#define S6E3HA9_RDDPM_LEN			(PANEL_RDDPM_LEN)
 
 #define S6E3HA9_RDDSM_REG			0x0E
 #define S6E3HA9_RDDSM_OFS			0
-#define S6E3HA9_RDDSM_LEN			3
+#define S6E3HA9_RDDSM_LEN			(PANEL_RDDSM_LEN)
 
 #define S6E3HA9_ERR_REG				0xEA
 #define S6E3HA9_ERR_OFS				0
@@ -296,6 +296,15 @@
 #define S6E3HA9_TRANS_MODE_LEN	(1)
 #endif /* CONFIG_EXYNOS_DECON_MDNIE_LITE */
 
+#ifdef CONFIG_SUPPORT_POC_SPI
+#define S6E3HA9_POC_SPI_READ_REG (0x03)
+#define S6E3HA9_POC_SPI_READ_LEN (2048)
+#define S6E3HA9_POC_SPI_STATUS1_REG (0x05)
+#define S6E3HA9_POC_SPI_STATUS1_LEN (1)
+#define S6E3HA9_POC_SPI_STATUS2_REG (0x35)
+#define S6E3HA9_POC_SPI_STATUS2_LEN (1)
+#endif
+
 enum {
 	GAMMA_MAPTBL,
 	AOR_MAPTBL,
@@ -343,6 +352,12 @@ enum {
 #ifdef CONFIG_SUPPORT_POC_FLASH
 	POC_ER_ADDR_MAPTBL,
 #endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	POC_SPI_READ_ADDR_MAPTBL,
+	POC_SPI_WRITE_ADDR_MAPTBL,
+	POC_SPI_WRITE_DATA_MAPTBL,
+	POC_SPI_ERASE_ADDR_MAPTBL,
+#endif
 #ifdef CONFIG_SUPPORT_GRAM_CHECKSUM
 	VDDM_MAPTBL,
 	GRAM_IMG_MAPTBL,
@@ -357,8 +372,12 @@ enum {
 	ISC_THRESHOLD_MAPTBL,
 	STM_TUNE_MAPTBL,
 #endif
+#ifdef CONFIG_DYNAMIC_FREQ
+	DYN_FFC_MAPTBL,
+#endif
 	GAMMA_INTER_CONTROL_MAPTBL,
 	POC_COMP_MAPTBL,
+	DIA_ONOFF_MAPTBL,
 	MAX_MAPTBL,
 };
 
@@ -396,6 +415,11 @@ enum {
 	READ_POC_CTRL,
 	READ_POC_DATA,
 	READ_FLASH_MCD,
+#endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	READ_POC_SPI_READ,
+	READ_POC_SPI_STATUS1,
+	READ_POC_SPI_STATUS2,
 #endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 	READ_POC_MCA_CHKSUM,
@@ -454,6 +478,11 @@ enum {
 	RES_POC_CTRL,
 	RES_POC_DATA,
 	RES_FLASH_MCD,
+#endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	RES_POC_SPI_READ,
+	RES_POC_SPI_STATUS1,
+	RES_POC_SPI_STATUS2,
 #endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 	RES_POC_MCA_CHKSUM,
@@ -514,6 +543,11 @@ static u8 S6E3HA9_POC_CTRL[S6E3HA9_POC_CTRL_LEN];
 static u8 S6E3HA9_POC_DATA[S6E3HA9_POC_DATA_LEN];
 static u8 S6E3HA9_FLASH_MCD[S6E3HA9_FLASH_MCD_LEN];
 #endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+static u8 S6E3HA9_POC_SPI_READ[S6E3HA9_POC_SPI_READ_LEN];
+static u8 S6E3HA9_POC_SPI_STATUS1[S6E3HA9_POC_SPI_STATUS1_LEN];
+static u8 S6E3HA9_POC_SPI_STATUS2[S6E3HA9_POC_SPI_STATUS2_LEN];
+#endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 static u8 S6E3HA9_POC_MCA_CHKSUM[S6E3HA9_POC_MCA_CHKSUM_LEN];
 #endif
@@ -570,6 +604,11 @@ static struct rdinfo s6e3ha9_rditbl[] = {
 	[READ_POC_CTRL] = RDINFO_INIT(poc_ctrl, DSI_PKT_TYPE_RD, S6E3HA9_POC_CTRL_REG, S6E3HA9_POC_CTRL_OFS, S6E3HA9_POC_CTRL_LEN),
 	[READ_POC_DATA] = RDINFO_INIT(poc_data, DSI_PKT_TYPE_RD, S6E3HA9_POC_DATA_REG, S6E3HA9_POC_DATA_OFS, S6E3HA9_POC_DATA_LEN),
 	[READ_FLASH_MCD] = RDINFO_INIT(flash_mcd, DSI_PKT_TYPE_RD_POC, S6E3HA9_FLASH_MCD_ADDR, S6E3HA9_FLASH_MCD1_R_OFS, S6E3HA9_FLASH_MCD_LEN),
+#endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	[READ_POC_SPI_READ] = RDINFO_INIT(poc_spi_read, SPI_PKT_TYPE_RD, S6E3HA9_POC_SPI_READ_REG, 0, S6E3HA9_POC_SPI_READ_LEN),
+	[READ_POC_SPI_STATUS1] = RDINFO_INIT(poc_spi_status1, SPI_PKT_TYPE_RD, S6E3HA9_POC_SPI_STATUS1_REG, 0, S6E3HA9_POC_SPI_STATUS1_LEN),
+	[READ_POC_SPI_STATUS2] = RDINFO_INIT(poc_spi_status2, SPI_PKT_TYPE_RD, S6E3HA9_POC_SPI_STATUS2_REG, 0, S6E3HA9_POC_SPI_STATUS2_LEN),
 #endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 	[READ_POC_MCA_CHKSUM] = RDINFO_INIT(poc_mca_chksum, DSI_PKT_TYPE_RD, S6E3HA9_POC_MCA_CHKSUM_REG, S6E3HA9_POC_MCA_CHKSUM_OFS, S6E3HA9_POC_MCA_CHKSUM_LEN),
@@ -630,6 +669,11 @@ static DEFINE_RESUI(poc_ctrl, &s6e3ha9_rditbl[READ_POC_CTRL], 0);
 static DEFINE_RESUI(poc_data, &s6e3ha9_rditbl[READ_POC_DATA], 0);
 static DEFINE_RESUI(flash_mcd, &s6e3ha9_rditbl[READ_FLASH_MCD], 0);
 #endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+static DEFINE_RESUI(poc_spi_read, &s6e3ha9_rditbl[READ_POC_SPI_READ], 0);
+static DEFINE_RESUI(poc_spi_status1, &s6e3ha9_rditbl[READ_POC_SPI_STATUS1], 0);
+static DEFINE_RESUI(poc_spi_status2, &s6e3ha9_rditbl[READ_POC_SPI_STATUS2], 0);
+#endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 static DEFINE_RESUI(poc_mca_chksum, &s6e3ha9_rditbl[READ_POC_MCA_CHKSUM], 0);
 #endif
@@ -687,6 +731,11 @@ static struct resinfo s6e3ha9_restbl[] = {
 	[RES_POC_CTRL] = RESINFO_INIT(poc_ctrl, S6E3HA9_POC_CTRL, RESUI(poc_ctrl)),
 	[RES_POC_DATA] = RESINFO_INIT(poc_data, S6E3HA9_POC_DATA, RESUI(poc_data)),
 	[RES_FLASH_MCD] = RESINFO_INIT(flash_mcd, S6E3HA9_FLASH_MCD, RESUI(flash_mcd)),
+#endif
+#ifdef CONFIG_SUPPORT_POC_SPI
+	[RES_POC_SPI_READ] = RESINFO_INIT(poc_spi_read, S6E3HA9_POC_SPI_READ, RESUI(poc_spi_read)),
+	[RES_POC_SPI_STATUS1] = RESINFO_INIT(poc_spi_status1, S6E3HA9_POC_SPI_STATUS1, RESUI(poc_spi_status1)),
+	[RES_POC_SPI_STATUS2] = RESINFO_INIT(poc_spi_status2, S6E3HA9_POC_SPI_STATUS2, RESUI(poc_spi_status2)),
 #endif
 #ifdef CONFIG_SUPPORT_POC_FLASH
 	[RES_POC_MCA_CHKSUM] = RESINFO_INIT(poc_mca_chksum, S6E3HA9_POC_MCA_CHKSUM, RESUI(poc_mca_chksum)),
@@ -768,6 +817,7 @@ static int getidx_elvss_temp_table(struct maptbl *);
 #ifdef CONFIG_SUPPORT_XTALK_MODE
 static int getidx_vgh_table(struct maptbl *);
 #endif
+static int getidx_dia_onoff_table(struct maptbl *tbl);
 static int getidx_hbm_onoff_table(struct maptbl *);
 static int getidx_acl_onoff_table(struct maptbl *);
 static int getidx_acl_opr_table(struct maptbl *);
@@ -807,6 +857,9 @@ static int s6e3ha9_getidx_tdmb_tune_table(struct maptbl *tbl);
 static int init_hmd_gamma_table(struct maptbl *);
 static int getidx_hmd_dimming_mtptbl(struct maptbl *);
 #endif /* CONFIG_SUPPORT_HMD */
+#ifdef CONFIG_DYNAMIC_FREQ
+static int getidx_dyn_ffc_table(struct maptbl *tbl);
+#endif /*CONFIG_DYNAMIC_FREQ*/
 #ifdef CONFIG_EXYNOS_DECON_MDNIE_LITE
 static int init_color_blind_table(struct maptbl *tbl);
 static int getidx_mdnie_scenario_maptbl(struct maptbl *tbl);

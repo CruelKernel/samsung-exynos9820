@@ -156,6 +156,9 @@ enum flag_idn {
 	QUERY_FLAG_IDN_RESERVED2			= 0x07,
 	QUERY_FLAG_IDN_FPHYRESOURCEREMOVAL	= 0x08,
 	QUERY_FLAG_IDN_BUSY_RTC 			= 0x09,
+	QUERY_FLAG_IDN_TW_EN		 		= 0x0E,
+	QUERY_FLAG_IDN_TW_BUF_FLUSH			= 0x0F,
+	QUERY_FLAG_IDN_TW_FLUSH_HIBERN		= 0x10,	
 };
 
 /* Attribute idn for Query requests */
@@ -178,6 +181,7 @@ enum attr_idn {
 	QUERY_ATTR_IDN_SECONDS_PASSED	= 0x0F,
 	QUERY_ATTR_IDN_CNTX_CONF	= 0x10,
 	QUERY_ATTR_IDN_CORR_PRG_BLK_NUM	= 0x11,
+	QUERY_ATTR_IDN_AVL_TW_BUF_SIZE	= 0x1D,
 };
 
 /* Descriptor idn for Query requests */
@@ -234,6 +238,7 @@ enum unit_desc_param {
 	UNIT_DESC_PARAM_PHY_MEM_RSRC_CNT	= 0x18,
 	UNIT_DESC_PARAM_CTX_CAPABILITIES	= 0x20,
 	UNIT_DESC_PARAM_LARGE_UNIT_SIZE_M1	= 0x22,
+	UNIT_DESC_PARAM_TW_BUF_ALLOC_UNIT	= 0x29,
 };
 
 /* Device descriptor parameters offsets in bytes*/
@@ -265,6 +270,7 @@ enum device_desc_param {
 	DEVICE_DESC_PARAM_UD_LEN		= 0x1B,
 	DEVICE_DESC_PARAM_RTT_CAP		= 0x1C,
 	DEVICE_DESC_PARAM_FRQ_RTC		= 0x1D,
+	DEVICE_DESC_PARAM_EXT_FEAT_SUPPORT		= 0x4F,
 };
 
 /*
@@ -306,7 +312,8 @@ enum power_desc_param_offset {
 
 /* Exception event mask values */
 enum {
-	MASK_EE_STATUS		= 0xFFFF,
+	/* disable tw event [bit 5] as default */
+	MASK_EE_STATUS		= 0xFFDF,
 	MASK_EE_URGENT_BKOPS	= (1 << 2),
 };
 
@@ -583,6 +590,7 @@ struct ufs_dev_desc {
 	u16 wmanufacturerid;
 	u8 lifetime;
 	char model[MAX_MODEL_LEN + 1];
+	u32 dextfeatsupport;
 };
 
 #endif /* End of Header */

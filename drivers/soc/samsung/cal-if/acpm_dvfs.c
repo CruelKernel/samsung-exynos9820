@@ -36,7 +36,7 @@ int exynos_acpm_set_rate(unsigned int id, unsigned long rate)
 	config.cmd[3] = 0;
 
 	before = sched_clock();
-	ret = acpm_ipc_send_data(acpm_dvfs.ch_num, &config);
+	ret = acpm_ipc_send_data_lazy(acpm_dvfs.ch_num, &config);
 	after = sched_clock();
 	latency = after - before;
 	if (ret)
@@ -64,7 +64,7 @@ int exynos_acpm_set_init_freq(unsigned int dfs_id, unsigned long freq)
 	config.cmd[3] = SET_INIT_FREQ;
 
 	before = sched_clock();
-	ret = acpm_ipc_send_data(acpm_dvfs.ch_num, &config);
+	ret = acpm_ipc_send_data_lazy(acpm_dvfs.ch_num, &config);
 	after = sched_clock();
 	latency = after - before;
 	if (ret)
@@ -90,7 +90,7 @@ unsigned long exynos_acpm_get_rate(unsigned int id)
 	config.cmd[3] = 0;
 
 	before = sched_clock();
-	ret = acpm_ipc_send_data(acpm_dvfs.ch_num, &config);
+	ret = acpm_ipc_send_data_lazy(acpm_dvfs.ch_num, &config);
 	after = sched_clock();
 	latency = after - before;
 	if (ret)

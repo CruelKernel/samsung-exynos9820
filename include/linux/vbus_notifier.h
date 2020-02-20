@@ -52,11 +52,9 @@ typedef enum {
 } vbus_notifier_stat_t;
 
 struct vbus_notifier_struct {
-	struct mutex		vbus_mutex;
 	vbus_notifier_stat_t	status;
 	vbus_status_t		vbus_type;
 	vbus_notifier_cmd_t	cmd;
-	struct blocking_notifier_head notifier_call_chain;
 };
 
 #define VBUS_NOTIFIER_BLOCK(name)	\

@@ -1,0 +1,42 @@
+/* Copyright (c) 2013, Samsung Electronics Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			sec-mst{
+				compatible = "sec-mst";
+				sec-mst,mst-pwr-gpio = <&expander_gpios 5 0>;
+				sec-mst,mst-en-gpio = <&gpp4 5 0>;
+				sec-mst,mst-data-gpio = <&gpp4 4 0>;
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&mst_en &mst_data>;
+			};
+		};
+	};
+};
+
+&pinctrl_6 {
+	mst_en: sec-mst,mst-en-gpio {
+		samsung,pins ="gpp4-5";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <1>;
+	};
+
+	mst_data: sec-mst,mst-data-gpio {
+		samsung,pins ="gpp4-4";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <1>;
+	};
+};

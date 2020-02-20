@@ -62,6 +62,7 @@ static struct device_attribute ccic_attributes[] = {
 	CCIC_SYSFS_ATTR(cc_pin_status),
 	CCIC_SYSFS_ATTR(ram_test),
 	CCIC_SYSFS_ATTR(sbu_adc),
+	CCIC_SYSFS_ATTR(vsafe0v_status),
 };
 
 static ssize_t ccic_sysfs_show_property(struct device *dev,

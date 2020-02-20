@@ -1066,6 +1066,12 @@ static irqreturn_t fimc_is_isr_csi(int irq, void *data)
 		if (csi->sw_checker != EXPECT_FRAME_END) {
 			warn("[CSIS%d] Lost start interupt\n",
 					csi->instance);
+			/*
+			* Even though it skips to start tasklet,
+			* framecount of CSI device should be increased
+			* to match with chain device including DDK.
+			*/
+			atomic_inc(&csi->fcount);
 			goto clear_status;
 		}
 		csi_frame_end_inline(csi);

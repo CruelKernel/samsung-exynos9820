@@ -1083,19 +1083,10 @@ static void __abox_rdma_compr_set_hw_params_legacy(struct device *dev,
 	rate = params_rate(params);
 	width = params_width(params);
 
-	switch (rate) {
-	case 384000:
-		upscale = 3;
-		dev_info(dev, "%s: 384kHz 32bit\n", __func__);
-		break;
-	case 192000:
-		upscale = 1;
-		dev_info(dev, "%s: 192kHz 24bit\n", __func__);
-		break;
-	default:
-		dev_warn(dev, "unsupported offload rate: %u\n", rate);
-		/* fall through */
-	case 48000:
+	if (rate <= 48000) {
+		if (rate != 48000)
+			dev_warn(dev, "unsupported offload rate: %u\n", rate);
+
 		if (width >= 24) {
 			upscale = 2;
 			dev_info(dev, "%s: 48kHz 24bit\n", __func__);
@@ -1103,7 +1094,12 @@ static void __abox_rdma_compr_set_hw_params_legacy(struct device *dev,
 			upscale = 0;
 			dev_info(dev, "%s: 48kHz 16bit\n", __func__);
 		}
-		break;
+	} else {
+		if (rate != 192000)
+			dev_warn(dev, "unsupported offload rate: %u\n", rate);
+
+		upscale = 1;
+		dev_info(dev, "%s: 192kHz 24bit\n", __func__);
 	}
 
 	if (abox_rdma_mailbox_read(dev, COMPR_UPSCALE) != upscale) {
@@ -1150,10 +1146,15 @@ static int abox_rdma_compr_get_hw_params(struct snd_compr_stream *stream,
 	abox_hw_params_fixup_helper(rtd, params, stream->direction);
 
 	upscale = abox_rdma_mailbox_read(dev, COMPR_UPSCALE);
-	if (upscale <= 0xF)
+	if (upscale <= 0xF) {
 		__abox_rdma_compr_set_hw_params_legacy(dev, params);
-	else
+		upscale = abox_rdma_mailbox_read(dev, COMPR_UPSCALE);
+		__abox_rdma_compr_get_hw_params_legacy(dev, params, upscale);
+	} else {
 		__abox_rdma_compr_set_hw_params(dev, params);
+		upscale = abox_rdma_mailbox_read(dev, COMPR_UPSCALE);
+		__abox_rdma_compr_get_hw_params(dev, params, upscale);
+	}
 
 	return 0;
 }

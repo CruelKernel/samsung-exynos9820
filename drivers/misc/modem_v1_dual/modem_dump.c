@@ -134,6 +134,34 @@ int save_cplog_dump(struct link_device *ld, struct io_device *iod,
 }
 #endif
 
+int save_databuf_dump(struct link_device *ld, struct io_device *iod,
+		unsigned long arg)
+{
+	u8 __iomem *dump_base = shm_get_databuf_region();
+	size_t dump_size = shm_get_databuf_size();
+
+#if defined(CONFIG_CP_PKTPROC_V2)
+	struct mem_link_device *mld = to_mem_link_device(ld);
+	struct pktproc_adaptor *ppa = &mld->pktproc;
+
+	switch (ppa->version) {
+	case PKTPROC_V2:
+		dump_base = phys_to_virt(shm_get_pktproc_v2_base());
+		dump_size = shm_get_pktproc_v2_size();
+		break;
+	default:
+		break;
+	}
+#endif
+
+	if (dump_size == 0 || dump_base == NULL) {
+		mif_err("ERR! save_databuf_dump fail!\n");
+		return -EFAULT;
+	}
+
+	return save_dump_file(ld, iod, arg, dump_base, dump_size);
+}
+
 int save_shmem_dump(struct link_device *ld, struct io_device *iod,
 		unsigned long arg)
 {

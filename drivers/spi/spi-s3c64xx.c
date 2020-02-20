@@ -816,6 +816,9 @@ static void s3c64xx_spi_config(struct s3c64xx_spi_driver_data *sdd)
 		ret = clk_set_rate(sdd->src_clk, sdd->cur_speed * 4);
 		if (ret < 0)
 			dev_err(&sdd->pdev->dev, "SPI clk set failed\n");
+		else
+			dev_err(&sdd->pdev->dev, "Set SPI clock rate: %u(%lu)\n",
+					sdd->cur_speed, clk_get_rate(sdd->src_clk));
 
 	} else {
 		/* Configure Clock */
@@ -931,6 +934,11 @@ static int s3c64xx_spi_transfer_one_message(struct spi_master *master,
 	unsigned fifo_lvl = (FIFO_LVL_MASK(sdd) >> 1) + 1;
 	u32 speed;
 	u8 bpw;
+
+	if (sdd->suspended) {
+		dev_err(&spi->dev, "SPI is suspended\n");
+		return -EIO;
+	}
 
 	/* If Master's(controller) state differs from that needed by Slave */
 	if (sdd->cur_speed != spi->max_speed_hz
@@ -1989,6 +1997,8 @@ static int s3c64xx_spi_suspend_operation(struct device *dev)
 
 	sdd->cur_speed = 0; /* Output Clock is stopped */
 
+	sdd->suspended = 1;
+
 	return 0;
 }
 
@@ -2032,6 +2042,8 @@ static int s3c64xx_spi_resume_operation(struct device *dev)
 		dev_err(dev, "problem starting queue (%d)\n", ret);
 	else
 		dev_dbg(dev, "resumed\n");
+
+	sdd->suspended = 0;
 
 	return ret;
 }

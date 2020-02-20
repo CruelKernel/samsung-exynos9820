@@ -808,6 +808,7 @@ enum aa_scene_mode {
     AA_SCENE_MODE_FAST_AE          = 134,
     AA_SCENE_MODE_ILLUMINANCE      = 135,
     AA_SCENE_MODE_SUPER_NIGHT      = 136,
+    AA_SCENE_MODE_BOKEH_VIDEO      = 137,
 };
 
 enum aa_effect_mode {
@@ -1061,6 +1062,13 @@ enum aa_af_scene_change {
 	AA_AF_DETECTED,
 };
 
+enum aa_enable_dynamicshot {
+    AA_DYNAMICSHOT_SIMPLE = 0,
+    AA_DYNAMICSHOT_FULL,
+    AA_DYNAMICSHOT_HDR_ONLY,
+    AA_DYNAMICSHOT_LLS_ONLY,
+};
+
 struct camera2_video_output_size {
 	uint16_t			width;
 	uint16_t			height;
@@ -1105,7 +1113,7 @@ struct camera2_aa_ctl {
 	uint32_t			vendor_captureExposureTime;
 	float				vendor_objectDistanceCm;
 	int32_t				vendor_colorTempKelvin;
-	int32_t				vendor_enableDynamicShotDm;
+	enum aa_enable_dynamicshot	vendor_enableDynamicShotDm;
 	float				vendor_expBracketing[15];
 	float				vendor_expBracketingCapture;
 	enum aa_supernightmode		vendor_superNightShotMode;
@@ -1198,7 +1206,8 @@ struct camera2_aa_dm {
 	uint32_t			vendor_luxStandard;
 	int32_t				vendor_aeStats4VO[8];
 	int32_t				vendor_multiFrameEv;
-	uint32_t			vendor_reserved[9];
+	int32_t				vendor_faceToneWeight;
+	uint32_t			vendor_reserved[8];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;
@@ -1743,6 +1752,7 @@ enum camera_op_mode {
 	CAMERA_OP_MODE_FAC,
 	CAMERA_OP_MODE_HAL3_FAC,
 	CAMERA_OP_MODE_HAL3_SDK,
+	CAMERA_OP_MODE_HAL3_CAMERAX,
 };
 
 struct camera2_pdaf_single_result {

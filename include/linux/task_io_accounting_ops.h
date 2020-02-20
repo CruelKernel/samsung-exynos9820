@@ -27,6 +27,13 @@ static inline void task_io_account_write(size_t bytes)
 	current->ioac.write_bytes += bytes;
 }
 
+#ifdef CONFIG_SUBMIT_BH_IO_ACCOUNTING
+static inline void task_io_account_submit_bh_write(size_t bytes)
+{
+	current->ioac.submit_bh_write_bytes += bytes;
+}
+#endif
+
 /*
  * We approximate number of blocks, because we account bytes only.
  * A 'block' is 512 bytes
@@ -52,6 +59,9 @@ static inline void task_blk_io_accounting_add(struct task_io_accounting *dst,
 	dst->read_bytes += src->read_bytes;
 	dst->write_bytes += src->write_bytes;
 	dst->cancelled_write_bytes += src->cancelled_write_bytes;
+#ifdef CONFIG_SUBMIT_BH_IO_ACCOUNTING
+	dst->submit_bh_write_bytes += src->submit_bh_write_bytes;
+#endif
 }
 
 #else

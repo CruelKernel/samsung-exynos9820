@@ -36,9 +36,52 @@
 #include <linux/exynos-busmon.h>
 #endif
 
+#ifdef CONFIG_MALI_PM_QOS
+#include <linux/pm_qos.h>
+#endif
+
 #include <linux/oom.h>
 
 extern struct kbase_device *pkbdev;
+
+#ifdef CONFIG_MALI_PM_QOS
+static int gpu_pm_qos_notifier(struct notifier_block *nb,
+		unsigned long val, void *v)
+{
+	int pm_qos_class = *((int *)v);
+
+	GPU_LOG(DVFS_ERROR, DUMMY, 0u, 0u, "%s: update GPU PM Qos class %d to %ld kHz\n", __func__, pm_qos_class, val);
+
+	if (pm_qos_class == PM_QOS_GPU_THROUGHPUT_MAX) {
+		/* TO DO FOR MAX LOCK */
+		if ( val > 0)
+			gpu_dvfs_clock_lock(GPU_DVFS_MAX_LOCK, PMQOS_LOCK, val);
+		else
+			gpu_dvfs_clock_lock(GPU_DVFS_MAX_UNLOCK, PMQOS_LOCK, -1);
+	} else if (pm_qos_class == PM_QOS_GPU_THROUGHPUT_MIN) {
+		/* TO DO FOR MIN LOCK */
+		if ( val > 0)
+			gpu_dvfs_clock_lock(GPU_DVFS_MIN_LOCK, PMQOS_LOCK, val);
+		else
+			gpu_dvfs_clock_lock(GPU_DVFS_MIN_UNLOCK, PMQOS_LOCK, -1);
+	} else {
+		/* invalid PM QoS class */
+		return -EINVAL;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block gpu_min_qos_notifier = {
+	.notifier_call = gpu_pm_qos_notifier,
+	.priority = INT_MAX,
+};
+
+static struct notifier_block gpu_max_qos_notifier = {
+	.notifier_call = gpu_pm_qos_notifier,
+	.priority = INT_MAX,
+};
+#endif
 
 #if defined (CONFIG_EXYNOS_THERMAL) && defined(CONFIG_GPU_THERMAL)
 static void gpu_tmu_normal_work(struct kbase_device *kbdev)
@@ -431,6 +474,11 @@ int gpu_notifier_init(struct kbase_device *kbdev)
 		return -1;
 #endif /* CONFIG_MALI_RT_PM */
 
+#ifdef CONFIG_MALI_PM_QOS
+	pm_qos_add_notifier(PM_QOS_GPU_THROUGHPUT_MAX, &gpu_max_qos_notifier);
+	pm_qos_add_notifier(PM_QOS_GPU_THROUGHPUT_MIN, &gpu_min_qos_notifier);
+#endif
+
 #ifdef CONFIG_EXYNOS_BUSMONITOR
 	busmon_notifier_chain_register(&gpu_noc_nb);
 #endif
@@ -452,5 +500,9 @@ void gpu_notifier_term(void)
 #ifdef CONFIG_MALI_RT_PM
 	unregister_pm_notifier(&gpu_pm_nb);
 #endif /* CONFIG_MALI_RT_PM */
+#ifdef CONFIG_MALI_PM_QOS
+	pm_qos_remove_notifier(PM_QOS_GPU_THROUGHPUT_MAX, &gpu_max_qos_notifier);
+	pm_qos_remove_notifier(PM_QOS_GPU_THROUGHPUT_MIN, &gpu_min_qos_notifier);
+#endif
 	return;
 }

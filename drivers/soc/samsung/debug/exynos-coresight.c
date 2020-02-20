@@ -16,6 +16,7 @@
 #include <linux/kallsyms.h>
 #include <linux/of.h>
 #include <linux/io.h>
+#include <linux/debug-snapshot.h>
 
 #include <asm/core_regs.h>
 #include <asm/cputype.h>
@@ -287,6 +288,9 @@ static int exynos_cs_init_dt(void)
 	iounmap(sj_base);
 
 	if (val & SJTAG_SOFT_LOCK)
+		return -EIO;
+
+	if (dbg_snapshot_get_sjtag_status() == true)
 		return -EIO;
 
 	while ((np = of_find_node_by_type(np, "cs"))) {

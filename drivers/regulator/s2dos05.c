@@ -38,15 +38,14 @@
 #include <linux/regulator/of_regulator.h>
 
 #ifdef CONFIG_SEC_PM
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #ifdef CONFIG_SEC_FACTORY
 #include <linux/fb.h>
 #endif /* CONFIG_SEC_FACTORY */
 #endif /* CONFIG_SEC_PM */
 
 #ifdef CONFIG_SEC_PM
-struct device *sec_disp_pmic_dev;
-static struct s2dos05_data *s2dos05_info;
+static struct i2c_client *s2dos05_i2c;
 #endif /* CONFIG_SEC_PM */
 
 struct s2dos05_data {
@@ -54,6 +53,9 @@ struct s2dos05_data {
 	int num_regulators;
 	struct regulator_dev *rdev[S2DOS05_REGULATOR_MAX];
 	int opmode[S2DOS05_REGULATOR_MAX];
+#ifdef CONFIG_SEC_PM
+	struct device *sec_disp_pmic_dev;
+#endif /* CONFIG_SEC_PM */
 };
 
 int s2dos05_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest)
@@ -393,6 +395,19 @@ static struct regulator_desc regulators[S2DOS05_REGULATOR_MAX] = {
 #endif
 };
 
+#ifdef CONFIG_SEC_PM
+static void s2dos05_irq_notifier_call_chain(struct s2dos05_data *s2dos05,
+					u8 reg_val)
+{
+	int i;
+	int data = reg_val;
+
+	for (i = 0; i < s2dos05->num_regulators; i++)
+		regulator_notifier_call_chain(s2dos05->rdev[i],
+				REGULATOR_EVENT_FAIL, (void *)&data);
+}
+#endif /* CONFIG_SEC_PM */
+
 static irqreturn_t s2dos05_irq_thread(int irq, void *irq_data)
 {
 	struct s2dos05_data *s2dos05 = irq_data;
@@ -413,6 +428,10 @@ static irqreturn_t s2dos05_irq_thread(int irq, void *irq_data)
 
 	pr_info("%s: IRQ:%s\n", __func__, irq_name);
 #endif /* CONFIG_SEC_PM_DEBUG */
+
+#ifdef CONFIG_SEC_PM
+	s2dos05_irq_notifier_call_chain(s2dos05, val);
+#endif /* CONFIG_SEC_PM */
 
 	return IRQ_HANDLED;
 }
@@ -509,7 +528,8 @@ static int s2dos05_pmic_dt_parse_pdata(struct s2dos05_dev *iodev,
 static ssize_t enable_fd_show(struct device *dev, struct device_attribute *attr,
 				char *buf)
 {
-	struct i2c_client *i2c = s2dos05_info->iodev->i2c;
+	struct s2dos05_data *info = dev_get_drvdata(dev);
+	struct i2c_client *i2c = info->iodev->i2c;
 	u8 uvlo_fd;
 	bool enabled;
 
@@ -525,7 +545,8 @@ static ssize_t enable_fd_show(struct device *dev, struct device_attribute *attr,
 static ssize_t enable_fd_store(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-	struct i2c_client *i2c = s2dos05_info->iodev->i2c;
+	struct s2dos05_data *info = dev_get_drvdata(dev);
+	struct i2c_client *i2c = info->iodev->i2c;
 	int ret;
 	bool enable;
 	u8 uvlo_fd;
@@ -553,7 +574,7 @@ static DEVICE_ATTR(enable_fd, 0664, enable_fd_show, enable_fd_store);
 static int fb_state_change(struct notifier_block *nb, unsigned long val,
 			   void *data)
 {
-	struct i2c_client *i2c = s2dos05_info->iodev->i2c;
+	struct i2c_client *i2c = s2dos05_i2c;
 	struct fb_event *evdata = data;
 	struct fb_info *info = evdata->info;
 	unsigned int blank;
@@ -587,13 +608,15 @@ static struct notifier_block fb_block = {
 };
 #endif /* CONFIG_SEC_FACTORY */
 
-static int s2dos05_sec_pm_init(struct s2dos05_dev *iodev, struct device *dev)
+static int s2dos05_sec_pm_init(struct s2dos05_dev *iodev,
+				struct s2dos05_data *info)
 {
+	struct device *dev = &iodev->i2c->dev;
 	int ret = 0;
 
-	sec_disp_pmic_dev = sec_device_create(NULL, "disp_pmic");
-	if (unlikely(IS_ERR(sec_disp_pmic_dev))) {
-		ret = PTR_ERR(sec_disp_pmic_dev);
+	info->sec_disp_pmic_dev = sec_device_create(info, "disp_pmic");
+	if (unlikely(IS_ERR(info->sec_disp_pmic_dev))) {
+		ret = PTR_ERR(info->sec_disp_pmic_dev);
 		dev_err(dev, "%s: Failed to create disp_pmic(%d)\n", __func__,
 				ret);
 		return ret;
@@ -610,7 +633,7 @@ static int s2dos05_sec_pm_init(struct s2dos05_dev *iodev, struct device *dev)
 	fb_register_client(&fb_block);
 #endif /* CONFIG_SEC_FACTORY */
 
-	ret = device_create_file(sec_disp_pmic_dev, &dev_attr_enable_fd);
+	ret = device_create_file(info->sec_disp_pmic_dev, &dev_attr_enable_fd);
 	if (ret) {
 		dev_err(dev, "%s: Failed to create enable_fd(%d)\n", __func__,
 				ret);
@@ -620,15 +643,15 @@ static int s2dos05_sec_pm_init(struct s2dos05_dev *iodev, struct device *dev)
 	return 0;
 
 remove_sec_disp_pmic_dev:
-	sec_device_destroy(sec_disp_pmic_dev->devt);
+	sec_device_destroy(info->sec_disp_pmic_dev->devt);
 
 	return ret;
 }
 
-static void s2dos05_sec_pm_deinit(void)
+static void s2dos05_sec_pm_deinit(struct s2dos05_data *info)
 {
-	device_remove_file(sec_disp_pmic_dev, &dev_attr_enable_fd);
-	sec_device_destroy(sec_disp_pmic_dev->devt);
+	device_remove_file(info->sec_disp_pmic_dev, &dev_attr_enable_fd);
+	sec_device_destroy(info->sec_disp_pmic_dev->devt);
 }
 #endif /* CONFIG_SEC_PM */
 
@@ -713,8 +736,9 @@ static int s2dos05_pmic_probe(struct i2c_client *i2c,
 	}
 
 #ifdef CONFIG_SEC_PM
-	s2dos05_info = s2dos05;
-	ret = s2dos05_sec_pm_init(iodev, &i2c->dev);
+	s2dos05_i2c = iodev->i2c;
+
+	ret = s2dos05_sec_pm_init(iodev, s2dos05);
 	if (ret < 0)
 		goto err_s2dos05_data;
 #endif /* CONFIG_SEC_PM */
@@ -722,7 +746,7 @@ static int s2dos05_pmic_probe(struct i2c_client *i2c,
 	iodev->adc_mode = pdata->adc_mode;
 	iodev->adc_sync_mode = pdata->adc_sync_mode;
 	if (iodev->adc_mode > 0)
-		s2dos05_powermeter_init(iodev);
+		s2dos05_powermeter_init(iodev, s2dos05->sec_disp_pmic_dev);
 
 	/* Enable SSD, SCP interrupt */
 	val = (S2DOS05_IRQ_PWRMT_MASK | S2DOS05_IRQ_TSD_MASK
@@ -785,7 +809,7 @@ static int s2dos05_pmic_remove(struct i2c_client *i2c)
 
 	s2dos05_powermeter_deinit(s2dos05->iodev);
 #ifdef CONFIG_SEC_PM
-	s2dos05_sec_pm_deinit();
+	s2dos05_sec_pm_deinit(s2dos05);
 #endif /* CONFIG_SEC_PM */
 	return 0;
 }

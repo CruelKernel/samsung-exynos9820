@@ -46,6 +46,11 @@ int is_abox_rdma_enabled(int id);
 int is_abox_wdma_enabled(int id);
 void abox_debug_string_update(enum abox_debug_err_type type, void *addr);
 
+void adev_err(struct device *dev, const char *fmt, ...);
+void adev_warn(struct device *dev, const char *fmt, ...);
+void adev_info(struct device *dev, const char *fmt, ...);
+void adev_dbg(struct device *dev, const char *fmt, ...);
+
 int register_debug_mixer(struct snd_soc_card *card);
 int alloc_sec_audio_log(struct sec_audio_log_data *p_dbg_log_data, size_t buffer_len);
 void free_sec_audio_log(struct sec_audio_log_data *p_dbg_log_data);
@@ -58,39 +63,23 @@ void sec_audio_pmlog(int level, struct device *dev, const char *fmt, ...);
 #ifdef dev_err
 #undef dev_err
 #endif
-#define dev_err(dev, fmt, arg...) \
-do { \
-	dev_printk(KERN_ERR, dev, fmt, ##arg); \
-	sec_audio_log(3, dev, fmt, ##arg); \
-} while (0)
+#define dev_err(dev, fmt, arg...)	adev_err(dev, fmt, ##arg)
 
 #ifdef dev_warn
 #undef dev_warn
 #endif
-#define dev_warn(dev, fmt, arg...) \
-do { \
-	dev_printk(KERN_WARNING, dev, fmt, ##arg); \
-	sec_audio_log(4, dev, fmt, ##arg); \
-} while (0)
+#define dev_warn(dev, fmt, arg...)	adev_warn(dev, fmt, ##arg)
 
 #ifdef dev_info
 #undef dev_info
 #endif
-#define dev_info(dev, fmt, arg...) \
-do { \
-	dev_printk(KERN_INFO, dev, fmt, ##arg); \
-	sec_audio_log(6, dev, fmt, ##arg); \
-} while (0)
+#define dev_info(dev, fmt, arg...)	adev_info(dev, fmt, ##arg)
 
 #ifdef DEBUG
 #ifdef dev_dbg
 #undef dev_dbg
 #endif
-#define dev_dbg(dev, fmt, arg...) \
-do { \
-	dev_printk(KERN_DEBUG, dev, fmt, ##arg); \
-	sec_audio_log(7, dev, fmt, ##arg); \
-} while (0)
+#define dev_dbg(dev, fmt, arg...)	adev_dbg(dev, fmt, ##arg)
 #endif /* DEBUG */
 
 #endif /* CHANGE_DEV_PRINT */

@@ -86,6 +86,8 @@ static int select_proper_cpu(struct task_struct *p, int prev_cpu)
 
 extern void sync_entity_load_avg(struct sched_entity *se);
 
+static int eff_mode;
+
 int exynos_wakeup_balance(struct task_struct *p, int prev_cpu, int sd_flag, int sync)
 {
 	int target_cpu = -1;
@@ -183,6 +185,14 @@ int exynos_wakeup_balance(struct task_struct *p, int prev_cpu, int sd_flag, int 
 		goto out;
 	}
 
+	if (eff_mode) {
+		target_cpu = select_best_cpu(p, prev_cpu, sd_flag, sync);
+		if (cpu_selected(target_cpu)) {
+			strcpy(state, "best");
+			goto out;
+		}
+	}
+
 	/*
 	 * Priority 5 : prefer-idle
 	 *
@@ -227,6 +237,33 @@ out:
 	return target_cpu;
 }
 
+static ssize_t show_eff_mode(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	int ret = 0;
+
+	ret += snprintf(buf + ret, 10, "%d\n", eff_mode);
+
+	return ret;
+}
+
+static ssize_t store_eff_mode(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf,
+		size_t count)
+{
+	unsigned int input;
+
+	if (!sscanf(buf, "%d", &input))
+		return -EINVAL;
+
+	eff_mode = input;
+
+	return count;
+}
+
+static struct kobj_attribute eff_mode_attr =
+__ATTR(eff_mode, 0644, show_eff_mode, store_eff_mode);
+
 static ssize_t show_sched_topology(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -270,6 +307,7 @@ static int __init init_sysfs(void)
 	ems_kobj = kobject_create_and_add("ems", kernel_kobj);
 
 	sysfs_create_file(ems_kobj, &sched_topology_attr.attr);
+	sysfs_create_file(ems_kobj, &eff_mode_attr.attr);
 
 	return 0;
 }

@@ -100,6 +100,14 @@ static int __panel_match_dev(struct decon_device *decon, struct device *dev)
 	decon->panel_sd = &panel->sd;
 	decon_info("panel sd name(%s)\n", panel->sd.name);
 
+#ifdef CONFIG_SUPPORT_DISPLAY_PROFILER
+	if (decon->id == 0) {
+		decon->profile_sd = &panel->profiler.sd;
+
+		v4l2_subdev_call(decon->profile_sd, core, ioctl,
+			PROFILE_REG_DECON, NULL);
+	}
+#endif
 	return ret;
 }
 #endif

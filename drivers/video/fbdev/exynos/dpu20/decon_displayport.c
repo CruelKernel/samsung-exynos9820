@@ -203,6 +203,10 @@ static int decon_displayport_set_lcd_info(struct decon_device *decon)
 	decon->dt.trig_mode = DECON_HW_TRIG;
 	decon->dt.out_type = DECON_OUT_DP;
 
+	/* set defalut color mode to HAL_COLOR_MODE_NATIVE */
+	decon->lcd_info->color_mode_cnt = 1;
+	decon->lcd_info->color_mode[0] = HAL_COLOR_MODE_NATIVE;
+
 	if (displayport->bpc == BPC_10)
 		decon->lcd_info->bpc = 10; /* 10pbc */
 	else

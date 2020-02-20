@@ -75,6 +75,7 @@ static void iint_free(struct integrity_iint_cache *iint)
 	iint->five_label = NULL;
 	iint->five_flags = 0UL;
 	iint->five_status = FIVE_FILE_UNKNOWN;
+	iint->five_signing = false;
 #endif
 	kfree(iint->ima_hash);
 	iint->ima_hash = NULL;
@@ -164,6 +165,7 @@ static void init_once(void *foo)
 #ifdef CONFIG_FIVE
 	iint->five_flags = 0UL;
 	iint->five_status = FIVE_FILE_UNKNOWN;
+	iint->five_signing = false;
 #endif
 	iint->flags = 0UL;
 	iint->atomic_flags = 0;

@@ -63,6 +63,7 @@ struct fimc_is_vender_specific {
 	struct ion_client	*fimc_ion_client;
 #endif
 	struct mutex		rom_lock;
+	struct mutex		hw_init_lock;
 #ifdef CONFIG_OIS_USE
 	bool			ois_ver_read;
 #endif /* CONFIG_OIS_USE */
@@ -92,8 +93,8 @@ struct fimc_is_vender_specific {
 	bool			suspend_resume_disable;
 	bool			need_cold_reset;
 	bool			zoom_running;
-	int32_t			rear_tof_uid;
-	int32_t			front_tof_uid;
+	int32_t			rear_tof_uid[TOF_CAL_UID_MAX];
+	int32_t			front_tof_uid[TOF_CAL_UID_MAX];
 
 #if !defined(CONFIG_CAMERA_EEPROM_SUPPORT_REAR)
 	FRomPowersource		f_rom_power;

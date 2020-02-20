@@ -16,8 +16,10 @@
 #define F1_4	140
 #define F1_5	150
 #define F1_7	170
+#define F1_8	180
 #define F1_9	190
 #define F2_0	200
+#define F2_1	210
 #define F2_2	220
 #define F2_4	240
 #define F2_45	245

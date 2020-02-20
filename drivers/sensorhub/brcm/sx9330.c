@@ -210,7 +210,7 @@ static void sx9330_initialize_register(struct sx9330_p *data)
 	u32 val32 = 0;
 	int idx;
 
-	for (idx = 0; idx < (int)(ARRAY_SIZE(setup_reg)); idx++) {
+	for (idx = 1; idx < (int)(ARRAY_SIZE(setup_reg)); idx++) {
 		sx9330_i2c_write_16bit(data, setup_reg[idx].reg, setup_reg[idx].val);
 		pr_info("[SX9330]: %s - Write Reg: 0x%x Value: 0x%x\n",
 			__func__, setup_reg[idx].reg, setup_reg[idx].val);
@@ -1225,6 +1225,8 @@ static void sx9330_init_work_func(struct work_struct *work)
 	struct sx9330_p *data = container_of((struct delayed_work *)work,
 		struct sx9330_p, init_work);
 
+	int retry = 0;
+
 	sx9330_initialize_chip(data);
 
 	sx9330_set_mode(data, SX9330_MODE_NORMAL);
@@ -1233,18 +1235,22 @@ static void sx9330_init_work_func(struct work_struct *work)
 	sx9330_read_irqstate(data);
 	msleep(20);
 
-	/* Defence code */
-	sx9330_get_data(data);
-	if (data->capMain == 0 && data->avg == 0 && data->diff == 0
-		&& data->useful == 0 && data->offset == 0) {
-		pr_info("[SX9330]: Defece code for grip sensor");
-		sx9330_i2c_write_16bit(data, SX9330_RESET_REG, I2C_SOFTRESET_VALUE);
-		msleep(300);
-		sx9330_initialize_chip(data);
-		sx9330_set_mode(data, SX9330_MODE_NORMAL);
-		sx9330_read_irqstate(data);
-		msleep(20);
+	while(retry++ < 10) {
 		sx9330_get_data(data);
+		/* Defence code */
+		if (data->capMain == 0 && data->avg == 0 && data->diff == 0
+			&& data->useful == 0 && data->offset == 0) {
+			pr_info("[SX9330]: Defece code for grip sensor - retry: %d\n", retry);
+
+			sx9330_i2c_write_16bit(data, SX9330_RESET_REG, I2C_SOFTRESET_VALUE);
+			msleep(300);
+			sx9330_initialize_chip(data);
+			sx9330_set_mode(data, SX9330_MODE_NORMAL);
+			sx9330_read_irqstate(data);
+			msleep(20);
+		} else {
+			break;
+		}
 	}
 }
 

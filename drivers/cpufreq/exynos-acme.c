@@ -106,17 +106,28 @@ int exynos_cpufreq_domain_count(void)
 	return last_domain()->id + 1;
 }
 
+/* __enable_domain/__disable_domain MUST be called with holding domain->lock */
+static inline void __enable_domain(struct exynos_cpufreq_domain *domain)
+{
+	domain->enabled = true;
+}
+
+static inline void __disable_domain(struct exynos_cpufreq_domain *domain)
+{
+	domain->enabled = false;
+}
+
 static void enable_domain(struct exynos_cpufreq_domain *domain)
 {
 	mutex_lock(&domain->lock);
-	domain->enabled = true;
+	__enable_domain(domain);
 	mutex_unlock(&domain->lock);
 }
 
 static void disable_domain(struct exynos_cpufreq_domain *domain)
 {
 	mutex_lock(&domain->lock);
-	domain->enabled = false;
+	__disable_domain(domain);
 	mutex_unlock(&domain->lock);
 }
 
@@ -479,8 +490,13 @@ static int __exynos_cpufreq_suspend(struct exynos_cpufreq_domain *domain)
 	pm_qos_update_request(&domain->min_qos_req, freq);
 	pm_qos_update_request(&domain->max_qos_req, freq);
 
-	/* To guarantee applying frequency, update_freq() is called explicitly */
-	update_freq(domain, freq);
+	/* To sync current freq with resume freq, check until they become same */
+	mutex_lock(&domain->lock);
+	while (domain->old > freq) {
+		mutex_unlock(&domain->lock);
+		update_freq(domain, freq);
+		mutex_lock(&domain->lock);
+	}
 
 	/*
 	 * Although cpufreq governor is stopped in cpufreq_suspend(),
@@ -488,7 +504,8 @@ static int __exynos_cpufreq_suspend(struct exynos_cpufreq_domain *domain)
 	 * PM QoS. To prevent chainging frequency after
 	 * cpufreq suspend, disable scaling for all domains.
 	 */
-	disable_domain(domain);
+	__disable_domain(domain);
+	mutex_unlock(&domain->lock);
 
 	return 0;
 }
@@ -898,7 +915,7 @@ err:
 }
 
 static ssize_t show_freqvar_idlelatency(struct kobject *kobj,
-				struct attribute *attr, char *buf)
+				struct kobj_attribute *attr, char *buf)
 {
 	struct exynos_cpufreq_domain *domain;
 	ssize_t count = 0;
@@ -929,7 +946,7 @@ static ssize_t show_freqvar_idlelatency(struct kobject *kobj,
 
 }
 
-static ssize_t store_freqvar_idlelatency(struct kobject *kobj, struct attribute *attr,
+static ssize_t store_freqvar_idlelatency(struct kobject *kobj, struct kobj_attribute *attr,
 					const char *buf, size_t count)
 {
 	struct exynos_cpufreq_domain *domain;
@@ -968,7 +985,7 @@ static ssize_t store_freqvar_idlelatency(struct kobject *kobj, struct attribute 
 	return count;
 }
 
-static struct global_attr freqvar_idlelatency =
+static struct kobj_attribute freqvar_idlelatency =
 __ATTR(freqvar_idlelatency, S_IRUGO | S_IWUSR,
 		show_freqvar_idlelatency, store_freqvar_idlelatency);
 
@@ -1531,6 +1548,8 @@ static int __init exynos_cpufreq_init(void)
 
 		set_boot_qos(domain);
 	}
+
+	set_energy_table_status(true);
 
 	pr_info("Initialized Exynos cpufreq driver\n");
 

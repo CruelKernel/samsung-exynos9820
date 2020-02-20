@@ -1866,11 +1866,9 @@ struct xhci_hcd {
 #define XHCI_SUSPEND_DELAY	BIT_ULL(30)
 #define XHCI_INTEL_USB_ROLE_SW	BIT_ULL(31)
 #define XHCI_RESET_PLL_ON_DISCONNECT	BIT_ULL(34)
-<<<<<<< HEAD
-#define XHCI_L2_SUPPORT		BIT_ULL(63)
-=======
 #define XHCI_SNPS_BROKEN_SUSPEND    BIT_ULL(35)
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
+
+#define XHCI_L2_SUPPORT		BIT_ULL(63)
 
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;

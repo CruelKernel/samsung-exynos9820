@@ -15,8 +15,10 @@
 #define SMC_HDCP_TERMINATE		((unsigned int)0x82004011)
 #define SMC_HDCP_PROT_MSG		((unsigned int)0x82004012)
 #define SMC_CHECK_STREAM_TYPE_FLAG	((unsigned int)0x82004022)
+#define SMC_HDCP_NOTIFY_INTR_NUM	((unsigned int)0x82004023)
 
 #define SMC_DRM_HDCP_AUTH_INFO		((unsigned int)0x82002140)
+#define SMC_DRM_HDCP_FUNC_TEST		((unsigned int)0x82002141)
 
 /**
  * HDCP TEE service commands

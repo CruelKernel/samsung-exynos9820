@@ -352,10 +352,8 @@ struct ion_page_pool {
 
 struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order,
 					   bool cached);
-int ion_page_pool_total(struct ion_page_pool *pool, bool high);
 void ion_page_pool_destroy(struct ion_page_pool *pool);
-struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high);
-void *ion_page_pool_only_alloc(struct ion_page_pool *a);
+struct page *ion_page_pool_only_alloc(struct ion_page_pool *pool);
 struct page *ion_page_pool_alloc(struct ion_page_pool *pool, bool nozero);
 void ion_page_pool_free(struct ion_page_pool *pool, struct page *page);
 

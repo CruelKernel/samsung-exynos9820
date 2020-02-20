@@ -231,9 +231,6 @@ static int g2d_get_dmabuf(struct g2d_task *task,
 		goto err;
 	}
 
-	if (dir != DMA_TO_DEVICE)
-		prot |= IOMMU_WRITE;
-
 	if (ion_cached_dmabuf(dmabuf)) {
 		task->total_cached_len += buffer->payload;
 
@@ -254,6 +251,12 @@ static int g2d_get_dmabuf(struct g2d_task *task,
 		perrfndev(g2d_dev, "failed to map dmabuf (%d)", ret);
 		goto err_map;
 	}
+
+	if (dir != DMA_TO_DEVICE)
+		prot |= IOMMU_WRITE;
+
+	if (device_get_dma_attr(g2d_dev->dev) == DEV_DMA_COHERENT)
+		prot |= IOMMU_CACHE;
 
 	dma_addr = ion_iovmm_map(attachment, 0, buffer->payload, dir, prot);
 	if (IS_ERR_VALUE(dma_addr)) {
@@ -372,6 +375,9 @@ static int g2d_get_userptr(struct g2d_task *task,
 		if (vma->vm_ops && vma->vm_ops->open)
 			vma->vm_ops->open(vma);
 	}
+
+	if (device_get_dma_attr(g2d_dev->dev) == DEV_DMA_COHERENT)
+		prot |= IOMMU_CACHE;
 
 	buffer->dma_addr = exynos_iovmm_map_userptr(g2d_dev->dev, data->userptr,
 						    data->length, prot);

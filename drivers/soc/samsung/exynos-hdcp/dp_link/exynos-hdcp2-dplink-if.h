@@ -40,8 +40,9 @@ enum hdcp22_msg_name {
 	NUM_HDCP22_MSG_NAME,
 };
 
-#define DP_HDCP22_ENABLE	1
 #define DP_HDCP22_DISABLE	0
+#define DP_HDCP22_ENABLE	1
+#define DP_HPD_STATUS_ZERO	2
 
 int hdcp_dplink_init(void);
 void hdcp_dplink_config(int en);

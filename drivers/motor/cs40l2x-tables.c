@@ -37,6 +37,7 @@ bool cs40l2x_readable_reg(struct device *dev, unsigned int reg)
 	case CS40L2X_FABID:
 	case CS40L2X_RELID:
 	case CS40L2X_OTPID:
+	case CS40L2X_TEST_KEY_CTL:
 	case CS40L2X_CTRL_ASYNC1:
 	case CS40L2X_OTP_CTRL0:
 	case CS40L2X_OTP_CTRL3:
@@ -63,6 +64,7 @@ bool cs40l2x_readable_reg(struct device *dev, unsigned int reg)
 	case CS40L2X_DSP_CLK_CTRL:
 	case CS40L2X_GLOBAL_CLK_CTRL:
 	case CS40L2X_DATA_FS_SEL:
+	case CS40L2X_FS_MON_0:
 	case CS40L2X_PLL_LOOP_PARAM:
 	case CS40L2X_PLL_MISC_CTRL:
 	case CS40L2X_MDSYNC_EN:
@@ -87,9 +89,11 @@ bool cs40l2x_readable_reg(struct device *dev, unsigned int reg)
 	case CS40L2X_BSTCVRT_DCM_MODE_FORCE:
 	case CS40L2X_BSTCVRT_OVERVOLT_CTRL:
 	case CS40L2X_VI_VOL_POL:
+	case CS40L2X_SPKMON_RESYNC:
 	case CS40L2X_DTEMP_WARN_THLD:
 	case CS40L2X_DTEMP_CFG:
 	case CS40L2X_DTEMP_EN:
+	case CS40L2X_TEMP_RESYNC:
 	case CS40L2X_VPVBST_FS_SEL:
 	case CS40L2X_SP_ENABLES:
 	case CS40L2X_SP_RATE_CTRL:
@@ -127,6 +131,7 @@ bool cs40l2x_readable_reg(struct device *dev, unsigned int reg)
 	case CS40L2X_NG_CFG:
 	case CS40L2X_AMP_GAIN_CTRL:
 	case CS40L2X_DAC_MSM_CFG:
+	case CS40L2X_SPK_FORCE_TST_1:
 	case CS40L2X_IRQ1_CFG:
 	case CS40L2X_IRQ1_STATUS:
 	case CS40L2X_IRQ1_STATUS1:
@@ -496,6 +501,7 @@ bool cs40l2x_readable_reg(struct device *dev, unsigned int reg)
 	case CS40L2X_OTP_TRIM_35:
 	case CS40L2X_OTP_TRIM_36:
 	case CS40L2X_OTP_MEM0 ... CS40L2X_OTP_MEM31:
+	case CS40L2X_DSP_VIRT1_MBOX_1 ... CS40L2X_DSP_VIRT1_MBOX_8:
 	case CS40L2X_DSP1_XMEM_PACK_0 ... CS40L2X_DSP1_XMEM_PACK_3068:
 	case CS40L2X_DSP1_XMEM_UNPACK32_0 ... CS40L2X_DSP1_XMEM_UNPACK32_2046:
 	case CS40L2X_DSP1_XMEM_UNPACK24_0 ... CS40L2X_DSP1_XMEM_UNPACK24_4093:
@@ -955,4 +961,171 @@ const unsigned int cs40l2x_pbq_dig_scale[CS40L2X_PBQ_SCALE_MAX + 1] = {
 	1,
 	1,
 	0,	/* 100% */
+};
+
+static const char * const cs40l2x_coeff_files_orig[] = {
+	CS40L2X_WT_FILE_NAME_DEFAULT,
+};
+
+static const char * const cs40l2x_coeff_files_remap[] = {
+	CS40L2X_WT_FILE_NAME_DEFAULT,
+	"cs40l25a_exc.bin",
+};
+
+static const char * const cs40l2x_coeff_files_cal[] = {
+	"cs40l25a_cal.bin",
+};
+
+static const char * const cs40l2x_coeff_files_clab[] = {
+	CS40L2X_WT_FILE_NAME_DEFAULT,
+	"cs40l25a_clab.bin",
+};
+
+const struct cs40l2x_fw_desc cs40l2x_fw_fam[CS40L2X_NUM_FW_FAMS] = {
+	{
+		.id = CS40L2X_FW_ID_ORIG,
+		.min_rev = 0x050102,
+		.halo_state_run = 2,
+		.num_coeff_files = ARRAY_SIZE(cs40l2x_coeff_files_orig),
+		.coeff_files = cs40l2x_coeff_files_orig,
+		.fw_file = "cs40l20.wmfw",
+	},
+	{
+		.id = CS40L2X_FW_ID_B1ROM,
+		.min_rev = 0x010002,
+		.halo_state_run = 2,
+		.num_coeff_files = 0,
+		.coeff_files = NULL,
+		.fw_file = NULL,
+	},
+	{
+		.id = CS40L2X_FW_ID_REMAP,
+		.min_rev = 0x080100,
+		.halo_state_run = 203,
+		.num_coeff_files = ARRAY_SIZE(cs40l2x_coeff_files_remap),
+		.coeff_files = cs40l2x_coeff_files_remap,
+		.fw_file = "cs40l25a.wmfw",
+	},
+	{
+		.id = CS40L2X_FW_ID_CAL,
+		.min_rev = 0x080100,
+		.halo_state_run = 203,
+		.num_coeff_files = ARRAY_SIZE(cs40l2x_coeff_files_cal),
+		.coeff_files = cs40l2x_coeff_files_cal,
+		.fw_file = "cs40l25a_cal.wmfw",
+	},
+	{
+		.id = CS40L2X_FW_ID_CLAB,
+		.min_rev = 0x080100,
+		.halo_state_run = 203,
+		.num_coeff_files = ARRAY_SIZE(cs40l2x_coeff_files_clab),
+		.coeff_files = cs40l2x_coeff_files_clab,
+		.fw_file = "cs40l25a_clab.wmfw",
+	},
+};
+
+const struct cs40l2x_hw_err_desc cs40l2x_hw_errs[CS40L2X_NUM_HW_ERRS] = {
+	{
+		.irq_mask = CS40L2X_AMP_ERR,
+		.rls_mask = CS40L2X_AMP_ERR_RLS,
+		.bst_cycle = false,
+		.err_name = "amplifier short",
+	},
+	{
+		.irq_mask = CS40L2X_TEMP_ERR,
+		.rls_mask = CS40L2X_TEMP_ERR_RLS,
+		.bst_cycle = false,
+		.err_name = "overtemperature",
+	},
+	{
+		.irq_mask = CS40L2X_TEMP_RISE_WARN,
+		.rls_mask = CS40L2X_TEMP_RISE_WARN_RLS,
+		.bst_cycle = false,
+		.err_name = "temperature rise",
+	},
+	{
+		.irq_mask = CS40L2X_BST_SHORT_ERR,
+		.rls_mask = CS40L2X_BST_SHORT_ERR_RLS,
+		.bst_cycle = true,
+		.err_name = "boost converter short",
+	},
+	{
+		.irq_mask = CS40L2X_BST_UVP_ERR,
+		.rls_mask = CS40L2X_BST_UVP_ERR_RLS,
+		.bst_cycle = true,
+		.err_name = "boost converter undervoltage",
+	},
+	{
+		.irq_mask = CS40L2X_BST_OVP_ERR,
+		.rls_mask = CS40L2X_BST_OVP_ERR_RLS,
+		.bst_cycle = true,
+		.err_name = "boost converter overvoltage",
+	},
+};
+
+const struct cs40l2x_refclk_pair cs40l2x_refclks[CS40L2X_NUM_REFCLKS] = {
+	{CS40L2X_PLL_REFCLK_FREQ_32K,	0},
+	{0,				0},	/* 48-kHz frames only */
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},	/* 0x0F */
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{1536000,			0x00054034},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},	/* 0x1F */
+	{0,				0},
+	{3072000,			0x0002C01C},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{6144000,			0x00018010},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},	/* 0x2F */
+	{9600000,			0x00024010},
+	{0,				0},
+	{0,				0},
+	{12288000,			0x00024010},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},
+	{0,				0},	/* 0x3F */
 };

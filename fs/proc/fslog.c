@@ -256,6 +256,25 @@ static u32 fslog_next(char *fslog_cbuf, u32 idx)
 	return idx + msg->len;
 }
 
+static inline void fslog_find_task_by_vpid(struct fslog_metadata *msg,
+						struct task_struct *owner)
+{
+	struct task_struct *p;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(owner->tgid);
+	if (p) {
+		msg->tgid = owner->tgid;
+		memcpy(msg->tgid_comm, p->comm, TASK_COMM_LEN);
+		rcu_read_unlock();
+		return;
+	}
+	rcu_read_unlock();
+
+	msg->tgid = 0;
+	msg->tgid_comm[0] = 0;
+}
+
 static void fslog_buf_store(const char *text, u16 text_len,
 					struct fslog_data *fl_data,
 					struct task_struct *owner)
@@ -265,7 +284,6 @@ static void fslog_buf_store(const char *text, u16 text_len,
 	wait_queue_head_t *fslog_wait_queue = &(fl_data->fslog_wait_queue);
 	char *fslog_cbuf = fl_data->fslog_cbuf;
 	u32 size, pad_len, fslog_buf_len = fl_data->fslog_buf_len;
-	struct task_struct *p = find_task_by_vpid(owner->tgid);
 
 	/* number of '\0' padding bytes to next message */
 	size = sizeof(struct fslog_metadata) + text_len;
@@ -300,13 +318,7 @@ static void fslog_buf_store(const char *text, u16 text_len,
 	msg->text_len = text_len;
 	msg->pid = owner->pid;
 	memcpy(msg->comm, owner->comm, TASK_COMM_LEN);
-	if (p) {
-		msg->tgid = owner->tgid;
-		memcpy(msg->tgid_comm, p->comm, TASK_COMM_LEN);
-	} else {
-		msg->tgid = 0;
-		msg->tgid_comm[0] = 0;
-	}
+	fslog_find_task_by_vpid(msg, owner);
 	msg->ts_nsec = local_clock();
 	msg->len = sizeof(struct fslog_metadata) + text_len + pad_len;
 

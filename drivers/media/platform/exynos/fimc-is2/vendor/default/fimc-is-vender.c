@@ -310,7 +310,7 @@ void fimc_is_vender_itf_open(struct fimc_is_vender *vender, struct sensor_open_e
 	return;
 }
 
-int fimc_is_vender_set_torch(u32 aeflashMode)
+int fimc_is_vender_set_torch(struct camera2_shot *shot)
 {
 	return 0;
 }

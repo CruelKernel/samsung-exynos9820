@@ -189,6 +189,12 @@ void fimc_is_sec_get_hw_param(struct cam_hw_param **hw_param, u32 position)
 	case SENSOR_POSITION_SECURE:
 		*hw_param = &cam_hwparam_collector.iris_hwparam;
 		break;
+	case SENSOR_POSITION_REAR_TOF:
+		*hw_param = &cam_hwparam_collector.rear_tof_hwparam;
+		break;
+	case SENSOR_POSITION_FRONT_TOF:
+		*hw_param = &cam_hwparam_collector.front_tof_hwparam;
+		break;
 	default:
 		need_update_to_file = false;
 		return;
@@ -473,35 +479,9 @@ void fimc_is_vender_csi_err_handler(struct fimc_is_device_csi *csi)
 					hw_param->mipi_comp_err_cnt++;
 				break;
 #endif
-
-#ifdef CSI_SCENARIO_SEN_REAR
-			case CSI_SCENARIO_SEN_REAR:
-				if (hw_param)
-					hw_param->mipi_sensor_err_cnt++;
-				break;
-#endif
-
-#ifdef CSI_SCENARIO_SEN_FRONT
-			case CSI_SCENARIO_SEN_FRONT:
-				if (hw_param)
-					hw_param->mipi_sensor_err_cnt++;
-				break;
-#endif
-
-#ifdef CSI_SCENARIO_TELE
-			case CSI_SCENARIO_TELE:
-				if (hw_param)
-					hw_param->mipi_sensor_err_cnt++;
-				break;
-#endif
-
-#ifdef CSI_SCENARIO_SECURE
-			case CSI_SCENARIO_SECURE:
-				if (hw_param)
-					hw_param->mipi_sensor_err_cnt++;
-				break;
-#endif
 			default:
+				if (hw_param)
+					hw_param->mipi_sensor_err_cnt++;
 				break;
 		}
 		mipi_err_check = true;
@@ -560,6 +540,7 @@ int fimc_is_vender_probe(struct fimc_is_vender *vender)
 
 	/* init mutex for rom read */
 	mutex_init(&specific->rom_lock);
+	mutex_init(&specific->hw_init_lock);
 
 	if (fimc_is_create_sysfs(core)) {
 		probe_err("fimc_is_create_sysfs is failed");
@@ -758,7 +739,12 @@ int fimc_is_vendor_rom_parse_dt(struct device_node *dnode, int rom_id)
 	const u32 *dual_crc_check_list_spec;
 	const u32 *rom_dualcal_slave0_tilt_list_spec;
 	const u32 *rom_dualcal_slave1_tilt_list_spec;
+	const u32 *rom_dualcal_slave2_tilt_list_spec; /* wide(rear) - tof */
+	const u32 *rom_dualcal_slave3_tilt_list_spec; /* ultra wide(rear2) - tof */
 	const u32 *rom_ois_list_spec;
+	const u32 *tof_cal_size_list_spec;
+	const u32 *tof_cal_uid_list_spec;
+	const u32 *tof_cal_valid_list_spec;
 	const char *node_string;
 	int ret = 0;
 #ifdef FIMC_IS_DEVICE_ROM_DEBUG
@@ -904,6 +890,44 @@ int fimc_is_vendor_rom_parse_dt(struct device_node *dnode, int rom_id)
 #endif
 	}
 
+	rom_dualcal_slave2_tilt_list_spec
+		= of_get_property(dnode, "rom_dualcal_slave2_tilt_list", &finfo->rom_dualcal_slave2_tilt_list_len);
+	if (rom_dualcal_slave2_tilt_list_spec) {
+		finfo->rom_dualcal_slave2_tilt_list_len /= (unsigned int)sizeof(*rom_dualcal_slave2_tilt_list_spec);
+
+		ret = of_property_read_u32_array(dnode, "rom_dualcal_slave2_tilt_list",
+			finfo->rom_dualcal_slave2_tilt_list, finfo->rom_dualcal_slave2_tilt_list_len);
+		if (ret)
+			info("rom_dualcal_slave2_tilt_list read is fail(%d)", ret);
+#ifdef FIMC_IS_DEVICE_ROM_DEBUG
+		else {
+			info("rom_dualcal_slave2_tilt_list :");
+			for (i = 0; i < finfo->rom_dualcal_slave2_tilt_list_len; i++)
+				info(" %d ", finfo->rom_dualcal_slave2_tilt_list[i]);
+			info("\n");
+		}
+#endif
+	}
+
+	rom_dualcal_slave3_tilt_list_spec
+		= of_get_property(dnode, "rom_dualcal_slave3_tilt_list", &finfo->rom_dualcal_slave3_tilt_list_len);
+	if (rom_dualcal_slave3_tilt_list_spec) {
+		finfo->rom_dualcal_slave3_tilt_list_len /= (unsigned int)sizeof(*rom_dualcal_slave3_tilt_list_spec);
+
+		ret = of_property_read_u32_array(dnode, "rom_dualcal_slave3_tilt_list",
+			finfo->rom_dualcal_slave3_tilt_list, finfo->rom_dualcal_slave3_tilt_list_len);
+		if (ret)
+			info("rom_dualcal_slave3_tilt_list read is fail(%d)", ret);
+#ifdef FIMC_IS_DEVICE_ROM_DEBUG
+		else {
+			info("rom_dualcal_slave3_tilt_list :");
+			for (i = 0; i < finfo->rom_dualcal_slave3_tilt_list_len; i++)
+				info(" %d ", finfo->rom_dualcal_slave3_tilt_list[i]);
+			info("\n");
+		}
+#endif
+	}
+
 	rom_ois_list_spec = of_get_property(dnode, "rom_ois_list", &finfo->rom_ois_list_len);
 	if (rom_ois_list_spec) {
 		finfo->rom_ois_list_len /= (unsigned int)sizeof(*rom_ois_list_spec);
@@ -933,6 +957,7 @@ int fimc_is_vendor_rom_parse_dt(struct device_node *dnode, int rom_id)
 	DT_READ_U32_DEFAULT(dnode, "rom_header_sensor2_id_addr", finfo->rom_header_sensor2_id_addr, -1);
 	DT_READ_U32_DEFAULT(dnode, "rom_header_mtf_data_addr", finfo->rom_header_mtf_data_addr, -1);
 	DT_READ_U32_DEFAULT(dnode, "rom_header_f2_mtf_data_addr", finfo->rom_header_f2_mtf_data_addr, -1);
+	DT_READ_U32_DEFAULT(dnode, "rom_header_f3_mtf_data_addr", finfo->rom_header_f3_mtf_data_addr, -1);
 	DT_READ_U32_DEFAULT(dnode, "rom_header_sensor2_mtf_data_addr", finfo->rom_header_sensor2_mtf_data_addr, -1);
 
 	DT_READ_U32_DEFAULT(dnode, "rom_awb_master_addr", finfo->rom_awb_master_addr, -1);
@@ -951,10 +976,64 @@ int fimc_is_vendor_rom_parse_dt(struct device_node *dnode, int rom_id)
 	DT_READ_U32_DEFAULT(dnode, "rom_dualcal_slave0_size", finfo->rom_dualcal_slave0_size, -1);
 	DT_READ_U32_DEFAULT(dnode, "rom_dualcal_slave1_start_addr", finfo->rom_dualcal_slave1_start_addr, -1);
 	DT_READ_U32_DEFAULT(dnode, "rom_dualcal_slave1_size", finfo->rom_dualcal_slave1_size, -1);
+	DT_READ_U32_DEFAULT(dnode, "rom_dualcal_slave2_start_addr", finfo->rom_dualcal_slave2_start_addr, -1);
+	DT_READ_U32_DEFAULT(dnode, "rom_dualcal_slave2_size", finfo->rom_dualcal_slave2_size, -1);
 
-	DT_READ_U32_DEFAULT(dnode, "rom_tof_cal_size_addr", finfo->rom_tof_cal_size_addr, -1);
+	tof_cal_size_list_spec = of_get_property(dnode, "rom_tof_cal_size_addr", &finfo->rom_tof_cal_size_addr_len);
+	if (tof_cal_size_list_spec) {
+		finfo->rom_tof_cal_size_addr_len /= (unsigned int)sizeof(*tof_cal_size_list_spec);
+
+		BUG_ON(finfo->rom_tof_cal_size_addr_len > TOF_CAL_SIZE_MAX);
+
+		ret = of_property_read_u32_array(dnode, "rom_tof_cal_size_addr", finfo->rom_tof_cal_size_addr, finfo->rom_tof_cal_size_addr_len);
+		if (ret)
+			err("rom_tof_cal_size_addr read is fail(%d)", ret);
+#ifdef FIMC_IS_DEVICE_ROM_DEBUG
+		else {
+			info("rom_tof_cal_size_addr :");
+			for (i = 0; i < finfo->rom_tof_cal_size_addr_len; i++)
+				info(" %d ", finfo->rom_tof_cal_size_addr[i]);
+			info("\n");
+		}
+#endif
+	}
+
+	tof_cal_uid_list_spec = of_get_property(dnode, "rom_tof_cal_uid_addr", &finfo->rom_tof_cal_uid_addr_len);
+	if (tof_cal_uid_list_spec) {
+		finfo->rom_tof_cal_uid_addr_len /= (unsigned int)sizeof(*tof_cal_uid_list_spec);
+
+		BUG_ON(finfo->rom_tof_cal_uid_addr_len > TOF_CAL_UID_MAX);
+
+		ret = of_property_read_u32_array(dnode, "rom_tof_cal_uid_addr", finfo->rom_tof_cal_uid_addr, finfo->rom_tof_cal_uid_addr_len);
+		if (ret)
+			err("rom_tof_cal_uid_addr read is fail(%d)", ret);
+#ifdef FIMC_IS_DEVICE_ROM_DEBUG
+		else {
+			info("rom_tof_cal_uid_addr :");
+			for (i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++)
+				info(" %d ", finfo->rom_tof_cal_uid_addr[i]);
+			info("\n");
+		}
+#endif
+	}
+	tof_cal_valid_list_spec = of_get_property(dnode, "rom_tof_cal_validation_addr", &finfo->rom_tof_cal_validation_addr_len);
+	if (tof_cal_valid_list_spec) {
+		finfo->rom_tof_cal_validation_addr_len /= (unsigned int)sizeof(*tof_cal_valid_list_spec);
+		ret = of_property_read_u32_array(dnode, "rom_tof_cal_validation_addr", finfo->rom_tof_cal_validation_addr, finfo->rom_tof_cal_validation_addr_len);
+		if (ret)
+			err("rom_tof_cal_validation_addr read is fail(%d)", ret);
+#ifdef FIMC_IS_DEVICE_ROM_DEBUG
+		else {
+			info("rom_tof_cal_validation_addr :");
+			for (i = 0; i < finfo->rom_tof_cal_uid_addr_len; i++)
+				info(" %d ", finfo->rom_tof_cal_uid_addr[i]);
+			info("\n");
+		}
+#endif
+	}
+
 	DT_READ_U32_DEFAULT(dnode, "rom_tof_cal_start_addr", finfo->rom_tof_cal_start_addr, -1);
-	DT_READ_U32_DEFAULT(dnode, "rom_tof_cal_uid_addr", finfo->rom_tof_cal_uid_addr, -1);
+	DT_READ_U32_DEFAULT(dnode, "rom_tof_cal_result_addr", finfo->rom_tof_cal_result_addr, -1);
 
 	return 0;
 }
@@ -1044,12 +1123,6 @@ void fimc_is_vendor_prepare_retention(struct fimc_is_core *core, int sensor_id, 
 		goto p_err;
 	}
 
-	ret = fimc_is_sensor_mclk_on(device, scenario, module->pdata->mclk_ch);
-	if (ret) {
-		warn("fimc_is_sensor_mclk_on is fail(%d)", ret);
-		goto p_power_off;
-	}
-
 	/* Sensor power on */
 	ret = module->pdata->gpio_cfg(module, scenario, GPIO_SCENARIO_ON);
 	if (ret) {
@@ -1070,9 +1143,9 @@ void fimc_is_vendor_prepare_retention(struct fimc_is_core *core, int sensor_id, 
 		}
 
 		cis = (struct fimc_is_cis *)v4l2_get_subdevdata(sensor_peri->subdev_cis);
-		ret = CALL_CISOPS(cis, cis_check_rev, sensor_peri->subdev_cis);
+		ret = CALL_CISOPS(cis, cis_check_rev_on_init, sensor_peri->subdev_cis);
 		if (ret) {
-			warn("v4l2_subdev_call(cis_check_rev) is fail(%d)", ret);
+			warn("v4l2_subdev_call(cis_check_rev_on_init) is fail(%d)", ret);
 			goto p_power_off;
 		}
 
@@ -1108,14 +1181,55 @@ p_power_off:
 	if (ret)
 		warn("gpio off is fail(%d)", ret);
 
-	ret = fimc_is_sensor_mclk_off(device, scenario, module->pdata->mclk_ch);
-	if (ret)
-		warn("fimc_is_sensor_mclk_off is fail(%d)", ret);
-
 p_err:
 	info("%s: end %d\n", __func__, ret);
 }
 #endif
+
+int fimc_is_vender_share_i2c_client(struct fimc_is_core *core, u32 source, u32 target)
+{
+	int ret = 0;
+	struct fimc_is_device_sensor *device = NULL;
+	struct fimc_is_device_sensor_peri *sensor_peri_source = NULL;
+	struct fimc_is_device_sensor_peri *sensor_peri_target = NULL;
+	struct fimc_is_cis *cis_source = NULL;
+	struct fimc_is_cis *cis_target = NULL;
+	int i;
+
+	for (i = 0; i < FIMC_IS_SENSOR_COUNT; i++) {
+		device = &core->sensor[i];
+		sensor_peri_source = find_peri_by_cis_id(device, source);
+		if (!sensor_peri_source) {
+			info("Not device for sensor_peri_source");
+			continue;
+		}
+
+		cis_source = &sensor_peri_source->cis;
+		if (!cis_source) {
+			info("cis_source is NULL");
+			continue;
+		}
+
+		sensor_peri_target = find_peri_by_cis_id(device, target);
+		if (!sensor_peri_target) {
+			info("Not device for sensor_peri_target");
+			continue;
+		}
+
+		cis_target = &sensor_peri_target->cis;
+		if (!cis_target) {
+			info("cis_target is NULL");
+			continue;
+		}
+
+		cis_target->client = cis_source->client;
+		sensor_peri_target->module->client = cis_target->client;
+		info("i2c client copy done(source: %d target: %d)\n", source, target);
+		break;
+	}
+
+	return ret;
+}
 
 int fimc_is_vender_hw_init(struct fimc_is_vender *vender)
 {
@@ -1147,6 +1261,18 @@ int fimc_is_vender_hw_init(struct fimc_is_vender *vender)
 		info("Start hw init. Check sensor success!\n");
 	}
 
+#ifdef USE_SHARE_I2C_CLIENT_IMX516_IMX316
+	ret = fimc_is_vender_share_i2c_client(core, SENSOR_NAME_IMX516, SENSOR_NAME_IMX316);
+	if (ret) {
+		err("i2c client copy failed!\n");
+		return -EINVAL;
+	}
+#endif
+
+#ifdef CONFIG_SENSORCORE_MCU_CONTROL
+	mutex_lock(&specific->hw_init_lock);
+#endif
+
 	for (i = 0; i < ROM_ID_MAX; i++) {
 		if (specific->rom_valid[i] == true) {
 			ret = fimc_is_sec_run_fw_sel(dev, i);
@@ -1176,6 +1302,10 @@ int fimc_is_vender_hw_init(struct fimc_is_vender *vender)
 
 #if defined(CONFIG_SENSOR_RETENTION_USE) && defined(USE_CAMERA_PREPARE_RETENTION_ON_BOOT)
 	fimc_is_vendor_prepare_retention(core, 0, SENSOR_POSITION_REAR);
+#endif
+
+#ifdef CONFIG_SENSORCORE_MCU_CONTROL
+	mutex_unlock(&specific->hw_init_lock);
 #endif
 
 	ret = fimc_is_load_bin_on_boot();
@@ -1786,8 +1916,10 @@ extern int sky81296_torch_ctrl(int state);
 extern int s2mpb02_set_torch_current(bool torch_mode, bool change_current, int intensity);
 #endif
 
-int fimc_is_vender_set_torch(u32 aeflashMode)
+int fimc_is_vender_set_torch(struct camera2_shot *shot)
 {
+	u32 aeflashMode = shot->ctl.aa.vendor_aeflashMode;
+
 	switch (aeflashMode) {
 	case AA_FLASHMODE_ON_ALWAYS: /*TORCH mode*/
 #ifdef CONFIG_LEDS_LM3560
@@ -1796,7 +1928,14 @@ int fimc_is_vender_set_torch(u32 aeflashMode)
 		sky81296_torch_ctrl(1);
 #endif
 #if defined(CONFIG_TORCH_CURRENT_CHANGE_SUPPORT) && defined(CONFIG_LEDS_S2MPB02)
-		s2mpb02_set_torch_current(true, false, 0);
+#if defined(LEDS_S2MPB02_ADAPTIVE_MOVIE_CURRENT)
+		info("s2mpb02 adaptive firingPower(%d)\n", shot->ctl.flash.firingPower);
+
+		if (shot->ctl.flash.firingPower == 5)
+			s2mpb02_set_torch_current(true, true, LEDS_S2MPB02_ADAPTIVE_MOVIE_CURRENT);
+		else
+#endif
+			s2mpb02_set_torch_current(true, false, 0);
 #endif
 		break;
 	case AA_FLASHMODE_START: /*Pre flash mode*/
@@ -1889,7 +2028,7 @@ int fimc_is_vender_video_s_ctrl(struct v4l2_control *ctrl,
 		else
 			specific->zoom_running = false;
 		break;
-	case V4L2_CID_IS_FORCE_FLASH_MODE: 
+	case V4L2_CID_IS_FORCE_FLASH_MODE:
 		if (device->sensor != NULL) {
 			struct v4l2_subdev *subdev_flash;
 
@@ -1909,10 +2048,10 @@ int fimc_is_vender_video_s_ctrl(struct v4l2_control *ctrl,
 					flash->flash_data.mode = CAM2_FLASH_MODE_OFF;
 					flash->flash_data.flash_fired = false;
 					ret = v4l2_subdev_call(subdev_flash, core, s_ctrl, ctrl);
-				} 
+				}
 			}
 		}
-		break; 
+		break;
 	case V4L2_CID_IS_FACTORY_APERTURE_CONTROL:
 		ctrl->id = VENDER_S_CTRL;
 		device->group_3aa.lens_ctl.aperture = ctrl->value;

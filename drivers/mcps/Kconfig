@@ -1,0 +1,67 @@
+#
+# MCPS configuration
+#
+config MCPS
+	bool "MCPS configuration"
+	default m	
+	---help---
+		It will improve RPS mechanism using A-RPS(Advanced RPS) . 
+		A-RPS allow available core to take a more network flow.
+
+config CLUSTER_MIGRATION
+	bool "MCPS migration by cluster"
+	default y
+	depends on MCPS=y
+	---help---
+		It will allow Advanced RPS Flow Level(ARPS) to migrate flow by cluster.
+
+config ARGOS_DEBUG
+	bool "MCPS ARGOS debug"
+	default n
+	depends on MCPS=y
+	---help---
+		to be continue.
+
+config MCPS_GRO_ENABLE
+    bool "Enable GRO on MCPS"
+    default y
+    depends on MCPS=y
+    ---help---
+        It will allow MCPS to enable Generic Receive Offload(GRO)
+
+config MCTCP_DEBUG_PRINTK
+	bool "MCTCP Debugging printk"
+	default n
+	depends on MCPS=y
+	---help---
+		It occur a printk at all time. It may be cause a sluggish. 
+		So It should be false on Device for sales or testing of performance.
+		
+config MQTCP_DEBUG_PRINTK
+    bool "MQTCP Debugging printk"
+    default n
+    depends on MCPS=y
+    ---help---
+        It occur a printk at all time. It may be cause a sluggish. 
+        So It should be false on Device for sales or testing of performance.
+
+config MCPS_DEBUG_SYSTRACE
+    bool "MCPS debugging systrace"
+    default n
+    depends on MCPS=y
+    ---help---
+        Test...
+
+config MCPS_DEBUG
+    bool "MCPS debug dump"
+    default y
+    depends on MCPS=y
+    ---help---
+        ....
+
+config MCPS_DEBUG_OP_TIME
+    bool "MCPS debug dump"
+    default n
+    depends on MCPS_DEBUG=y
+    ---help---
+        ....

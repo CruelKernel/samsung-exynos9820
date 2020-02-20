@@ -22,9 +22,10 @@
 
 #include <linux/fs.h>
 
+int fscrypt_knox_set_context(struct inode *inode, void *ctx, size_t len);
 int fscrypt_sdp_get_context(struct inode *inode, void *ctx, size_t len);
-int fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len);
-int fscrypt_sdp_set_context_nolock(struct inode *inode, void *ctx, size_t len);
+int fscrypt_sdp_set_context(struct inode *inode, void *ctx, size_t len, void *fs_data);
+int fscrypt_sdp_set_context_nolock(struct inode *inode, void *ctx, size_t len, void *fs_data);
 
 #endif
 

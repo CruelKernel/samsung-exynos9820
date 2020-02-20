@@ -119,7 +119,8 @@ static inline int linkforward_manip_skb(struct sk_buff *skb, enum linkforward_di
 		/* check is_tethering_enabled */
 		return 0;
 	}
-	return __linkforward_manip_skb(skb, dir);
+	__linkforward_manip_skb(skb, dir);
+	return 1;
 }
 
 static inline int linkforward_get_tether_mode(void)

@@ -11,6 +11,7 @@ lib-y		:= bitops.o clear_user.o delay.o copy_from_user.o	\
 # patching of the bl instruction in the caller with an atomic instruction
 # when supported by the CPU. Result and argument registers are handled
 # correctly, based on the function prototype.
+ifndef CONFIG_SEC_ARM64_LSE_ATOMICS
 lib-$(CONFIG_ARM64_LSE_ATOMICS) += atomic_ll_sc.o
 CFLAGS_atomic_ll_sc.o	:= -ffixed-x1 -ffixed-x2        		\
 		   -ffixed-x3 -ffixed-x4 -ffixed-x5 -ffixed-x6		\
@@ -18,5 +19,6 @@ CFLAGS_atomic_ll_sc.o	:= -ffixed-x1 -ffixed-x2        		\
 		   -fcall-saved-x10 -fcall-saved-x11 -fcall-saved-x12	\
 		   -fcall-saved-x13 -fcall-saved-x14 -fcall-saved-x15	\
 		   -fcall-saved-x18
+endif
 
 lib-$(CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE) += uaccess_flushcache.o

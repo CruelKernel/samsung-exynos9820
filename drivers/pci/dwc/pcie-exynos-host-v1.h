@@ -13,7 +13,7 @@
 #ifndef __PCIE_EXYNOS_HOST_V1_H
 #define __PCIE_EXYNOS_HOST_V1_H
 
-#define MAX_TIMEOUT		2000
+#define MAX_TIMEOUT		2400	/* about 24 ms */
 #define ID_MASK			0xffff
 #define TPUT_THRESHOLD		150
 #define MAX_RC_NUM		2

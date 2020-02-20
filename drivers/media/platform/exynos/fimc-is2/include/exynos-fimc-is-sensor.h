@@ -115,6 +115,9 @@ enum exynos_sensor_id {
 	SENSOR_NAME_S5KRPB		 = 46,
 	SENSOR_NAME_S5K2P7SQ		 = 47,
 	SENSOR_NAME_S5K2T7SX		 = 48,
+	SENSOR_NAME_S5K2PAS		 = 49,
+	SENSOR_NAME_S5K3M5		 = 50,
+
 	SENSOR_NAME_S5K4EC		 = 57,
 
 	/* 101~200: SONY sensors */
@@ -134,6 +137,7 @@ enum exynos_sensor_id {
 	SENSOR_NAME_IMX345		 = 114,
 	SENSOR_NAME_IMX576 		 = 115,
 	SENSOR_NAME_IMX316 		 = 116,
+	SENSOR_NAME_IMX516 		 = 119,
 
 	/* 201~255: Other vendor sensors */
 	SENSOR_NAME_SR261		 = 201,

@@ -288,7 +288,7 @@ TESTDEF(interface_02_Put_FR,
 		int mid = 17;
 		int mbox_idx = NPU_MBOX_REQUEST_HIGH;
 		struct mbox_process_dat process_dat;
-		memset(&process_dat, sizeof(process_dat), 0);
+		memset(&process_dat, 0, sizeof(process_dat));
 
 		fr.cmd = NPU_FRAME_CMD_Q;
 		fr.uid = nSeed;

@@ -130,6 +130,7 @@ typedef struct _manager_data_t
 #if defined(CONFIG_VBUS_NOTIFIER)
 	struct delayed_work muic_event_work;
 #endif
+	struct mutex mo_lock;
 
 	int muic_attach_state;
 	int muic_cable_type;

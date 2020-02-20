@@ -2118,27 +2118,14 @@ static void copy_afc_maptbl(struct maptbl *tbl, u8 *dst)
 #endif
 #endif /* CONFIG_EXYNOS_DECON_MDNIE_LITE */
 
-
-#ifdef CONFIG_LOGGING_BIGDATA_BUG
-static unsigned int g_rddpm = 0xff;
-static unsigned int g_rddsm = 0xff;
-
-unsigned int get_panel_bigdata(void)
-{
-	unsigned int val = 0;
-
-	val = (g_rddsm << 8) | g_rddpm;
-
-	return val;
-}
-#endif
-
-
 static void show_rddpm(struct dumpinfo *info)
 {
 	int ret;
 	struct resinfo *res = info->res;
 	u8 rddpm[S6E3HA8_RDDPM_LEN] = { 0, };
+#ifdef CONFIG_LOGGING_BIGDATA_BUG
+	extern unsigned int g_rddpm;
+#endif
 
 	if (!res || ARRAY_SIZE(rddpm) != res->dlen) {
 		pr_err("%s invalid resource\n", __func__);
@@ -2171,6 +2158,9 @@ static void show_rddsm(struct dumpinfo *info)
 	int ret;
 	struct resinfo *res = info->res;
 	u8 rddsm[S6E3HA8_RDDSM_LEN] = { 0, };
+#ifdef CONFIG_LOGGING_BIGDATA_BUG
+	extern unsigned int g_rddsm;
+#endif
 
 	if (!res || ARRAY_SIZE(rddsm) != res->dlen) {
 		pr_err("%s invalid resource\n", __func__);

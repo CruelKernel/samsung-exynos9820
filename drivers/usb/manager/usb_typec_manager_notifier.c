@@ -22,7 +22,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/sec_batt.h>
 
 #if defined(CONFIG_VBUS_NOTIFIER)
@@ -40,12 +40,14 @@
 #include <linux/ccic/max77705_alternate.h>
 #include <linux/of.h>
 
-#if defined(CONFIG_BATTERY_SAMSUNG_V3)
-#include "../../battery/v3/include/sec_charging_common.h"
-#elif defined(CONFIG_BATTERY_SAMSUNG_V2)
+#if defined(CONFIG_BATTERY_SAMSUNG_V2)
 #include "../../battery_v2/include/sec_charging_common.h"
 #else
 #include <linux/battery/sec_charging_common.h>
+#endif
+
+#if defined(CONFIG_SEC_ABC)
+#include <linux/sti/abc_common.h>
 #endif
 
 /* dwc3 irq storm patch */
@@ -500,7 +502,7 @@ void set_usb_enable_state(void)
 		typec_manager.usb_enable_state = true;
 		if (typec_manager.pd_con_state)
 			manager_cable_type_check(true, 120);
-		else if (typec_manager.ccic_drp_state == USB_STATUS_NOTIFY_ATTACH_UFP && 
+		else if (typec_manager.ccic_drp_state == USB_STATUS_NOTIFY_ATTACH_UFP &&
 			typec_manager.cable_type == MANAGER_NOTIFY_MUIC_TIMEOUT_OPEN_DEVICE)
 			manager_cable_type_check(true, 10);
 	}
@@ -513,7 +515,7 @@ void manager_notifier_usbdp_support(void)
 	if( typec_manager.dp_check_done == 1 ) {
 		manager_event_work(CCIC_NOTIFY_DEV_MANAGER, CCIC_NOTIFY_DEV_USB_DP,
 			CCIC_NOTIFY_ID_USB_DP, typec_manager.dp_is_connect, typec_manager.dp_hs_connect, 0);
-		
+
 		typec_manager.dp_check_done = 0;
 	}
 	return;
@@ -556,7 +558,7 @@ static void manager_cable_type_check_work(struct work_struct *work)
 		return;
 	}
 	pr_info("%s: usb=%d, pd=%d cable_type=%d, dwc3_link_check=%d\n", __func__,
-		typec_manager.usb_enum_state, typec_manager.pd_con_state, 
+		typec_manager.usb_enum_state, typec_manager.pd_con_state,
 		typec_manager.cable_type, dwc3_link_check);
 
 	if (!typec_manager.usb_enum_state ||
@@ -590,7 +592,7 @@ static void manager_usb_event_work(struct work_struct *work)
 		switch (typec_manager.muic_attach_state) {
 		case MUIC_NOTIFY_CMD_ATTACH:
 #if defined(CONFIG_VBUS_NOTIFIER)
-			if(typec_manager.vbus_state == STATUS_VBUS_HIGH || 
+			if(typec_manager.vbus_state == STATUS_VBUS_HIGH ||
 				typec_manager.muic_cable_type == ATTACHED_DEV_JIG_USB_OFF_MUIC)
 #endif
 			{
@@ -730,7 +732,7 @@ static int manager_handle_ccic_notification(struct notifier_block *nb,
 			(typec_manager.ccic_rid_state == RID_523K || typec_manager.ccic_rid_state == RID_619K))) {
 			return 0;
 		}
-		if ((typec_manager.cable_type == MANAGER_NOTIFY_MUIC_TIMEOUT_OPEN_DEVICE) 
+		if ((typec_manager.cable_type == MANAGER_NOTIFY_MUIC_TIMEOUT_OPEN_DEVICE)
 			&&  (p_noti.sub2 == USB_STATUS_NOTIFY_ATTACH_UFP) ) {
 				pr_info("%s: DCD Timeout case.\n", __func__);
 				manager_cable_type_check(false, 0);
@@ -752,12 +754,17 @@ static int manager_handle_ccic_notification(struct notifier_block *nb,
 #endif
 
 #if defined(CONFIG_VBUS_NOTIFIER)
+				mutex_lock(&typec_manager.mo_lock);
 				if (typec_manager.vbus_state == STATUS_VBUS_HIGH
 						&& !manager_get_otg_power_mode())
 					manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_BATTERY,
 						p_noti.id, p_noti.sub1, p_noti.sub2, typec_manager.water_cable_type);
+				mutex_unlock(&typec_manager.mo_lock);
 #endif
 			}
+#if defined(CONFIG_SEC_ABC)
+			sec_abc_send_event("MODULE=pdic@ERROR=water_det");
+#endif
 		} else {
 			typec_manager.water_det = 0;
 			manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_MUIC,
@@ -770,6 +777,24 @@ static int manager_handle_ccic_notification(struct notifier_block *nb,
 			if (typec_manager.wVbus_det)
 				manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_BATTERY,
 					p_noti.id, p_noti.sub1, p_noti.sub2, typec_manager.water_cable_type);
+		}
+		return 0;
+	case CCIC_NOTIFY_ID_WATER_CABLE:
+		/* Ignore no water case */
+		if (!typec_manager.water_det)
+			return 0;
+
+		manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_MUIC,
+			p_noti.id, p_noti.sub1, p_noti.sub2, p_noti.sub3);
+
+		if (p_noti.sub1) {
+			/* Send water cable event to battery */
+			manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_BATTERY,
+					CCIC_NOTIFY_ID_WATER, CCIC_NOTIFY_ATTACH, p_noti.sub2, typec_manager.water_cable_type);
+
+			/* make detach event like hiccup case*/
+			manager_event_work(p_noti.src, CCIC_NOTIFY_DEV_BATTERY,
+					CCIC_NOTIFY_ID_WATER, CCIC_NOTIFY_DETACH, p_noti.sub2, typec_manager.water_cable_type);		
 		}
 		return 0;
 	case CCIC_NOTIFY_ID_INITIAL:
@@ -806,7 +831,7 @@ static void manager_set_alternate_mode(int listener)
 		typec_manager.alt_is_support |= CCIC_USB;
 	else if (listener == MANAGER_NOTIFY_CCIC_DP)
 		typec_manager.alt_is_support |= CCIC_DP;
-	else 
+	else
 		pr_info("no support driver to start alternate mode\n");
 
 	if (typec_manager.dp_is_support) {
@@ -817,7 +842,7 @@ static void manager_set_alternate_mode(int listener)
 		if (typec_manager.alt_is_support == (CCIC_USB|CCIC_BATTERY))
 			pccic_data->set_enable_alternate_mode(ALTERNATE_MODE_READY | ALTERNATE_MODE_START);
 	}
-	
+
 }
 
 static int manager_handle_muic_notification(struct notifier_block *nb,
@@ -916,7 +941,7 @@ static int manager_handle_muic_notification(struct notifier_block *nb,
 		if(p_noti.attach) {
 			typec_manager.cable_type = MANAGER_NOTIFY_MUIC_TIMEOUT_OPEN_DEVICE;
 			if(typec_manager.ccic_drp_state == USB_STATUS_NOTIFY_ATTACH_UFP) {
-				pr_info("%s: DCD Timeout case schedule work enable_state[%d]\n", 
+				pr_info("%s: DCD Timeout case schedule work enable_state[%d]\n",
 					__func__, typec_manager.usb_enable_state);
 				manager_cable_type_check(true, 10);
 			}
@@ -948,6 +973,7 @@ static int manager_handle_vbus_notification(struct notifier_block *nb,
 {
 	vbus_status_t vbus_type = *(vbus_status_t *)data;
 
+	mutex_lock(&typec_manager.mo_lock);
 	pr_info("%s: cmd=%lu, vbus_type=%s, WATER DET=%d ATTACH=%s (%d)\n", __func__,
 		action, vbus_type == STATUS_VBUS_HIGH ? "HIGH" : "LOW", typec_manager.water_det,
 		typec_manager.ccic_attach_state == CCIC_NOTIFY_ATTACH ? "ATTACH":"DETACH",
@@ -972,6 +998,7 @@ static int manager_handle_vbus_notification(struct notifier_block *nb,
 		break;
 	}
 
+	mutex_unlock(&typec_manager.mo_lock);
 	return 0;
 }
 #endif
@@ -1221,8 +1248,8 @@ static int manager_notifier_init(void)
 	typec_manager.dp_is_connect = 0;
 	typec_manager.dp_hs_connect = 0;
 	typec_manager.dp_check_done = 1;
- 	usb_external_notify_register(&typec_manager.manager_external_notifier_nb, 
- 		manager_external_notifier_notification, EXTERNAL_NOTIFY_DEV_MANAGER); 
+ 	usb_external_notify_register(&typec_manager.manager_external_notifier_nb,
+ 		manager_external_notifier_notification, EXTERNAL_NOTIFY_DEV_MANAGER);
 	typec_manager.muic_attach_state_without_ccic = 0;
 #if defined(CONFIG_VBUS_NOTIFIER)
 	typec_manager.muic_fake_event_wq_processing = 0;
@@ -1267,6 +1294,7 @@ static int manager_notifier_init(void)
 	INIT_DELAYED_WORK(&typec_manager.muic_event_work,
 		manager_muic_event_work);
 #endif
+	mutex_init(&typec_manager.mo_lock);
 
 	// Register manager handler to ccic notifier block list
 #if defined(CONFIG_VBUS_NOTIFIER)
@@ -1310,6 +1338,7 @@ out:
 static void __exit manager_notifier_exit(void)
 {
 	pr_info("%s exit\n", __func__);
+	mutex_destroy(&typec_manager.mo_lock);
 #if defined(CONFIG_VBUS_NOTIFIER)
 	vbus_notifier_unregister(&typec_manager.vbus_nb);
 #endif

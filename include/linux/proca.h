@@ -77,4 +77,16 @@ static inline int proca_get_task_cert(const struct task_struct *task,
 }
 #endif
 
+#if defined(CONFIG_SEC_DEBUG_GAF_V5)
+const void *sec_gaf_get_addr(void);
+#else
+static inline const void *sec_gaf_get_addr(void)
+{
+	return NULL;
+}
+#endif
+
+void proca_compat_task_free_hook(struct task_struct *task);
+void proca_compat_file_free_security_hook(struct file *file);
+
 #endif /* _LINUX_PROCA_H */

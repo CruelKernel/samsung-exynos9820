@@ -29,6 +29,12 @@ config MFC_CHARGER
 	help
 	This enables the MFC IC sysfs node
 
+config MFC_LDO_COMMAND
+	bool "I2C patch for LDO on MFC IC IDT chip"
+	default n
+	help
+	This enables the IDT patch for LDO on MFC IC IDT chip
+
 config MST_TEEGRIS
 	bool "MST running on TEEGRIS"
 	default n

@@ -21,6 +21,7 @@
 #define S6E3FA7_IRC_FIXED_OFS		0
 #define S6E3FA7_IRC_FIXED_LEN		19
 #define S6E3FA7_IRC_TOTAL_LEN		S6E3FA7_IRC_DYNAMIC_OFS + S6E3FA7_IRC_DYNAMIC_LEN
+#define S6E3FA7_BEYOND_HBM_COEF		3		// coef = 0.7, -> 10*(1-0.7)
 
 static u8 irc_buffer[S6E3FA7_IRC_TOTAL_LEN];
 static u8 irc_ref_tbl[S6E3FA7_IRC_TOTAL_LEN];
@@ -33,6 +34,7 @@ static struct panel_irc_info s6e3fa7_beyond_irc = {
 	.dynamic_offset = S6E3FA7_IRC_DYNAMIC_OFS,
 	.dynamic_len = S6E3FA7_IRC_DYNAMIC_LEN,
 	.total_len = S6E3FA7_IRC_TOTAL_LEN,
+	.hbm_coef = S6E3FA7_BEYOND_HBM_COEF,
 	.buffer = irc_buffer,
 	.ref_tbl = irc_ref_tbl
 };

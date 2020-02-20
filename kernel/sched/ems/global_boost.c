@@ -22,6 +22,9 @@ static struct plist_head gb_list = PLIST_HEAD_INIT(gb_list);
 
 static int gb_qos_value(void)
 {
+	if (plist_head_empty(&gb_list))
+		return 0;
+
 	return plist_last(&gb_list)->prio;
 }
 

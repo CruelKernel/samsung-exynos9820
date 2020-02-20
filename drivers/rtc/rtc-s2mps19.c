@@ -39,7 +39,7 @@ static unsigned long smpl_warn_number = 0;
 #endif
 
 #ifdef CONFIG_SEC_PM
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 static struct device *pmic_rtc_dev;
 #endif /* CONFIG_SEC_PM */
@@ -550,10 +550,10 @@ static irqreturn_t s2m_smpl_warn_irq_handler(int irq, void *data)
 	if (!info->rtc_dev)
 		return IRQ_HANDLED;
 
-	if (exynos_soc_info.sub_rev != 0)
-		polarity = 1;
-	else
+	if (exynos_soc_info.main_rev == 1 && exynos_soc_info.sub_rev == 0)
 		polarity = 0;
+	else
+		polarity = 1;
 
 	if ((gpio_get_value(info->smpl_warn_info) & 0x1) == polarity)
 		return IRQ_HANDLED;
@@ -581,10 +581,10 @@ static void exynos_smpl_warn_work(struct work_struct *work)
 	int state = 0;
 	unsigned int polarity;
 
-	if (exynos_soc_info.sub_rev != 0)
-		polarity = 1;
-	else
+	if (exynos_soc_info.main_rev == 1 && exynos_soc_info.sub_rev == 0)
 		polarity = 0;
+	else
+		polarity = 1;
 
 	state = (gpio_get_value(info->smpl_warn_info) & 0x1);
 
@@ -870,10 +870,10 @@ static int s2m_rtc_probe(struct platform_device *pdev)
 
 		info->smpl_irq = gpio_to_irq(pdata->smpl_warn);
 
-		if (exynos_soc_info.sub_rev != 0)
-			intr_flag = IRQF_TRIGGER_LOW;
-		else
+		if (exynos_soc_info.main_rev == 1 && exynos_soc_info.sub_rev == 0)
 			intr_flag = IRQF_TRIGGER_HIGH;
+		else
+			intr_flag = IRQF_TRIGGER_LOW;
 
 		irq_set_status_flags(info->smpl_irq, IRQ_DISABLE_UNLAZY);
 

@@ -656,10 +656,12 @@ static ssize_t cirrus_pwr_global_enable_store(struct device *dev,
 {
 	unsigned int enable;
 
-	if (kstrtou32(buf, 0, &enable))
+	if (kstrtou32(buf, 0, &enable)) {
 		dev_err(cirrus_pwr->dev,
 			"%s: Failed to convert from str to u32.\n",
 			__func__);
+		return size;
+	}
 
 	cirrus_pwr->global_enable = enable;
 

@@ -164,8 +164,8 @@ void s6e3ha9_copy_partial_mode(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_partial_area(struct maptbl *tbl, u8 *dst);
 void s6e3ha9_copy_partial_hlpm(struct maptbl *tbl, u8 *dst);
 #ifdef SUPPORT_NORMAL_SELF_MOVE
-int getidx_self_pattern(struct maptbl *tbl);
-//void copy_self_move_enable(struct maptbl *tbl, u8 *dst);
-void copy_self_move_pattern(struct maptbl *tbl, u8 *dst);
+int s6e3ha9_getidx_self_pattern(struct maptbl *tbl);
+//void s6e3ha9_copy_self_move_enable(struct maptbl *tbl, u8 *dst);
+void s6e3ha9_copy_self_move_pattern(struct maptbl *tbl, u8 *dst);
 #endif
 #endif

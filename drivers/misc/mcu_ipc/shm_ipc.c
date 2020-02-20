@@ -84,6 +84,7 @@ struct shm_plat_data {
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
 	unsigned long p_s5100_ipc_addr;
 	unsigned int t_s5100_ipc_size;
+	unsigned int t_s5100_modem_if2_size;
 	void __iomem *v_s5100_ipc;
 
 	unsigned long p_s5100_cp2cp_addr;
@@ -252,6 +253,11 @@ unsigned shm_get_ipc_rgn_size(void)
 	return pdata.ipc_size;
 }
 
+#ifdef CONFIG_CP_PKTPROC_V2
+unsigned int shm_get_pktproc_v2_base(void) { return pdata.p_s5100_ipc_addr + pdata.t_s5100_ipc_size; }
+unsigned int shm_get_pktproc_v2_size(void) { return pdata.t_s5100_modem_if2_size - pdata.t_s5100_ipc_size; }
+#endif
+
 #if defined(CONFIG_CP_PKTPROC)
 /*
  * Spare size : 0x0160_0000
@@ -291,6 +297,9 @@ unsigned int shm_get_databuf_size(void)
 {
 	return shm_get_pktproc_desc_size() + shm_get_pktproc_data_size() + PKT_PROC_LEGACY_SIZE;
 }
+
+unsigned int shm_get_pktproc_base(void) { return pdata.p_spare_addr; }
+unsigned int shm_get_pktproc_size(void) { return shm_get_pktproc_desc_size() + shm_get_pktproc_data_size(); }
 #else /* CONFIG_CP_PKTPROC */
 unsigned shm_get_zmb_size(void)
 {
@@ -690,6 +699,7 @@ RESERVEDMEM_OF_DECLARE(s5100_msi, "exynos,s5100-msi", s5100_msi_reserved_mem_set
 static int __init s5100_ipc_reserved_mem_setup(struct reserved_mem *remem)
 {
 	pdata.p_s5100_ipc_addr = remem->base;
+	pdata.t_s5100_modem_if2_size = remem->size;
 
 	pr_err("%s: memory reserved: paddr=0x%08x, t_size=0x%08x\n",
 			__func__, (u32)pdata.p_s5100_ipc_addr,

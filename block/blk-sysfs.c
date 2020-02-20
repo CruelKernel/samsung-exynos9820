@@ -512,7 +512,7 @@ static struct queue_sysfs_entry queue_requests_entry = {
 };
 
 static struct queue_sysfs_entry queue_ra_entry = {
-	.attr = {.name = "read_ahead_kb", .mode = S_IRUGO },
+	.attr = {.name = "read_ahead_kb", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_ra_show,
 	.store = queue_ra_store,
 };
@@ -687,6 +687,266 @@ static struct queue_sysfs_entry throtl_sample_time_entry = {
 };
 #endif
 
+#ifdef CONFIG_BLK_IO_VOLUME
+
+static ssize_t queue_io_vol_stats_show(struct request_queue *q, char *page)
+{
+	ssize_t ret;
+
+	ret = sprintf(page, "\"RPRC5\":\"%u\",\"RPRC6\":\"%u\","
+			    "\"RPRC7\":\"%u\",\"RPRC8\":\"%u\","
+			    "\"RPMB4\":\"%u\",\"RPMB5\":\"%u\","
+			    "\"RPMB6\":\"%u\",\"RPMB7\":\"%u\","
+			    "\"WPRC5\":\"%u\",\"WPRC6\":\"%u\","
+			    "\"WPRC7\":\"%u\",\"WPRC8\":\"%u\","
+			    "\"WPMB4\":\"%u\",\"WPMB5\":\"%u\","
+			    "\"WPMB6\":\"%u\",\"WPMB7\":\"%u\"\n",
+			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[0],
+			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[1],
+			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[2],
+			q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[3],
+			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[0],
+			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[1],
+			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[2],
+			q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[3],
+			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[0],
+			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[1],
+			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[2],
+			q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[3],
+			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[0],
+			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[1],
+			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[2],
+			q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[3]);
+
+	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_rqs_cnt[3] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_READ].peak_mb_cnt[3] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_rqs_cnt[3] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[0] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[1] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[2] = 0;
+	q->blk_io_vol[REQ_OP_WRITE].peak_mb_cnt[3] = 0;
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_io_volume_stats_entry = {
+	.attr = {.name = "io_volume_stats", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_io_vol_stats_show,
+};
+
+static ssize_t queue_io_vol_show(struct request_queue *q, char *page)
+{
+	return sprintf(page, "%d,%lld,%d,%lld\n",
+			q->blk_io_vol[REQ_OP_READ].queuing_rqs,
+			q->blk_io_vol[REQ_OP_READ].queuing_bytes,
+			q->blk_io_vol[REQ_OP_WRITE].queuing_rqs,
+			q->blk_io_vol[REQ_OP_WRITE].queuing_bytes);
+}
+
+static struct queue_sysfs_entry queue_io_volume_entry = {
+	.attr = {.name = "io_volume", .mode = S_IRUGO },
+	.show = queue_io_vol_show,
+};
+#endif
+
+#ifdef CONFIG_BLK_TURBO_WRITE
+
+static ssize_t queue_tw_stats_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write *tw = q->tw;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+	ret = sprintf(page, "\"TWMB\":\"%u\","
+			    "\"TWSC2\":\"%u\",\"TWSC3\":\"%u\","
+			    "\"TWSC4\":\"%u\",\"TWSC5\":\"%u\"\n",
+			tw->total_issued_mb,
+			tw->issued_size_cnt[0],
+			tw->issued_size_cnt[1],
+			tw->issued_size_cnt[2],
+			tw->issued_size_cnt[3]);
+
+	tw->total_issued_mb = 0;
+	tw->issued_size_cnt[0] = 0;
+	tw->issued_size_cnt[1] = 0;
+	tw->issued_size_cnt[2] = 0;
+	tw->issued_size_cnt[3] = 0;
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_stats_entry = {
+	.attr = {.name = "tw_stats", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_stats_show,
+};
+
+static ssize_t queue_tw_state_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write *tw = q->tw;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+	ret = sprintf(page, "%d,%u\n",
+			tw->state,
+			jiffies_to_msecs(jiffies - tw->state_ts));
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_state_entry = {
+	.attr = {.name = "tw_state", .mode = S_IRUGO },
+	.show = queue_tw_state_show,
+};
+
+static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write *tw = q->tw;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+	ret = sprintf(page, "%d\n", tw->up_threshold_bytes);
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static ssize_t queue_tw_up_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
+{
+	struct blk_turbo_write *tw = q->tw;
+	unsigned long val;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	if (val >= tw->down_threshold_bytes)
+		tw->up_threshold_bytes = val;
+
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_up_threshold_bytes_entry = {
+	.attr = {.name = "tw_up_threshold_bytes", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_up_threshold_bytes_show,
+	.store = queue_tw_up_threshold_bytes_store,
+};
+
+static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write *tw = q->tw;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+	ret = sprintf(page, "%d\n", tw->down_threshold_bytes);
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static ssize_t queue_tw_down_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
+{
+	struct blk_turbo_write *tw = q->tw;
+	unsigned long val;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	if (val <= tw->up_threshold_bytes)
+		tw->down_threshold_bytes = val;
+
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_down_threshold_bytes_entry = {
+	.attr = {.name = "tw_down_threshold_bytes", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_down_threshold_bytes_show,
+	.store = queue_tw_down_threshold_bytes_store,
+};
+
+static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write *tw = q->tw;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+	ret = sprintf(page, "%d\n", tw->off_delay_ms);
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q, const char *page, size_t count)
+{
+	struct blk_turbo_write *tw = q->tw;
+	unsigned long val;
+	ssize_t ret = -EINVAL;
+
+	if (!tw)
+		return -EPERM;
+
+	refcount_inc(&tw->refs);
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	tw->off_delay_ms = val;
+
+	refcount_dec(&tw->refs);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_off_delay_ms_entry = {
+	.attr = {.name = "tw_off_delay_ms", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_off_delay_ms_show,
+	.store = queue_tw_off_delay_ms_store,
+};
+#endif
+
 static struct attribute *default_attrs[] = {
 	&queue_requests_entry.attr,
 	&queue_ra_entry.attr,
@@ -722,6 +982,17 @@ static struct attribute *default_attrs[] = {
 	&queue_poll_delay_entry.attr,
 #ifdef CONFIG_BLK_DEV_THROTTLING_LOW
 	&throtl_sample_time_entry.attr,
+#endif
+#ifdef CONFIG_BLK_IO_VOLUME
+	&queue_io_volume_stats_entry.attr,
+	&queue_io_volume_entry.attr,
+#endif
+#ifdef CONFIG_BLK_TURBO_WRITE
+	&queue_tw_stats_entry.attr,
+	&queue_tw_state_entry.attr,
+	&queue_tw_up_threshold_bytes_entry.attr,
+	&queue_tw_down_threshold_bytes_entry.attr,
+	&queue_tw_off_delay_ms_entry.attr,
 #endif
 	NULL,
 };

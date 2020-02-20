@@ -21,11 +21,11 @@ source "drivers/block/Kconfig"
 
 source "drivers/nvme/Kconfig"
 
+source "drivers/mcps/Kconfig"
+
 # misc before ide - BLK_DEV_SGIIOC4 depends on SGI_IOC4
 
 source "drivers/misc/Kconfig"
-
-source "drivers/staging/samsung/sec_notifier/Kconfig"
 
 source "drivers/muic/Kconfig"
 
@@ -238,4 +238,9 @@ source "drivers/fingerprint/Kconfig"
 source "drivers/five/Kconfig"
 
 #source "drivers/gator/Kconfig"
+
+source "drivers/icdrv/Kconfig"
+
+source "drivers/samsung/Kconfig"
+
 endmenu

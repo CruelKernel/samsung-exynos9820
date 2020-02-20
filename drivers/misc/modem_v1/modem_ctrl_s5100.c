@@ -25,7 +25,7 @@
 #include <linux/of_gpio.h>
 #include <linux/smc.h>
 #include <linux/modem_notifier.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/pci.h>
@@ -270,6 +270,9 @@ static void pcie_clean_dislink(struct modem_ctl *mc)
 {
 	int usage_cnt;
 	int i;
+
+	mif_disable_irq(&mc->s5100_irq_phone_active);
+	mif_disable_irq(&mc->s5100_irq_ap_wakeup);
 
 	usage_cnt = atomic_read(&mc->dev->power.usage_count);
 	mif_info("pm usage_cnt=%d boot_done_cnt=%d\n", usage_cnt,
@@ -604,7 +607,7 @@ static int s5100_dump_reset(struct modem_ctl *mc)
 	mutex_lock(&ap_status_lock);
 	if (s5100pcie.link_status == 1) {
 		save_s5100_status();
-		exynos_pcie_host_v1_poweroff(mc->pcie_ch_num);
+		pcie_clean_dislink(mc);
 	}
 	mutex_unlock(&ap_status_lock);
 
@@ -651,7 +654,7 @@ static int s5100_reset(struct modem_ctl *mc)
 	mutex_lock(&ap_status_lock);
 	if (s5100pcie.link_status == 1) {
 		save_s5100_status();
-		exynos_pcie_host_v1_poweroff(mc->pcie_ch_num);
+		pcie_clean_dislink(mc);
 	}
 	mutex_unlock(&ap_status_lock);
 
@@ -1004,9 +1007,6 @@ static int s5100_link_down(struct modem_ctl *mc)
 
 static int s5100_suspend(struct modem_ctl *mc)
 {
-	mif_disable_irq_sync(&mc->s5100_irq_phone_active);
-	mif_disable_irq_sync(&mc->s5100_irq_ap_wakeup);
-
 	if (mc && mc->s5100_gpio_ap_status) {
 		gpio_set_value(mc->s5100_gpio_ap_status, 0);
 		mif_info("set gpio_ap_status to %d\n", gpio_get_value(mc->s5100_gpio_ap_status));
@@ -1023,23 +1023,34 @@ static int s5100_resume(struct modem_ctl *mc)
 	return 0;
 }
 
-static int s5100_pm_resume_notifier(struct notifier_block *notifier,
+static int s5100_pm_notifier(struct notifier_block *notifier,
 				       unsigned long pm_event, void *v)
 {
-	if (pm_event != PM_POST_SUSPEND)
-		return NOTIFY_OK;
-
-	mif_info("Resume done - Enable GPIO interrupts\n");
-	if (g_mc) {
-		mif_enable_irq(&g_mc->s5100_irq_phone_active);
-		mif_enable_irq(&g_mc->s5100_irq_ap_wakeup);
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mif_info("Suspend prepare - Disable GPIO interrupts\n");
+		if (g_mc) {
+			mif_disable_irq_sync(&g_mc->s5100_irq_phone_active);
+			mif_disable_irq_sync(&g_mc->s5100_irq_ap_wakeup);
+		}
+		break;
+	case PM_POST_SUSPEND:
+		mif_info("Resume done - Enable GPIO interrupts\n");
+		if (g_mc) {
+			mif_enable_irq(&g_mc->s5100_irq_phone_active);
+			mif_enable_irq(&g_mc->s5100_irq_ap_wakeup);
+		}
+		break;
+	default:
+		mif_info("pm_event %d\n", pm_event);
+		break;
 	}
 
 	return NOTIFY_OK;
 }
 
-static struct notifier_block s5100_resume_nb = {
-	.notifier_call = s5100_pm_resume_notifier,
+static struct notifier_block s5100_pm_nb = {
+	.notifier_call = s5100_pm_notifier,
 };
 
 static void s5100_get_ops(struct modem_ctl *mc)
@@ -1237,7 +1248,7 @@ int s5100_init_modemctl_device(struct modem_ctl *mc, struct modem_data *pdata)
 	register_reboot_notifier(&nb_reboot_block);
 
 	/* For enable GPIO interrupts */
-	register_pm_notifier(&s5100_resume_nb);
+	register_pm_notifier(&s5100_pm_nb);
 
 	init_pinctl_cp2ap_wakeup(mc);
 

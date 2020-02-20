@@ -38,6 +38,10 @@ unsigned int pm_wakeup_irq __read_mostly;
 /* If greater than 0 and the system is suspending, terminate the suspend. */
 static atomic_t pm_abort_suspend __read_mostly;
 
+#ifdef CONFIG_SEC_PM_DEBUG
+bool pm_system_wakeup_without_irq_num;
+#endif
+
 /*
  * Combined counters of registered wakeup events and wakeup events in progress.
  * They need to be modified together atomically, so it's better to use one
@@ -1016,6 +1020,9 @@ void pm_system_cancel_wakeup(void)
 void pm_wakeup_clear(bool reset)
 {
 	pm_wakeup_irq = 0;
+#ifdef CONFIG_SEC_PM_DEBUG
+	pm_system_wakeup_without_irq_num = false;
+#endif
 	if (reset)
 		atomic_set(&pm_abort_suspend, 0);
 }
@@ -1034,7 +1041,14 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 					desc->action->name);
 		else
 			pr_info("PM: %s: %u\n", __func__, irq_number);
+
+		if (pm_system_wakeup_without_irq_num) {
+			pm_system_wakeup_without_irq_num = false;
+#ifdef CONFIG_SUSPEND
+			log_wakeup_reason(irq_number);
 #endif
+		}
+#endif /* CONFIG_SEC_PM_DEBUG */
 	}
 }
 

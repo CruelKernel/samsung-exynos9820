@@ -16,10 +16,10 @@ DECLARE_EVENT_CLASS(ion_rbin,
 	TP_ARGS(heap_name, buffer, size, page),
 
 	TP_STRUCT__entry(
-		__field(	const char *,	heap_name)
-		__field(	void *,		buffer	)
-		__field(	unsigned long,	size	)
-		__field(	void *,		page	)
+		__field(const char *, heap_name)
+		__field(void *, buffer)
+		__field(unsigned long, size)
+		__field(void *, page)
 	),
 
 	TP_fast_assign(
@@ -79,21 +79,6 @@ DEFINE_EVENT(ion_rbin, ion_rbin_partial_alloc_end,
 	TP_ARGS(heap_name, buffer, size, page)
 );
 
-DEFINE_EVENT(ion_rbin, ion_rbin_partial_free_start,
-	TP_PROTO(const char *heap_name, void *buffer, unsigned long size,
-		 void *page),
-
-	TP_ARGS(heap_name, buffer, size, page)
-);
-
-DEFINE_EVENT(ion_rbin, ion_rbin_partial_free_end,
-	TP_PROTO(const char *heap_name, void *buffer, unsigned long size,
-		 void *page),
-
-	TP_ARGS(heap_name, buffer, size, page)
-);
-
-
 DEFINE_EVENT(ion_rbin, ion_rbin_pool_alloc_start,
 
 	TP_PROTO(const char *heap_name, void *buffer, unsigned long size,
@@ -113,4 +98,3 @@ DEFINE_EVENT(ion_rbin, ion_rbin_pool_alloc_end,
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
-

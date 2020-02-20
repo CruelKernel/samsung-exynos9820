@@ -262,6 +262,11 @@ static int __vb_map_dmabuf(
 	buffer->vaddr = NULL;
 
 	buffer->dma_buf = dma_buf_get(buffer->m.fd);
+	if (IS_ERR_OR_NULL(buffer->dma_buf)) {
+		vision_err("dma_buf_get is fail(0x%08x)\n", buffer->dma_buf);
+		ret = -EINVAL;
+		goto p_err;
+	}
 
 	attachment = dma_buf_attach(buffer->dma_buf, q->alloc_ctx);
 	if (IS_ERR(attachment)) {

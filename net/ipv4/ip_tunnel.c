@@ -449,6 +449,7 @@ int ip_tunnel_rcv(struct ip_tunnel *tunnel, struct sk_buff *skb,
 drop:
 	if (tun_dst)
 		dst_release((struct dst_entry *)tun_dst);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR3);
 	kfree_skb(skb);
 	return 0;
 }
@@ -627,6 +628,7 @@ tx_error:
 tx_dropped:
 	dev->stats.tx_dropped++;
 kfree:
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR4);
 	kfree_skb(skb);
 }
 EXPORT_SYMBOL_GPL(ip_md_tunnel_xmit);
@@ -802,6 +804,7 @@ tx_error_icmp:
 #endif
 tx_error:
 	dev->stats.tx_errors++;
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_IP_TUNERROR5);
 	kfree_skb(skb);
 }
 EXPORT_SYMBOL_GPL(ip_tunnel_xmit);

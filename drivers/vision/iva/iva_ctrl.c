@@ -397,7 +397,7 @@ static void iva_ctrl_mcu_boot_unprepare_system(struct iva_dev_data *iva)
 #ifdef CONFIG_PM_SLEEP
 	if (wake_lock_active(&iva->iva_wake_lock)) {
 		wake_unlock(&iva->iva_wake_lock);
-		dev_dbg(dev, "%s() wake_inlock, now(%d)\n",
+		dev_info(dev, "%s() wake_unlock, now(%d)\n",
 			__func__, wake_lock_active(&iva->iva_wake_lock));
 	}
 #endif
@@ -764,7 +764,6 @@ static int iva_ctrl_mmap(struct file *filp, struct vm_area_struct *vma)
 #endif
 }
 
-
 static int iva_ctrl_open(struct inode *inode, struct file *filp)
 {
 	struct device *dev;
@@ -781,10 +780,24 @@ static int iva_ctrl_open(struct inode *inode, struct file *filp)
 	iva = filp->private_data = g_iva_data;
 	dev = iva->dev;
 #endif
+	mutex_lock(&iva->proc_mutex);
+	if (!list_empty(&iva->proc_head)) {
+		struct list_head	*work_node;
+		struct iva_proc		*proc;
+
+		list_for_each(work_node, &iva->proc_head) {
+			proc = list_entry(work_node, struct iva_proc, proc_node);
+			dev_err(dev, "%s() iva_proc is already open(%s, %d, %d)\n",
+				__func__, proc->tsk->comm, proc->pid, proc->tid);
+		}
+		mutex_unlock(&iva->proc_mutex);
+		return -EMFILE;
+	}
 	proc = devm_kmalloc(dev, sizeof(*proc), GFP_KERNEL);
 	if (!proc) {
 		dev_err(dev, "%s() fail to alloc mem for struct iva_proc\n",
 			__func__);
+		mutex_unlock(&iva->proc_mutex);
 		return -ENOMEM;
 	}
 	/* assume only one open() per process */
@@ -799,12 +812,11 @@ static int iva_ctrl_open(struct inode *inode, struct file *filp)
 	refcount_set(&proc->init_ref.refcount, 0);
 	refcount_set(&proc->boot_ref.refcount, 0);
 
-	mutex_lock(&iva->proc_mutex);
 	list_add(&proc->proc_node, &iva->proc_head);
-	mutex_unlock(&iva->proc_mutex);
 
 	/* update file->private to hold struct iva_proc */
 	filp->private_data = (void *) proc;
+	mutex_unlock(&iva->proc_mutex);
 
 	dev_dbg(dev, "%s() succeed to open from (%s, %d, %d)\n", __func__,
 			proc->tsk->comm, proc->pid, proc->tid);

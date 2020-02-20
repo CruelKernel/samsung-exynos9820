@@ -88,10 +88,7 @@ enum flat_binder_object_flags {
 	 * scheduling policy from the caller (for synchronous transactions).
 	 */
 	FLAT_BINDER_FLAG_INHERIT_RT = 0x800,
-<<<<<<< HEAD
-=======
 
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	/**
 	 * @FLAT_BINDER_FLAG_TXN_SECURITY_CTX: request security contexts
 	 *
@@ -258,15 +255,6 @@ struct binder_node_debug_info {
 	__u32            has_weak_ref;
 };
 
-struct binder_node_info_for_ref {
-	__u32            handle;
-	__u32            strong_count;
-	__u32            weak_count;
-	__u32            reserved1;
-	__u32            reserved2;
-	__u32            reserved3;
-};
-
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
 #define BINDER_SET_IDLE_TIMEOUT		_IOW('b', 3, __s64)
 #define BINDER_SET_MAX_THREADS		_IOW('b', 5, __u32)
@@ -275,12 +263,7 @@ struct binder_node_info_for_ref {
 #define BINDER_THREAD_EXIT		_IOW('b', 8, __s32)
 #define BINDER_VERSION			_IOWR('b', 9, struct binder_version)
 #define BINDER_GET_NODE_DEBUG_INFO	_IOWR('b', 11, struct binder_node_debug_info)
-#define BINDER_GET_NODE_INFO_FOR_REF	_IOWR('b', 12, struct binder_node_info_for_ref)
 #define BINDER_SET_CONTEXT_MGR_EXT	_IOW('b', 13, struct flat_binder_object)
-<<<<<<< HEAD
-=======
-
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 /*
  * NOTE: Two special error codes you should check for when calling
  * in to the driver are:
@@ -337,16 +320,12 @@ struct binder_transaction_data {
 		__u8	buf[8];
 	} data;
 };
-struct binder_transaction_data_secctx {
-	struct binder_transaction_data transaction_data;
-	binder_uintptr_t secctx;
-};
-
 
 struct binder_transaction_data_secctx {
 	struct binder_transaction_data transaction_data;
 	binder_uintptr_t secctx;
 };
+
 
 struct binder_transaction_data_sg {
 	struct binder_transaction_data transaction_data;
@@ -382,10 +361,6 @@ enum binder_driver_return_protocol {
 
 	BR_OK = _IO('r', 1),
 	/* No parameters! */
-<<<<<<< HEAD
-=======
-
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	BR_TRANSACTION_SEC_CTX = _IOR('r', 2,
 				      struct binder_transaction_data_secctx),
 	/*

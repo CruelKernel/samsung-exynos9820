@@ -658,6 +658,21 @@ static int panel_do_pinctl(struct panel_device *panel, struct pininfo *info)
 
 	return 0;
 }
+#ifdef CONFIG_SUPPORT_POC_SPI
+static int panel_spi_read_data(struct panel_device *panel,
+			u8 cmd_id, u8 *buf, int size)
+{
+	struct panel_spi_dev *spi_dev;
+	if (!panel)
+		return -EINVAL;
+
+	spi_dev = &panel->panel_spi_dev;
+	if (!spi_dev)
+		return -EINVAL;
+
+	return spi_dev->ops->read(spi_dev, cmd_id, buf, size);
+}
+#endif
 
 static int panel_dsi_write_data(struct panel_device *panel,
 		u8 cmd_id, const u8 *buf, u8 ofs, int size, bool block)
@@ -674,8 +689,26 @@ static int panel_dsi_write_data(struct panel_device *panel,
 	if (block)
 		option |= DSIM_OPTION_WAIT_TX_DONE;
 
-	return panel->mipi_drv.write(panel->dsi_id, cmd_id, buf, ofs, size, option);
+	return panel->mipi_drv.write(panel->dsi_id, cmd_id, buf, ofs, size, option, true);
 }
+static int panel_dsi_write_data_no_wakable(struct panel_device *panel,
+		u8 cmd_id, const u8 *buf, u8 ofs, int size, bool block)
+{
+	u32 option = 0;
+
+	if (unlikely(!panel || !panel->mipi_drv.write))
+		return -EINVAL;
+
+	if ((panel->panel_data.ddi_props.gpara &
+					DDI_SUPPORT_POINT_GPARA))
+		option |= DSIM_OPTION_POINT_GPARA;
+
+	if (block)
+		option |= DSIM_OPTION_WAIT_TX_DONE;
+
+	return panel->mipi_drv.write(panel->dsi_id, cmd_id, buf, ofs, size, option, false);
+}
+
 
 /* Todo need to move dt file */
 #define SRAM_BYTE_ALIGN	16
@@ -890,6 +923,10 @@ static int panel_do_tx_packet(struct panel_device *panel, struct pktinfo *info, 
 		cmd_id = MIPI_DSI_WR_GEN_CMD;
 		addr = info->data ? info->data[0] : 0;
 		break;
+	case DSI_PKT_TYPE_WR_NO_WAKE:
+		cmd_id = MIPI_DSI_WR_CMD_NO_WAKE;
+		addr = info->data ? info->data[0] : 0;
+		break;
 	case DSI_PKT_TYPE_WR_MEM:
 		cmd_id = MIPI_DSI_WR_GRAM_CMD;
 		addr = info->data ? info->data[0] : 0;
@@ -928,6 +965,9 @@ static int panel_do_tx_packet(struct panel_device *panel, struct pktinfo *info, 
 			cmd_id == MIPI_DSI_WR_SRAM_CMD)
 		ret = panel_dsi_write_mem(panel, cmd_id,
 				info->data, info->offset, info->dlen);
+	else if (cmd_id == MIPI_DSI_WR_CMD_NO_WAKE)
+		ret = panel_dsi_write_data_no_wakable(panel, cmd_id,
+				info->data, info->offset, info->dlen, block);
 	else
 		ret = panel_dsi_write_data(panel, cmd_id,
 				info->data, info->offset, info->dlen, block);
@@ -943,6 +983,62 @@ static int panel_do_tx_packet(struct panel_device *panel, struct pktinfo *info, 
 
 	return 0;
 }
+
+#ifdef CONFIG_SUPPORT_POC_SPI
+static int panel_spi_packet(struct panel_device *panel, struct pktinfo *info)
+{
+	struct panel_spi_dev *spi_dev;
+	int ret = 0;
+	u32 type;
+
+	if (unlikely(!panel || !info)) {
+		panel_err("%s, invalid paramter (panel %p, info %p)\n",
+				__func__, panel, info);
+		return -EINVAL;
+	}
+	spi_dev = &panel->panel_spi_dev;
+
+	if (!spi_dev) {
+		panel_err("%s, spi_dev not found\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!spi_dev->ops) {
+		panel_err("%s, spi_dev.ops not found\n", __func__);
+		return -EINVAL;
+	}
+
+	if (info->pktui)
+		panel_update_packet_data(panel, info);
+
+	type = info->type;
+	switch (type) {
+		case SPI_PKT_TYPE_WR:
+			if (!spi_dev->ops->cmd) {
+				ret = -ENOSYS;
+				break;
+			}
+			ret = spi_dev->ops->cmd(spi_dev, info->data, info->dlen, NULL, 0);
+			break;
+		case SPI_PKT_TYPE_SETPARAM:
+			if (!spi_dev->ops->setparam) {
+				ret = -ENOSYS;
+				break;
+			}
+			ret = spi_dev->ops->setparam(spi_dev, info->data, info->dlen);
+			break;
+		default:
+			break;
+	}
+
+	if (ret < 0) {
+		panel_err("%s, failed to send spi packet %s (ret %d type %d)\n", __func__, info->name, ret, type);
+		return -EINVAL;
+	}
+	return 0;
+
+}
+#endif
 
 static int panel_do_setkey(struct panel_device *panel, struct keyinfo *info, bool block)
 {
@@ -1099,6 +1195,12 @@ int panel_do_seqtbl(struct panel_device *panel, struct seqinfo *seqtbl)
 		case CMD_TYPE_DMP:
 			ret = panel_dumpinfo_update(panel, (struct dumpinfo *)cmdtbl[i]);
 			break;
+#ifdef CONFIG_SUPPORT_POC_SPI
+		case SPI_PKT_TYPE_WR:
+		case SPI_PKT_TYPE_SETPARAM:
+			ret = panel_spi_packet(panel, (struct pktinfo *)cmdtbl[i]);
+			break;
+#endif
 		case CMD_TYPE_NONE:
 		default:
 			pr_warn("%s, unknown pakcet type %d\n", __func__, type);
@@ -1432,7 +1534,7 @@ int get_resource_size_by_name(struct panel_info *panel_data, char *name)
 
 #define MAX_READ_BYTES  (40)
 int panel_rx_nbytes(struct panel_device *panel,
-		u32 type, u8 *buf, u8 addr, u8 pos, u8 len)
+		u32 type, u8 *buf, u8 addr, u8 pos, u32 len)
 {
 	int ret, read_len, remained = len, index = 0;
 	static char gpara[] = {0xB0, 0x00};
@@ -1446,6 +1548,16 @@ int panel_rx_nbytes(struct panel_device *panel,
 		pr_err("%s, invalid type %d\n", __func__, type);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SUPPORT_POC_SPI
+	if (type == SPI_PKT_TYPE_RD) {
+		ret = panel_spi_read_data(panel, addr, buf, len);
+		if (ret < 0) {
+			return ret;
+		}
+		return len;
+	}
+#endif
 
 	gpara[1] = pos;
 
@@ -1502,6 +1614,36 @@ int panel_rx_nbytes(struct panel_device *panel,
 #endif
 	return len;
 }
+
+int panel_tx_nbytes(struct panel_device *panel,
+		u32 type, u8 *buf, u8 addr, u8 pos, u32 len)
+{
+	int ret;
+
+	if (panel == NULL) {
+		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!IS_CMD_TYPE_TX_PKT(type)) {
+		pr_err("%s, invalid type %d\n", __func__, type);
+		return -EINVAL;
+	}
+
+	ret = panel_dsi_write_data(panel, MIPI_DSI_WR_GEN_CMD, buf, pos, len, false);
+	if (ret != len) {
+		panel_err("%s, failed to write addr:0x%02X, pos:%d, len:%u ret %d\n",
+				__func__, addr, pos, len, ret);
+		return -EINVAL;
+	}
+
+#ifdef DEBUG_PANEL
+	panel_dbg("%s, addr:%2Xh, pos:%d, len:%u\n", __func__, buf[0], pos, len);
+	print_data(buf, len);
+#endif
+	return ret;
+}
+
 
 int read_panel_id(struct panel_device *panel, u8 *buf)
 {
@@ -1731,7 +1873,6 @@ int check_panel_active(struct panel_device *panel, const char *caller)
 		panel_warn("PANEL:WARN:%s:panel no use\n", caller);
 		return 0;
 	}
-
 	dsi_state = panel_dsi_get_state(panel);
 	if (dsi_state == DSIM_STATE_OFF ||
 		dsi_state == DSIM_STATE_DOZE_SUSPEND) {

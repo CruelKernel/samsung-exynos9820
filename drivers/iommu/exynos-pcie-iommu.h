@@ -351,6 +351,7 @@ struct sysmmu_drvdata {
 	bool is_suspended;
 
 	struct exynos_iommu_domain *domain; /* iommu domain for this iovmm */
+	int ch_num; /*0: PCIe CH0, 1: PCIe CH1*/
 /*	int use_tlb_pinning; TLB1 is removed in Makalu*/
 };
 

@@ -37,13 +37,16 @@ struct five_hook_heads five_hook_heads = {
 		LIST_HEAD_INIT(five_hook_heads.file_signed),
 	.task_forked =
 		LIST_HEAD_INIT(five_hook_heads.task_forked),
+	.integrity_reset =
+		LIST_HEAD_INIT(five_hook_heads.integrity_reset),
 };
 
 enum five_hook_event {
 	FILE_PROCESSED,
 	FILE_SKIPPED,
 	FILE_SIGNED,
-	TASK_FORKED
+	TASK_FORKED,
+	INTEGRITY_RESET
 };
 
 struct hook_wq_event {
@@ -68,6 +71,9 @@ struct hook_wq_event {
 			struct task_struct *child;
 			enum task_integrity_value child_tint_value;
 		} forked;
+		struct {
+			struct task_struct *task;
+		} reset;
 	};
 };
 
@@ -94,6 +100,10 @@ static void hook_wq_event_destroy(struct hook_wq_event *event)
 	case TASK_FORKED: {
 		put_task_struct(event->forked.parent);
 		put_task_struct(event->forked.child);
+		break;
+	}
+	case INTEGRITY_RESET: {
+		put_task_struct(event->reset.task);
 		break;
 	}
 	}
@@ -150,6 +160,11 @@ static void hook_handler(struct work_struct *in_data)
 			event->forked.parent_tint_value,
 			event->forked.child,
 			event->forked.child_tint_value);
+		break;
+	}
+	case INTEGRITY_RESET: {
+		call_void_hook(integrity_reset,
+			event->reset.task);
 		break;
 	}
 	}
@@ -260,9 +275,25 @@ void five_hook_task_forked(struct task_struct *parent,
 
 int five_hook_wq_init(void)
 {
-	g_hook_workqueue = create_singlethread_workqueue("five_hook_wq");
+	g_hook_workqueue = alloc_ordered_workqueue("%s",
+				WQ_MEM_RECLAIM | WQ_FREEZABLE, "five_hook_wq");
 	if (!g_hook_workqueue)
 		return -ENOMEM;
 
 	return 0;
+}
+
+void five_hook_integrity_reset(struct task_struct *task)
+{
+	struct hook_wq_event event = {0};
+
+	if (task == NULL)
+		return;
+
+	event.event = INTEGRITY_RESET;
+	get_task_struct(task);
+	event.reset.task = task;
+
+	if (__push_event(&event, GFP_KERNEL) < 0)
+		hook_wq_event_destroy(&event);
 }

@@ -50,6 +50,20 @@ struct cam_mipi_sensor_mode {
 	const u32 sensor_setting_size;
 };
 
+struct cam_tof_setting {
+	const u32 tx_freq;
+	const u32 *setting;
+	const u32 setting_size;
+};
+
+struct cam_tof_sensor_mode {
+	const u32 mode;
+	const struct cam_mipi_channel *mipi_channel;
+	const u32 mipi_channel_size;
+	const struct cam_tof_setting *sensor_setting;
+	const u32 sensor_setting_size;
+};
+
 /* RAT */
 enum {
 	CAM_RAT_1_GSM = 1,
@@ -57,6 +71,8 @@ enum {
 	CAM_RAT_3_LTE = 3,
 	CAM_RAT_4_TDSCDMA = 4,
 	CAM_RAT_5_CDMA = 5,
+	CAM_RAT_6_WIFI = 6,
+	CAM_RAT_7_NR = 7,
 };
 
 /* BAND */
@@ -200,6 +216,8 @@ enum {
 	CAM_BAND_159_LTE_LB69 = 159,
 	CAM_BAND_160_LTE_LB70 = 160,
 	CAM_BAND_161_LTE_LB71 = 161,
+	
+	CAM_BAND_255_NR_NRxx = 255,
 };
 
 int fimc_is_vendor_select_mipi_by_rf_channel(const struct cam_mipi_channel *channel_list, const int size);

@@ -60,23 +60,26 @@
 
 enum bit_debug_flags {
 	DEBUG_FLAG_FMT,
+	DEBUG_FLAG_MISC,
 	DEBUG_FLAG_RFS,
 	DEBUG_FLAG_PS,
 	DEBUG_FLAG_BOOT,
 	DEBUG_FLAG_DUMP,
 	DEBUG_FLAG_CSVT,
-	DEBUG_FLAG_LOG
+	DEBUG_FLAG_LOG,
+	DEBUG_FLAG_ALL,
 };
 
+#define DEBUG_FLAG_DEFAULT    (1 << DEBUG_FLAG_FMT | 1 << DEBUG_FLAG_MISC)
 #ifdef DEBUG_MODEM_IF_PS_DATA
-static unsigned long dflags = (1 << DEBUG_FLAG_FMT | 1 << DEBUG_FLAG_RFS | 1 << DEBUG_FLAG_PS);
+static unsigned long dflags = (DEBUG_FLAG_DEFAULT | 1 << DEBUG_FLAG_RFS | 1 << DEBUG_FLAG_PS);
 #else
-static unsigned long dflags = (1 << DEBUG_FLAG_FMT);
+static unsigned long dflags = (DEBUG_FLAG_DEFAULT);
 #endif
 module_param(dflags, ulong, S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(dflags, "modem_v1 debug flags");
 
-static unsigned long wakeup_dflags = (1 << DEBUG_FLAG_FMT | 1 << DEBUG_FLAG_RFS | 1 << DEBUG_FLAG_PS);
+static unsigned long wakeup_dflags = (DEBUG_FLAG_DEFAULT | 1 << DEBUG_FLAG_RFS | 1 << DEBUG_FLAG_PS);
 module_param(wakeup_dflags, ulong, S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(wakeup_dflags, "modem_v1 wakeup debug flags");
 
@@ -318,8 +321,10 @@ static inline bool log_enabled(u8 ch)
 		return test_bit(DEBUG_FLAG_LOG, &flags);
 	else if (sipc_ps_ch(ch))
 		return test_bit(DEBUG_FLAG_PS, &flags);
+	else if (sipc5_misc_ch(ch))
+		return test_bit(DEBUG_FLAG_MISC, &flags);
 	else
-		return false;
+		return test_bit(DEBUG_FLAG_ALL, &flags);
 }
 
 /* print ipc packet */

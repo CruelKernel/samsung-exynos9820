@@ -29,6 +29,7 @@
 #define SMC_CMD_KERNEL_PANIC_NOTICE	(-122)
 #define SMC_CMD_SET_SEH_ADDRESS		(-123)
 #define SMC_CMD_LOCKUP_NOTICE		(0x8200007C)
+#define SMC_CMD_GET_SJTAG_STATUS	(0x8200012E)
 
 /* For protecting kernel text area */
 #define SMC_CMD_PROTECT_KERNEL_TEXT	(-125)
@@ -97,6 +98,10 @@
 
 /* For Secure log information */
 #define SMC_CMD_SEC_LOG_INFO		(0x82000610)
+
+/* For PPMPU fail information */
+#define SMC_CMD_GET_PPMPU_FAIL_INFO	(0x8200211A)
+#define SMC_CMD_CHECK_PPMPU_CH_NUM	(0x8200211B)
 
 /* For MMCache flush */
 #define SMC_CMD_MM_CACHE_OPERATION	(0x82000720)

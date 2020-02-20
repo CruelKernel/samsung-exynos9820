@@ -47,6 +47,7 @@
 #include <linux/string.h>
 #include <linux/pagemap.h>
 #include <linux/mutex.h>
+#include <linux/mm_inline.h>
 
 #include "squashfs_fs.h"
 #include "squashfs_fs_sb.h"
@@ -451,7 +452,6 @@ static int squashfs_readpage_fragment(struct page *page, int expected)
 	return res;
 }
 
-<<<<<<< HEAD
 static int squashfs_readpages_fragment(struct page *page,
 	struct list_head *readahead_pages, struct address_space *mapping,
 	int expected)
@@ -468,15 +468,12 @@ static int squashfs_readpages_fragment(struct page *page,
 	return squashfs_readpage_fragment(page, expected);
 }
 
-=======
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 static int squashfs_readpage_sparse(struct page *page, int expected)
 {
 	squashfs_copy_cache(page, NULL, expected, 0);
 	return 0;
 }
 
-<<<<<<< HEAD
 static int squashfs_readpages_sparse(struct page *page,
 	struct list_head *readahead_pages, struct address_space *mapping,
 	int expected)
@@ -496,16 +493,11 @@ static int squashfs_readpages_sparse(struct page *page,
 static int __squashfs_readpages(struct file *file, struct page *page,
 	struct list_head *readahead_pages, unsigned int nr_pages,
 	struct address_space *mapping)
-=======
-static int squashfs_readpage(struct file *file, struct page *page)
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 {
-	struct inode *inode = page->mapping->host;
+	struct inode *inode = mapping->host;
 	struct squashfs_sb_info *msblk = inode->i_sb->s_fs_info;
-	int index = page->index >> (msblk->block_log - PAGE_SHIFT);
 	int file_end = i_size_read(inode) >> msblk->block_log;
 	int res;
-<<<<<<< HEAD
 
 	do {
 		struct page *cur_page = page ? page
@@ -551,25 +543,12 @@ static int squashfs_readpage(struct file *file, struct page *page)
 static int squashfs_readpage(struct file *file, struct page *page)
 {
 	int ret;
-=======
-	void *pageaddr;
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	TRACE("Entered squashfs_readpage, page index %lx, start block %llx\n",
-				page->index, squashfs_i(inode)->start);
+	      page->index, squashfs_i(page->mapping->host)->start);
 
-	if (page->index >= ((i_size_read(inode) + PAGE_SIZE - 1) >>
-					PAGE_SHIFT))
-		goto out;
+	get_page(page);
 
-	if (index < file_end || squashfs_i(inode)->fragment_block ==
-					SQUASHFS_INVALID_BLK) {
-		u64 block = 0;
-		int bsize = read_blocklist(inode, index, &block);
-		if (bsize < 0)
-			goto error_out;
-
-<<<<<<< HEAD
 	ret = __squashfs_readpages(file, page, NULL, 1, page->mapping);
 	if (ret) {
 		flush_dcache_page(page);
@@ -581,33 +560,21 @@ static int squashfs_readpage(struct file *file, struct page *page)
 		unlock_page(page);
 		put_page(page);
 	}
-=======
-		if (bsize == 0)
-			res = squashfs_readpage_sparse(page, expected);
-		else
-			res = squashfs_readpage_block(page, block, bsize, expected);
-	} else
-		res = squashfs_readpage_fragment(page, expected);
 
-	if (!res)
-		return 0;
+	return 0;
+}
 
-error_out:
-	SetPageError(page);
-out:
-	pageaddr = kmap_atomic(page);
-	memset(pageaddr, 0, PAGE_SIZE);
-	kunmap_atomic(pageaddr);
-	flush_dcache_page(page);
-	if (!PageError(page))
-		SetPageUptodate(page);
-	unlock_page(page);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
-
+static int squashfs_readpages(struct file *file, struct address_space *mapping,
+			      struct list_head *pages, unsigned int nr_pages)
+{
+	TRACE("Entered squashfs_readpages, %u pages, first page index %lx\n",
+		nr_pages, lru_to_page(pages)->index);
+	__squashfs_readpages(file, NULL, pages, nr_pages, mapping);
 	return 0;
 }
 
 
 const struct address_space_operations squashfs_aops = {
-	.readpage = squashfs_readpage
+	.readpage = squashfs_readpage,
+	.readpages = squashfs_readpages,
 };

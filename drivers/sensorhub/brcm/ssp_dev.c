@@ -35,6 +35,12 @@ static void ssp_late_resume(struct early_suspend *handler);
 
 #if defined(CONFIG_SSP_MOTOR_CALLBACK)
 #include <linux/ssp_motorcallback.h>
+
+#ifdef CONFIG_VIB_NOTIFIER
+#include <linux/vib_notifier.h>
+struct notifier_block vib_notif;
+#endif
+
 #endif
 
 #ifdef CONFIG_PANEL_NOTIFY
@@ -718,6 +724,20 @@ void ssp_motor_work_func(struct work_struct *work)
 	iRet = send_motor_state(data);
 	pr_info("[SSP] %s : Motor state %d, iRet %d\n", __func__, data->motor_state, iRet);
 }
+
+
+#ifdef CONFIG_VIB_NOTIFIER
+static int vib_notifier_callback(struct notifier_block *self, unsigned long event, void *data){
+	ssp_data_info->motor_state = 1;
+
+	queue_work(ssp_data_info->ssp_motor_wq,
+			&ssp_data_info->work_ssp_motor);
+
+	pr_info("[SSP] %s : Motor state %d\n", __func__, ssp_data_info->motor_state );
+
+	return 0;	
+}
+#endif
 #endif
 
 #ifdef CONFIG_PANEL_NOTIFY
@@ -1047,6 +1067,16 @@ static int ssp_probe(struct spi_device *spi)
 	}
 
 	INIT_WORK(&data->work_ssp_motor, ssp_motor_work_func);
+
+#ifdef CONFIG_VIB_NOTIFIER
+	pr_info("[SSP]: %s motor notifier set!", __func__);
+	vib_notif.notifier_call = vib_notifier_callback;
+	iRet = vib_notifier_register(&vib_notif);
+	if (iRet) {
+		pr_err("[SSP]: %s - fail to register vib_notifier_callback\n", __func__);
+	}
+#endif
+
 #endif
 
 

@@ -232,6 +232,7 @@ static inline uint32_t iva_pmu_disable_core_clks(struct iva_dev_data *iva)
 }
 #endif
 
+extern void	iva_pmu_show_qactive_status(struct iva_dev_data *iva);
 extern void	iva_pmu_show_status(struct iva_dev_data *iva);
 
 extern int	iva_pmu_init(struct iva_dev_data *iva, bool en_hwa);

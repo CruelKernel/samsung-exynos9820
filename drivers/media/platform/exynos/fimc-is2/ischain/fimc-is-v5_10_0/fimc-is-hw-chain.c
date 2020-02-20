@@ -992,3 +992,15 @@ void __iomem *fimc_is_hw_get_sysreg(ulong core_regs)
 
 	return sysregs;
 }
+
+void fimc_is_hw_djag_get_input(struct mcsc_scenario_info *info, u32 *djag_in)
+{
+	/* Do nothing. */
+}
+
+void fimc_is_hw_djag_adjust_out_size(struct fimc_is_device_ischain *ischain,
+					u32 in_width, u32 in_height,
+					u32 *out_width, u32 *out_height)
+{
+	/* Do nothing. */
+}

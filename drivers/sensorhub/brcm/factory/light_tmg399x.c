@@ -27,6 +27,8 @@
 #define CHIP_ID		"TMD4905"
 #elif defined(CONFIG_SENSORS_SSP_TMD4906)
 #define CHIP_ID		"TMD4906"
+#elif defined(CONFIG_SENSORS_SSP_TMD4907)
+#define CHIP_ID		"TMD4907"
 #elif defined(CONFIG_SENSORS_SSP_TMD4910)
 #define CHIP_ID		"TMD4910"
 #else
@@ -313,8 +315,13 @@ static ssize_t light_circle_show(struct device *dev,
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
 	struct decimal_point x = { 0, }, y = { 0, }, diameter = { 0, };
-	
-	if(data->ap_rev < 20) {
+
+#if defined(CONFIG_SENSORS_SSP_BEYOND)
+	if(data->ap_type == 3) {
+		set_decimal_point(&x, 26, 9);
+		set_decimal_point(&y, 7,  5);
+		set_decimal_point(&diameter, 2, 2);
+	} else if(data->ap_rev < 20) {
 	// DV 1th
 		switch(data->ap_type) {
 			case 0:
@@ -372,7 +379,23 @@ static ssize_t light_circle_show(struct device *dev,
 				break;
 		}	
 	}
-		
+#elif defined(CONFIG_SENSORS_SSP_DAVINCI)
+	switch(data->ap_type) {
+		case 0:
+		case 1:
+			set_decimal_point(&x, 41, 3);
+			set_decimal_point(&y, 7,  1);
+			set_decimal_point(&diameter, 2, 4);
+
+			break;
+		case 2:
+		case 3:
+			set_decimal_point(&x, 43, 8);
+			set_decimal_point(&y, 6,  7);
+			set_decimal_point(&diameter, 2, 4);
+			break;
+	}
+#endif	
 
 	return snprintf(buf, PAGE_SIZE, "%d.%d %d.%d %d.%d\n", x.integer, x.point,
 			y.integer, y.point, diameter.integer, diameter.point);

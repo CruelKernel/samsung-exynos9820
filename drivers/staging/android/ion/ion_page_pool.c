@@ -64,7 +64,7 @@ static int ion_page_pool_add(struct ion_page_pool *pool, struct page *page)
 	return 0;
 }
 
-struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
+static struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
 {
 	struct page *page;
 
@@ -82,7 +82,7 @@ struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
 	return page;
 }
 
-void *ion_page_pool_only_alloc(struct ion_page_pool *pool)
+struct page *ion_page_pool_only_alloc(struct ion_page_pool *pool)
 {
 	struct page *page = NULL;
 
@@ -92,11 +92,11 @@ void *ion_page_pool_only_alloc(struct ion_page_pool *pool)
 		goto done;
 
 	if (mutex_trylock(&pool->mutex)) {
-	    if (pool->high_count)
-		    page = ion_page_pool_remove(pool, true);
-	    else if (pool->low_count)
-		    page = ion_page_pool_remove(pool, false);
-	    mutex_unlock(&pool->mutex);
+		if (pool->high_count)
+			page = ion_page_pool_remove(pool, true);
+		else if (pool->low_count)
+			page = ion_page_pool_remove(pool, false);
+		mutex_unlock(&pool->mutex);
 	}
 done:
 	return page;
@@ -121,6 +121,7 @@ struct page *ion_page_pool_alloc(struct ion_page_pool *pool, bool nozero)
 			__flush_dcache_area(page_to_virt(page),
 					    1 << (PAGE_SHIFT + pool->order));
 	}
+
 	return page;
 }
 
@@ -140,7 +141,7 @@ void ion_page_pool_free(struct ion_page_pool *pool, struct page *page)
 		ion_page_pool_free_pages(pool, page);
 }
 
-int ion_page_pool_total(struct ion_page_pool *pool, bool high)
+static int ion_page_pool_total(struct ion_page_pool *pool, bool high)
 {
 	int count = pool->low_count;
 

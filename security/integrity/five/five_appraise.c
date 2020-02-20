@@ -242,10 +242,11 @@ static bool dmverity_protected(struct file *file)
 
 static bool bad_fs(struct inode *inode)
 {
-	if (inode->i_sb->s_magic != EXT4_SUPER_MAGIC)
-		return true;
+	if (inode->i_sb->s_magic == EXT4_SUPER_MAGIC ||
+	    inode->i_sb->s_magic == F2FS_SUPER_MAGIC)
+		return false;
 
-	return false;
+	return true;
 }
 
 static bool readonly_sb(struct inode *inode)
@@ -554,6 +555,12 @@ int five_inode_setxattr(struct dentry *dentry, const char *xattr_name,
 {
 	int result = five_protect_xattr(dentry, xattr_name, xattr_value,
 				   xattr_value_len);
+
+	if (result == 1 && xattr_value_len == 0) {
+		five_reset_appraise_flags(d_backing_inode(dentry));
+		return 0;
+	}
+
 	if (result == 1) {
 		bool digsig;
 		struct five_cert_header *header;
@@ -576,6 +583,7 @@ int five_inode_setxattr(struct dentry *dentry, const char *xattr_name,
 		five_reset_appraise_flags(d_backing_inode(dentry));
 		result = 0;
 	}
+
 	return result;
 }
 
@@ -668,6 +676,7 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 	down_read(&sign_fcntl_lock);
 	inode_lock(inode);
 	rc = five_update_xattr(current, iint, file, l);
+	iint->five_signing = false;
 	inode_unlock(inode);
 	up_read(&sign_fcntl_lock);
 
@@ -676,3 +685,81 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 
 	return rc;
 }
+
+static int check_input_inode(struct inode *inode)
+{
+	if (!S_ISREG(inode->i_mode))
+		return -EINVAL;
+
+	if (readonly_sb(inode)) {
+		pr_err("FIVE: Can't sign a file on RO FS\n");
+		return -EROFS;
+	}
+
+	return 0;
+}
+
+int five_fcntl_edit(struct file *file)
+{
+	int rc;
+	struct dentry *dentry;
+	uint8_t *raw_cert = NULL;
+	size_t raw_cert_len = 0;
+	struct integrity_iint_cache *iint;
+	struct inode *inode = file_inode(file);
+
+	rc = check_input_inode(inode);
+	if (rc)
+		return rc;
+
+	if (!task_integrity_allow_sign(current->integrity))
+		return -EPERM;
+
+	inode_lock(inode);
+	dentry = file->f_path.dentry;
+	rc = __vfs_setxattr_noperm(dentry,
+				   XATTR_NAME_FIVE,
+				   raw_cert,
+				   raw_cert_len,
+				   0);
+	iint = integrity_inode_get(inode);
+	if (iint)
+		iint->five_signing = true;
+	inode_unlock(inode);
+
+	return rc;
+}
+
+int five_fcntl_close(struct file *file)
+{
+	int rc;
+	ssize_t xattr_len;
+	struct dentry *dentry;
+	struct integrity_iint_cache *iint;
+	struct inode *inode = file_inode(file);
+
+	rc = check_input_inode(inode);
+	if (rc)
+		return rc;
+
+	inode_lock(inode);
+	iint = integrity_inode_get(inode);
+	if (!iint) {
+		inode_unlock(inode);
+		return -ENOMEM;
+	}
+
+	if (iint->five_signing) {
+		dentry = file->f_path.dentry;
+		xattr_len = __vfs_getxattr(dentry, inode, XATTR_NAME_FIVE, NULL,
+				0);
+		if (xattr_len == 0)
+			rc = __vfs_removexattr(dentry, XATTR_NAME_FIVE);
+
+		iint->five_signing = false;
+	}
+	inode_unlock(inode);
+
+	return rc;
+}
+

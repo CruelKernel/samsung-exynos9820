@@ -143,7 +143,7 @@ static void print_linkforward_list(void)
 
 	for (i = 0; i < MAX_CONNECTION_CNT; i++)
 		pr_info("[%d/%s] : enabled:%d %hu\n",
-			i, conn[i].netdev,
+			i, conn[i].netdev->name,
 			conn[i].enabled,
 			ntohs(conn[i].dst_port));
 }
@@ -157,7 +157,7 @@ ssize_t linkforward_get_state(char *buf)
 	for (i = 0; i < MAX_CONNECTION_CNT; i++) {
 		if (conn[i].enabled) {
 			count += sprintf(&buf[count], "[%d/%s] %hu (tx = %u, rx = %u)\n",
-						i, conn[i].netdev, ntohs(conn[i].dst_port),
+						i, conn[i].netdev->name, ntohs(conn[i].dst_port),
 						conn[i].cnt_orign, conn[i].cnt_reply);
 		}
 	}

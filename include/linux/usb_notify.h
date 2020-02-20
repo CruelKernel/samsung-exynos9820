@@ -48,6 +48,7 @@ enum otg_notify_events {
 	NOTIFY_EVENT_POWER_SOURCE,
 	NOTIFY_EVENT_VBUSPOWER,
 	NOTIFY_EVENT_POGO,
+	NOTIFY_EVENT_PD_CONTRACT,
 	NOTIFY_EVENT_VIRTUAL,
 };
 
@@ -156,6 +157,7 @@ extern struct otg_booster *find_get_booster(struct otg_notify *n);
 extern int register_booster(struct otg_notify *n, struct otg_booster *b);
 extern int register_ovc_func(struct otg_notify *n,
 				int (*check_state)(void *), void *data);
+extern int get_typec_status(struct otg_notify *n, int event);
 extern int get_usb_mode(struct otg_notify *n);
 extern unsigned long get_cable_type(struct otg_notify *n);
 extern int is_usb_host(struct otg_notify *n);
@@ -187,6 +189,7 @@ static inline int register_booster(struct otg_notify *n,
 					struct otg_booster *b) {return 0; }
 static inline int register_ovc_func(struct otg_notify *n,
 			int (*check_state)(void *), void *data) {return 0; }
+static inline int get_typec_status(struct otg_notify *n, int event) {return 0; }
 static inline int get_usb_mode(struct otg_notify *n) {return 0; }
 static inline unsigned long get_cable_type(struct otg_notify *n) {return 0; }
 static inline int is_usb_host(struct otg_notify *n) {return 0; }

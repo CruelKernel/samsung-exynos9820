@@ -1186,15 +1186,15 @@ static ssize_t show_trace_dump(struct device *dev, struct device_attribute *attr
 	spin_unlock_irqrestore(&pkbdev->trace_lock, flags);
 	KBASE_TRACE_CLEAR(pkbdev);
 
-	if (ret < PAGE_SIZE - 1) {
-		ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
-	} else {
-		buf[PAGE_SIZE-2] = '\n';
-		buf[PAGE_SIZE-1] = '\0';
-		ret = PAGE_SIZE-1;
-	}
+    if (ret < PAGE_SIZE - 1) {
+        ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
+    } else {
+        buf[PAGE_SIZE-2] = '\n';
+        buf[PAGE_SIZE-1] = '\0';
+        ret = PAGE_SIZE-1;
+    }
 
-	return ret;
+    return ret;
 }
 
 static ssize_t init_trace_dump(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)

@@ -785,10 +785,6 @@ __nf_conntrack_confirm(struct sk_buff *skb)
 	 * or broadcast/multicast packets do skb_clone with
 	 * unconfirmed conntrack.
 	 */
-<<<<<<< HEAD
-	WARN_ON(nf_ct_is_confirmed(ct));
-	pr_debug("Confirming conntrack %pK\n", ct);
-=======
 	if (unlikely(nf_ct_is_confirmed(ct))) {
 		WARN_ON_ONCE(1);
 		nf_conntrack_double_unlock(hash, reply_hash);
@@ -796,8 +792,7 @@ __nf_conntrack_confirm(struct sk_buff *skb)
 		return NF_DROP;
 	}
 
-	pr_debug("Confirming conntrack %p\n", ct);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
+	pr_debug("Confirming conntrack %pK\n", ct);
 	/* We have to check the DYING flag after unlink to prevent
 	 * a race against nf_ct_get_next_corpse() possibly called from
 	 * user context, else we insert an already 'dead' hash, blocking
@@ -1227,6 +1222,8 @@ __nf_conntrack_alloc(struct net *net,
 	ct->status = 0;
 #ifdef CONFIG_LINK_FORWARD
 	ct->packet_count = 0;
+	ct->linkforward_registered = false;
+	ct->netdev = NULL;
 #endif
 	write_pnet(&ct->ct_net, net);
 	memset(&ct->__nfct_init_offset[0], 0,

@@ -213,6 +213,20 @@ static const inline char *arrow(enum direction dir)
 		return arrow_direction[dir];
 }
 
+/* CP crash information */
+extern int cp_crash_link;
+extern char *cp_crash_info;
+
+#define clr_cp_crash_link() \
+	do { \
+		cp_crash_link = 0; \
+	} while (0);
+
+#define set_cp_crash_link(link_type) \
+	do { \
+		if (!cp_crash_link) cp_crash_link = link_type; \
+	} while (0);
+
 static const char * const modem_state_string[] = {
 	[STATE_OFFLINE]		= "OFFLINE",
 	[STATE_CRASH_RESET]	= "CRASH_RESET",

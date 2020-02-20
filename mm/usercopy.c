@@ -58,7 +58,6 @@ static noinline int check_stack_object(const void *obj, unsigned long len)
 	return GOOD_STACK;
 }
 
-<<<<<<< HEAD
 /*
  * If this function is reached, then CONFIG_HARDENED_USERCOPY has found an
  * unexpected state during a copy_from_user() or copy_to_user() call.
@@ -78,13 +77,6 @@ void __noreturn usercopy_abort(const char *name, const char *detail,
 		 detail ? " '" : "", detail ? : "", detail ? "'" : "",
 		 offset, len);
 
-=======
-static void report_usercopy(unsigned long len, bool to_user, const char *type)
-{
-	pr_emerg("kernel memory %s attempt detected %s '%s' (%lu bytes)\n",
-		to_user ? "exposure" : "overwrite",
-		to_user ? "from" : "to", type ? : "unknown", len);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	/*
 	 * For greater effect, it would be nice to do do_group_exit(),
 	 * but BUG() actually hooks all the lock-breaking and per-arch
@@ -157,7 +149,7 @@ static inline void check_page_span(const void *ptr, unsigned long n,
 #ifdef CONFIG_HARDENED_USERCOPY_PAGESPAN
 	const void *end = ptr + n - 1;
 	struct page *endpage;
-	bool is_reserved, is_cma_rbin;
+	bool is_reserved, is_cma;
 
 	/*
 	 * Sometimes the kernel data regions are not marked Reserved (see
@@ -198,8 +190,8 @@ static inline void check_page_span(const void *ptr, unsigned long n,
 	 * several independently allocated pages.
 	 */
 	is_reserved = PageReserved(page);
-	is_cma_rbin = is_migrate_cma_rbin_page(page);
-	if (!is_reserved && !is_cma_rbin)
+	is_cma = is_migrate_cma_page(page);
+	if (!is_reserved && !is_cma)
 		usercopy_abort("spans multiple pages", NULL, to_user, 0, n);
 
 	for (ptr += PAGE_SIZE; ptr <= end; ptr += PAGE_SIZE) {
@@ -207,7 +199,7 @@ static inline void check_page_span(const void *ptr, unsigned long n,
 		if (is_reserved && !PageReserved(page))
 			usercopy_abort("spans Reserved and non-Reserved pages",
 				       NULL, to_user, 0, n);
-		if (is_cma_rbin && !is_migrate_cma_rbin_page(page))
+		if (is_cma && !is_migrate_cma_page(page))
 			usercopy_abort("spans CMA and non-CMA pages", NULL,
 				       to_user, 0, n);
 	}
@@ -269,15 +261,6 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 	}
 
 	/* Check for object in kernel to avoid text exposure. */
-<<<<<<< HEAD
 	check_kernel_text_object((const unsigned long)ptr, n, to_user);
-=======
-	err = check_kernel_text_object(ptr, n);
-	if (!err)
-		return;
-
-report:
-	report_usercopy(n, to_user, err);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 EXPORT_SYMBOL(__check_object_size);

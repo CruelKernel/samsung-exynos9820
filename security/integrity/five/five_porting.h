@@ -32,6 +32,8 @@
 #define d_backing_inode(dentry)	((dentry)->d_inode)
 #endif
 #define inode_lock(inode)	mutex_lock(&(inode)->i_mutex)
+#define inode_lock_nested(inode, subclass) \
+				mutex_lock_nested(&(inode)->i_mutex, subclass)
 #define inode_unlock(inode)	mutex_unlock(&(inode)->i_mutex)
 #endif
 
@@ -51,6 +53,75 @@
 #include <linux/sched/task.h>
 #else
 #include <linux/sched.h>
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+#include <linux/fs.h>
+
+static inline int __vfs_removexattr(struct dentry *dentry, const char *name)
+{
+	struct inode *inode = d_inode(dentry);
+
+	if (!inode->i_op->removexattr)
+		return -EOPNOTSUPP;
+
+	return inode->i_op->removexattr(dentry, name);
+}
+
+static inline ssize_t __vfs_getxattr(struct dentry *dentry, struct inode *inode,
+				     const char *name, void *value, size_t size)
+{
+	if (!inode->i_op->getxattr)
+		return -EOPNOTSUPP;
+
+	return inode->i_op->getxattr(dentry, name, value, size);
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+/* __GFP_WAIT was changed to __GFP_RECLAIM in
+ * https://lore.kernel.org/patchwork/patch/592262/
+ */
+#define __GFP_RECLAIM __GFP_WAIT
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+#include <linux/uaccess.h>
+
+static inline ssize_t __vfs_read(struct file *file, char __user *buf,
+				 size_t count, loff_t *pos)
+{
+	ssize_t ret;
+
+	if (file->f_op->read)
+		ret = file->f_op->read(file, buf, count, pos);
+	else if (file->f_op->aio_read)
+		ret = do_sync_read(file, buf, count, pos);
+	else if (file->f_op->read_iter)
+		ret = new_sync_read(file, buf, count, pos);
+	else
+		ret = -EINVAL;
+
+	return ret;
+}
+
+static inline int integrity_kernel_read(struct file *file, loff_t offset,
+					char *addr, unsigned long count)
+{
+	mm_segment_t old_fs;
+	char __user *buf = (char __user *)addr;
+	ssize_t ret;
+
+	if (!(file->f_mode & FMODE_READ))
+		return -EBADF;
+
+	old_fs = get_fs();
+	set_fs(get_ds());
+	ret = __vfs_read(file, buf, count, &offset);
+	set_fs(old_fs);
+
+	return ret;
+}
 #endif
 
 #endif /* __LINUX_FIVE_PORTING_H */

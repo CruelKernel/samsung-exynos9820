@@ -453,9 +453,11 @@ static irqreturn_t exynos_sysmmu_irq(int irq, void *dev_id)
 		return IRQ_HANDLED;
 
 #ifdef CONFIG_BCMDHD_PCIE
-	/* Kernel Panic will be triggered by dump handler */
-	dhd_smmu_fault_handler(info & 0xFFFF, addr);
-	disable_irq_nosync(irq);
+	if (drvdata->ch_num == 0) {
+		/* Kernel Panic will be triggered by dump handler */
+		dhd_smmu_fault_handler(info & 0xFFFF, addr);
+		disable_irq_nosync(irq);
+	}
 #endif /* CONFIG_BCMDHD_PCIE */
 
 	atomic_notifier_call_chain(&drvdata->fault_notifiers, addr, &flags);
@@ -1193,7 +1195,7 @@ static int __init exynos_sysmmu_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
-
+	data->ch_num = ch_num;
 	data->sysmmu = dev;
 	spin_lock_init(&data->lock);
 	ATOMIC_INIT_NOTIFIER_HEAD(&data->fault_notifiers);

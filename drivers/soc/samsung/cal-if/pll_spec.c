@@ -365,7 +365,8 @@ EXPORT_SYMBOL_GPL(pll_get_locktime);
 int pll_find_table(struct cmucal_pll *pll,
 		   struct cmucal_pll_table *table,
 		   unsigned long long fin,
-		   unsigned long long rate)
+		   unsigned long long rate,
+		   unsigned long long rate_hz)
 {
 	struct pll_spec *pll_spec;
 	unsigned int p, m, s;
@@ -381,7 +382,7 @@ int pll_find_table(struct cmucal_pll *pll,
 	}
 
 	/* khz_to_hz() : for calculate precisely  */
-	rate = khz_to_hz(rate);
+	rate = rate_hz ? rate_hz : khz_to_hz(rate);
 
 	for (p = pll_spec->pdiv_min; p <= pll_spec->pdiv_max; p++) {
 		/* check fref  */

@@ -28,6 +28,7 @@ obj-$(CONFIG_SENSORS_SSP_TMD4905)	+= factory/light_tmg399x.o factory/gesture_tmg
 obj-$(CONFIG_SENSORS_SSP_TMD4904)	+= factory/light_tmg399x.o
 obj-$(CONFIG_SENSORS_SSP_TMD4906)	+= factory/light_tmg399x.o
 obj-$(CONFIG_SENSORS_SSP_TMD4910) += factory/light_tmg399x.o
+obj-$(CONFIG_SENSORS_SSP_TMD4907) += factory/light_tmg399x.o
 obj-$(CONFIG_SENSORS_SSP_CM3323)	+= factory/light_cm3323.o
 
 obj-$(CONFIG_SENSORS_SSP_PROX_FACTORYCAL)	+= factory/prox_tmg399x.o
@@ -48,6 +49,7 @@ obj-$(CONFIG_SENSORS_SSP_SENSORHUB)	+= ssp_sensorhub.o ssp_misc.o
 obj-$(CONFIG_SENSORS_SX9310)		+= sx9310.o
 obj-$(CONFIG_SENSORS_SX9320)		+= sx9320.o
 obj-$(CONFIG_SENSORS_SX9330)		+= sx9330.o
+obj-$(CONFIG_SENSORS_SX9360)		+= sx9360.o
 
 obj-$(CONFIG_SENSORS_SSP_BBD)           += ssp_bbd.o factory/mcu_bcm4774.o
 obj-$(CONFIG_SENSORS_SSP_BBD)           += bbdpl/

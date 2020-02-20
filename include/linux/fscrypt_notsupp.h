@@ -222,21 +222,6 @@ static inline int __fscrypt_prepare_lookup(struct inode *dir,
 	return -EOPNOTSUPP;
 }
 
-static inline int fscrypt_disk_encrypted(const struct inode *inode)
-{
-	return;
-}
-
-static inline void fscrypt_set_bio(const struct inode *inode, struct bio *bio)
-{
-	return;
-}
-
-static inline void *fscrypt_get_diskcipher(const struct inode *inode)
-{
-	return NULL;
-}
-
 static inline int __fscrypt_prepare_symlink(struct inode *dir,
 					    unsigned int len,
 					    unsigned int max_len,

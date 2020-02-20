@@ -34,6 +34,8 @@ struct proca_task_descr *create_proca_task_descr(struct task_struct *task,
 
 	PROCA_DEBUG_LOG("Task descriptor for task %d was created\n",
 			task->pid);
+	PROCA_DEBUG_LOG("Task %d has application name %s\n",
+			task->pid, ident->parsed_cert.app_name);
 
 	return task_descr;
 }

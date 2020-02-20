@@ -205,6 +205,7 @@ extern int task_integrity_copy(struct task_integrity *from,
 extern int five_bprm_check(struct linux_binprm *bprm);
 extern void five_file_free(struct file *file);
 extern int five_file_mmap(struct file *file, unsigned long prot);
+extern int five_file_open(struct file *file, const struct cred *cred);
 extern int five_file_verify(struct task_struct *task, struct file *file);
 extern void five_task_free(struct task_struct *task);
 
@@ -218,6 +219,8 @@ extern int five_fcntl_sign(struct file *file,
 				struct integrity_label __user *label);
 extern int five_fcntl_verify_async(struct file *file);
 extern int five_fcntl_verify_sync(struct file *file);
+extern int five_fcntl_edit(struct file *file);
+extern int five_fcntl_close(struct file *file);
 extern int five_fork(struct task_struct *task, struct task_struct *child_task);
 extern int five_ptrace(struct task_struct *task, long request);
 extern int five_process_vm_rw(struct task_struct *task, int write);
@@ -295,6 +298,11 @@ static inline int five_file_mmap(struct file *file, unsigned long prot)
 	return 0;
 }
 
+static inline int five_file_open(struct file *file, const struct cred *cred)
+{
+	return 0;
+}
+
 static inline int five_file_verify(struct task_struct *task, struct file *file)
 {
 	return 0;
@@ -335,6 +343,16 @@ static inline int five_fcntl_verify_async(struct file *file)
 }
 
 static inline int five_fcntl_verify_sync(struct file *file)
+{
+	return 0;
+}
+
+static inline int five_fcntl_edit(struct file *file)
+{
+	return 0;
+}
+
+static inline int five_fcntl_close(struct file *file)
 {
 	return 0;
 }

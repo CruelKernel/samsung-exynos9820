@@ -858,6 +858,9 @@ int do_remount_sb2(struct vfsmount *mnt, struct super_block *sb, int sb_flags, v
 		if (force) {
 			sb->s_readonly_remount = 1;
 			smp_wmb();
+
+			if (sb->s_magic == F2FS_SUPER_MAGIC)
+				mnt = ERR_PTR(-EROFS);
 		} else {
 			retval = sb_prepare_remount_readonly(sb);
 			if (retval)
@@ -1070,10 +1073,8 @@ struct dentry *mount_ns_option(struct file_system_type *fs_type,
 	if (IS_ERR(sb))
 		return ERR_CAST(sb);
 
-	if(sb->s_magic == PROC_SUPER_MAGIC) {
-		if (!parse_options(data, get_pid_ns(sb->s_fs_info)))
-			return ERR_PTR(EINVAL);
-	}
+	if (!parse_options(data, get_pid_ns(sb->s_fs_info)))
+		return ERR_PTR(-EINVAL);
 
 	if (!sb->s_root) {
 		int err;

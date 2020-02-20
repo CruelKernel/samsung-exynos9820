@@ -506,11 +506,7 @@ static void f2fs_update_extent_tree_range(struct inode *inode,
 	unsigned int end = fofs + len;
 	unsigned int pos = (unsigned int)fofs;
 	bool updated = false;
-<<<<<<< HEAD
 	bool leftmost;
-=======
-	bool leftmost = false;
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	if (!et)
 		return;

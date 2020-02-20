@@ -6,6 +6,7 @@
  * Author: Olic Moon <olic.moon@samsung.com>
  */
 
+#include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/list.h>
 #include <linux/device.h>
@@ -29,6 +30,8 @@
 #include <linux/sched.h>
 #include <linux/freezer.h>
 
+#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_FSCRYPT_SDP)
+#include <linux/fscrypt.h>
 #ifdef CONFIG_FSCRYPT_SDP
 #include <sdp/fs_request.h>
 #endif
@@ -40,8 +43,6 @@
 #ifdef CONFIG_FSCRYPT_SDP
 extern int fscrypt_sdp_get_storage_type(struct dentry *target_dentry);
 #endif
-extern int fscrypt_inline_encrypted(const struct inode *inode);
-extern int fscrypt_set_bio_cryptd(const struct inode *inode, struct bio *bio);
 
 static struct kmem_cache *dd_req_cachep;
 static struct workqueue_struct *dd_free_req_workqueue;
@@ -122,6 +123,27 @@ static int dd_dump_debug_req_list(int mask) {
 	return num;
 }
 #endif
+
+void assert_list_head_valid(const char *func, const char *msg, struct list_head *head) {
+	struct list_head *prev = head;
+	struct list_head *next = head->next;
+
+	if(next->prev != prev) {
+		panic("func:%s %s list_add corruption. next->prev should be prev (%p), but was %p. (next=%p).\n",
+				func, msg, prev, next->prev, next);
+	}
+	if(prev->next != next) {
+		panic("func:%s %s list_add corruption. prev->next should be next (%p), but was %p. (prev=%p).\n",
+				func, msg, next, prev->next, prev);
+	}
+}
+
+// caller required to hold proc->lock
+void assert_proc_locked(const char *func, const char *msg, struct dd_proc *proc) {
+	BUG_ON(!proc);
+	assert_list_head_valid(func, msg, &proc->processing);
+	assert_list_head_valid(func, msg, &proc->submitted);
+}
 
 static void dd_info_get(struct dd_info *info);
 static struct dd_req *get_req(const char *msg, struct dd_info *info,
@@ -261,8 +283,12 @@ static void dd_free_req_work(struct work_struct *work) {
 			 * dequeued immediately
 			 */
 			spin_lock(&proc->lock);
+			assert_proc_locked(__func__, "req->list deleting", proc);
+
 			if (!list_empty(&req->list))
 				list_del_init(&req->list);
+
+			assert_proc_locked(__func__, "req->list deleted", proc);
 			spin_unlock(&proc->lock);
 
 			if(atomic_dec_and_test(&proc->reqcount)) {
@@ -343,9 +369,11 @@ static inline void abort_req(const char *msg, struct dd_req *req, int err)
 	req->abort = 1;
 	if (proc) {
 		spin_lock(&proc->lock);
+		assert_proc_locked(__func__, "req->list aborting", proc);
 		// skip in case req is not assigned to any process
 		if (!list_empty(&req->list))
 			list_del_init(&req->list);
+		assert_proc_locked(__func__, "req->list aborted", proc);
 		spin_unlock(&proc->lock);
 	}
 
@@ -474,6 +502,7 @@ __releases(proc->lock)
 // caller required to hold proc->lock
 static void queue_pending_req_locked(struct dd_proc *proc, struct dd_req *req)
 {
+	assert_proc_locked(__func__, "req->list pending", proc);
 	list_move_tail(&req->list, &proc->pending);
 	dd_req_state(req, DD_REQ_PENDING);
 	req->pid = proc->pid;
@@ -627,6 +656,9 @@ static void dd_decrypt_work(struct work_struct *work) {
 
 	dd_dump_bio_pages("from disk", req->u.bio.orig);
 
+#ifdef CONFIG_SDP_KEY_DUMP
+	if (!dd_policy_skip_decryption_inner_and_outer(req->info->policy.flags)) {
+#endif
 	if (fscrypt_inline_encrypted(req->info->inode)) {
 		dd_verbose("skip oem s/w crypt. hw encryption enabled\n");
 	} else {
@@ -637,17 +669,46 @@ static void dd_decrypt_work(struct work_struct *work) {
 
 		dd_dump_bio_pages("outer (s/w) decryption done", req->u.bio.orig);
 	}
+#ifdef CONFIG_SDP_KEY_DUMP
+	} else {
+		dd_info("skip decryption for outer layer - ino : %ld, flag : 0x%04x\n",
+				req->info->inode->i_ino, req->info->policy.flags);
+	}
+#endif
 
 	if (req->user_space_crypto) {
+#ifdef CONFIG_SDP_KEY_DUMP
+		if (!dd_policy_skip_decryption_inner(req->info->policy.flags)) {
+#endif
 		if (__request_user(req)) {
 			dd_error("failed vendor crypto\n");
 			goto abort_out;
 		}
+#ifdef CONFIG_SDP_KEY_DUMP
+		} else {
+			dd_info("skip decryption for inner layer - ino : %ld, flag : 0x%04x\n",
+					req->info->inode->i_ino, req->info->policy.flags);
+			dd_req_state(req, DD_REQ_SUBMITTED);
+
+			orig->bi_status = 0;
+			bio_endio(orig);
+			put_req(__func__, req);
+		}
+#endif
 	} else {
+#ifdef CONFIG_SDP_KEY_DUMP
+		if (!dd_policy_skip_decryption_inner(req->info->policy.flags)) {
+#endif
 		if (dd_sec_crypt_bio_pages(info, req->u.bio.orig, NULL, DD_DECRYPT)) {
 			dd_error("failed dd crypto\n");
 			goto abort_out;
 		}
+#ifdef CONFIG_SDP_KEY_DUMP
+		} else {
+			dd_info("skip decryption for inner layer - ino : %ld, flag : 0x%04x\n",
+					__func__, __LINE__, req->info->inode->i_ino, req->info->policy.flags);
+		}
+#endif
 		dd_req_state(req, DD_REQ_SUBMITTED);
 
 		orig->bi_status = 0;
@@ -739,8 +800,17 @@ int dd_submit_bio(struct dd_info *info, struct bio *bio) {
 		req->u.bio.clone->bi_private = req;
 		req->u.bio.clone->bi_end_io = dd_end_io;
 
+#ifdef CONFIG_SDP_KEY_DUMP
+		if (!dd_policy_skip_decryption_inner_and_outer(req->info->policy.flags)) {
+#endif
 		if (fscrypt_inline_encrypted(req->info->inode))
 			fscrypt_set_bio_cryptd(req->info->inode, req->u.bio.clone);
+#ifdef CONFIG_SDP_KEY_DUMP
+		} else {
+			req->u.bio.clone->bi_opf = 0;
+			req->u.bio.clone->bi_cryptd = NULL;
+		}
+#endif
 
 		generic_make_request(req->u.bio.clone);
 	}
@@ -1102,6 +1172,8 @@ static dd_transaction_result __process_bio_request_locked(
 			struct page *plaintext_page = orig_bv.bv_page;
 			struct page *ciphertext_page = clone_bv.bv_page;
 
+			BUG_ON(req->info->ino != orig_bv.bv_page->mapping->host->i_ino);
+
 			p->u.bio.rw = DD_ENCRYPT;
 			p->u.bio.index = plaintext_page->index;
 			p->u.bio.plain_addr = proc->plaintext_vma->vm_start + vm_offset;
@@ -1120,6 +1192,8 @@ static dd_transaction_result __process_bio_request_locked(
 		} else {
 			struct bio_vec orig_bv = bio_iter_iovec(orig, orig->bi_iter);
 			struct page *ciphertext_page = orig_bv.bv_page;
+
+			BUG_ON(req->info->ino != orig_bv.bv_page->mapping->host->i_ino);
 
 			p->u.bio.rw = DD_DECRYPT;
 			// crypto inplace decryption
@@ -1264,6 +1338,7 @@ __acquires(proc->lock)
 		__get_md_page(proc, req->info->mdpage, req->ino, t);
 		spin_lock(&proc->lock);
 
+		assert_proc_locked(__func__, "req->list processing", proc);
 		list_move(&req->list, &proc->processing);
 		dd_req_state(req, DD_REQ_PROCESSING);
 	}
@@ -1342,6 +1417,7 @@ long dd_ioctl_submit_crypto_result(struct dd_proc *proc,
 	spin_lock(&proc->lock);
 	list_for_each_entry_safe(req, temp, &proc->processing, list) {
 		int err = get_user_resp_err(errs, num_err, req->ino);
+		assert_proc_locked(__func__, "req->list submitting", proc);
 		list_move(&req->list, &proc->submitted);
 		dd_req_state(req, DD_REQ_SUBMITTED);
 		spin_unlock(&proc->lock);
@@ -1549,10 +1625,8 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #else
 	case DD_IOCTL_ADD_KEY:
 		dd_info("DD_IOCTL_ADD_KEY");
-		err = dd_add_master_key(ioc.u.add_key.userid,
+		return dd_add_master_key(ioc.u.add_key.userid,
 				ioc.u.add_key.key, ioc.u.add_key.len);
-		secure_zeroout("add_key", ioc.u.add_key.key, ioc.u.add_key.len);
-		return err;
 	case DD_IOCTL_EVICT_KEY:
 		dd_info("DD_IOCTL_EVICT_KEY");
 		dd_evict_master_key(ioc.u.evict_key.userid);
@@ -1567,6 +1641,100 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return 0;
 #endif
 #endif
+	case DD_IOCTL_SKIP_DECRYPTION_BOTH:
+	{
+		struct fd f = {NULL, 0};
+		struct inode *inode;
+		struct dd_crypt_context crypt_context;
+
+		dd_info("DD_IOCTL_SKIP_DECRYPTION_BOTH");
+
+		f = fdget(ioc.u.dump_key.fileDescriptor);
+		if (unlikely(f.file == NULL)) {
+			dd_error("invalid fd : %d\n", ioc.u.dump_key.fileDescriptor);
+			return -EINVAL;
+		}
+		inode = f.file->f_path.dentry->d_inode;
+		if (!inode) {
+			dd_error("invalid inode address\n");
+			return -EBADF;
+		}
+		if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
+			dd_error("failed to read dd crypt context - ino:%ld\n", inode->i_ino);
+			return -EINVAL;
+		}
+		crypt_context.policy.flags |= DD_POLICY_SKIP_DECRYPTION_INNER;
+		crypt_context.policy.flags |= DD_POLICY_SKIP_DECRYPTION_OUTER;
+		if (dd_write_crypt_context(inode, &crypt_context, NULL)) {
+			dd_error("failed to write dd crypt context - ino:%ld\n", inode->i_ino);
+			return -EINVAL;
+		}
+		dd_info("updated policy - ino:%ld\n", inode->i_ino);
+
+		return 0;
+	}
+	case DD_IOCTL_SKIP_DECRYPTION_INNER:
+	{
+		struct fd f = { NULL, 0 };
+		struct inode *inode;
+		struct dd_crypt_context crypt_context;
+
+		dd_info("DD_IOCTL_SKIP_DECRYPTION_INNER");
+
+		f = fdget(ioc.u.dump_key.fileDescriptor);
+		if (unlikely(f.file == NULL)) {
+			dd_error("invalid fd : %d\n", ioc.u.dump_key.fileDescriptor);
+			return -EINVAL;
+		}
+		inode = f.file->f_path.dentry->d_inode;
+		if (!inode) {
+			dd_error("invalid inode address\n");
+			return -EBADF;
+		}
+		if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
+			dd_error("failed to read dd crypt context - ino:%ld\n", inode->i_ino);
+			return -EINVAL;
+		}
+		crypt_context.policy.flags &= ~DD_POLICY_SKIP_DECRYPTION_OUTER;
+		crypt_context.policy.flags |= DD_POLICY_SKIP_DECRYPTION_INNER;
+		if (dd_write_crypt_context(inode, &crypt_context, NULL)) {
+			dd_error("failed to write dd crypt context - ino:%ld\n", inode->i_ino);
+		}
+		dd_info("updated policy - ino:%ld\n", inode->i_ino);
+
+		return 0;
+	}
+	case DD_IOCTL_NO_SKIP_DECRYPTION:
+	{
+		struct fd f = { NULL, 0 };
+		struct inode *inode;
+		struct dd_crypt_context crypt_context;
+
+		dd_info("DD_IOCTL_NO_SKIP_DECRYPTION");
+
+		f = fdget(ioc.u.dump_key.fileDescriptor);
+		if (unlikely(f.file == NULL)) {
+			dd_error("invalid fd : %d\n", ioc.u.dump_key.fileDescriptor);
+			return -EINVAL;
+		}
+		inode = f.file->f_path.dentry->d_inode;
+		if (!inode) {
+			dd_error("invalid inode address\n");
+			return -EBADF;
+		}
+		if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
+			dd_error("failed to read dd crypt context - ino:%ld\n", inode->i_ino);
+			return -EINVAL;
+		}
+		crypt_context.policy.flags &= ~DD_POLICY_SKIP_DECRYPTION_OUTER;
+		crypt_context.policy.flags &= ~DD_POLICY_SKIP_DECRYPTION_INNER;
+		if (dd_write_crypt_context(inode, &crypt_context, NULL)) {
+			dd_error("failed to write dd crypt context - ino:%ld\n", inode->i_ino);
+		}
+		dd_info("updated policy - ino:%ld\n", inode->i_ino);
+
+		return 0;
+	}
 	case DD_IOCTL_DUMP_REQ_LIST:
 	{
 		dd_info("DD_IOCTL_DUMP_REQ_LIST");
@@ -1597,7 +1765,7 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		BUG_ON(!proc); // caller is not a crypto task
 		rc = dd_ioctl_wait_crypto_request(proc, &ioc);
-		if (rc < 0) {
+		if (rc < 0 && rc != -EPIPE) {
 			dd_error("DD_IOCTL_WAIT_CRYPTO_REQUEST failed :%d\n", rc);
 			return rc;
 		}

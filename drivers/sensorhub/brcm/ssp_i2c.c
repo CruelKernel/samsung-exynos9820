@@ -876,7 +876,10 @@ u64 get_sensor_scanning_info(struct ssp_data *data)
 	int iRet = 0, z = 0, cnt = 1;
 	u64 result = 0, len = sizeof(data->sensor_state);
 	struct ssp_msg *msg = kzalloc(sizeof(*msg), GFP_KERNEL);
-
+#if defined (CONFIG_SENSORS_SSP_DAVINCI)
+	int disable_sensor_type[10] = {7,9,10,24,30,31,32,35,39,40};
+#endif
+	
 	if (msg == NULL) {
 		iRet = -ENOMEM;
 		pr_err("[SSP] %s, failed to alloc memory for ssp_msg\n",
@@ -900,6 +903,24 @@ u64 get_sensor_scanning_info(struct ssp_data *data)
 		data->sensor_state[len - 1 - cnt++] = (result & (1ULL << z)) ? '1' : '0';
 	}
 	data->sensor_state[cnt - 1] = '\0';
+#if defined (CONFIG_SENSORS_SSP_DAVINCI)
+	if (data->ap_rev == 18 &&  data->ap_type <= 1) {
+		int j;
+		iRet = 0; len = 0;
+		for (j = 0; j < SENSOR_MAX; j++) {
+			if (disable_sensor_type[iRet] == j) {
+				iRet++;
+				continue;
+			}
+			if (result & (1ULL << j))
+				len |= (1ULL << j);
+		}
+//		for(int i = 0; i < ARRAY_SIZE(disable_sensor_type); i++) {
+//			data->sensor_state[sizeof(data->sensor_state)- (disable_sensor_type[i] + (disable_sensor_type[i] / 10)+1)] = '0'; // divide 10 for blank
+//		}
+		result = len;
+	} // D1 D1x && hw _rev 18 disable prox light sensor type
+#endif
 	pr_err("[SSP]: state: %s\n", data->sensor_state);
 
 	return result;

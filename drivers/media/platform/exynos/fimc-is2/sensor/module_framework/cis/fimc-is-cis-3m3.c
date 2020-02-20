@@ -199,45 +199,6 @@ static int sensor_3m3_wait_stream_off_status(cis_shared_data *cis_data)
 	return ret;
 }
 
-int sensor_3m3_cis_check_rev(struct v4l2_subdev *subdev)
-{
-	int ret = 0;
-	u8 rev = 0;
-	struct i2c_client *client;
-	struct fimc_is_cis *cis = NULL;
-
-	WARN_ON(!subdev);
-
-	cis = (struct fimc_is_cis *)v4l2_get_subdevdata(subdev);
-	WARN_ON(!cis);
-	WARN_ON(!cis->cis_data);
-
-	client = cis->client;
-	if (unlikely(!client)) {
-		err("client is NULL");
-		ret = -EINVAL;
-		return ret;
-	}
-
-	memset(cis->cis_data, 0, sizeof(cis_shared_data));
-	cis->rev_flag = false;
-
-	I2C_MUTEX_LOCK(cis->i2c_lock);
-
-	ret = fimc_is_sensor_read8(client, 0x0002, &rev);
-	if (ret < 0) {
-		cis->rev_flag = true;
-		ret = -EAGAIN;
-	} else {
-		cis->cis_data->cis_rev = rev;
-		pr_info("%s : Default version 3m3 sensor. Rev. 0x%X\n", __func__, rev);
-	}
-
-	I2C_MUTEX_UNLOCK(cis->i2c_lock);
-
-	return ret;
-}
-
 /* CIS OPS */
 int sensor_3m3_cis_init(struct v4l2_subdev *subdev)
 {
@@ -258,6 +219,16 @@ int sensor_3m3_cis_init(struct v4l2_subdev *subdev)
 	}
 
 	FIMC_BUG(!cis->cis_data);
+#if !defined(CONFIG_VENDER_MCD)
+	memset(cis->cis_data, 0, sizeof(cis_shared_data));
+
+	ret = sensor_cis_check_rev(cis);
+	if (ret < 0) {
+		warn("sensor_3m3_check_rev is fail when cis init");
+		ret = -EINVAL;		
+		goto p_err;
+	}
+#endif
 
 	cis->cis_data->cur_width = SENSOR_3M3_MAX_WIDTH;
 	cis->cis_data->cur_height = SENSOR_3M3_MAX_HEIGHT;
@@ -2158,7 +2129,7 @@ static struct fimc_is_cis_ops cis_ops = {
 #ifdef CAMERA_REAR2_SENSOR_SHIFT_CROP
 	.cis_update_pdaf_tail_size = sensor_3m3_cis_update_pdaf_tail_size,
 #endif
-	.cis_check_rev = sensor_3m3_cis_check_rev,
+	.cis_check_rev_on_init = sensor_cis_check_rev_on_init,
 	.cis_set_initial_exposure = sensor_cis_set_initial_exposure,
 	.cis_recover_stream_on = sensor_3m3_cis_recover_stream_on,
 };
@@ -2303,6 +2274,8 @@ static int cis_3m3_probe(struct i2c_client *client,
 	v4l2_set_subdevdata(subdev_cis, cis);
 	v4l2_set_subdev_hostdata(subdev_cis, device);
 	snprintf(subdev_cis->name, V4L2_SUBDEV_NAME_SIZE, "cis-subdev.%d", cis->id);
+
+	sensor_cis_parse_dt(dev, cis->subdev);
 
 	probe_info("%s done\n", __func__);
 

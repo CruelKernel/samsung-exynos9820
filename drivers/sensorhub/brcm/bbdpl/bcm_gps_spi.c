@@ -39,7 +39,7 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <linux/kernel_stat.h>
-#include <linux/sec_sysfs.h>
+#include <linux/sec_class.h>
 
 #include "bbd.h"
 #include "bcm_gps_spi.h"

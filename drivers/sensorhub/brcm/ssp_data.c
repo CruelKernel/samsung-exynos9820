@@ -39,8 +39,14 @@
 #define MS_IDENTIFIER 1000000000U
 #endif
 
+
+#ifdef CONFIG_SENSORS_SSP_DAVINCI
+#define SUPER_VDIS_FORMAT	0xEEEE
+#define VDIS_TIMESTAMP_FORMAT 	0xFFFF
+#else
 #define SUPER_VDIS_FORMAT	0xEEEEEEEE
 #define VDIS_TIMESTAMP_FORMAT 	0xFFFFFFFF
+#endif
 #define NORMAL_TIMESTAMP_FORMAT 0x0
 #define get_prev_index(a) (a - 1 + SIZE_TIMESTAMP_BUFFER) % SIZE_TIMESTAMP_BUFFER
 #define get_next_index(a) (a + 1) % SIZE_TIMESTAMP_BUFFER
@@ -98,14 +104,19 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 	u64 update_timestamp = 0;
 	u64 current_timestamp = get_current_timestamp();
 	u32 ts_index = 0;
-	u32 ts_flag = 0;
+	u16 ts_flag = 0;
+	u16 ts_cnt = 5;
 
 	if (data->IsVDIS_Enabled == true && sensor_type == GYROSCOPE_SENSOR) {
 		u64 prev_index = 0;
 
 		memcpy(&ts_index, pchRcvDataFrame + *iDataIdx, 4);
+#ifdef CONFIG_SENSORS_SSP_DAVINCI
+		memcpy(&ts_flag, pchRcvDataFrame + *iDataIdx + 4, 2);
+		memcpy(&ts_cnt, pchRcvDataFrame + *iDataIdx + 6, 2);
+#else
 		memcpy(&ts_flag, pchRcvDataFrame + *iDataIdx + 4, 4);
-
+#endif
 		prev_index = get_prev_index(ts_index);
 
 		if (ts_flag == SUPER_VDIS_FORMAT || ts_flag == VDIS_TIMESTAMP_FORMAT) {
@@ -118,7 +129,7 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 		}
 
 		if (ts_flag == SUPER_VDIS_FORMAT) {
-			u64 interval = (data->ts_index_buffer[ts_index] - data->ts_index_buffer[prev_index]) / data->timestamp_factor; 
+			u64 interval = (data->ts_index_buffer[ts_index] - data->ts_index_buffer[prev_index]) / ts_cnt; 
 			u64 offset = interval * (ts_index_cnt[ts_index] + 1);
 
 			ts_index_cnt[ts_index]++;
@@ -154,8 +165,8 @@ normal_parse:
 	update_timestamp = time_delta_ns;
 
 	if (ts_flag == VDIS_TIMESTAMP_FORMAT || ts_flag == SUPER_VDIS_FORMAT) {
-		ssp_debug_time("[SSP_DEBUG_TIME] ts_index: %u stacked_cnt: %u ts_flag: 0x%x current_ts: %lld update_ts: %llu latency: %lld",
-			       	ts_index, data->ts_stacked_cnt, ts_flag, current_timestamp, update_timestamp, current_timestamp - time_delta_ns);
+		ssp_debug_time("[SSP_DEBUG_TIME] ts_index: %u stacked_cnt: %u ts_flag: 0x%x ts_cnt: %d current_ts: %lld update_ts: %llu latency: %lld",
+			       	ts_index, data->ts_stacked_cnt, ts_flag, ts_cnt, current_timestamp, update_timestamp, current_timestamp - time_delta_ns);
 	} else { 
 		ssp_debug_time("[SSP_DEBUG_TIME] sensor_type: %2d update_ts: %lld current_ts: %lld diff: %lld latency: %lld\n",
 			sensor_type, update_timestamp, current_timestamp,
@@ -275,8 +286,14 @@ static void get_light_cct_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 {
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
 #ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+#ifdef CONFIG_SENSORS_SSP_LIGHT_LUX_RAW
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 25);
+	*iDataIdx += 25;
+#else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 19);
 	*iDataIdx += 19;
+#endif
+
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 18);
 	*iDataIdx += 18;
@@ -303,12 +320,12 @@ static void get_gesture_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_proximity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-#if defined(CONFIG_SENSORS_SSP_TMG399x)
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 2);
-	*iDataIdx += 2;
-#else	//CONFIG_SENSORS_SSP_TMD4903, CONFIG_SENSORS_SSP_TMD3782, CONFIG_SENSORS_SSP_TMD4904
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 3 + 4);
-	*iDataIdx += (3 + 4); // 4 for light data
+#ifdef CONFIG_SENSORS_SSP_PROX_LIGHT_DIFF
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 11);
+	*iDataIdx += 11;
+#else
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 7);
+	*iDataIdx += 7;
 #endif
 }
 

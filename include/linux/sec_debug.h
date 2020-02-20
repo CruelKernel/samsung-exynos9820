@@ -14,10 +14,10 @@
 #define SEC_DEBUG_H
 
 #include <linux/sizes.h>
-#include <linux/module.h>
 #include <linux/reboot.h>
 #include <linux/irq.h>
-#include <linux/irqdesc.h>
+#include <linux/sec_ext.h>
+#include <linux/sec_debug_types.h>
 
 #define SEC_DEBUG_MAGIC_PA memblock_start_of_DRAM()
 #define SEC_DEBUG_MAGIC_VA phys_to_virt(SEC_DEBUG_MAGIC_PA)
@@ -28,6 +28,9 @@
 /*
  * SEC DEBUG
  */
+#define SEC_DEBUG_MAGIC_INFORM		(EXYNOS_PMU_INFORM2)
+#define SEC_DEBUG_PANIC_INFORM		(EXYNOS_PMU_INFORM3)
+
 #ifdef CONFIG_SEC_DEBUG
 extern int id_get_asb_ver(void);
 extern int id_get_product_line(void);
@@ -173,6 +176,8 @@ struct struct_task_struct {
 	member_type_longlong sched_info__run_delay;
 	member_type_longlong sched_info__last_arrival;
 	member_type_longlong sched_info__last_queued;
+	member_type_int ssdbg_wait__type;
+	member_type_ptr ssdbg_wait__data;
 };
 
 struct irq_stack_info {
@@ -216,8 +221,9 @@ struct watchdogd_info {
 
 	unsigned long long last_ping_time;
 	int last_ping_cpu;
-	
 	bool init_done;
+
+	unsigned long emerg_addr;
 };
 
 struct bad_stack_info {
@@ -231,6 +237,12 @@ struct bad_stack_info {
 	unsigned long ovf_stk;
 };
 
+struct suspend_dev_info {
+	uint64_t suspend_func;
+	uint64_t suspend_device;
+	uint64_t shutdown_func;
+	uint64_t shutdown_device;
+};
 
 struct sec_debug_kernel_data {
 	uint64_t task_in_pm_suspend;
@@ -256,17 +268,19 @@ struct sec_debug_kernel_data {
 	uint64_t dev_shutdown_func;
 	struct watchdogd_info wddinfo;
 	struct bad_stack_info bsi;
+	struct suspend_dev_info sdi;
 };
 
 enum sdn_map {
-	SDN_MAP_DUMP_SUMMARY,
-	SDN_MAP_AUTO_COMMENT,
-	SDN_MAP_EXTRA_INFO,
-	SDN_MAP_AUTO_ANALYSIS,
-	SDN_MAP_INITTASK_LOG,
-	SDN_MAP_SPARED_BUFFER,
-	SDN_MAP_MINIMAL_DUMP,
-	NR_SDN_MAP,
+        SDN_MAP_DUMP_SUMMARY,
+        SDN_MAP_AUTO_COMMENT,
+        SDN_MAP_EXTRA_INFO,
+        SDN_MAP_AUTO_ANALYSIS,
+        SDN_MAP_INITTASK_LOG,
+        SDN_MAP_DEBUG_PARAM,
+	SDN_MAP_FIRST_KMSG,
+        SDN_MAP_SPARED_BUFFER,
+        NR_SDN_MAP,
 };
 
 struct sec_debug_buf {
@@ -301,8 +315,6 @@ enum {
 
 extern unsigned int get_smpl_warn_number(void);
 extern void (*mach_restart)(enum reboot_mode mode, const char *cmd);
-extern int sec_debug_get_force_error(char *buffer, const struct kernel_param *kp);
-extern int sec_debug_set_force_error(const char *val, const struct kernel_param *kp);
 
 extern void sec_debug_task_sched_log_short_msg(char *msg);
 extern void sec_debug_task_sched_log(int cpu, struct task_struct *task);
@@ -339,12 +351,15 @@ extern void *sec_debug_get_debug_base(int type);
 extern unsigned long sec_debug_get_buf_base(int type);
 extern unsigned long sec_debug_get_buf_size(int type);
 
-#define ENABLE_SDCARD_RAMDUMP		(0x73646364)
-#define MAGIC_SDR_FOR_INFORM2		(0x3)
-#define OFFSET_SDR_FOR_INFORM2		(0x0)
-#define MASK_SDR_FOR_INFORM2		(0xF)
-
 extern void sec_set_reboot_magic(int magic, int offset, int mask);
+
+#ifdef CONFIG_SEC_DEBUG
+extern void sec_debug_set_shutdown_device(const char *fname, const char *dname);
+extern void sec_debug_set_suspend_device(const char *fname, const char *dname);
+#else
+#define sec_debug_set_shutdown_device(a, b)		do { } while (0)
+#define sec_debug_set_suspend_device(a, b)		do { } while (0)
+#endif
 
 #ifdef CONFIG_SEC_DEBUG_PPMPU
 extern void print_ppmpu_protection(struct pt_regs *regs);
@@ -439,14 +454,11 @@ extern unsigned int get_smpl_warn_number(void);
 
 extern void sec_debug_init_extra_info(struct sec_debug_shared_buffer *);
 extern void sec_debug_finish_extra_info(void);
-extern void sec_debug_store_extra_info(char (* keys)[MAX_ITEM_KEY_LEN], int nr_keys, char *ptr);
 extern void sec_debug_store_extra_info_A(char *ptr);
 extern void sec_debug_store_extra_info_B(char *ptr);
 extern void sec_debug_store_extra_info_C(char *ptr);
 extern void sec_debug_store_extra_info_M(char *ptr);
 extern void sec_debug_store_extra_info_F(char *ptr);
-extern void sec_debug_set_extra_info_id(void);
-extern void sec_debug_set_extra_info_ktime(void);
 extern void sec_debug_set_extra_info_fault(enum sec_debug_extra_fault_type,
 						unsigned long addr, struct pt_regs *regs);
 extern void sec_debug_set_extra_info_bug(const char *file, unsigned int line);
@@ -468,19 +480,17 @@ extern void sec_debug_set_extra_info_ufs_error(char *str);
 extern void sec_debug_set_extra_info_zswap(char *str);
 extern void sec_debug_set_extra_info_mfc_error(char *str);
 extern void sec_debug_set_extra_info_aud(char *str);
-extern void sec_debug_set_extra_info_rvd1(char *tmp);
+extern void sec_debug_set_extra_info_unfz(char *tmp);
+extern void sec_debug_set_extra_info_epd(char *str);
 
 #else
 
 #define sec_debug_init_extra_info(a)		do { } while (0)
 #define sec_debug_finish_extra_info()		do { } while (0)
-#define sec_debug_store_extra_info(a, b, c)	do { } while (0)
 #define sec_debug_store_extra_info_A(a)		do { } while (0)
 #define sec_debug_store_extra_info_C(a)		do { } while (0)
 #define sec_debug_store_extra_info_M(a)		do { } while (0)
 #define sec_debug_store_extra_info_F(a)		do { } while (0)
-#define sec_debug_set_extra_info_id()		do { } while (0)
-#define sec_debug_set_extra_info_ktime()	do { } while (0)
 #define sec_debug_set_extra_info_fault(a, b, c)	do { } while (0)
 #define sec_debug_set_extra_info_bug(a, b)	do { } while (0)
 #define sec_debug_set_extra_info_panic(a)	do { } while (0)
@@ -500,6 +510,8 @@ extern void sec_debug_set_extra_info_rvd1(char *tmp);
 #define sec_debug_set_extra_info_zswap(a)	do { } while (0)
 #define sec_debug_set_extra_info_mfc_error(a)	do { } while (0)
 #define sec_debug_set_extra_info_aud(a)		do { } while (0)
+#define sec_debug_set_extra_info_unfz(a)	do { } while (0)
+#define sec_debug_set_extra_info_epd(a)		do { } while (0)
 
 #endif /* CONFIG_SEC_DEBUG_EXTRA_INFO */
 
@@ -587,23 +599,11 @@ extern void register_set_auto_comm_lastfreq(void (*func)(int type,
 						int old_freq, int new_freq, u64 time, int en));
 #endif
 
-#ifdef CONFIG_SEC_DEBUG_PCPRWSEM
-extern bool sec_debug_pcprwsem_enabled;
-extern void sec_debug_pcprwsem_log_enable(bool en);
-extern void __sec_debug_pcprwsem_log_print(const char *s, int mode, void *sem);
-static inline void sec_debug_pcprwsem_log_print(const char *s, int mode, void *sem)
-{
-	if (likely(!sec_debug_pcprwsem_enabled))
-		return;
-
-	__sec_debug_pcprwsem_log_print(s, mode, sem);
-}
+#ifdef CONFIG_SEC_DEBUG_DTASK
+extern void sec_debug_set_wait_data(int type, void *data);
 #else
-#define sec_debug_pcprwsem_log_enable() do { } while (0)
-#define sec_debug_pcprwsem_log_print(a, b, c) do { } while (0)
+#define sec_debug_set_wait_data(a, b)		do { } while (0)
 #endif
-
-extern void sec_debug_snapshot_printkl(size_t msg, size_t val);
 
 #ifdef CONFIG_SEC_DEBUG_INIT_LOG
 extern void register_init_log_hook_func(void (*func)(const char *buf, size_t size));
@@ -628,12 +628,6 @@ struct sec_debug_next {
 /*
  * Samsung TN Logging Options
  */
-#ifdef CONFIG_SEC_AVC_LOG
-extern void sec_debug_avc_log(char *fmt, ...);
-#else
-#define sec_debug_avc_log(a, ...)		do { } while (0)
-#endif /* CONFIG_SEC_AVC_LOG */
-
 /**
  * sec_debug_tsp_log : Leave tsp log in tsp_msg file.
  * ( Timestamp + Tsp logs )
@@ -662,5 +656,10 @@ struct tsp_dump_callbacks {
 	void (*inform_dump)(void);
 };
 #endif
+
+#ifdef CONFIG_SEC_DEBUG_LIMIT_BACKTRACE
+#define MAX_UNWINDING_LOOP 50 /* maximum number of unwind frame */
+#endif
+
 #endif /* SEC_DEBUG_H */
 

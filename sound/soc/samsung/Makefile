@@ -49,6 +49,7 @@ snd-soc-odroid-objs := odroid.o
 snd-soc-arndale-rt5631-objs := arndale_rt5631.o
 snd-soc-tm2-wm5110-objs := tm2_wm5110.o
 snd-soc-beyond-madera-objs := beyond_madera.o jack_madera_sysfs_cb.o
+snd-soc-d-madera-objs := d_madera.o
 ifeq ($(CONFIG_SND_SOC_SAMSUNG_ABOX_V2),y)
 snd-soc-sec-audio-objs := sec_audio_sysfs.o sec_audio_debug_v2.o
 else
@@ -82,4 +83,5 @@ obj-$(CONFIG_SND_SOC_SAMSUNG_EXYNOS8895_COD3033) += exynos8895_sound.o
 obj-$(CONFIG_SND_SOC_SAMSUNG_EXYNOS9810_MOON) += exynos9810_madera.o
 obj-$(CONFIG_SND_SOC_SAMSUNG_EXYNOS9820_MADERA) += exynos9820_madera.o
 obj-$(CONFIG_SND_SOC_SAMSUNG_BEYOND_MADERA) += snd-soc-beyond-madera.o
+obj-$(CONFIG_SND_SOC_SAMSUNG_D_MADERA) += snd-soc-d-madera.o
 obj-$(CONFIG_SND_SOC_SAMSUNG_AUDIO) += snd-soc-sec-audio.o

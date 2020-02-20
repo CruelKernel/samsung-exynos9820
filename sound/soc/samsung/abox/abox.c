@@ -626,10 +626,25 @@ bool abox_is_on(void)
 }
 EXPORT_SYMBOL(abox_is_on);
 
+static int abox_correct_pll_rate(struct device *dev,
+		long long src_rate, int diff_ppb)
+{
+	const int unit_ppb = 1000000000;
+	long long correction;
+
+	correction = src_rate * (diff_ppb + unit_ppb);
+	do_div(correction, unit_ppb);
+	dev_dbg(dev, "correct AUD_PLL %dppb: %lldHz -> %lldHz\n",
+			diff_ppb, src_rate, correction);
+
+	return (unsigned long)correction;
+}
+
 int abox_register_bclk_usage(struct device *dev, struct abox_data *data,
 		enum abox_dai dai_id, unsigned int rate, unsigned int channels,
 		unsigned int width)
 {
+	static int correction;
 	unsigned long target_pll, audif_rate;
 	int id = dai_id - ABOX_UAIF0;
 	int ret = 0;
@@ -649,6 +664,18 @@ int abox_register_bclk_usage(struct device *dev, struct abox_data *data,
 
 	target_pll = ((rate % 44100) == 0) ? AUD_PLL_RATE_HZ_FOR_44100 :
 			AUD_PLL_RATE_HZ_FOR_48000;
+
+	if (data->clk_diff_ppb) {
+		/* run only when correction value is changed */
+		if (correction != data->clk_diff_ppb) {
+			target_pll = abox_correct_pll_rate(dev, target_pll,
+					data->clk_diff_ppb);
+			correction = data->clk_diff_ppb;
+		} else {
+			target_pll = clk_get_rate(data->clk_pll);
+		}
+	}
+
 	if (target_pll != clk_get_rate(data->clk_pll)) {
 		dev_info(dev, "Set AUD_PLL rate: %lu -> %lu\n",
 			clk_get_rate(data->clk_pll), target_pll);
@@ -1842,13 +1869,14 @@ static void abox_system_ipc_handler(struct device *dev,
 			type = "unknown error";
 			break;
 		}
-		dev_err(dev, "%s(%08X, %08X, %08X) is reported from calliope\n",
-				type, system_msg->param1, system_msg->param2,
-				system_msg->param3);
 
 		switch (system_msg->param1) {
 		case 1:
 		case 2:
+			dev_err(dev, "%s(%#x, %#x, %#x, %#x) is reported from calliope\n",
+					type, system_msg->param1,
+					system_msg->param2, system_msg->param3,
+					system_msg->bundle.param_s32[1]);
 			area = abox_addr_to_kernel_addr(data,
 					system_msg->bundle.param_s32[0]);
 			abox_dbg_print_gpr_from_addr(dev, data, area);
@@ -1862,6 +1890,9 @@ static void abox_system_ipc_handler(struct device *dev,
 #endif
 			break;
 		default:
+			dev_err(dev, "%s(%#x, %#x, %#x) is reported from calliope\n",
+					type, system_msg->param1,
+					system_msg->param2, system_msg->param3);
 			abox_dbg_print_gpr(dev, data);
 			abox_dbg_dump_gpr(dev, data, ABOX_DBG_DUMP_FIRMWARE,
 					type);
@@ -1878,6 +1909,9 @@ static void abox_system_ipc_handler(struct device *dev,
 		abox_failsafe_report(dev);
 		break;
 	}
+	case ABOX_REPORT_CLK_DIFF_PPB:
+		data->clk_diff_ppb = system_msg->param1;
+		break;
 	default:
 		dev_warn(dev, "Redundant system message: %d(%d, %d, %d)\n",
 				system_msg->msgtype, system_msg->param1,
@@ -2184,14 +2218,14 @@ static void abox_request_extra_firmware(struct abox_data *data)
 			continue;
 
 		efw = abox_get_extra_firmware(data, name);
-		if (!efw) {
+		if (!efw)
 			efw = devm_kzalloc(dev, sizeof(*efw), GFP_KERNEL);
-			list_add_tail(&efw->list, &data->firmware_extra);
-		}
 		if (!efw) {
 			dev_err(dev, "%s: no memory %s\n", __func__, name);
 			continue;
 		}
+
+		list_add_tail(&efw->list, &data->firmware_extra);
 		efw->name = name;
 		efw->area = area;
 		efw->offset = offset;
@@ -2476,9 +2510,13 @@ static int abox_qos_notifier(struct notifier_block *nb,
 	struct device *dev = &data->pdev->dev;
 	long value = (long)action;
 
+	if (!pm_runtime_active(dev))
+		return NOTIFY_DONE;
+
 	dev_info(dev, "pm qos aud: %ldkHz\n", value);
 	abox_notify_cpu_gear(data, value * 1000);
 	abox_cmpnt_update_cnt_val(dev);
+	abox_cmpnt_update_asrc_tick(dev);
 
 	return NOTIFY_DONE;
 }

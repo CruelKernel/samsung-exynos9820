@@ -5062,7 +5062,7 @@ static int __init init_sdfat_fs(void)
 
 	sdfat_kset = kset_create_and_add("sdfat", NULL, fs_kobj);
 	if (!sdfat_kset) {
-		pr_err("[SDFAT] failed to create fs_kobj\n");
+		pr_err("[SDFAT] failed to create sdfat kset\n");
 		err = -ENOMEM;
 		goto error;
 	}
@@ -5074,6 +5074,10 @@ static int __init init_sdfat_fs(void)
 	}
 
 	err = sdfat_statistics_init(sdfat_kset);
+	if (err)
+		goto error;
+
+	err = sdfat_uevent_init(sdfat_kset);
 	if (err)
 		goto error;
 
@@ -5091,6 +5095,7 @@ static int __init init_sdfat_fs(void)
 
 	return 0;
 error:
+	sdfat_uevent_uninit();
 	sdfat_statistics_uninit();
 
 	if (sdfat_kset) {
@@ -5108,6 +5113,7 @@ error:
 
 static void __exit exit_sdfat_fs(void)
 {
+	sdfat_uevent_uninit();
 	sdfat_statistics_uninit();
 
 	if (sdfat_kset) {

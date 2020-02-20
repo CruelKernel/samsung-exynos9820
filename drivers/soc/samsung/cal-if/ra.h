@@ -73,7 +73,8 @@ extern int pll_get_locktime(struct cmucal_pll *pll);
 extern int pll_find_table(struct cmucal_pll *pll,
 			  struct cmucal_pll_table *table,
 			  unsigned long long fin,
-			  unsigned long long rate);
+			  unsigned long long rate,
+			  unsigned long long rate_hz);
 extern void ra_set_clk_by_type(unsigned int *list,
 			    struct vclk_lut *lut,
 			    unsigned int num_list,

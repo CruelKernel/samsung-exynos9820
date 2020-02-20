@@ -4837,6 +4837,7 @@ static bool tcp_try_coalesce(struct sock *sk,
 			to->tstamp = from->tstamp;
 	}
 
+	DROPDUMP_CLEAR_SKB(from);
 	return true;
 }
 
@@ -4859,6 +4860,9 @@ static bool tcp_ooo_try_coalesce(struct sock *sk,
 
 static void tcp_drop(struct sock *sk, struct sk_buff *skb)
 {
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	dropdump_queue(skb);
+#endif
 	sk_drops_add(sk, skb);
 	__kfree_skb(skb);
 }
@@ -5224,7 +5228,10 @@ queue_and_out:
 		if (skb_queue_len(&sk->sk_receive_queue) == 0)
 			sk_forced_mem_schedule(sk, skb->truesize);
 		else if (tcp_try_rmem_schedule(sk, skb, skb->truesize))
+		{
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_TCP_RMEMSCHEDULEFAIL);
 			goto drop;
+		}
 
 		eaten = tcp_queue_rcv(sk, skb, 0, &fragstolen);
 		tcp_rcv_nxt_update(tp, TCP_SKB_CB(skb)->end_seq);
@@ -5273,6 +5280,7 @@ queue_and_out:
 		tcp_dsack_set(sk, TCP_SKB_CB(skb)->seq, TCP_SKB_CB(skb)->end_seq);
 
 out_of_window:
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_TCP_OUTOFWINDOW);
 		tcp_enter_quickack_mode(sk, TCP_MAX_QUICKACKS);
 		inet_csk_schedule_ack(sk);
 drop:
@@ -5868,6 +5876,7 @@ static bool tcp_validate_incoming(struct sock *sk, struct sk_buff *skb,
 						  LINUX_MIB_TCPACKSKIPPEDPAWS,
 						  &tp->last_oow_ack_time))
 				tcp_send_dupack(sk, skb);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_TCP_PAWSREJECTED);
 			goto discard;
 		}
 		/* Reset is accepted even if it did not pass PAWS. */
@@ -5888,6 +5897,7 @@ static bool tcp_validate_incoming(struct sock *sk, struct sk_buff *skb,
 						  LINUX_MIB_TCPACKSKIPPEDSEQ,
 						  &tp->last_oow_ack_time))
 				tcp_send_dupack(sk, skb);
+			DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_TCP_INVALIDSEQ);
 		} else if (tcp_reset_check(sk, skb)) {
 			tcp_reset(sk);
 		}
@@ -5948,7 +5958,7 @@ static bool tcp_validate_incoming(struct sock *sk, struct sk_buff *skb,
 syn_challenge:
 		if (syn_inerr) {
 			TCP_INC_STATS(sock_net(sk), TCP_MIB_INERRS);
-			TCP_DUMP_STATS(skb, TCP_MIB_INERRS);
+			DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS);
 		}
 		NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPSYNCHALLENGE);
 		tcp_send_challenge_ack(sk, skb);
@@ -5967,6 +5977,7 @@ discard:
 	if (mptcp(tp))
 		mptcp_reset_mopt(tp);
 #endif
+	DROPDUMP_CHECK_SKB(skb);
 	tcp_drop(sk, skb);
 	return false;
 }
@@ -6077,12 +6088,13 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 				 * on entry.
 				 */
 				tcp_ack(sk, skb, 0);
+				DROPDUMP_CLEAR_SKB(skb);
 				__kfree_skb(skb);
 				tcp_data_snd_check(sk);
 				return;
 			} else { /* Header too small */
 				TCP_INC_STATS(sock_net(sk), TCP_MIB_INERRS);
-				TCP_DUMP_STATS(skb, TCP_MIB_INERRS);
+				DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS1);
 				goto discard;
 			}
 		} else {
@@ -6135,8 +6147,10 @@ slow_path:
 	if (len < (th->doff << 2) || tcp_checksum_complete(skb))
 		goto csum_error;
 
-	if (!th->ack && !th->rst && !th->syn)
+	if (!th->ack && !th->rst && !th->syn) {
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS7);
 		goto discard;
+	}
 
 	/*
 	 *	Standard slow path.
@@ -6163,10 +6177,10 @@ step5:
 
 csum_error:
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_CSUMERRORS);
-	TCP_DUMP_STATS(skb, TCP_MIB_CSUMERRORS);
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_INERRS);
-	TCP_DUMP_STATS(skb, TCP_MIB_INERRS);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS2);
 discard:
+	DROPDUMP_CHECK_SKB(skb);
 	tcp_drop(sk, skb);
 }
 EXPORT_SYMBOL(tcp_rcv_established);
@@ -6622,6 +6636,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 			consume_skb(skb);
 			return 0;
 		}
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_TCP_NOTCONNECTED);
 		goto discard;
 
 	case TCP_SYN_SENT:
@@ -6680,6 +6695,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 		if (sk->sk_state == TCP_SYN_RECV)
 			return 1;	/* send one RST */
 		tcp_send_challenge_ack(sk, skb);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_OPT_TCP_INVALIDACK);
 		goto discard;
 	}
 	switch (sk->sk_state) {
@@ -6900,6 +6916,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 
 	if (!queued) {
 discard:
+		DROPDUMP_CHECK_SKB(skb);
 		tcp_drop(sk, skb);
 	}
 	return 0;
@@ -7194,13 +7211,17 @@ tcp_parse_options(sock_net(sk), skb, &tmp_opt, NULL, 0,
 		af_ops->send_synack(fastopen_sk, dst, &fl, req,
 				    &foc, TCP_SYNACK_FASTOPEN);
 		/* Add the child socket directly into the accept queue */
-<<<<<<< HEAD
 #ifdef CONFIG_MPTCP
-		inet_csk_reqsk_queue_add(sk, req, meta_sk);
+		if (!inet_csk_reqsk_queue_add(sk, req, meta_sk)) {
+			reqsk_fastopen_remove(fastopen_sk, req, false);
+			bh_unlock_sock(fastopen_sk);
+			if (meta_sk != fastopen_sk)
+				bh_unlock_sock(meta_sk);
+			sock_put(fastopen_sk);
+			reqsk_put(req);
+			goto drop;
+		}
 #else
-		inet_csk_reqsk_queue_add(sk, req, fastopen_sk);
-#endif
-=======
 		if (!inet_csk_reqsk_queue_add(sk, req, fastopen_sk)) {
 			reqsk_fastopen_remove(fastopen_sk, req, false);
 			bh_unlock_sock(fastopen_sk);
@@ -7208,7 +7229,7 @@ tcp_parse_options(sock_net(sk), skb, &tmp_opt, NULL, 0,
 			reqsk_put(req);
 			goto drop;
 		}
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
+#endif
 		sk->sk_data_ready(sk);
 		bh_unlock_sock(fastopen_sk);
 #ifdef CONFIG_MPTCP

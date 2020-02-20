@@ -20,9 +20,15 @@
 
 extern unsigned int lpcharge;
 extern int charging_night_mode;
+extern int temp_control_test;
 extern int fg_reset;
 #if defined(CONFIG_SEC_FACTORY)
 extern int factory_mode;
+#endif
+#if defined(CONFIG_WIRELESS_IC_PARAM)
+extern unsigned long wireless_offset;
+extern unsigned int wireless_fw_ver_param;
+extern unsigned int wireless_chip_id_param;
 #endif
 
 void exynos5_universal5430_pmic_init(void);

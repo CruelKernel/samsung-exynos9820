@@ -407,8 +407,10 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	}
 	if (ext4_encrypted_inode(inode)) {
 		ret = fscrypt_get_encryption_info(inode);
-		if (ret)
+		if (ret) {
+			printk(KERN_ERR "%s: failed to get encryption info (%d)", __func__, ret);
 			return -EACCES;
+		}
 		if (!fscrypt_has_encryption_key(inode))
 			return -ENOKEY;
 	}

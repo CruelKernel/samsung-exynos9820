@@ -36,6 +36,7 @@ struct panel_irc_info {
 	u32 dynamic_offset;
 	u32 dynamic_len;
 	u32 total_len;
+	u32 hbm_coef;
 	u8* buffer;
 	u8* ref_tbl;
 };

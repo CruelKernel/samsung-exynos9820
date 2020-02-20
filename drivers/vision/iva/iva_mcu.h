@@ -33,6 +33,14 @@ enum init_tcm {
 	dtcm_en			= (0x1 << 1),
 };
 
+#if defined(CONFIG_SOC_EXYNOS8895)
+#define IVA_MCU_FILE_PATH "/system/vendor/firmware/iva10_rt-kangchen.bin"
+#elif defined(CONFIG_SOC_EXYNOS9810)
+#define IVA_MCU_FILE_PATH "/system/vendor/firmware/iva20_rt-lhotse.bin"
+#elif defined(CONFIG_SOC_EXYNOS9820)
+#define IVA_MCU_FILE_PATH "/system/vendor/firmware/iva30_rt-makalu.bin"
+#endif
+
 extern void	iva_mcu_print_flush_pending_mcu_log(struct iva_dev_data *iva);
 
 extern void	iva_mcu_handle_error_k(struct iva_dev_data *iva,

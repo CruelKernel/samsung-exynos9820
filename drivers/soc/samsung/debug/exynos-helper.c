@@ -45,129 +45,155 @@
 
 extern void (*arm_pm_restart)(char str, const char *cmd);
 
-struct arm64_cpu_err_varient {
-	u8 fld_end;
-	u8 fld_offset;
-	const char *fld_name;
+static struct err_variant arm64_err_type_1[] = {
+	ERR_VAR("AV", 31, 31),
+	ERR_VAR("Valid", 30, 30),
+	ERR_VAR("UC", 29, 29),
+	ERR_VAR("ER", 28, 28),
+	ERR_VAR("OF", 27, 27),
+	ERR_VAR("MV", 26, 26),
+	ERR_VAR("CE", 25, 24),
+	ERR_VAR("DE", 23, 23),
+	ERR_VAR("PN", 22, 22),
+	ERR_VAR("UET", 21, 20),
+	ERR_VAR("RES0", 19, 16),
+	ERR_VAR("IERR", 15, 8),
+	ERR_VAR("SERR", 7, 0),
+	ERR_VAR("END", 64, 64),
 };
 
-#define CPU_ERR_VAR(name, end, offset)	\
-	{					\
-		.fld_end	= end,	\
-		.fld_offset	= offset,	\
-		.fld_name	= name,		\
-	}
-
-static struct arm64_cpu_err_varient arm64_err_type_1[] = {
-	CPU_ERR_VAR("AV", 31, 31),
-	CPU_ERR_VAR("Valid", 30, 30),
-	CPU_ERR_VAR("UC", 29, 29),
-	CPU_ERR_VAR("ER", 28, 28),
-	CPU_ERR_VAR("OF", 27, 27),
-	CPU_ERR_VAR("MV", 26, 26),
-	CPU_ERR_VAR("CE", 25, 24),
-	CPU_ERR_VAR("DE", 23, 23),
-	CPU_ERR_VAR("PN", 22, 22),
-	CPU_ERR_VAR("UET", 21, 20),
-	CPU_ERR_VAR("RES0", 19, 16),
-	CPU_ERR_VAR("IERR", 15, 8),
-	CPU_ERR_VAR("SERR", 7, 0),
-	CPU_ERR_VAR("END", 64, 64),
+static struct err_variant arm64_err_type_2[] = {
+	ERR_VAR("Count1", 63, 56),
+	ERR_VAR("Count0", 55, 48),
+	ERR_VAR("RES1", 47, 41),
+	ERR_VAR("Syndrom", 40, 32),
+	ERR_VAR("Stype2", 31, 28),
+	ERR_VAR("SType1", 27, 24),
+	ERR_VAR("SType0", 23, 16),
+	ERR_VAR("Type", 15, 12),
+	ERR_VAR("RES0", 11, 6),
+	ERR_VAR("RE", 5, 5),
+	ERR_VAR("SynValid", 4, 4),
+	ERR_VAR("AddrValid", 3, 3),
+	ERR_VAR("UnContained", 2, 2),
+	ERR_VAR("UC", 1, 1),
+	ERR_VAR("Vaild", 0, 0),
+	ERR_VAR("END", 64, 64),
 };
 
-static struct arm64_cpu_err_varient arm64_err_type_2[] = {
-	CPU_ERR_VAR("Count1", 63, 56),
-	CPU_ERR_VAR("Count0", 55, 48),
-	CPU_ERR_VAR("RES1", 47, 41),
-	CPU_ERR_VAR("Syndrom", 40, 32),
-	CPU_ERR_VAR("Stype2", 31, 28),
-	CPU_ERR_VAR("SType1", 27, 24),
-	CPU_ERR_VAR("SType0", 23, 16),
-	CPU_ERR_VAR("Type", 15, 12),
-	CPU_ERR_VAR("RES0", 11, 6),
-	CPU_ERR_VAR("RE", 5, 5),
-	CPU_ERR_VAR("SynValid", 4, 4),
-	CPU_ERR_VAR("AddrValid", 3, 3),
-	CPU_ERR_VAR("UnContained", 2, 2),
-	CPU_ERR_VAR("UC", 1, 1),
-	CPU_ERR_VAR("Vaild", 0, 0),
-	CPU_ERR_VAR("END", 64, 64),
+static struct err_variant arm64_err_type_3[] = {
+	ERR_VAR("RES0", 63, 32),
+	ERR_VAR("A", 31, 31),
+	ERR_VAR("RES0", 30, 25),
+	ERR_VAR("RES2", 24, 16),
+	ERR_VAR("AEType", 15, 14),
+	ERR_VAR("RES1", 13, 13),
+	ERR_VAR("EXT", 12, 12),
+	ERR_VAR("AET", 11, 10),
+	ERR_VAR("EA", 9, 9),
+	ERR_VAR("EA", 8, 6),
+	ERR_VAR("DFSC", 5, 0),
+	ERR_VAR("END", 64, 64),
 };
 
-static struct arm64_cpu_err_varient arm64_err_type_3[] = {
-	CPU_ERR_VAR("RES0", 63, 32),
-	CPU_ERR_VAR("A", 31, 31),
-	CPU_ERR_VAR("RES0", 30, 25),
-	CPU_ERR_VAR("RES2", 24, 16),
-	CPU_ERR_VAR("AEType", 15, 14),
-	CPU_ERR_VAR("RES1", 13, 13),
-	CPU_ERR_VAR("EXT", 12, 12),
-	CPU_ERR_VAR("AET", 11, 10),
-	CPU_ERR_VAR("EA", 9, 9),
-	CPU_ERR_VAR("EA", 8, 6),
-	CPU_ERR_VAR("DFSC", 5, 0),
-	CPU_ERR_VAR("END", 64, 64),
+static struct err_variant arm64_err_type_4[] = {
+	ERR_VAR("Fatal", 63, 63),
+	ERR_VAR("RES0", 62, 48),
+	ERR_VAR("Other error count", 47, 40),
+	ERR_VAR("Repeat error count", 39, 32),
+	ERR_VAR("Valid", 31, 31),
+	ERR_VAR("RAMID", 30, 24),
+	ERR_VAR("RES0", 23, 21),
+	ERR_VAR("CPUID", 20, 18),
+	ERR_VAR("RES0", 17, 12),
+	ERR_VAR("RAM address", 11, 0),
+	ERR_VAR("END", 64, 64),
 };
 
-static struct arm64_cpu_err_varient arm64_err_type_4[] = {
-	CPU_ERR_VAR("Fatal", 63, 63),
-	CPU_ERR_VAR("RES0", 62, 48),
-	CPU_ERR_VAR("Other error count", 47, 40),
-	CPU_ERR_VAR("Repeat error count", 39, 32),
-	CPU_ERR_VAR("Valid", 31, 31),
-	CPU_ERR_VAR("RAMID", 30, 24),
-	CPU_ERR_VAR("RES0", 23, 21),
-	CPU_ERR_VAR("CPUID", 20, 18),
-	CPU_ERR_VAR("RES0", 17, 12),
-	CPU_ERR_VAR("RAM address", 11, 0),
-	CPU_ERR_VAR("END", 64, 64),
+static struct err_variant arm64_err_type_TCR[] = {
+//	ERR_VAR("HPD1", 42, 42),
+//	ERR_VAR("HPD0", 41, 41),
+//	ERR_VAR("HD", 40, 40),
+//	ERR_VAR("HA", 39, 39),
+	ERR_VAR("TBI1", 38, 38),
+	ERR_VAR("TBI0", 37, 37),
+//	ERR_VAR("AS", 36, 36),
+//	ERR_VAR("IPS", 34, 32),
+//	ERR_VAR("TG1", 31, 30),
+//	ERR_VAR("SH1", 29, 28),
+//	ERR_VAR("ORGN1", 27, 26),
+//	ERR_VAR("IRGN1", 25, 24),
+//	ERR_VAR("EPD1", 23, 23),
+//	ERR_VAR("A1", 22, 22),
+//	ERR_VAR("T1SZ", 21, 16),
+//	ERR_VAR("TG0", 15, 14),
+//	ERR_VAR("SH0", 13, 12),
+//	ERR_VAR("ORGN0", 11, 10),
+//	ERR_VAR("IRGN0", 9, 8),
+//	ERR_VAR("EPD0", 7, 7),
+//	ERR_VAR("T1SZ", 5, 0),
+//	ERR_VAR("END", 64, 64),
 };
 
-struct arm64_cpu_err_varient_data {
-	const struct arm64_cpu_err_varient *varient;
-	u8 valid_bit;
-	const char *reg_name;
+static struct err_variant arm64_err_type_VBAR[] = {
+	ERR_VAR("VBA[63:56]", 63, 56),
+	ERR_VAR("VBA[55]", 55, 55),
+	ERR_VAR("END", 64, 64),
 };
 
-#define ARM64_CPU_ERR(varients, valid, reg)	\
-	{					\
-		.varient	= varients,	\
-		.valid_bit	= valid,	\
-		.reg_name	= reg,		\
-	}
-
-static struct arm64_cpu_err_varient_data exynos_cpu_err_table[] = {
-	ARM64_CPU_ERR(arm64_err_type_2, 0, "FEMERR0SR"),
-	ARM64_CPU_ERR(arm64_err_type_2, 0, "LSMERR0SR"),
-	ARM64_CPU_ERR(arm64_err_type_2, 0, "TBWMERR0SR"),
-	ARM64_CPU_ERR(arm64_err_type_2, 0, "L2MERR0SR"),
-	ARM64_CPU_ERR(arm64_err_type_2, 0, "L3MERR0SR"),
-	ARM64_CPU_ERR(arm64_err_type_3, 31, "DISR_EL1"),
-	ARM64_CPU_ERR(arm64_err_type_1, 30, "ERXSTATUS_EL1"),
-	ARM64_CPU_ERR(arm64_err_type_4, 31, "CPUMERRSR"),
-	ARM64_CPU_ERR(arm64_err_type_4, 31, "L2MERRSR"),
+static struct err_variant arm64_err_type_L2ECTLR[] = {
+	ERR_VAR("L2AsyncErr", 30, 30),
+	ERR_VAR("END", 64, 64),
 };
 
-void parse_cpu_err(char *reg_name, u64 reg)
+static struct err_variant arm64_err_type_L3ECTLR[] = {
+	ERR_VAR("L3IntrnAsyncErr", 30, 30),
+	ERR_VAR("ExtBusAsyncErr", 29, 29),
+	ERR_VAR("EnTmrIncChk", 3, 3),
+	ERR_VAR("ClusterQactiveCtl", 2, 0),
+	ERR_VAR("END", 64, 64),
+};
+
+enum {
+	FEMERR0SR = 0,
+	LSMERR0SR,
+	TBWMERR0SR,
+	L2MERR0SR,
+	L3MERR0SR,
+	DISR_EL1,
+	ERXSTATUS_EL1,
+	CPUMERRSR,
+	L2MERRSR,
+	TCR_EL1,
+	VBAR_EL1,
+	L2ECTLR_EL1,
+	L3ECTLR
+};
+
+static struct err_variant_data exynos_cpu_err_table[] = {
+	ERR_REG(arm64_err_type_2, 0, "FEMERR0SR"),
+	ERR_REG(arm64_err_type_2, 0, "LSMERR0SR"),
+	ERR_REG(arm64_err_type_2, 0, "TBWMERR0SR"),
+	ERR_REG(arm64_err_type_2, 0, "L2MERR0SR"),
+	ERR_REG(arm64_err_type_2, 0, "L3MERR0SR"),
+	ERR_REG(arm64_err_type_3, 31, "DISR_EL1"),
+	ERR_REG(arm64_err_type_1, 30, "ERXSTATUS_EL1"),
+	ERR_REG(arm64_err_type_4, 31, "CPUMERRSR"),
+	ERR_REG(arm64_err_type_4, 31, "L2MERRSR"),
+	ERR_REG(arm64_err_type_TCR, 0xFF, "TCR_EL1"),
+	ERR_REG(arm64_err_type_VBAR, 0xFF, "VBAR_EL1"),
+	ERR_REG(arm64_err_type_L2ECTLR, 30, "L2ECTLR_EL1"),
+	ERR_REG(arm64_err_type_L3ECTLR, 30, "L3ECTLR")
+};
+
+void exynos_err_parse(u32 reg_idx, u64 reg, struct err_variant_data *exynos_cpu_err)
 {
 	u8 i = 0;
 	u8 fld_offset, fld_end;
 	u64 valid;
 	u32 field;
-	struct arm64_cpu_err_varient_data *exynos_cpu_err;
-	const struct arm64_cpu_err_varient *varient;
+	const struct err_variant *variant;
 
-	for (i = 0; i < ARRAY_SIZE(exynos_cpu_err_table); i++) {
-		if (!strncmp(exynos_cpu_err_table[i].reg_name, reg_name, sizeof(char *))) {
-			exynos_cpu_err = &exynos_cpu_err_table[i];
-			break;
-		}
-	}
-
-	if (i == ARRAY_SIZE(exynos_cpu_err_table)) {
-		pr_err("%s: there is no parse data\n", __func__);
-		return;
-	}
 
 	if (exynos_cpu_err->valid_bit == 0xFF)
 		goto run_valid;
@@ -180,23 +206,33 @@ void parse_cpu_err(char *reg_name, u64 reg)
 	}
 
 run_valid:
-	varient = exynos_cpu_err->varient;
+	variant = exynos_cpu_err->variant;
 	while (true) {
-		fld_offset = varient[i].fld_offset;
-		fld_end = varient[i].fld_end;
+		fld_offset = variant[i].fld_offset;
+		fld_end = variant[i].fld_end;
 
 		if (fld_end > 63)
 			break;
 
 		field = (reg & GENMASK_ULL(fld_end, fld_offset)) >> fld_offset;
 		if (field != 0)
-			pr_emerg("%s (%d:%d) %s %04lx\n",
+			pr_emerg("%s (%d:%d) %s 0x%lx\n",
 				exynos_cpu_err->reg_name,
 				fld_end, fld_offset,
-				varient[i].fld_name, field);
+				variant[i].fld_name, field);
 		i++;
 	};
 };
+
+static void exynos_cpu_err_parse(u32 reg_idx, u64 reg)
+{
+	if (reg_idx >= ARRAY_SIZE(exynos_cpu_err_table)) {
+		pr_err("%s: there is no parse data\n", __func__);
+		return;
+	}
+
+	exynos_err_parse(reg_idx, reg, &exynos_cpu_err_table[reg_idx]);
+}
 
 static void exynos_early_panic(void *val)
 {
@@ -367,6 +403,18 @@ static void exynos_save_system(void *val)
 #endif
 }
 
+void exynos_dump_common_cpu_reg(void)
+{
+	unsigned long reg1, reg2;
+
+	asm volatile ("mrs %0, vbar_el1\n\t"
+			"mrs %1, tcr_el1\n"
+			: "=r" (reg1), "=r" (reg2));
+
+	exynos_cpu_err_parse(VBAR_EL1, reg1);
+	exynos_cpu_err_parse(TCR_EL1, reg2);
+}
+
 static void exynos_dump_info(void *val)
 {
 	/*
@@ -385,22 +433,22 @@ static void exynos_dump_info(void *val)
 					"mrs %1, S3_1_c15_c2_4\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("FEMERR0SR: %016lx, FEMERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("FEMERR0SR", reg1);
+			exynos_cpu_err_parse(FEMERR0SR, reg1);
 			asm volatile ("mrs %0, S3_1_c15_c2_1\n\t"
 					"mrs %1, S3_1_c15_c2_5\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("LSMERR0SR: %016lx, LSMERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("LSMERR0SR", reg1);
+			exynos_cpu_err_parse(LSMERR0SR, reg1);
 			asm volatile ("mrs %0, S3_1_c15_c2_2\n\t"
 					"mrs %1, S3_1_c15_c2_6\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("TBWMERR0SR: %016lx, TBWMERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("TBWMERR0SR", reg1);
+			exynos_cpu_err_parse(TBWMERR0SR, reg1);
 			asm volatile ("mrs %0, S3_1_c15_c2_3\n\t"
 					"mrs %1, S3_1_c15_c2_7\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("L2MERR0SR: %016lx, L2MERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("L2MERR0SR", reg1);
+			exynos_cpu_err_parse(L2MERR0SR, reg1);
 
 			/* L3 MERR */
 			asm volatile ("msr S3_1_c15_c7_1, %0\n\t"
@@ -410,7 +458,7 @@ static void exynos_dump_info(void *val)
 					"mrs %1, S3_1_c15_c3_4\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("BANK0 L3MERR0SR: %016lx, L3MERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("L3MERR0SR", reg1);
+			exynos_cpu_err_parse(L3MERR0SR, reg1);
 			asm volatile ("msr S3_1_c15_c7_1, %0\n\t"
 					"isb\n"
 					:: "r" (1));
@@ -418,7 +466,7 @@ static void exynos_dump_info(void *val)
 					"mrs %1, S3_1_c15_c3_4\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("BANK1 L3MERR0SR: %016lx, L3MERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("L3MERR0SR", reg1);
+			exynos_cpu_err_parse(L3MERR0SR, reg1);
 			asm volatile ("msr S3_1_c15_c7_1, %0\n\t"
 					"isb\n"
 					:: "r" (2));
@@ -426,7 +474,7 @@ static void exynos_dump_info(void *val)
 					"mrs %1, S3_1_c15_c3_4\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("BANK2 L3MERR0SR: %016lx, L3MERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("L3MERR0SR", reg1);
+			exynos_cpu_err_parse(L3MERR0SR, reg1);
 			asm volatile ("msr S3_1_c15_c7_1, %0\n\t"
 					"isb\n"
 					:: "r" (3));
@@ -434,7 +482,14 @@ static void exynos_dump_info(void *val)
 					"mrs %1, S3_1_c15_c3_4\n"
 					: "=r" (reg1), "=r" (reg2));
 			pr_emerg("BANK3 L3MERR0SR: %016lx, L3MERR1SR: %016lx\n", reg1, reg2);
-			parse_cpu_err("L3MERR0SR", reg1);
+			exynos_cpu_err_parse(L3MERR0SR, reg1);
+
+			asm volatile ("mrs %0, S3_1_c11_c0_3\n\t"
+					"mrs %1, S3_1_c15_c0_6\n\t"
+					: "=r" (reg1), "=r" (reg2));
+			pr_emerg("L2ECTLR_EL1: %016lx, L3ECTLR: %016lx\n", reg1, reg2);
+			exynos_cpu_err_parse(L2ECTLR_EL1, reg1);
+			exynos_cpu_err_parse(L3ECTLR, reg2);
 
 			break;
 		default:
@@ -454,7 +509,7 @@ static void exynos_dump_info(void *val)
 			asm volatile ("HINT #16");
 			asm volatile ("mrs %0, S3_0_c12_c1_1\n" : "=r" (reg1)); /* read DISR_EL1 */
 			pr_emerg("DISR_EL1: %016lx\n", reg1);
-			parse_cpu_err("DISR_EL1", reg1);
+			exynos_cpu_err_parse(DISR_EL1, reg1);
 
 			asm volatile ("msr S3_0_c5_c3_1, %0\n"
 					"isb\n"
@@ -466,7 +521,7 @@ static void exynos_dump_info(void *val)
 					: "=r" (reg1), "=r" (reg2), "=r" (reg3));
 			pr_emerg("CPU : ERXSTATUS_EL1: %016lx, ERXADDR_EL1: %016lx, "
 					"ERXMISC0_EL1: %016lx\n", reg1, reg2, reg3);
-			parse_cpu_err("ERXSTATUS_EL1", reg1);
+			exynos_cpu_err_parse(ERXSTATUS_EL1, reg1);
 
 			asm volatile ("msr S3_0_c5_c3_1, %0\n"
 					"isb\n"
@@ -478,7 +533,7 @@ static void exynos_dump_info(void *val)
 					: "=r" (reg1), "=r" (reg2), "=r" (reg3));
 			pr_emerg("DSU : ERXSTATUS_EL1: %016lx, ERXADDR_EL1: %016lx, "
 					"ERXMISC0_EL1: %016lx\n", reg1, reg2, reg3);
-			parse_cpu_err("ERXSTATUS_EL1", reg1);
+			exynos_cpu_err_parse(ERXSTATUS_EL1, reg1);
 
 			break;
 		default:
@@ -528,7 +583,11 @@ static void exynos_start_watchdog(void *val)
 static void exynos_expire_watchdog(void *val)
 {
 #ifdef CONFIG_S3C2410_WATCHDOG
+#ifdef CONFIG_SEC_DEBUG
+	__s3c2410wdt_set_emergency_reset(100, 0, (unsigned long)val);
+#else
 	s3c2410wdt_set_emergency_reset(100, 0);
+#endif
 #endif
 }
 

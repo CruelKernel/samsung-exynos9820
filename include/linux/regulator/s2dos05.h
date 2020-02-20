@@ -174,16 +174,13 @@ enum S2DOS05_regulators {
 
 #define S2DOS05_MAX_ADC_CHANNEL		8
 
-extern void s2dos05_powermeter_init(struct s2dos05_dev *s2dos05);
+extern void s2dos05_powermeter_init(struct s2dos05_dev *s2dos05,
+					struct device *sec_disp_pmic_dev);
 extern void s2dos05_powermeter_deinit(struct s2dos05_dev *s2dos05);
 
 /* S2DOS05 shared i2c API function */
 extern int s2dos05_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest);
 extern int s2dos05_write_reg(struct i2c_client *i2c, u8 reg, u8 value);
 extern int s2dos05_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
-
-#ifdef CONFIG_SEC_PM
-extern struct device *sec_disp_pmic_dev;
-#endif /* CONFIG_SEC_PM */
 
 #endif /*  __LINUX_MFD_S2DOS05_H */

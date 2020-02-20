@@ -70,7 +70,7 @@ struct npu_session {
 	const struct npu_session_ops	*gops;
 	int (*undo_cb)(struct npu_session *);
 
-	u32 ss_state;
+	unsigned long ss_state;
 
 	u32 IFM_cnt;
 	u32 OFM_cnt;

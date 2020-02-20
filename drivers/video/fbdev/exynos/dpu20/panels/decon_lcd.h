@@ -125,6 +125,43 @@ struct adaptive_info {
 };
 #endif
 
+
+
+#ifdef CONFIG_DYNAMIC_FREQ
+
+#define MAX_DYNAMIC_FREQ	5
+
+struct df_status_info {
+	bool enabled;
+
+	u32 request_df;
+	u32 target_df;
+	u32 current_df;
+	u32 ffc_df;
+	u32 context;
+};
+
+
+struct df_setting_info {
+	unsigned int hs;
+	struct stdphy_pms dphy_pms;
+	unsigned int cmd_underrun_lp_ref[MAX_RES_NUMBER];
+};
+
+struct df_dt_info {
+	int dft_index;
+	int df_cnt;
+	struct df_setting_info setting_info[MAX_DYNAMIC_FREQ];
+};
+
+struct df_param {
+	struct stdphy_pms pms;
+	unsigned int cmd_underrun_lp_ref[MAX_RES_NUMBER];
+	u32 context;
+};
+
+#endif
+
 struct decon_lcd {
 	enum decon_psr_mode mode;
 	unsigned int vfp;
@@ -171,6 +208,11 @@ struct decon_lcd {
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 	struct adaptive_info adaptive_info;
 #endif
+
+#ifdef CONFIG_DYNAMIC_FREQ
+	struct df_dt_info df_set_info;
+#endif
+
 };
 
 struct decon_dsc {

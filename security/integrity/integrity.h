@@ -137,6 +137,7 @@ struct integrity_iint_cache {
 	unsigned long five_flags;
 	enum five_file_integrity five_status;
 	struct integrity_label *five_label;
+	bool five_signing;
 #endif
 };
 

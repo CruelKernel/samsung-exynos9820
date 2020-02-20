@@ -114,6 +114,7 @@ static const char *bbd_dev_name[BBD_DEVICE_INDEX] = {
 	"bbd_sensor",
 	"bbd_control",
 	"bbd_patch",
+	"bbd_urgent_patch",
 	//"bbd_ssi_spi_debug"
 };
 
@@ -817,6 +818,109 @@ ssize_t bbd_patch_read(struct file *filp, char __user *buf, size_t size, loff_t 
 	return rd_size;
 }
 
+#define DIGEST_LEN 32
+#define SIGN_LEN 512
+#define URGENT_BUFFER_SIZE 4096
+#define URGENT_FIRMWARE_PATH "/spu/sensorhub/urgent.patch"
+
+char urgent_buffer[URGENT_BUFFER_SIZE] = {0, };
+static bool is_signed = false;
+static int urgent_patch_size = 0;
+
+extern int spu_fireware_signature_verify(const char* fw_name, const char* fw_path);
+
+ssize_t bbd_urgent_patch_read(struct file *user_filp, char __user *buf, size_t size, loff_t *ppos)
+{
+	ssize_t rd_size = size;
+	size_t offset = user_filp->f_pos;
+   
+	int ret = 0;
+	struct file *filp = NULL;
+	loff_t fsize = 0;
+
+	mm_segment_t old_fs = get_fs();
+	
+	// 01. verify signature
+	if (offset == 0) {
+		is_signed = false;
+		
+		ret = spu_fireware_signature_verify("SENSORHUB",URGENT_FIRMWARE_PATH);
+		
+		if(ret != 0){
+			pr_err("[SSPBBD] %s : fail to spu_fireware_signature_verify %d", __func__, ret);
+			set_fs(old_fs);
+			ret = PTR_ERR(filp);
+
+			return ret;
+		} else
+			is_signed = true;
+
+	}
+
+	if (is_signed == false) {
+		pr_err("[SSPBBD] %s : urgent_patch is not signed", __func__);
+		return 0;
+	}
+
+	// 02. read binary from urgent.patch
+	set_fs(KERNEL_DS);
+	
+	filp = filp_open(URGENT_FIRMWARE_PATH, O_RDONLY, 0);
+
+	if(IS_ERR(filp)){
+		pr_err("[SSPBBD] %s : filp_open failed", __func__);
+		set_fs(old_fs);
+		ret = PTR_ERR(filp);
+		return ret;
+	}
+
+	// 02-1. checking size of urgent.patch except for digest and signature
+	if (offset == 0) {
+		fsize = i_size_read(file_inode(filp));
+		urgent_patch_size = fsize - DIGEST_LEN - SIGN_LEN;
+		pr_err("[SSPBBD] %s : patch size: %d", __func__, urgent_patch_size);
+	}
+
+	if (offset >= urgent_patch_size) {	// signal EOF 
+		pr_err("[SSPBBD] %s : signal EOF", __func__);
+
+		filp_close(filp, NULL);
+		set_fs(old_fs);
+		*ppos = 0;
+		return 0;
+	}
+
+	// 02-2. checking read size becuase it can make memory-overflow
+	if (offset + size > urgent_patch_size)
+		rd_size = urgent_patch_size - offset;
+
+	if (rd_size > URGENT_BUFFER_SIZE)
+		rd_size = URGENT_BUFFER_SIZE;
+
+	filp->f_pos = offset;
+
+	// 02-3. read requested size of urget_patch
+	pr_info("[SSPBBD] %s : download in progress (%d/%d)", __func__, filp->f_pos + rd_size, urgent_patch_size);
+	ret = vfs_read(filp, (char *)&urgent_buffer, rd_size, &filp->f_pos);
+
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	// 03. copy binary which is requested size of urgent.patch to user
+	if (ret < 0) {
+		pr_info("[SSPBBD] %s : fail to read urgent firmware file %d", __func__, ret);
+	} else {
+		if(copy_to_user(buf, (void *)urgent_buffer, rd_size)) {
+			pr_info("[SSPBBD] %s : copy to user from urgent_buffer", __func__);
+			rd_size = -EFAULT;
+		}
+		else
+			*ppos = user_filp->f_pos + rd_size;
+
+	}
+
+	return rd_size;
+}
 
 //--------------------------------------------------------------
 //
@@ -1102,6 +1206,15 @@ static const struct file_operations bbd_fops[BBD_DEVICE_INDEX] = {
 		.write		=  NULL, /* /dev/bbd_patch is read-only */
 		.poll		=  NULL,
 	},
+	{
+		.owner		=  THIS_MODULE,
+		.open		=  bbd_common_open,
+		.release	=  bbd_common_release,
+		.read		=  bbd_urgent_patch_read,
+		.write		=  NULL, /* /dev/bbd_patch is read-only */
+		.poll		=  NULL,
+	},
+
 	/*
 	 *bbd ssi spi debug operations
 	 *{

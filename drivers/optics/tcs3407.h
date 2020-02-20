@@ -15,10 +15,10 @@
  */
 
 /*! \file
-* \brief Device driver for monitoring ambient light intensity in (lux)
-* proximity detection (prox), and Beam functionality within the
-* AMS TMX49xx family of devices.
-*/
+ * \brief Device driver for monitoring ambient light intensity in (lux)
+ * proximity detection (prox), and Beam functionality within the
+ * AMS TMX49xx family of devices.
+ */
 
 #ifndef __AMS_TCS3407_H
 #define __AMS_TCS3407_H
@@ -55,7 +55,7 @@
 #include <linux/of_device.h>
 #endif
 
-#define HEADER_VERSION		"13"
+#define HEADER_VERSION		"17"
 
 #define CONFIG_AMS_ALS_CRGBW
 #ifndef CONFIG_AMS_OPTICAL_SENSOR_FIFO
@@ -318,8 +318,8 @@ typedef enum _deviceIdentifier_e {
 	AMS_UNKNOWN_DEVICE,
 	AMS_TCS3407,
 	AMS_TCS3407_UNTRIM,
-	AMS_TMD4907,
-	AMS_TMD4906,
+	AMS_TCS3408,
+	AMS_TCS3408_UNTRIM,
 	AMS_LAST_DEVICE
 } ams_deviceIdentifier_e;
 
@@ -332,14 +332,16 @@ typedef enum _deviceIdentifier_e {
 #define AMS_REV_ID_MASK     0xFF
 
 
-/*TMD4907 */
-/*0x92 ID(0x18), 0x91 REVID(0x51)*/
+/*TCS3408 */
+/*0x92 ID(0x18), 0x91 REVID(0x53)*/
 #define AMS_DEVICE_ID2       0x18
 #define AMS_DEVICE_ID2_MASK  0xFF
-#define AMS_REV_ID2          0x00
+#define AMS_REV_ID2          0x53
+#define AMS_REV_ID2_UNTRIM          0x03
 #define AMS_REV_ID2_MASK     0xFF
 
 
+/*NOT USED*/
 #define AMS_DEVICE_ID3       0xEC
 #define AMS_DEVICE_ID3_MASK  0xFC
 #define AMS_REV_ID3          0x00
@@ -354,6 +356,9 @@ typedef enum _deviceIdentifier_e {
 #define AMS_ALS_REG_TO_PERS(x)		(x >> 0)
 
 typedef enum _deviceRegisters {
+	DEVREG_RAM_START, 
+	DEVREG_SMUX13_PRX_TO_FLICKER,
+
 	DEVREG_ENABLE,
 	DEVREG_ATIME,
 	DEVREG_PTIME,
@@ -979,7 +984,7 @@ struct tcs3407_device_data {
 	s32 dev_irq;
 	u8 irq_state;
 	u32 reg_read_buf;
-	u8 debug_mode;
+	u32 debug_mode;
 	struct mode_count mode_cnt;
 #ifdef CONFIG_ARCH_QCOM
 	struct pm_qos_request pm_qos_req_fpm;
@@ -1006,7 +1011,11 @@ struct tcs3407_device_data {
 	u32 eol_pulse_count;
 	u32 eol_ir_spec[4];
 	u32 eol_clear_spec[4];
+	u32 eol_icratio_spec[4];
 	s32 pin_led_en;
+	struct pinctrl_state *pinctrl_pwm;
+	struct pinctrl_state *pinctrl_out;
+	struct pwm_device *pwm;
 #endif
 
 #ifdef CONFIG_AMS_OPTICAL_SENSOR_FIFO

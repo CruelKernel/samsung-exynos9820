@@ -171,5 +171,9 @@ config CP_ETDAC_OTP_WA
 	bool "Support CP ET-DAC OTP"
 	default n
 
+config KLAT
+	bool "kernel CLAT"
+	default n
+
 endmenu
 endif

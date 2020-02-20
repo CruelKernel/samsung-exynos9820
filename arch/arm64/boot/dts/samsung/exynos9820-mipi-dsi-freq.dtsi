@@ -1,0 +1,102 @@
+/*
+ * SAMSUNG LCD Panel Device Tree Source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/ {
+	fragment@mipi_freq {
+		target-path = "/";
+		__overlay__ {
+			freq_897: freq_897 {
+				hs-clk = <897>;
+				pmsk = <
+					2 138 2 0
+					13 3 1 0
+					0 0 0 0
+					0 0 >;
+				cmd_underrun_lp_ref = <2877 5278 6994>;
+			};
+
+			freq_903_5: freq_903_5 {
+				hs-clk = <903>;
+				pmsk = <
+					2 139 2 0
+					13 3 1 0
+					0 0 0 0
+					0 0 >;
+				cmd_underrun_lp_ref = <2928 5334 7046>;
+			};
+
+			freq_910: freq_910 {
+				hs-clk = <910>;
+				pmsk = <
+					2 140 2 0
+					13 3 1 0
+					0 0 0 0
+					0 0 >;
+				cmd_underrun_lp_ref = <2989 5390 7106>;
+			};
+
+			freq_929_5: freq_929_5 {
+				hs-clk = <929>;
+				pmsk = <
+					2 143 2 0
+					13 3 1 0
+					0 0 0 0 0
+					0 0 >;
+				escape-clk = <20>;
+				cmd_underrun_lp_ref = <3171 5571 7288>;
+			};
+
+			freq_1143: freq_1143 {
+				hs-clk = <1143>;
+				pmsk = <
+					0x02 0xB0 0x02 0xD89E
+					0x0D 0x04 0x00 0x00
+					0x00 0x00 0x00 0x00
+					0x00 0x00>;
+				escape-clk = <20>;
+				cmd_underrun_lp_ref = <1407>;
+			};
+
+			freq_1150: freq_1150 {
+				hs-clk = <1150>;
+				pmsk = <
+					0x02 0xB1 0x2 0xEC4F
+					0x0D 0x04 0x00 0x00
+					0x00 0x00 0x00 0x00
+					0x00 0x00>;
+				escape-clk = <20>;
+				cmd_underrun_lp_ref = <1472>;
+			};
+
+			freq_1157: freq_1157 {
+				hs-clk = <1157>;
+				pmsk = <
+					0x02 0xB2 0x02 0x00
+					0x0D 0x04 0x00 0x00
+					0x00 0x00 0x00 0x00
+					0x00 0x00>;
+				escape-clk = <20>;
+				cmd_underrun_lp_ref = <1537>;
+			};
+
+			freq_1176: freq_1176 {
+				hs-clk = <1176>;
+				pmsk = <
+					0x02 0xB5 0x02 0x00
+					0x0D 0x04 0x00 0x00
+					0x00 0x00 0x00 0x00
+					0x00 0x00>;
+				escape-clk = <20>;
+				cmd_underrun_lp_ref = <1724>;
+			};
+		};
+	};
+};

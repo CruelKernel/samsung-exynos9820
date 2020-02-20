@@ -424,6 +424,7 @@ struct fimc_is_device_sensor {
 	u32						sstream;
 	u32						num_buffers;
 	u32						ex_mode;
+	u32						ex_scenario;
 
 #ifdef ENABLE_INIT_AWB
 	/* backup AWB gains for use initial gain */

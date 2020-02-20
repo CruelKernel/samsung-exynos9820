@@ -79,12 +79,13 @@ struct abox_dbg_dump {
 struct abox_dbg_dump_min {
 	struct abox_dbg_dump_sram sram;
 	struct abox_dbg_dump_dram *dram;
-	struct page **pages;
 	struct abox_dbg_dump_sfr sfr;
 	u32 sfr_gic_gicd[SZ_4K / sizeof(u32)];
 	unsigned int gpr[SZ_128];
 	long long time;
 	char reason[SZ_32];
+	struct page **pages;
+	struct vm_struct *abox_dram_vmarea;
 } __packed;
 
 static struct abox_dbg_dump (*p_abox_dbg_dump)[ABOX_DBG_DUMP_COUNT];
@@ -131,6 +132,7 @@ static void *abox_dbg_alloc_mem_atomic(struct device *dev,
 {
 	int i, j;
 	int npages = DIV_ROUND_UP(sizeof(*p_dump->dram), PAGE_SIZE);
+	pgprot_t prot = pgprot_writecombine(PAGE_KERNEL);
 	struct page **tmp;
 	gfp_t alloc_gfp_flag = GFP_ATOMIC;
 
@@ -149,7 +151,14 @@ static void *abox_dbg_alloc_mem_atomic(struct device *dev,
 		}
 	}
 
-	return vm_map_ram(p_dump->pages, npages, -1, PAGE_KERNEL);
+	if (map_vm_area(p_dump->abox_dram_vmarea, prot, p_dump->pages)) {
+		dev_err(dev, "Failed to map ABOX DRAM into kernel vaddr\n");
+			goto free_pg;
+	}
+
+	memset(p_dump->abox_dram_vmarea->addr, 0x0, npages * PAGE_SIZE);
+
+	return p_dump->abox_dram_vmarea->addr;
 
 free_pg:
 	tmp = p_dump->pages;
@@ -479,15 +488,22 @@ static int samsung_abox_debug_probe(struct platform_device *pdev)
 		if (sizeof(*p_abox_dbg_dump) <= abox_rmem->size) {
 			p_abox_dbg_dump = abox_rmem_vmap(abox_rmem);
 			data->dump_base = p_abox_dbg_dump;
+			memset(data->dump_base, 0x0, abox_rmem->size);
 		} else if (sizeof(*p_abox_dbg_dump_min) <= abox_rmem->size) {
 			p_abox_dbg_dump_min = abox_rmem_vmap(abox_rmem);
-			data->dump_base =  p_abox_dbg_dump_min;
+			data->dump_base = p_abox_dbg_dump_min;
+			memset(data->dump_base, 0x0, abox_rmem->size);
+			for (i = 0; i < ABOX_DBG_DUMP_COUNT; i++) {
+				struct abox_dbg_dump_min *p_dump = &(*p_abox_dbg_dump_min)[i];
+
+				p_dump->abox_dram_vmarea =
+					get_vm_area(sizeof(*p_dump->dram), VM_ALLOC);
+			}
 		}
 
 		data->dump_base_phys = abox_rmem->base;
 		abox_iommu_map(abox_dev, IOVA_DUMP_BUFFER, abox_rmem->base,
 				abox_rmem->size, data->dump_base);
-		memset(data->dump_base, 0x0, abox_rmem->size);
 	}
 
 	ret = device_create_file(dev, &dev_attr_gpr);

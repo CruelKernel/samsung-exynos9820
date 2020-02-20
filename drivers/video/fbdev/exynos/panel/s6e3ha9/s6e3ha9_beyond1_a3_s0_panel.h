@@ -859,11 +859,11 @@ static u8 BEYOND1_A3_S0_GAMMA_UPDATE_ENABLE[] = { 0xF7, 0x03 };
 static u8 BEYOND1_A3_S0_ACL_ONOFF[] = { 0x55, 0x00 };
 static u8 BEYOND1_A3_S0_ACL_CONTROL[] = { 0xB4, 0x00, 0x44, 0x80, 0x65, 0x26, 0x00 };
 static u8 BEYOND1_A3_S0_ACL_DIM_FRM[] = { 0xB4, 0x20 };
-#ifdef CONFIG_SUPPORT_DSU
+
 static u8 BEYOND1_A3_S0_SCALER[] = { 0xBA, 0x01, 0x26, 0x08, 0x08, 0xF3};
 static u8 BEYOND1_A3_S0_CASET[] = { 0x2A, 0x00, 0x00, 0x05, 0x9F };
 static u8 BEYOND1_A3_S0_PASET[] = { 0x2B, 0x00, 0x00, 0x09, 0xFF };
-#endif
+
 static u8 BEYOND1_A3_S0_LPM_AOR[] =  { 0xB1, 0x0B, 0xC8 }; /*AOR 98.4*/
 static u8 BEYOND1_A3_S0_LPM_NIT[] = {0xBB, 0x00, 0x0C, 0x00, 0x00, 0x9E, 0x00};
 static u8 BEYOND1_A3_S0_LPM_MODE[] = { 0x53, 0x00 };
@@ -1047,6 +1047,11 @@ static u8 BEYOND1_A3_S0_GRAYSPOT_OFF_02[] = {
 };
 #endif
 
+static void *beyond1_a3_s0_check_condition_cmdtbl[] = {
+	&KEYINFO(beyond1_a3_s0_level2_key_enable),
+	&s6e3ha9_dmptbl[DUMP_RDDPM],
+	&KEYINFO(beyond1_a3_s0_level2_key_disable),
+};
 
 #ifdef CONFIG_SUPPORT_ISC_TUNE_TEST
 static u8 BEYOND1_A3_S0_ISC_THRESHOLD[] = {0xF6, 0x43};
@@ -1081,14 +1086,12 @@ static DEFINE_VARIABLE_PACKET(beyond1_a3_s0_dsc, DSI_PKT_TYPE_COMP, BEYOND1_A3_S
 static DEFINE_PKTUI(beyond1_a3_s0_pps, &beyond1_a3_s0_maptbl[PPS_MAPTBL], 0);
 static DEFINE_VARIABLE_PACKET(beyond1_a3_s0_pps, DSI_PKT_TYPE_PPS, BEYOND1_A3_S0_PPS, 0);
 
-#ifdef CONFIG_SUPPORT_DSU
 static DEFINE_PKTUI(beyond1_a3_s0_scaler, &beyond1_a3_s0_maptbl[SCALER_MAPTBL], 1);
 static DEFINE_VARIABLE_PACKET(beyond1_a3_s0_scaler, DSI_PKT_TYPE_WR, BEYOND1_A3_S0_SCALER, 0);
 static DEFINE_PKTUI(beyond1_a3_s0_caset, &beyond1_a3_s0_maptbl[CASET_MAPTBL], 1);
 static DEFINE_VARIABLE_PACKET(beyond1_a3_s0_caset, DSI_PKT_TYPE_WR, BEYOND1_A3_S0_CASET, 0);
 static DEFINE_PKTUI(beyond1_a3_s0_paset, &beyond1_a3_s0_maptbl[PASET_MAPTBL], 1);
 static DEFINE_VARIABLE_PACKET(beyond1_a3_s0_paset, DSI_PKT_TYPE_WR, BEYOND1_A3_S0_PASET, 0);
-#endif
 
 static DEFINE_STATIC_PACKET(beyond1_a3_s0_set_area, DSI_PKT_TYPE_WR, BEYOND1_A3_S0_SET_AREA, 0);
 static DEFINE_STATIC_PACKET(beyond1_a3_s0_lpm_aor, DSI_PKT_TYPE_WR, BEYOND1_A3_S0_LPM_AOR, 0);
@@ -1376,13 +1379,11 @@ static void *beyond1_a3_s0_init_cmdtbl[] = {
 	&s6e3ha9_restbl[RES_POC_CHKSUM],
 	&KEYINFO(beyond1_a3_s0_level2_key_disable),
 #endif
-#ifdef CONFIG_SUPPORT_DSU
 	&KEYINFO(beyond1_a3_s0_level2_key_enable),
 	&PKTINFO(beyond1_a3_s0_scaler),
 	&KEYINFO(beyond1_a3_s0_level2_key_disable),
 	&PKTINFO(beyond1_a3_s0_caset),
 	&PKTINFO(beyond1_a3_s0_paset),
-#endif
 	&KEYINFO(beyond1_a3_s0_level1_key_enable),
 	&PKTINFO(beyond1_a3_s0_set_area),
 	&PKTINFO(beyond1_a3_s0_te_on),
@@ -2048,17 +2049,7 @@ static void *beyond1_a3_s0_dummy_cmdtbl[] = {
 	&PKTINFO(beyond1_a3_s0_avc2_on),
 	&PKTINFO(beyond1_a3_s0_lpm_off_dyn_vlin),
 	&DLYINFO(beyond1_a3_s0_wait_1_frame_in_30hz),
-#ifdef CONFIG_SUPPORT_DSU
-	&KEYINFO(beyond1_a3_s0_level2_key_enable),
-	&PKTINFO(beyond1_a3_s0_scaler),
-	&KEYINFO(beyond1_a3_s0_level2_key_disable),
-	&PKTINFO(beyond1_a3_s0_caset),
-	&PKTINFO(beyond1_a3_s0_paset),
-
-	&KEYINFO(beyond1_a3_s0_level3_key_enable),
-	&KEYINFO(beyond1_a3_s0_level3_key_disable),
-#endif
-	&PKTINFO(beyond1_a3_s0_te_off),
+ 	&PKTINFO(beyond1_a3_s0_te_off),
 };
 
 static struct seqinfo beyond1_a3_s0_preliminary_seqtbl[MAX_PANEL_SEQ] = {
@@ -2126,6 +2117,7 @@ static struct seqinfo beyond1_a3_s0_preliminary_seqtbl[MAX_PANEL_SEQ] = {
 	[PANEL_STM_TUNE_SEQ] = SEQINFO_INIT("stm-tune-seq", beyond1_a3_s0_stm_tune_cmdtbl),
 #endif
 	[PANEL_GAMMA_INTER_CONTROL_SEQ] = SEQINFO_INIT("gamma-control-seq", beyond1_a3_s0_gamma_inter_control_cmdtbl),
+	[PANEL_CHECK_CONDITION_SEQ] = SEQINFO_INIT("check-condition-seq", beyond1_a3_s0_check_condition_cmdtbl),
 	[PANEL_DUMP_SEQ] = SEQINFO_INIT("dump-seq", beyond1_a3_s0_dump_cmdtbl),
 	[PANEL_DUMMY_SEQ] = SEQINFO_INIT("dummy-seq", beyond1_a3_s0_dummy_cmdtbl),
 };
@@ -2195,6 +2187,7 @@ static struct seqinfo beyond1_a3_s0_seqtbl[MAX_PANEL_SEQ] = {
 	[PANEL_SPI_IF_OFF_SEQ] = SEQINFO_INIT("spi-if-off-seq", beyond1_a3_s0_spi_if_off_cmdtbl),
 #endif
 	[PANEL_GAMMA_INTER_CONTROL_SEQ] = SEQINFO_INIT("gamma-control-seq", beyond1_a3_s0_gamma_inter_control_cmdtbl),
+	[PANEL_CHECK_CONDITION_SEQ] = SEQINFO_INIT("check-condition-seq", beyond1_a3_s0_check_condition_cmdtbl),
 	[PANEL_DUMP_SEQ] = SEQINFO_INIT("dump-seq", beyond1_a3_s0_dump_cmdtbl),
 	[PANEL_DUMMY_SEQ] = SEQINFO_INIT("dummy-seq", beyond1_a3_s0_dummy_cmdtbl),
 };

@@ -720,6 +720,7 @@ static int __init fimc_is_reserved_mem_setup(struct reserved_mem *rmem)
 	u64 kbase;
 	int len;
 #ifdef CONFIG_UH_RKP
+	u64 roundup_end_addr;
 	rkp_dynamic_load_t rkp_dyn;
 	int ret;
 #endif
@@ -747,13 +748,14 @@ static int __init fimc_is_reserved_mem_setup(struct reserved_mem *rmem)
 #ifdef CONFIG_UH_RKP
 	memcpy(&fimc_lib_vm_for_rkp, &fimc_is_lib_vm, sizeof(struct vm_struct));
 
+	roundup_end_addr = (u64)roundup((u64)fimc_is_lib_vm.addr + (u64)fimc_is_lib_vm.size, SECTION_SIZE);
 	fimc_lib_vm_for_rkp.addr = (void *)rounddown((u64)fimc_lib_vm_for_rkp.addr, SECTION_SIZE);
-	fimc_lib_vm_for_rkp.size = (u64)roundup(fimc_lib_vm_for_rkp.size, SECTION_SIZE);
+	fimc_lib_vm_for_rkp.size = roundup_end_addr - (u64)fimc_lib_vm_for_rkp.addr;
 
 	rkp_dyn.binary_base = fimc_is_lib_vm.phys_addr;
 	rkp_dyn.binary_size = LIB_SIZE;
 	rkp_dyn.type = RKP_DYN_COMMAND_BREAKDOWN_BEFORE_INIT;
-	ret = uh_call(UH_APP_RKP, RKP_DYNAMIC_LOAD, RKP_DYN_COMMAND_BREAKDOWN_BEFORE_INIT,(u64)&rkp_dyn, 0, 0);
+	ret = uh_call(UH_APP_RKP, RKP_DYNAMIC_LOAD, RKP_DYN_COMMAND_BREAKDOWN_BEFORE_INIT, (u64)&rkp_dyn, 0, 0);
 	if (ret) {
 		err_lib("fail to break-before-init FIMC in EL2");
 	}
@@ -781,6 +783,7 @@ static int __init fimc_is_lib_mem_alloc(char *str)
 {
 	ulong addr = 0;
 #ifdef CONFIG_UH_RKP
+	u64 roundup_end_addr;
 	rkp_dynamic_load_t rkp_dyn;
 	int ret;
 #endif
@@ -800,8 +803,9 @@ static int __init fimc_is_lib_mem_alloc(char *str)
 #ifdef CONFIG_UH_RKP
 	memcpy(&fimc_lib_vm_for_rkp, &fimc_is_lib_vm, sizeof(struct vm_struct));
 
+	roundup_end_addr = (u64)roundup((u64)fimc_is_lib_vm.addr + (u64)fimc_is_lib_vm.size, SECTION_SIZE);
 	fimc_lib_vm_for_rkp.addr = (void *)rounddown((u64)fimc_lib_vm_for_rkp.addr, SECTION_SIZE);
-	fimc_lib_vm_for_rkp.size = (u64)roundup(fimc_lib_vm_for_rkp.size, SECTION_SIZE);
+	fimc_lib_vm_for_rkp.size = roundup_end_addr - (u64)fimc_lib_vm_for_rkp.addr;
 
 	rkp_dyn.binary_base = fimc_is_lib_vm.phys_addr;
 	rkp_dyn.binary_size = LIB_SIZE;
@@ -811,7 +815,6 @@ static int __init fimc_is_lib_mem_alloc(char *str)
 		err_lib("fail to break-before-init FIMC in EL2");
 	}
 	vm_area_add_early(&fimc_lib_vm_for_rkp);
-	// vm_area_add_early(&fimc_is_lib_vm);
 #else
 	vm_area_add_early(&fimc_is_lib_vm);
 #endif
@@ -2093,23 +2096,14 @@ void fimc_is_resource_set_global_param(struct fimc_is_resourcemgr *resourcemgr, 
 	bool video_mode;
 	struct fimc_is_device_ischain *ischain = device;
 	struct fimc_is_global_param *global_param = &resourcemgr->global_param;
-	int fps;
-	enum fimc_is_ex_mode ex_mode;
 
 	mutex_lock(&global_param->lock);
 
 	if (!global_param->state) {
 		video_mode = IS_VIDEO_SCENARIO(ischain->setfile & FIMC_IS_SETFILE_MASK);
-		fps = fimc_is_sensor_g_framerate(ischain->sensor);
-		ex_mode = fimc_is_sensor_g_ex_mode(ischain->sensor);
 		global_param->video_mode = video_mode;
 		ischain->hardware->video_mode = video_mode;
-		ischain->hardware->hs_mode =
-			(fps > 60 || ex_mode == EX_DUALFPS_960) ? true : false;
-
-		minfo("video_mode %d hs_mode %d\n", ischain,
-				video_mode,
-				ischain->hardware->hs_mode);
+		minfo("video mode %d\n", ischain, video_mode);
 	}
 
 	set_bit(ischain->instance, &global_param->state);

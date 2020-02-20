@@ -67,7 +67,7 @@ void exynos_host_v1_phy_all_pwrdn(void *phy_base_regs, void *phy_pcs_base_regs,
 	iounmap(cmu_fsys0_base);
 #endif
 
-	writel(0x3, phy_base_regs + 0x400);
+	writel(0x23, phy_base_regs + 0x400);
 }
 
 /* PHY all power down clear */
@@ -139,9 +139,8 @@ void exynos_host_v1_pcie_phy_config(void *phy_base_regs, void *phy_pcs_base_regs
 
 	writel(0x20, phy_base_regs + 0x44C);
 	writel(0x20, phy_base_regs + 0x488);
-	writel(0x1, phy_base_regs + 0x438); /*  PHY power down delay enable */
-	writel(0x8A, phy_base_regs + 0x450); /* mask_refclk_out_en*/
-
+	writel(0x1, phy_base_regs + 0x438);	/* enable PHY power down delay */
+	writel(0x8A, phy_base_regs + 0x450);	/* mask_refclk_out_en*/
 
 
 #if IS_ENABLED(CONFIG_EXYNOS_OTP)

@@ -32,6 +32,7 @@ enum {
 	CPU_MAX_FREQ,
 #endif
 };
+extern bool mfc_fw_update;
 
 ssize_t max77705_chg_show_attrs(struct device *dev,
 				struct device_attribute *attr, char *buf);
@@ -217,12 +218,16 @@ ssize_t max77705_chg_store_attrs(struct device *dev,
 #define CHG_CNFG_05_REG_B2SOVRC_SHIFT	0
 #define CHG_CNFG_05_REG_B2SOVRC_MASK	(0xF << CHG_CNFG_05_REG_B2SOVRC_SHIFT)
 #define MAX77705_B2SOVRC_DISABLE	0x0
-#define MAX77705_B2SOVRC_4_5A		0x6
+#define MAX77705_B2SOVRC_4_6A		0x7
 #define MAX77705_B2SOVRC_4_8A		0x8
 #define MAX77705_B2SOVRC_5_0A		0x9
 #define MAX77705_B2SOVRC_5_2A		0xA
 #define MAX77705_B2SOVRC_5_4A		0xB
 #define MAX77705_B2SOVRC_5_6A		0xC
+#define MAX77705_B2SOVRC_5_8A		0xD
+#define MAX77705_B2SOVRC_6_0A		0xE
+#define MAX77705_B2SOVRC_6_2A		0xF
+
 #define CHG_CNFG_05_REG_UNOILIM_SHIFT	4
 #define CHG_CNFG_05_REG_UNOILIM_MASK	(0x7 << CHG_CNFG_05_REG_UNOILIM_SHIFT)
 #define MAX77705_UNOILIM_200		0x1
@@ -240,6 +245,9 @@ ssize_t max77705_chg_store_attrs(struct device *dev,
 #define CHG_CNFG_06_DIS_AICL_SHIFT		4
 #define CHG_CNFG_06_DIS_AICL_MASK		(0x1 << CHG_CNFG_06_DIS_AICL_SHIFT)
 #define MAX77705_DIS_AICL			0x0
+#define CHG_CNFG_06_B2SOVRC_DTC_SHIFT	7
+#define CHG_CNFG_06_B2SOVRC_DTC_MASK	(0x1 << CHG_CNFG_06_B2SOVRC_DTC_SHIFT)
+#define MAX77705_B2SOVRC_DTC_100MS		0x1
 
 /* MAX77705_CHG_REG_CHG_CNFG_07 */
 #define MAX77705_CHG_FMBST			0x04

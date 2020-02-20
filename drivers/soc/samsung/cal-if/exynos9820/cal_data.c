@@ -387,6 +387,11 @@ static int asv_summary_show(struct seq_file *s, void *d)
 	for (i = 0; i < ASV_SUMMARY_SZ ; i++)
 		seq_printf(s, "%s: %d\n", label[i], asv_get_grp(dvfs_mif + i));
 
+	seq_printf(s, "IDS (b,m,l,g): %d, %d, %d, %d\n",
+			asv_get_ids_info(dvfs_cpucl2),
+			asv_get_ids_info(dvfs_cpucl1),
+			asv_get_ids_info(dvfs_cpucl0),
+			asv_get_ids_info(dvfs_g3d));
 	return 0;
 }
 

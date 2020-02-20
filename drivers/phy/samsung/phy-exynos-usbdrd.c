@@ -26,6 +26,8 @@
 #include <linux/mfd/syscon/exynos5-pmu.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/driver.h>
+#include "../../regulator/internal.h"
 #include <linux/usb/samsung_usb.h>
 #include <linux/usb/otg.h>
 #if IS_ENABLED(CONFIG_EXYNOS_OTP)
@@ -1442,29 +1444,31 @@ static int exynos_usbdrd_phy_tune(struct phy *phy, int phy_state)
 
 void exynos_usbdrd_ldo_control(struct exynos_usbdrd_phy *phy_drd, int on)
 {
+	struct regulator *r_ldo10, *r_ldo11, *r_ldo12;	
 	int ret1 = 0;
 	int ret2 = 0;
 	int ret3 = 0;
 
 	dev_info(phy_drd->dev, "Turn %s LDO\n", on ? "on" : "off");
 
+	r_ldo10 = phy_drd->ldo10;
+	r_ldo11 = phy_drd->ldo11;
+	r_ldo12 = phy_drd->ldo12;
+
 	if (on) {
-		if (!regulator_is_enabled(phy_drd->ldo10))
-			ret1 = regulator_enable(phy_drd->ldo10);
-		if (!regulator_is_enabled(phy_drd->ldo11))
-			ret2 = regulator_enable(phy_drd->ldo11);
-		if (!regulator_is_enabled(phy_drd->ldo12))
-			ret3 = regulator_enable(phy_drd->ldo12);
+		ret1 = regulator_enable(r_ldo10);
+		ret2 = regulator_enable(r_ldo11);
+		ret3 = regulator_enable(r_ldo12);
 		if (ret1 || ret2 || ret3) {
 			dev_err(phy_drd->dev, "Failed to enable USB LDOs: %d %d %d\n",
 				ret1, ret2, ret3);
 		}
 	} else {
-		if (regulator_is_enabled(phy_drd->ldo10))
+		if (r_ldo10->rdev->use_count > 0)
 			ret1 = regulator_disable(phy_drd->ldo10);
-		if (regulator_is_enabled(phy_drd->ldo11))
+		if (r_ldo11->rdev->use_count > 0)
 			ret2 = regulator_disable(phy_drd->ldo11);
-		if (regulator_is_enabled(phy_drd->ldo12))
+		if (r_ldo12->rdev->use_count > 0)
 			ret3 = regulator_disable(phy_drd->ldo12);
 		if (ret1 || ret2 || ret3) {
 			dev_err(phy_drd->dev, "Failed to disable USB LDOs: %d %d %d\n",

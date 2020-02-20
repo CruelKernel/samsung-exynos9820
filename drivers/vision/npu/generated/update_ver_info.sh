@@ -10,7 +10,8 @@ then
 	NPU_GIT_LOCAL_CHANGE="No local change"
 fi
 STASH_DEPTH=`git stash list | wc -l`
-BUILD_INFO="$(whoami)@$(hostname) / Build on $(date --rfc-3339='seconds')"
+USER_INFO=whoami|sed 's/\\/\-/g'
+BUILD_INFO="$(USER_INFO)@$(hostname) / Build on $(date --rfc-3339='seconds')"
 
 cat > $TARGET_FILE << ENDL
 const char *npu_git_log_str =

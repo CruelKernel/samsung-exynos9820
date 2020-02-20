@@ -945,6 +945,7 @@ void dsim_reg_set_phy_selection(u32 id, u32 sel)
 	dsim_write_mask(id, DSIM_CONFIG, val, DSIM_CONFIG_PHY_SELECTION);
 }
 
+#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
 static void dsim_reg_set_vfp(u32 id, u32 vfp)
 {
 	u32 val = DSIM_VPORCH_VFP_TOTAL(vfp);
@@ -956,22 +957,14 @@ static void dsim_reg_set_cmdallow(u32 id, u32 cmdallow)
 {
 	u32 val = DSIM_VPORCH_VFP_CMD_ALLOW(cmdallow);
 
-#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
 	dsim_write_mask(id, DSIM_VPORCH, val, DSIM_VPORCH_VFP_CMD_ALLOW_MASK);
-#else
-	dsim_write_mask(id, DSIM_VFP_DETAIL, val, DSIM_VPORCH_VFP_CMD_ALLOW_MASK);
-#endif
 }
 
 static void dsim_reg_set_stable_vfp(u32 id, u32 stablevfp)
 {
 	u32 val = DSIM_VPORCH_STABLE_VFP(stablevfp);
 
-#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
 	dsim_write_mask(id, DSIM_VPORCH, val, DSIM_VPORCH_STABLE_VFP_MASK);
-#else
-	dsim_write_mask(id, DSIM_VFP_DETAIL, val, DSIM_VPORCH_STABLE_VFP_MASK);
-#endif
 }
 
 static void dsim_reg_set_vbp(u32 id, u32 vbp)
@@ -980,6 +973,20 @@ static void dsim_reg_set_vbp(u32 id, u32 vbp)
 
 	dsim_write_mask(id, DSIM_VPORCH, val, DSIM_VPORCH_VBP_MASK);
 }
+#else
+static void dsim_reg_set_vporch(u32 id, u32 vbp, u32 vfp)
+{
+	u32 val = DSIM_VPORCH_VFP_TOTAL(vfp) | DSIM_VPORCH_VBP(vbp);
+	dsim_write(id, DSIM_VPORCH, val);
+}
+
+static void dsim_reg_set_vfp_detail(u32 id, u32 cmd_allow, u32 stable_vfp)
+{
+	u32 val = DSIM_VPORCH_VFP_CMD_ALLOW(cmd_allow)
+		| DSIM_VPORCH_STABLE_VFP(stable_vfp);
+	dsim_write(id, DSIM_VFP_DETAIL, val);
+}
+#endif
 
 static void dsim_reg_set_hfp(u32 id, u32 hfp)
 {
@@ -1033,10 +1040,23 @@ static void dsim_reg_set_hresol(u32 id, u32 hresol, struct decon_lcd *lcd)
 static void dsim_reg_set_porch(u32 id, struct decon_lcd *lcd)
 {
 	if (lcd->mode == DECON_VIDEO_MODE) {
+#if defined(CONFIG_SOC_EXYNOS9820_EVT0)
 		dsim_reg_set_vbp(id, lcd->vbp);
 		dsim_reg_set_vfp(id, lcd->vfp);
 		dsim_reg_set_stable_vfp(id, DSIM_STABLE_VFP_VALUE);
 		dsim_reg_set_cmdallow(id, DSIM_CMD_ALLOW_VALUE);
+#else
+		/*
+		 * In EVT1, v-porch bit-field was extended to 16-bit.
+		 * write_mask can't be used to write v-porch field in EVT1
+		 * because correct v-porch value can not be read in registers.
+		 * So, we changed the 32-bit value to write at once.
+		 */
+		dsim_reg_set_vporch(id, lcd->vbp, lcd->vfp);
+		dsim_reg_set_vfp_detail(id,
+				DSIM_CMD_ALLOW_VALUE,
+				DSIM_STABLE_VFP_VALUE);
+#endif
 		dsim_reg_set_hbp(id, lcd->hbp);
 		dsim_reg_set_hfp(id, lcd->hfp);
 		dsim_reg_set_vsa(id, lcd->vsa);

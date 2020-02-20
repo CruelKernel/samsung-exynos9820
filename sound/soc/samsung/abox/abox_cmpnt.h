@@ -37,6 +37,13 @@ extern void abox_cmpnt_asrc_release(struct snd_soc_component *cmpnt, int stream,
 		int idx);
 
 /**
+ * update asrc tick
+ * @param[in]	adev	pointer to abox device
+ * @return		0 or error code
+ */
+extern int abox_cmpnt_update_asrc_tick(struct device *adev);
+
+/**
  * adjust sample bank size
  * @param[in]	cmpnt	component
  * @param[in]	id	id of ABOX DAI

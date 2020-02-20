@@ -49,7 +49,6 @@
 #include <linux/prefetch.h>
 #include <linux/printk.h>
 #include <linux/dax.h>
-#include <linux/psi.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -1410,54 +1409,6 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 	return ret;
 }
 
-/* A caller should guarantee that start and end pfns are in the same zone */
-void reclaim_contig_migrate_range(unsigned long start,
-						unsigned long end, bool drain)
-{
-	/* This function is based on __alloc_contig_migrate_range */
-	unsigned long nr_reclaimed;
-	unsigned long pfn = start;
-	struct compact_control cc = {
-		.zone = page_zone(pfn_to_page(start)),
-		.nr_freepages = 0,
-		.nr_migratepages = 0,
-		.mode = MIGRATE_SYNC_LIGHT,
-		.gfp_mask = GFP_KERNEL,
-	};
-	unsigned long total_reclaimed = 0;
-
-	INIT_LIST_HEAD(&cc.freepages);
-	INIT_LIST_HEAD(&cc.migratepages);
-
-	if (drain)
-		migrate_prep();
-
-	while (pfn < end) {
-		if (fatal_signal_pending(current)) {
-			pr_warn_once("%s %d got fatal signal\n",
-						__func__, __LINE__);
-			break;
-		}
-
-		if (list_empty(&cc.migratepages)) {
-			cc.nr_migratepages = 0;
-			pfn = isolate_migratepages_range(&cc, pfn, end);
-			if (!pfn)
-				break;
-		}
-
-		nr_reclaimed = reclaim_clean_pages_from_list(cc.zone,
-							&cc.migratepages);
-		cc.nr_migratepages -= nr_reclaimed;
-		total_reclaimed += nr_reclaimed;
-
-		/* Skip pages not reclaimed in the above */
-		if (cc.nr_migratepages)
-			putback_movable_pages(&cc.migratepages);
-	}
-	trace_printk("%lu\n", total_reclaimed << PAGE_SHIFT);
-}
-
 /*
  * Attempt to remove the specified page from its LRU.  Only take this page
  * if it is of the appropriate PageActive status.  Pages which are being
@@ -2126,7 +2077,6 @@ static void shrink_active_list(unsigned long nr_to_scan,
 		}
 
 		ClearPageActive(page);	/* we are de-activating */
-		SetPageWorkingset(page);
 		list_add(&page->lru, &l_inactive);
 	}
 
@@ -2262,45 +2212,16 @@ enum mem_boost {
 static int mem_boost_mode = NO_BOOST;
 static unsigned long last_mode_change;
 static bool memory_boosting_disabled = false;
+static bool am_app_launch = false;
 
 #define MEM_BOOST_MAX_TIME (5 * HZ) /* 5 sec */
 
 #ifdef CONFIG_SYSFS
-enum rbin_alloc_policy {
-	RBIN_ALLOW = 0,
-	RBIN_DENY = 1,
-};
-
-#ifdef CONFIG_RBIN
-static void set_rbin_alloc_policy(enum rbin_alloc_policy val)
-{
-	struct zone *zone;
-
-	if (val == RBIN_ALLOW)
-		wake_ion_rbin_heap_shrink();
-	for_each_populated_zone(zone) {
-		atomic_set(&zone->rbin_alloc, val);
-		if (val)
-			wakeup_kswapd(zone, 0, gfp_zone(GFP_KERNEL));
-	}
-}
-#else
-static inline void set_rbin_alloc_policy(enum rbin_alloc_policy val) {}
-#endif
-
-void test_and_set_mem_boost_timeout(void)
-{
-	if ((mem_boost_mode != NO_BOOST) &&
-	    time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME)) {
-		mem_boost_mode = NO_BOOST;
-		set_rbin_alloc_policy(RBIN_ALLOW);
-	}
-}
-
 static ssize_t mem_boost_mode_show(struct kobject *kobj,
 				    struct kobj_attribute *attr, char *buf)
 {
-	test_and_set_mem_boost_timeout();
+	if (time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME))
+		mem_boost_mode = NO_BOOST;
 	return sprintf(buf, "%d\n", mem_boost_mode);
 }
 
@@ -2317,14 +2238,22 @@ static ssize_t mem_boost_mode_store(struct kobject *kobj,
 
 	mem_boost_mode = mode;
 	last_mode_change = jiffies;
-	if (mem_boost_mode == BOOST_HIGH) {
-#ifdef CONFIG_ION_RBIN_HEAP
+	if (mem_boost_mode == BOOST_HIGH)
 		wake_ion_rbin_heap_prereclaim();
-#endif
-		set_rbin_alloc_policy(RBIN_DENY);
-	}
 
 	return count;
+}
+
+ATOMIC_NOTIFIER_HEAD(am_app_launch_notifier);
+
+int am_app_launch_notifier_register(struct notifier_block *nb)
+{
+	return atomic_notifier_chain_register(&am_app_launch_notifier, nb);
+}
+
+int am_app_launch_notifier_unregister(struct notifier_block *nb)
+{
+	return  atomic_notifier_chain_unregister(&am_app_launch_notifier, nb);
 }
 
 static ssize_t disable_mem_boost_show(struct kobject *kobj,
@@ -2352,20 +2281,71 @@ static ssize_t disable_mem_boost_store(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t am_app_launch_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = am_app_launch ? 1 : 0;
+	return sprintf(buf, "%d\n", ret);
+}
+
+static int notify_app_launch_started(void)
+{
+	trace_printk("am_app_launch started\n");
+	atomic_notifier_call_chain(&am_app_launch_notifier, 1, NULL);
+	return 0;
+}
+
+static int notify_app_launch_finished(void)
+{
+	trace_printk("am_app_launch finished\n");
+	atomic_notifier_call_chain(&am_app_launch_notifier, 0, NULL);
+	return 0;
+}
+
+static ssize_t am_app_launch_store(struct kobject *kobj,
+				   struct kobj_attribute *attr,
+				   const char *buf, size_t count)
+{
+	int mode;
+	int err;
+	bool am_app_launch_new;
+
+	err = kstrtoint(buf, 10, &mode);
+	if (err || (mode != 0 && mode != 1))
+		return -EINVAL;
+
+	am_app_launch_new = mode ? true : false;
+	trace_printk("am_app_launch %d -> %d\n", am_app_launch,
+		     am_app_launch_new);
+	if (am_app_launch != am_app_launch_new) {
+		if (am_app_launch_new)
+			notify_app_launch_started();
+		else
+			notify_app_launch_finished();
+	}
+	am_app_launch = am_app_launch_new;
+
+	return count;
+}
+
 #define MEM_BOOST_ATTR(_name) \
 	static struct kobj_attribute _name##_attr = \
 		__ATTR(_name, 0644, _name##_show, _name##_store)
 MEM_BOOST_ATTR(mem_boost_mode);
 MEM_BOOST_ATTR(disable_mem_boost);
+MEM_BOOST_ATTR(am_app_launch);
 
-static struct attribute *mem_boost_attrs[] = {
+static struct attribute *vmscan_attrs[] = {
 	&mem_boost_mode_attr.attr,
 	&disable_mem_boost_attr.attr,
+	&am_app_launch_attr.attr,
 	NULL,
 };
 
-static struct attribute_group mem_boost_attr_group = {
-	.attrs = mem_boost_attrs,
+static struct attribute_group vmscan_attr_group = {
+	.attrs = vmscan_attrs,
 	.name = "vmscan",
 };
 #endif
@@ -2391,7 +2371,8 @@ static inline bool need_memory_boosting(struct pglist_data *pgdat)
 {
 	bool ret;
 
-	test_and_set_mem_boost_timeout();
+	if (time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME))
+		mem_boost_mode = NO_BOOST;
 
 	if (memory_boosting_disabled)
 		return false;
@@ -3379,7 +3360,6 @@ unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *memcg,
 {
 	struct zonelist *zonelist;
 	unsigned long nr_reclaimed;
-	unsigned long pflags;
 	int nid;
 	unsigned int noreclaim_flag;
 	struct scan_control sc = {
@@ -3408,13 +3388,9 @@ unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *memcg,
 					    sc.gfp_mask,
 					    sc.reclaim_idx);
 
-	psi_memstall_enter(&pflags);
 	noreclaim_flag = memalloc_noreclaim_save();
-
 	nr_reclaimed = do_try_to_free_pages(zonelist, &sc);
-
 	memalloc_noreclaim_restore(noreclaim_flag);
-	psi_memstall_leave(&pflags);
 
 	trace_mm_vmscan_memcg_reclaim_end(nr_reclaimed);
 
@@ -3442,7 +3418,6 @@ static void age_active_anon(struct pglist_data *pgdat,
 	} while (memcg);
 }
 
-#define MEM_BOOST_WMARK_SCALE_FACTOR 1
 /*
  * Returns true if there is an eligible zone balanced for the request order
  * and classzone_idx
@@ -3460,9 +3435,6 @@ static bool pgdat_balanced(pg_data_t *pgdat, int order, int classzone_idx)
 			continue;
 
 		mark = high_wmark_pages(zone);
-
-		if (current_is_kswapd() && need_memory_boosting(zone->zone_pgdat))
-			mark *= MEM_BOOST_WMARK_SCALE_FACTOR;
 
 		if (zone_watermark_ok_safe(zone, order, mark, classzone_idx))
 			return true;
@@ -3584,7 +3556,6 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 	int i;
 	unsigned long nr_soft_reclaimed;
 	unsigned long nr_soft_scanned;
-	unsigned long pflags;
 	struct zone *zone;
 	struct scan_control sc = {
 		.gfp_mask = GFP_KERNEL,
@@ -3594,7 +3565,6 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 		.may_unmap = 1,
 		.may_swap = 1,
 	};
-	psi_memstall_enter(&pflags);
 	count_vm_event(PAGEOUTRUN);
 
 	do {
@@ -3689,7 +3659,6 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 
 out:
 	snapshot_refaults(NULL, pgdat);
-	psi_memstall_leave(&pflags);
 	/*
 	 * Return the order kswapd stopped reclaiming at as
 	 * prepare_kswapd_sleep() takes it into account. If another caller
@@ -3910,16 +3879,13 @@ void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 	if (!waitqueue_active(&pgdat->kswapd_wait))
 		return;
 
-	if (need_memory_boosting(pgdat))
-		goto wakeup;
-
 	/* Hopeless node, leave it to direct reclaim */
 	if (pgdat->kswapd_failures >= MAX_RECLAIM_RETRIES)
 		return;
 
 	if (pgdat_balanced(pgdat, order, classzone_idx))
 		return;
-wakeup:
+
 	trace_mm_vmscan_wakeup_kswapd(pgdat->node_id, classzone_idx, order);
 	wake_up_interruptible(&pgdat->kswapd_wait);
 }
@@ -4036,8 +4002,8 @@ static int __init kswapd_init(void)
 					NULL);
 	WARN_ON(ret < 0);
 #ifdef CONFIG_SYSFS
-	if (sysfs_create_group(mm_kobj, &mem_boost_attr_group))
-		pr_err("vmscan: register mem boost sysfs failed\n");
+	if (sysfs_create_group(mm_kobj, &vmscan_attr_group))
+		pr_err("vmscan: register sysfs failed\n");
 #endif
 	return 0;
 }

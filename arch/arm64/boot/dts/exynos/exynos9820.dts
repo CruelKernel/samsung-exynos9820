@@ -32,14 +32,13 @@
 #include "exynos9820-camera.dtsi"
 #include <dt-bindings/soc/samsung/exynos-emc.h>
 #include "exynos9820-pmucal-dbg.dtsi"
-#include "exynos9820-beyond2lte_svcled.dtsi"
 #include "exynos9820-mfc.dtsi"
-#include "exynos9820-inputbooster.dtsi"
+#include "exynos9820-mali_common.dtsi"
 
 / {
 	compatible = "samsung,armv8", "samsung,exynos9820";
 	dtb-hw_rev = <0>;
-    	dtb-hw_rev_end = <255>;
+	dtb-hw_rev_end = <255>;
 
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
@@ -461,18 +460,27 @@
 				power-coefficient = <160>;
 				capacity-mips-s = <215>;
 				power-coefficient-s = <130>;
+
+				capacity-weight = <1>;
+				energy-weight = <1>;
 			};
 			PROMETHEUS_ENERGY: prometheus-energy {
 				capacity-mips = <531>;
 				power-coefficient = <320>;
 				capacity-mips-s = <346>;
 				power-coefficient-s = <259>;
+
+				capacity-weight = <2>;
+				energy-weight = <1>;
 			};
 			CHEETAH_ENERGY: cheetah-energy {
 				capacity-mips = <785>;
 				power-coefficient = <760>;
 				capacity-mips-s = <365>;
 				power-coefficient-s = <506>;
+
+				capacity-weight = <1>;
+				energy-weight = <3>;
 			};
 		};
 
@@ -583,17 +591,33 @@
 			prefer-perf-service {
 				prefer-perf0 {
 					boost = <1>;
-					light-task-threshold = <10>;
 					prefer-cpus =	"4-5",
 							"6-7",
 							"0-3";
+					light-task-threshold = <10>;
+					light-task-threshold-s = <6>;
+					light-prefer-cpus = "4-5";
 				};
 				prefer-perf1 {
 					boost = <2>;
-					light-task-threshold = <10>;
 					prefer-cpus =	"6-7",
 							"4-5",
 							"0-3";
+					light-task-threshold = <10>;
+					light-task-threshold-s = <4>;
+					light-prefer-cpus = "6-7";
+				};
+				prefer-perf2 {
+					boost = <3>;
+					prefer-cpus =	"4-5",
+							"6-7",
+							"0-3";
+					light-task-threshold = <10>;
+					light-task-threshold-s = <6>;
+					light-prefer-cpus = "4-5";
+					heavy-task-threshold = <384>;
+					heavy-task-threshold-s = <250>;
+					heavy-prefer-cpus = "6-7";
 				};
 			};
 		};
@@ -860,7 +884,7 @@
 		};
 	};
 
-	exynos-hiu {
+	exynos_hiu: exynos-hiu {
 		compatible = "samsung,exynos-hiu";
 		interrupts = <0 INTREQ__CPUCL2_GCUIRQ 0>;
 		boot-freq = <1378000>;
@@ -870,8 +894,8 @@
 		bl1-inc = <0>;
 		bl2-inc = <0>;
 		bl3-inc = <0>;
-		tb-enabled;
-		pc-enabled;
+		tb-enabled = <1>;
+		pc-enabled = <1>;
 		operation-mode = <0>;
 		sibling-cpus = "6-7";
 			     /* PB  BL  PBL  PWR_THR_INC */
@@ -1207,7 +1231,7 @@
 		max-freq-wo-ocp = <2080000>;
 
 		release-mode = <1>;		/* 0 : current meter, 1 : cpu utilization */
-		release-threshold = <50>;	/* @current meter : current(A), @cpu load : capacity ratio(%) */
+		release-threshold = <53>;	/* @current meter : current(A), @cpu load : capacity ratio(%) */
 		release-duration = <15>;	/* msec */
 	};
 
@@ -1466,6 +1490,7 @@
 			samsung,type = "realtime";
 			samsung,buffer_type = "dma";
 			#sound-dai-cells = <0>;
+			samsung,asrc-id = <5>;
 		};
 
 		abox_wdma_4: abox-wdma@18c53400 {
@@ -1476,6 +1501,7 @@
 			samsung,type = "vi-sensing";
 			samsung,buffer_type = "dma";
 			#sound-dai-cells = <0>;
+			samsung,asrc-id = <4>;
 		};
 
 		abox_wdma_5: abox-wdma@18c53500 {
@@ -2117,74 +2143,6 @@
 			coherent-mask-bit = <36>;
 		};
 	};
-
-	/* mali */
-    mali: mali@18500000 {
-        compatible = "arm,mali";
-        reg = <0x0 0x18500000 0x5000>;
-        interrupts = <0 288 0>,
-                     <0 287 0>,
-                     <0 289 0>;
-        interrupt-names = "JOB", "MMU", "GPU";
-        g3d_cmu_cal_id = <ACPM_DVFS_G3D>;
-        samsung,power-domain = <&pd_embedded_g3d>;
-        g3d_genpd_name = "pd-embedded_g3d"; /*KC: pg-g3d, LT,MK: pd-embedded_g3d*/
-        #cooling-cells = <2>; /* min followed by max */
-		governor = "interactive";
-		interactive_info = <260000 94 0>;
-		gpu_dvfs_table_size = <9 8>; /*<row col>*/
-		/*  8 columns      freq  down   up  stay  mif    little  middle   big  */
-		gpu_dvfs_table = <  702000    78  100   9  2093000 1456000       0 1820000
-		                    650000    78   98   5  2093000 1456000       0 2080000
-		                    572000    78   98   5  1794000       0       0       0
-		                    433000    78   95   1  1352000       0       0       0
-		                    377000    78   90   1  1352000       0       0       0
-		                    325000    78   85   1  1014000       0       0       0
-		                    260000    78   85   1   676000       0       0       0
-		                    200000    78   85   1   676000       0       0       0
-		                    156000     0   85   1   676000       0       0       0 >;
-		gpu_sustainable_info = <433000 95 949000 1690000 520000>;
-		gpu_pmqos_cpu_cluster_num = <3>;
-		gpu_pmu_status_reg_offset = <0x2104>;
-		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
-		gpu_max_clock = <702000>;
-		gpu_max_clock_limit = <702000>;
-		gpu_min_clock = <156000>;
-		gpu_dvfs_start_clock = <260000>;
-		gpu_dvfs_bl_config_clock = <156000>;
-		gpu_default_voltage = <800000>;
-		gpu_cold_minimum_vol = <0>;
-		gpu_voltage_offset_margin = <37500>;
-		gpu_tmu_control = <1>;
-		gpu_temp_throttling_level_num = <6>;
-		gpu_temp_throttling = <650000 572000 455000 325000 260000 156000>;
-		gpu_power_coeff = <625>;
-		gpu_dvfs_time_interval = <5>; /*1 tick : 10ms*/
-		gpu_default_wakeup_lock = <1>;
-		gpu_dynamic_abb = <0>;
-		gpu_early_clk_gating = <0>;
-		gpu_dvs = <0>;
-		gpu_inter_frame_pm = <0>;
-		gpu_perf_gathering = <0>;
-		gpu_runtime_pm_delay_time = <50>;
-		gpu_dvfs_polling_time = <30>;
-		gpu_pmqos_int_disable = <1>;
-		gpu_pmqos_mif_max_clock = <2094000>;
-		gpu_pmqos_mif_max_clock_base = <650000>;
-		gpu_cl_dvfs_start_base = <377000>;
-		gpu_debug_level = <3>; /*DEBUG(1) INFO(2) WARNING(3) ERROR(4)*/
-		gpu_trace_level = <8>; /*TRACE_ALL*/
-		gpu_mo_min_clock = <377000>;
-		gpu_boost_gpu_min_lock = <0>;
-		gpu_boost_egl_min_lock = <1872000>;
-		gpu_vk_boost_max_lock = <325000>;
-		gpu_vk_boost_mif_min_lock = <1014000>;
-		gpu_bts_support = <1>;
-		gpu_asv_cali_lock_val = <0>; /*Should check this value when MALI_ASV_CALIBRATION_SUPPORT is enabled*/
-		gpu_set_pmu_duration_reg = <0>; /* only for KC for now*/
-		gpu_set_pmu_duration_val = <0>; /* only for KC for now*/
-	 };
-
 
 	/* USI_00 */
 	usi_0: usi@10421004 {
@@ -4517,7 +4475,7 @@
 		interrupt-map-mask = <0 0 0 0>;
 		interrupt-map = <0 0 0 0 &gic 0 INTREQ__PCIE_GEN3A 0x4>;
 		ip-ver = <0x982000>;
-		num-lanes = <2>;
+		num-lanes = <1>;
 		ch-num = <1>;
 		pcie-clk-num = <0>;
 		phy-clk-num = <0>;
@@ -5042,6 +5000,7 @@
 			boost_table = < 160 949000 123 1300000 100 >;
 			up_rate_limit_table = < 4 >;
 			down_rate_limit_table = < 4 >;
+			st_table = < 5 >;
 		};
 		domain@1 {
 			device_type = "freqvar-tune";
@@ -5050,6 +5009,7 @@
 			boost_table = < 160 962000 123 1222000 100 >;
 			up_rate_limit_table = < 4 >;
 			down_rate_limit_table = < 4 >;
+			st_table = < 5 >;
 		};
 		domain@2 {
 			device_type = "freqvar-tune";
@@ -5058,6 +5018,7 @@
 			boost_table = < 160 936000 123 1378000 100 >;
 			up_rate_limit_table = < 4 >;
 			down_rate_limit_table = < 4 >;
+			st_table = < 5 >;
 		};
 	};
 
@@ -5076,6 +5037,7 @@
 
 			user-default-qos = <806000>;
 			user-boost = <0>;
+			user-boost-game = <0>;
 		};
 
 		domain@1 {
@@ -5083,13 +5045,15 @@
 			shared-cpus = "4-5";
 
 			user-default-qos = <845000>;
-			user-boost = <1>;
+			user-boost = <3>;
+			user-boost-game = <1>;
 
 			min-limit {
 				ctrl-type = <PM_QOS_MIN_LIMIT>;
 				execution-mode = <AARCH64_MODE>;
 					/* pmt  ank  NONE */
-				table = < 2314000 0 0
+				table = < 2400000 0 0
+					2314000 0 0
 					2210000 0 0
 					2106000 0 0
 					2002000 0 0
@@ -5112,7 +5076,8 @@
 				ctrl-type = <PM_QOS_MAX_LIMIT>;
 				execution-mode = <AARCH64_MODE>;
 					/* pmt  ank  NONE */
-				table = < 2314000 0 0
+				table = < 2400000 0 0
+					2314000 0 0
 					2210000 0 0
 					2106000 0 0
 					2002000 0 0
@@ -5139,19 +5104,20 @@
 
 			user-default-qos = <936000>;
 			user-boost = <2>;
+			user-boost-game = <2>;
 
 			min-limit {
 				ctrl-type = <PM_QOS_MIN_LIMIT>;
 				execution-mode = <AARCH64_MODE>;
 					/* cht  pmt  ank */
-				table = < 2912000 2314000 1950000
-					2808000 2314000 1950000
-					2730000 2314000 1950000
-					2600000 2314000 1950000
-					2530000 2314000 1950000
-					2470000 2314000 1950000
-					2340000 2314000 1950000
-					2236000 2314000 1950000
+				table = < 2912000 2400000 1950000
+					2808000 2400000 1950000
+					2730000 2400000 1950000
+					2600000 2400000 1950000
+					2530000 2400000 1950000
+					2470000 2400000 1950000
+					2340000 2400000 1950000
+					2236000 2400000 1950000
 					2080000 2210000 0
 					1976000 2210000 0
 					1820000 2210000 0
@@ -5174,13 +5140,13 @@
 				ctrl-type = <PM_QOS_MAX_LIMIT>;
 				execution-mode = <AARCH32_MODE>;
 					/* cht  pmt  ank */
-				table = < 2912000 2314000 0
-					2808000 2314000 0
-					2730000 2314000 0
-					2600000 2314000 0
-					2530000 2314000 0
-					2470000 2314000 0
-					2340000 2314000 0
+				table = < 2912000 2400000 0
+					2808000 2400000 0
+					2730000 2400000 0
+					2600000 2400000 0
+					2530000 2400000 0
+					2470000 2400000 0
+					2340000 2400000 0
 					2236000 2314000 0
 					2080000 2314000 0
 					1976000 2210000 0
@@ -5204,12 +5170,12 @@
 				ctrl-type = <PM_QOS_MAX_LIMIT>;
 				execution-mode = <AARCH64_MODE>;
 					/* cht  pmt  ank */
-				table = < 2912000 2314000 0
-					2808000 2314000 0
-					2730000 2314000 0
-					2600000 2314000 0
-					2530000 2314000 0
-					2470000 2314000 0
+				table = < 2912000 2400000 0
+					2808000 2400000 0
+					2730000 2400000 0
+					2600000 2400000 0
+					2530000 2400000 0
+					2470000 2400000 0
 					2340000 2314000 0
 					2236000 2314000 0
 					2080000 2210000 0
@@ -5229,7 +5195,6 @@
 					520000 845000 0
 					>;
 			};
-
 		};
 	};
 
@@ -5278,7 +5243,7 @@
 			cal-id = <ACPM_DVFS_CPUCL1>;
 			dm-type = <DM_CPU_CL1>;
 
-			max-freq = <2314000>;
+			max-freq = <2400000>;
 			min-freq = <507000>;
 
 			/* PM QoS Class ID*/
@@ -5292,7 +5257,8 @@
 					const-type = <CONSTRAINT_MIN>;
 					dm-type = <DM_MIF>;
 					/*  cpu     mif  */
-					table = < 2314000  2093000
+					table = < 2400000  2093000
+						2314000  2093000
 						2210000      0
 						2106000      0
 						2002000      0
@@ -5314,7 +5280,8 @@
 					const-type = <CONSTRAINT_MIN>;
 					dm-type = <DM_CPU_CL0>;
 					/*  pmt     ank  */
-					table = < 2314000  1300000
+					table = < 2400000  1300000
+						2314000  1300000
 						2210000  1157000
 						2106000  1157000
 						2002000  1053000
@@ -6129,6 +6096,11 @@
 		interrupts = <0 223 0>;
 	};
 
+	hdcp {
+		compatible = "samsung,exynos-hdcp";
+		interrupts = <0 225 0>;
+	};
+
 	/* Secure RPMB */
 	ufs-srpmb {
 		compatible = "samsung,ufs-srpmb";
@@ -6310,6 +6282,20 @@
 		/* dma-mode; */
 		dmas = <&pdma0 28>;
 		dma-names = "tx";
+	};
+
+	ppmpu {
+		compatible = "samsung,exynos-ppmpu";
+		channel = <4>;
+		irqcnt = <8>;
+		interrupts = <0 INTREQ__DMC_PPMPINT_R_MIF0 0>,	/* PPMPU0_R */
+			     <0 INTREQ__DMC_PPMPINT_W_MIF0 0>,	/* PPMPU0_W */
+			     <0 INTREQ__DMC_PPMPINT_R_MIF1 0>,	/* PPMPU1_R */
+			     <0 INTREQ__DMC_PPMPINT_W_MIF1 0>,	/* PPMPU1_W */
+			     <0 INTREQ__DMC_PPMPINT_R_MIF2 0>,	/* PPMPU2_R */
+			     <0 INTREQ__DMC_PPMPINT_W_MIF2 0>,	/* PPMPU2_W */
+			     <0 INTREQ__DMC_PPMPINT_R_MIF3 0>,	/* PPMPU3_R */
+			     <0 INTREQ__DMC_PPMPINT_W_MIF3 0>;	/* PPMPU3_W */
 	};
 
 	/* TEEGRIS */

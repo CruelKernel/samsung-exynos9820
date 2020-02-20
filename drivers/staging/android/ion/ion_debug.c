@@ -45,7 +45,7 @@ static char * const ion_event_name[] = {
 };
 
 static struct ion_event {
-	struct ion_heap *heap;
+	unsigned char heapname[8];
 	unsigned long data;
 	ktime_t begin;
 	ktime_t done;
@@ -82,11 +82,11 @@ void ion_event_record(enum ion_event_type type,
 	event->type = type;
 	event->begin = begin;
 	event->done = ktime_get();
-	event->heap = buffer->heap;
 	event->size = buffer->size;
 	event->data = (type == ION_EVENT_TYPE_FREE) ?
 		buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE :
 		buffer->flags;
+	strlcpy(event->heapname, buffer->heap->name, sizeof(event->heapname));
 }
 #endif
 
@@ -100,8 +100,8 @@ inline bool ion_debug_event_show_single(struct seq_file *s,
 		return false;
 
 	seq_printf(s, "[%06ld.%06ld] ", tv.tv_sec, tv.tv_usec);
-	seq_printf(s, "%17s %18s %10d %13zd %10ld",
-		   ion_event_name[event->type], event->heap->name,
+	seq_printf(s, "%17s %8s %10d %13zd %10ld",
+		   ion_event_name[event->type], event->heapname,
 		   event->buffer_id, event->size / SZ_1K, elapsed);
 
 	if (elapsed > 100 * USEC_PER_MSEC)

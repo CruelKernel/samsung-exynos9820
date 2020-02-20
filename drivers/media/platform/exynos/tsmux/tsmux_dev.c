@@ -1339,7 +1339,7 @@ void add_null_ts_packet(uint8_t *ptr, int out_buf_size, struct tsmux_ts_hdr *ts_
 
 static bool tsmux_ioctl_otf_dq_buf(struct tsmux_context *ctx)
 {
-	unsigned long wait_time = 0;
+	long wait_time = 0;
 	struct tsmux_device *tsmux_dev = ctx->tsmux_dev;
 	unsigned long flags;
 	int index = -1;
@@ -1356,7 +1356,7 @@ static bool tsmux_ioctl_otf_dq_buf(struct tsmux_context *ctx)
 	while ((index = get_job_done_buf(ctx)) == -1) {
 		wait_time = wait_event_interruptible_timeout(ctx->otf_wait_queue,
 				is_otf_job_done(ctx), HZ / 10);
-		print_tsmux(TSMUX_OTF, "dq buf wait_time: %lu\n", wait_time);
+		print_tsmux(TSMUX_OTF, "dq buf wait_time: %ld\n", wait_time);
 		if (wait_time <= 0)
 			break;
 	}
@@ -1425,7 +1425,7 @@ static bool tsmux_ioctl_otf_dq_buf(struct tsmux_context *ctx)
 		ctx->video_frame_count++;
 		spin_unlock_irqrestore(&tsmux_dev->device_spinlock, flags);
 	} else {
-		print_tsmux(TSMUX_ERR, "time out: wait_time: %lu\n", wait_time);
+		print_tsmux(TSMUX_ERR, "time out: wait_time: %ld\n", wait_time);
 		return false;
 	}
 

@@ -2002,25 +2002,9 @@ int fimc_is_video_s_ctrl(struct file *file,
 			goto p_err;
 		}
 		break;
-	case V4L2_CID_IS_SECURE_MODE:
-	{
-		u32 scenario;
-		struct fimc_is_core *core;
-
-		scenario = (ctrl->value & FIMC_IS_SCENARIO_MASK) >> FIMC_IS_SCENARIO_SHIFT;
-		core = (struct fimc_is_core *)dev_get_drvdata(fimc_is_dev);
-		if (core && scenario == FIMC_IS_SCENARIO_SECURE) {
-			mvinfo("[SCENE_MODE] SECURE scenario(%d) was detected\n", device, video, scenario);
-			core->scenario = scenario;
-		}
-		break;
-	}
 	case V4L2_CID_IS_SET_SETFILE:
 	{
 		u32 scenario;
-		struct fimc_is_core *core;
-
-		core = (struct fimc_is_core *)dev_get_drvdata(fimc_is_dev);
 
 		if (test_bit(FIMC_IS_ISCHAIN_START, &device->state)) {
 			mverr("device is already started, setfile applying is fail", vctx, video);
@@ -2032,11 +2016,6 @@ int fimc_is_video_s_ctrl(struct file *file,
 		scenario = (device->setfile & FIMC_IS_SCENARIO_MASK) >> FIMC_IS_SCENARIO_SHIFT;
 		mvinfo(" setfile(%d), scenario(%d) at s_ctrl\n", device, video,
 			device->setfile & FIMC_IS_SETFILE_MASK, scenario);
-
-		if (core && scenario == FIMC_IS_SCENARIO_SECURE) {
-			mvinfo(" SECURE scenario(%d) was detected\n", device, video, scenario);
-			core->scenario = scenario;
-		}
 		break;
 	}
 	case V4L2_CID_IS_HAL_VERSION:

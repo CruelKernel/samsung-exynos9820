@@ -112,6 +112,7 @@ struct max77705_pd_data {
 
 	bool pdo_list;
 	bool psrdy_received;
+	bool cc_sbu_short;
 #if defined(CONFIG_PDIC_PD30)
 	bool bPPS_on;
 #endif

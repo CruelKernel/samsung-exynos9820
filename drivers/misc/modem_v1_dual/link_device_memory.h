@@ -39,6 +39,8 @@
 #include "include/circ_queue.h"
 #include "include/sbd.h"
 #include "include/sipc5.h"
+#include "link_rx_dit.h"
+#include "link_rx_pktproc.h"
 
 #ifdef GROUP_MEM_TYPE
 
@@ -50,6 +52,7 @@ enum mem_iface_type {
 	MEM_SYS_SHMEM = 0x0100,	/* Shared-memory (SHMEM) on a system bus   */
 	MEM_C2C_SHMEM = 0x0200,	/* SHMEM with C2C (Chip-to-chip) interface */
 	MEM_LLI_SHMEM = 0x0400,	/* SHMEM with MIPI-LLI interface           */
+	MEM_PCI_SHMEM = 0x0800,	/* SHMEM with PCI interface                */
 };
 
 #define MEM_DPRAM_TYPE_MASK	0x00FF
@@ -215,6 +218,8 @@ struct mem_ipc_device {
 	struct sk_buff_head *skb_rxq;
 
 	unsigned int req_ack_cnt[MAX_DIR];
+
+	spinlock_t tx_lock;
 };
 
 #endif
@@ -298,8 +303,8 @@ enum crash_type {
 	CRASH_REASON_MIF_RIL_BAD_CH,
 	CRASH_REASON_MIF_RX_BAD_DATA,
 	CRASH_REASON_MIF_ZMC,
-	CRASH_REASON_MIF_RSV_0,
-	CRASH_REASON_MIF_RSV_1,
+	CRASH_REASON_MIF_MDM_CTRL,
+	CRASH_REASON_MIF_RSV,
 	CRASH_REASON_MIF_RSV_MAX = 12,
 	CRASH_REASON_CP_SRST,
 	CRASH_REASON_CP_RSV_0,
@@ -598,6 +603,11 @@ struct mem_link_device {
 	struct shmem_ulpath_table ulpath;
 #endif
 #endif
+
+	int (*pass_skb_to_net)(struct mem_link_device *mld, struct sk_buff *skb);
+
+	struct dit_adaptor dit;
+	struct pktproc_adaptor pktproc;
 };
 
 #define to_mem_link_device(ld) \

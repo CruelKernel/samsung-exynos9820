@@ -612,8 +612,13 @@ finished:
 
 static int ext4_dir_open(struct inode * inode, struct file * filp)
 {
-	if (ext4_encrypted_inode(inode))
-		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+	if (ext4_encrypted_inode(inode)) {
+		int ret = fscrypt_get_encryption_info(inode);
+		if (ret) {
+			printk(KERN_ERR "%s: failed to get encryption info (%d)", __func__, ret);
+			return -EACCES;
+		}
+	}
 	return 0;
 }
 

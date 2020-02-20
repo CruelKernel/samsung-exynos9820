@@ -104,6 +104,11 @@ struct uic_command {
 	struct completion done;
 };
 
+enum ufs_dev_reset{
+	UFS_DEVICE_RESET_LOW,
+	UFS_DEVICE_RESET_HIGH,
+};
+
 /* Used to differentiate the power management options */
 enum ufs_pm_op {
 	UFS_RUNTIME_PM,
@@ -138,6 +143,20 @@ enum uic_link_state {
 				    UIC_LINK_TRANS_ACTIVE_STATE)
 #define ufshcd_set_link_trans_hibern8(hba) ((hba)->uic_link_state = \
 				    UIC_LINK_TRANS_HIBERN8_STATE)
+
+enum ufs_tw_state {
+	UFS_TW_OFF_STATE	= 0,	/* turbo write disabled state */
+	UFS_TW_ON_STATE	= 1,		/* turbo write enabled state */
+	UFS_TW_ERR_STATE	= 2, 		/* turbo write error state */
+};
+
+#define ufshcd_is_tw_off(hba) ((hba)->ufs_tw_state == UFS_TW_OFF_STATE)
+#define ufshcd_is_tw_on(hba) ((hba)->ufs_tw_state == UFS_TW_ON_STATE)
+#define ufshcd_is_tw_err(hba) ((hba)->ufs_tw_state == UFS_TW_ERR_STATE)
+#define ufshcd_set_tw_off(hba) ((hba)->ufs_tw_state = UFS_TW_OFF_STATE)
+#define ufshcd_set_tw_on(hba) ((hba)->ufs_tw_state = UFS_TW_ON_STATE)
+#define ufshcd_set_tw_err(hba) ((hba)->ufs_tw_state = UFS_TW_ERR_STATE)
+
 /*
  * UFS Power management levels.
  * Each level is in increasing order of power savings.
@@ -339,13 +358,14 @@ struct ufs_hba_variant_ops {
 	void	(*set_nexus_t_task_mgmt)(struct ufs_hba *, int, u8);
 	void    (*hibern8_notify)(struct ufs_hba *, u8, bool);
 	int	(*hibern8_prepare)(struct ufs_hba *, u8, bool);
+	int     (*reset_ctrl)(struct ufs_hba *, enum ufs_dev_reset);
 	int     (*suspend)(struct ufs_hba *, enum ufs_pm_op);
 	int     (*resume)(struct ufs_hba *, enum ufs_pm_op);
 	void	(*dbg_register_dump)(struct ufs_hba *hba);
 	u8      (*get_unipro_result)(struct ufs_hba *hba, u32 num);
 	int	(*phy_initialization)(struct ufs_hba *);
 	int	(*crypto_engine_cfg)(struct ufs_hba *, struct ufshcd_lrb *,
-					struct scatterlist *, int, int);
+					struct scatterlist *, int, int, int);
 	int	(*crypto_engine_clear)(struct ufs_hba *, struct ufshcd_lrb *);
 	int	(*access_control_abort)(struct ufs_hba *);
 
@@ -569,6 +589,24 @@ struct SEC_UFS_counting {
 };
 #endif
 
+struct SEC_UFS_TW_info {
+	u64 tw_state_ts;
+	u64 tw_enable_ms;
+	u64 tw_disable_ms;
+	u64 tw_amount_W_kb;
+	u64 tw_enable_count;
+	u64 tw_disable_count;
+	u64 tw_setflag_error_count;
+	u64 hibern8_amount_ms;
+	u64 hibern8_enter_count;
+	u64 hibern8_amount_ms_100ms;
+	u64 hibern8_enter_count_100ms;
+	u64 hibern8_max_ms;
+	ktime_t hibern8_enter_ts;
+	struct timespec timestamp;
+	bool tw_info_disable;
+};
+
 /**
  * struct ufs_hba - per adapter private structure
  * @mmio_base: UFSHCI base register address
@@ -647,6 +685,7 @@ struct ufs_hba {
 
 	enum ufs_dev_pwr_mode curr_dev_pwr_mode;
 	enum uic_link_state uic_link_state;
+	enum ufs_tw_state ufs_tw_state;
 	/* Desired UFS power management level during runtime PM */
 	enum ufs_pm_level rpm_lvl;
 	/* Desired UFS power management level during system PM */
@@ -825,6 +864,9 @@ struct ufs_hba {
 	u16 manufacturer_id;
 	u8 lifetime;
 	unsigned int lc_info;
+	bool support_tw;
+	struct SEC_UFS_TW_info SEC_tw_info;
+	struct SEC_UFS_TW_info SEC_tw_info_old;
 
 	struct ufs_monitor monitor;
 
@@ -1117,6 +1159,14 @@ static inline int ufshcd_vops_pwr_change_notify(struct ufs_hba *hba,
 	return -ENOTSUPP;
 }
 
+static inline int ufshcd_vops_reset_ctrl(struct ufs_hba *hba, enum ufs_dev_reset rst)
+{
+	if (hba->vops && hba->vops->reset_ctrl)
+		return hba->vops->reset_ctrl(hba, rst);
+
+	return 0;
+}
+
 static inline int ufshcd_vops_suspend(struct ufs_hba *hba, enum ufs_pm_op op)
 {
 	if (hba->vops && hba->vops->suspend)
@@ -1154,11 +1204,11 @@ int ufshcd_read_health_desc(struct ufs_hba *hba, u8 *buf, u32 size);
 static inline int ufshcd_vops_crypto_engine_cfg(struct ufs_hba *hba,
 					struct ufshcd_lrb *lrbp,
 					struct scatterlist *sg, int index,
-					int sector_offset)
+					int sector_offset, int page_index)
 {
 	if (hba->vops && hba->vops->crypto_engine_cfg)
 		return hba->vops->crypto_engine_cfg(hba, lrbp, sg, index,
-						sector_offset);
+						sector_offset, page_index);
 	return 0;
 }
 

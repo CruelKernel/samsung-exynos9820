@@ -838,23 +838,8 @@ ip_proto_again:
 		break;
 	}
 
-	if (dissector_uses_key(flow_dissector,
-			       FLOW_DISSECTOR_KEY_PORTS)
-	    /* <-------------------------------------------------------------
-	       SEC_PATCH : FIX P181106-06454, P181101-06870, P181101-04034
-	       When fragmented packets income, they hasn't network header except first one.
-	       But this function using the src/des port field to determine hash key, 'ports'.
-	       So each packet get different hash key, and be sent to different core.
-	       (Although hash is different, selected cpu could be same. but it just lucky)
-
-	       And if those packets came with little time gap,
-	       they each be treated to first fragmented packet in ipv6_defrag hook.
-	       So they can't merged to original packet.
-
-	       We'll skip 'ports' setting when the packet was fragmented.  */
-	    && !(key_control->flags & FLOW_DIS_IS_FRAGMENT)
-	    /* --------------------------------------------------------------> */
-	    ) {
+	if (dissector_uses_key(flow_dissector, FLOW_DISSECTOR_KEY_PORTS) &&
+	    !(key_control->flags & FLOW_DIS_IS_FRAGMENT)) {
 		key_ports = skb_flow_dissector_target(flow_dissector,
 						      FLOW_DISSECTOR_KEY_PORTS,
 						      target_container);

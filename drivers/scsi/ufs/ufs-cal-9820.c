@@ -375,6 +375,7 @@ static struct ufs_cal_phy_cfg post_init_cfg_evt0_g4[] = {
 	{0x5EC, 0x05, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x5F0, 0x2F, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x5F8, 0x01, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
+	{0x4DC, 0x7F, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 
 	{0xFC, 0x18, PMD_ALL, PHY_PMA_COMN, BRD_ALL},
 	{0xFC, 0x00, PMD_ALL, PHY_PMA_COMN, BRD_ALL},
@@ -479,6 +480,7 @@ static struct ufs_cal_phy_cfg post_init_cfg_evt1_g4[] = {
 	{0x4E0, 0x56, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x54C, 0xFD, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x64C, 0x0A, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
+	{0x4DC, 0x7F, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 
 	{0xFC, 0x18, PMD_ALL, PHY_PMA_COMN, BRD_ALL},
 	{0xFC, 0x00, PMD_ALL, PHY_PMA_COMN, BRD_ALL},
@@ -640,7 +642,7 @@ static const struct ufs_cal_phy_cfg init_cfg_card[] = {
 	{0x134, 0x43, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x16C, 0x20, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x178, 0xC0, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
-	{0x1B0, 0x94, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
+	{0x1B0, 0x18, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0xE0, 0x12, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x164, 0x58, PMD_ALL, PHY_PMA_TRSV, BRD_ALL},
 	{0x8C, 0xC0, PMD_ALL, PHY_PMA_COMN, BRD_ALL},

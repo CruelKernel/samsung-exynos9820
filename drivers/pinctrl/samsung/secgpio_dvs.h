@@ -26,7 +26,6 @@ struct gpio_dvs_t {
 				const char *skip_grps);
 	const char *skip_grps;
 	int gpio_num;
-	int (*read_gpio)(unsigned int gpionum);
 };
 
 struct secgpio_dvs_data {

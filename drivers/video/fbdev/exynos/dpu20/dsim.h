@@ -270,6 +270,11 @@ struct dsim_device {
 	struct notifier_block ril_notif;
 	struct dsim_adap_freq adap_freq;
 #endif
+
+#ifdef CONFIG_DYNAMIC_FREQ
+struct df_status_info *df_status;
+#endif
+
 };
 
 struct dsim_lcd_driver {
@@ -296,9 +301,14 @@ struct dsim_lcd_driver {
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 	int (*mipi_freq_change)(struct dsim_device *dsim);
 #endif
+#ifdef CONFIG_DYNAMIC_FREQ
+	int (*set_df_default)(struct dsim_device *dsim);
+	int (*update_lcd_info)(struct dsim_device *dsim);
+#endif
+
 };
 
-int dsim_write_data(struct dsim_device *dsim, u32 id, unsigned long d0, u32 d1, bool must_wait);
+int dsim_write_data(struct dsim_device *dsim, u32 id, unsigned long d0, u32 d1, bool must_wait, bool wakeup);
 int dsim_read_data(struct dsim_device *dsim, u32 id, u32 addr, u32 cnt, u8 *buf);
 int dsim_wait_for_cmd_done(struct dsim_device *dsim);
 
@@ -329,7 +339,7 @@ static inline int dsim_wr_data(u32 id, u32 cmd_id, unsigned long d0, u32 d1)
 	int ret;
 	struct dsim_device *dsim = get_dsim_drvdata(id);
 
-	ret = dsim_write_data(dsim, cmd_id, d0, d1, false);
+	ret = dsim_write_data(dsim, cmd_id, d0, d1, false, true);
 	if (ret)
 		return ret;
 
@@ -453,6 +463,11 @@ int dsim_update_adaptive_freq(struct dsim_device *dsim, bool force);
 #define DSIM_IOC_DOZE			_IOW('D', 20, u32)
 #define DSIM_IOC_DOZE_SUSPEND		_IOW('D', 21, u32)
 #define DSIM_IOC_SET_FREQ_HOP		_IOW('D', 30, u32)
+
+#ifdef CONFIG_DYNAMIC_FREQ
+#define DSIM_IOC_SET_PRE_FREQ_HOP		_IOW('D', 40, u32)
+#define DSIM_IOC_SET_POST_FREQ_HOP		_IOW('D', 41, u32)
+#endif
 
 #ifdef CONFIG_EXYNOS_ADAPTIVE_FREQ
 #define DSIM_IOC_FREQ_CHANGE	_IOW('D', 40, u32)

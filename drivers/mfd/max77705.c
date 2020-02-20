@@ -569,6 +569,7 @@ int max77705_usbc_fw_update(struct max77705_dev *max77705,
 	int vcell = 0;
 	u8 vbvolt = 0;
 	u8 wcin_dtls = 0;
+	int error = 0;
 
 
 	fw_header = (max77705_fw_header *)fw_bin;
@@ -599,6 +600,7 @@ retry:
 	ret = max77705_read_reg(max77705->muic, REG_UIC_FW_MINOR, &max77705->FW_Minor_Revision);
 	if (ret < 0 && (try_count == 0 && try_command == 0)) {
 		msg_maxim("Failed to read FW_REV");
+		error = -EIO;
 		goto out;
 	}
 
@@ -632,6 +634,7 @@ retry:
 			if (vcell < 3600) {
 				pr_info("%s: keep chg_mode(0x%x), vcell(%dmv)\n",
 					__func__, chg_cnfg_00 & 0x0F, vcell);
+				error = -EAGAIN;
 				goto out;
 			}
 		}
@@ -725,6 +728,7 @@ retry:
 				if (o_notify)
 					inc_hw_param(o_notify, USB_CCIC_FWUP_ERROR_COUNT);
 #endif
+				error = -EIO;
 				goto out;
 			}
 		}
@@ -755,6 +759,7 @@ retry:
 					if (o_notify)
 						inc_hw_param(o_notify, USB_CCIC_FWUP_ERROR_COUNT);
 #endif
+					error = -EIO;
 					goto out;
 				}
 				break;
@@ -766,6 +771,7 @@ retry:
 				if (o_notify)
 					inc_hw_param(o_notify, USB_CCIC_FWUP_ERROR_COUNT);
 #endif
+				error = -EIO;
 				goto out;
 			case FW_UPDATE_END: /* 0x00 */
 				/* JIG PIN for setting HIGH. */
@@ -840,9 +846,34 @@ out:
 		max77705_wc_control(max77705, true);
 	}
 	enable_irq(max77705->irq);
-	return 0;
+	return error;
 }
 EXPORT_SYMBOL_GPL(max77705_usbc_fw_update);
+
+void max77705_usbc_fw_setting(struct max77705_dev *max77705, int enforce_do)
+{
+	switch (max77705->pmic_rev) {
+	case MAX77705_PASS1:
+		pr_info("[MAX77705] Doesn't update the MAX77705_PASS1\n");
+		break;
+	case MAX77705_PASS2:
+		pr_info("[MAX77705] Doesn't update the MAX77705_PASS2\n");
+		break;
+	case MAX77705_PASS3:
+		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS3,  ARRAY_SIZE(BOOT_FLASH_FW_PASS3), enforce_do);
+		break;
+	case MAX77705_PASS4:
+		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS4,  ARRAY_SIZE(BOOT_FLASH_FW_PASS4), enforce_do);
+		break;
+	case MAX77705_PASS5:
+		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS2,  ARRAY_SIZE(BOOT_FLASH_FW_PASS2), enforce_do);
+		break;
+	default:
+		pr_info("[MAX77705] FAIL F/W ON BOOTING TIME and PMIC_REVISION isn't valid\n");
+		break;
+	};
+}
+EXPORT_SYMBOL_GPL(max77705_usbc_fw_setting);
 #endif
 
 static u8 max77705_revision_check(u8 pmic_id, u8 pmic_rev) {
@@ -960,27 +991,9 @@ static int max77705_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(max77705->fuelgauge, max77705);
 
 #ifdef CONFIG_CCIC_MAX77705
-	switch (max77705->pmic_rev) {
-	case MAX77705_PASS1:
-		pr_info("[MAX77705] Doesn't update the MAX77705_PASS1\n");
-		break;
-	case MAX77705_PASS2:
-		pr_info("[MAX77705] Doesn't update the MAX77705_PASS2\n");
-		break;
-	case MAX77705_PASS3:
-		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS3,  ARRAY_SIZE(BOOT_FLASH_FW_PASS3), 0);
-		break;
-	case MAX77705_PASS4:
-		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS4,  ARRAY_SIZE(BOOT_FLASH_FW_PASS4), 0);
-		break;
-	case MAX77705_PASS5:
-		max77705_usbc_fw_update(max77705, BOOT_FLASH_FW_PASS2,  ARRAY_SIZE(BOOT_FLASH_FW_PASS2), 0);
-		break;
-	default:
-		pr_info("[MAX77705] FAIL F/W ON BOOTING TIME and PMIC_REVISION isn't valid\n");
-		break;
-	};
+	max77705_usbc_fw_setting(max77705, 0);
 #endif
+
 	max77705->debug = i2c_new_dummy(i2c->adapter, I2C_ADDR_DEBUG);
 	i2c_set_clientdata(max77705->debug, max77705);
 

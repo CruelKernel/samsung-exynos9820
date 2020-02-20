@@ -86,6 +86,7 @@ enum dpui_key {
 #ifdef CONFIG_SUPPORT_DIM_FLASH
 	DPUI_KEY_PNGFLS,	/* panel gamma flash loading result */
 #endif
+	DPUI_KEY_UB_CON,		/* panel ub_con pin interrupt count */
 
 	/* dependent on processor */
 	DPUI_KEY_EXY_SWRCV,	/* exynos sw recovery count */

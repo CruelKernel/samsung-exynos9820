@@ -175,6 +175,10 @@ void machine_restart(char *cmd)
 	while (1);
 }
 
+#ifdef CONFIG_SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+extern unsigned long long incorrect_addr;
+#endif
+
 /*
  * dump a block of kernel memory from around the given address
  */
@@ -182,6 +186,9 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 {
 	int	i, j;
 	int	nlines;
+#ifdef CONFIG_SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+	int	nbytes_offset = nbytes;
+#endif
 	u32	*p;
 
 	/*
@@ -217,7 +224,6 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	nbytes += (addr & (sizeof(u32) - 1));
 	nlines = (nbytes + 31) / 32;
 
-
 	for (i = 0; i < nlines; i++) {
 		/*
 		 * just display low 16 bits of address to keep
@@ -226,7 +232,18 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 		printk("%04lx :", (unsigned long)p & 0xffff);
 		for (j = 0; j < 8; j++) {
 			u32	data;
+
+#ifdef CONFIG_SEC_DEBUG_AVOID_UNNECESSARY_TRAP
+			if ((incorrect_addr != 0) && (((unsigned long long)p >= (incorrect_addr - nbytes_offset)) && ((unsigned long long)p <= (incorrect_addr + nbytes_offset)))) {
+				if (j == 7)
+					pr_cont(" ********\n");
+				else
+					pr_cont(" ********");
+			}
+			else if (probe_kernel_address(p, data)) {
+#else
 			if (probe_kernel_address(p, data)) {
+#endif
 				if (j == 7)
 					pr_cont(" ********\n");
 				else

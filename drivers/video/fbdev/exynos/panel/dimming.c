@@ -620,18 +620,20 @@ static u64 mtp_offset_to_vregout(struct dimming_info *dim_info,
 
 	if (v == TP_VT) {
 		s32 offset = tp[v].center[c] + tp[v].offset[c];
-		if (offset > 0xF) {
-			pr_err("%s, error : ivt (%d) out of range(0x0 ~ 0xF)\n", __func__, offset);
-			return -EINVAL;
+		if ((offset > 0xF) || (offset < 0x0)) {
+			pr_warn("%s, warning : ivt (%d) out of range(0x0 ~ 0xF) replace to %s\n",
+				__func__, offset, offset > 0xF ? "0xF" : "0x0" );
+			offset = offset > 0xF ? 0xF : 0x0;
 		}
 		vreg = vsrc - VREF;
 		num = vreg * (s64)vt_voltage[offset];
 		res = vsrc - disp_div64(num, den);
 	} else if (v == TP_V0) {
 		s32 offset = tp[v].center[c] + tp[v].offset[c];
-		if (offset > 0xF) {
-			pr_err("%s, error : ivt (%d) out of range(0x0 ~ 0xF)\n", __func__, offset);
-			return -EINVAL;
+		if ((offset > 0xF) || (offset < 0x0)) {
+			pr_warn("%s, warning : ivt (%d) out of range(0x0 ~ 0xF) replace to %s\n",
+				__func__, offset, offset > 0xF ? "0xF" : "0x0" );
+			offset = offset > 0xF ? 0xF : 0x0;
 		}
 		vreg = vsrc - VREF;
 		num = vreg * (s64)v0_voltage[offset];

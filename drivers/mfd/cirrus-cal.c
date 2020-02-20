@@ -391,11 +391,11 @@ static void cirrus_cal_complete_work(struct work_struct *work)
 		dev_err(cirrus_cal->dev, "Calibration right out of range\n");
 	if (status_right == CS35L41_CSPL_STATUS_INCOMPLETE)
 		dev_err(cirrus_cal->dev, "Calibration right incomplete\n");
-	dev_info(cirrus_cal->dev, "R Left:\t\t%d (%llu.%llu Ohms)\n",
+	dev_info(cirrus_cal->dev, "R Left:\t\t%d (%llu.%04llu Ohms)\n",
 			rdc_left, ohms_left >> CS35L41_CAL_RDC_RADIX,
 			    (ohms_left & (((1 << CS35L41_CAL_RDC_RADIX) - 1))) *
 			    10000 / (1 << CS35L41_CAL_RDC_RADIX));
-	dev_info(cirrus_cal->dev, "R Right:\t\t%d (%llu.%llu Ohms)\n",
+	dev_info(cirrus_cal->dev, "R Right:\t\t%d (%llu.%04llu Ohms)\n",
 			rdc_right, ohms_right >> CS35L41_CAL_RDC_RADIX,
 			    (ohms_right & (((1 << CS35L41_CAL_RDC_RADIX) - 1))) *
 			    10000 / (1 << CS35L41_CAL_RDC_RADIX));

@@ -49,6 +49,7 @@ struct packet_descriptor {
 struct dit_dev_info {
 	void __iomem *reg_base;
 	void __iomem *busc_reg_base;
+	dma_addr_t dma;
 
 	int bus_err_int;
 	int rx_done_int;

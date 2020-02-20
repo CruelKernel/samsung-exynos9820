@@ -502,12 +502,32 @@ config WIRELESS_CHARGER_S2MIW03
 	  Say Y here to enable support for the S2MIW03 charger
 	  S2MIW03 wireless charger driver.
 
+config WIRELESS_CHARGER_MFC_S2MIW04
+	tristate "s2miw04 wireless battery charger support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the S2MIW04 charger
+	  S2MIW04 wireless charger driver.
+
 config WIRELESS_CHARGER_MFC
 	tristate "MFC IC charger support"
 	depends on BATTERY_SAMSUNG && I2C
 	help
 	  Say Y here to enable support for the MFC IC
 	  MFC wireless charger driver.
+
+config WIRELESS_CHARGER_HAL_MFC
+	tristate "MFC IC charger support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the MFC IC
+	  MFC wireless charger driver.	  
+
+config WIRELESS_IC_PARAM
+	tristate "WIRELESS IC info param support"
+	depends on BATTERY_SAMSUNG && I2C
+	help
+	  Say Y here to enable support for the WIRELESS IC info param
 
 config WIRELESS_FIRMWARE_UPDATE
 	tristate "p9220 battery charger support"

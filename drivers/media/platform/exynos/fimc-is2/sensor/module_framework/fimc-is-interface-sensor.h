@@ -308,6 +308,8 @@ typedef struct {
 
 	bool binning; /* If binning is set, sensor should binning for size */
 
+	bool dual_slave;
+
 	u32 cis_rev;
 	u32 group_param_hold;
 
@@ -380,7 +382,7 @@ struct fimc_is_cis_ops {
 #ifdef CAMERA_REAR2_SENSOR_SHIFT_CROP
 	int (*cis_update_pdaf_tail_size)(struct v4l2_subdev *subdev, struct fimc_is_sensor_cfg *select);
 #endif
-	int (*cis_check_rev)(struct v4l2_subdev *subdev);
+	int (*cis_check_rev_on_init)(struct v4l2_subdev *subdev);
 	int (*cis_set_super_slow_motion_threshold)(struct v4l2_subdev *subdev, u32 threshold);
 	int (*cis_get_super_slow_motion_threshold)(struct v4l2_subdev *subdev, u32 *threshold);
 	int (*cis_set_initial_exposure)(struct v4l2_subdev *subdev);
@@ -391,6 +393,11 @@ struct fimc_is_cis_ops {
 	int (*cis_set_super_slow_motion_gmc_table_idx)(struct v4l2_subdev *subdev, u32 idx);
 	int (*cis_set_super_slow_motion_gmc_block_with_md_low)(struct v4l2_subdev *subdev, u32 idx);
 	int (*cis_recover_stream_on)(struct v4l2_subdev *subdev);
+	int (*cis_set_laser_control)(struct v4l2_subdev *subdev, u32 onoff);
+	int (*cis_set_factory_control)(struct v4l2_subdev *subdev, u32 command);
+	int (*cis_set_laser_current)(struct v4l2_subdev *subdev, u32 value);
+	int (*cis_get_laser_photo_diode)(struct v4l2_subdev *subdev, u16 *value);
+	int (*cis_get_tof_tx_freq)(struct v4l2_subdev *subdev, u32 *value);
 };
 
 struct fimc_is_sensor_ctl
@@ -591,7 +598,7 @@ struct fimc_is_ois_ops {
 #endif
 	bool (*ois_auto_test)(struct fimc_is_core *core,
 				int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y);
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 	bool (*ois_auto_test_rear2)(struct fimc_is_core *core,
 				int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y,
 				bool *x_result_2nd, bool *y_result_2nd, int *sin_x_2nd, int *sin_y_2nd);
@@ -834,7 +841,9 @@ struct fimc_is_cis_ext2_interface_ops {
 	/* Get static memory address for DDK/RTA backup data */
 	int (*get_static_mem)(int ctrl_id, void **mem, int *size);
 	int (*get_open_close_hint)(int* opening, int* closing);
-	void *reserved[16];
+	int (*set_mainflash_duration)(struct fimc_is_sensor_interface *itf,
+				u32 mainflash_duration);
+	void *reserved[15];
 };
 
 struct fimc_is_cis_event_ops {

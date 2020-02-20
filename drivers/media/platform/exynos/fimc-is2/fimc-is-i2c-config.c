@@ -129,6 +129,11 @@ int fimc_is_i2c_pin_control(struct fimc_is_module_enum *module, u32 scenario, u3
 				__func__, __LINE__, i2c_config_state, module->position, scenario);
 			ret |= fimc_is_i2c_pin_config(device->mcu->client, i2c_config_state);
 		}
+		if (device->actuator[module->position]) {
+			info("%s[%d] actuator i2c config(%d), position(%d), scenario(%d)\n",
+				__func__, __LINE__, i2c_config_state, module->position, scenario);
+			ret |= fimc_is_i2c_pin_config(device->actuator[module->position]->client, i2c_config_state);
+		}
 		break;
 	case SENSOR_SCENARIO_READ_ROM:
 		if (module->pdata->rom_id >= ROM_ID_REAR && module->pdata->rom_id < ROM_ID_MAX) {

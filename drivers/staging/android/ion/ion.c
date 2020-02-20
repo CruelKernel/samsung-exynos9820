@@ -267,19 +267,7 @@ static int ion_dma_buf_attach(struct dma_buf *dmabuf, struct device *dev,
 static void ion_dma_buf_detatch(struct dma_buf *dmabuf,
 				struct dma_buf_attachment *attachment)
 {
-<<<<<<< HEAD
 	free_duped_table(attachment->priv);
-=======
-	struct ion_dma_buf_attachment *a = attachment->priv;
-	struct ion_buffer *buffer = dmabuf->priv;
-
-	mutex_lock(&buffer->lock);
-	list_del(&a->list);
-	mutex_unlock(&buffer->lock);
-	free_duped_table(a->table);
-
-	kfree(a);
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
 static struct sg_table *ion_map_dma_buf(struct dma_buf_attachment *attachment,

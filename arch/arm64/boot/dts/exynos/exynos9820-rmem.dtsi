@@ -91,6 +91,12 @@
 			reg = <0x0 0x80000000 0x1000>;
 		};
 
+		sec_rdx_bootdev {
+			compatible = "exynos,sec_rdx_bootdev";
+			no-ship;
+			reg = <0x8 0x80000000 0x0AD00000>;
+		};
+
 		debug_snapshot {
 			#address-cells = <2>;
 			#size-cells = <1>;

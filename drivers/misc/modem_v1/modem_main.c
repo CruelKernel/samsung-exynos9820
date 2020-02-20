@@ -60,6 +60,7 @@
 #include "modem_prj.h"
 #include "modem_variation.h"
 #include "modem_utils.h"
+#include "modem_klat.h"
 
 #define FMT_WAKE_TIME   (HZ/2)
 #define RAW_WAKE_TIME   (HZ*6)
@@ -809,6 +810,9 @@ static ssize_t xlat_plat_store(struct kobject *kobj,
 		mif_err("-- unhandled plat prefix for device %s\n", ptr);
 	}
 
+	*(--ptr) = '@';
+	(void)klat_plat_store(kobj, attr, buf, count);
+
 	mif_err("plat prefix: %pI6\n", &nf_linkfwd.plat_prfix);
 #else
 	mif_err("DIT NOT supported\n");
@@ -857,6 +861,8 @@ static ssize_t xlat_addrs_store(struct kobject *kobj,
 		mif_err("-- unhandled clat addr for device %s\n", ptr);
 	}
 
+	*(--ptr) = '@';
+	(void)klat_addrs_store(kobj, attr, buf, count);
 #else
 	mif_err("DIT NOT supported\n");
 #endif
@@ -903,6 +909,8 @@ static ssize_t xlat_v4_addrs_store(struct kobject *kobj,
 		mif_err("-- unhandled clat v4 addr for device %s\n", ptr);
 	}
 
+	*(--ptr) = '@';
+	(void)klat_v4_addrs_store(kobj, attr, buf, count);
 #else
 	mif_err("DIT NOT supported\n");
 #endif

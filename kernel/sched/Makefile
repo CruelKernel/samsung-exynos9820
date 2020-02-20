@@ -30,8 +30,4 @@ obj-$(CONFIG_CGROUP_CPUACCT) += cpuacct.o
 obj-$(CONFIG_CPU_FREQ) += cpufreq.o
 obj-$(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) += cpufreq_schedutil.o
 obj-$(CONFIG_MEMBARRIER) += membarrier.o
-<<<<<<< HEAD
 obj-$(CONFIG_SCHED_EMS) += ems/
-=======
-obj-$(CONFIG_PSI) += psi.o
->>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2

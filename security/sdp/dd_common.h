@@ -202,7 +202,7 @@ int dd_sec_crypt_page(struct dd_info *info, dd_crypto_direction_t rw,
 		struct page *src_page, struct page *dst_page);
 
 int dd_read_crypt_context(struct inode *inode, struct dd_crypt_context *crypt_context);
-int dd_write_crypt_context(struct inode *inode, const struct dd_crypt_context *context);
+int dd_write_crypt_context(struct inode *inode, const struct dd_crypt_context *context, void *fs_data);
 int dd_read_crypto_metadata(struct inode *inode, const char *name, void *buffer, size_t buffer_size);
 int dd_write_crypto_metadata(struct inode *inode, const char *name, const void *buffer, size_t len);
 

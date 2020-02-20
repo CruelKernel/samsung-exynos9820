@@ -41,8 +41,10 @@ obj-$(CONFIG_CHARGER_MAX77705)	+= max77705_charger.o
 obj-$(CONFIG_CHARGER_S2MU003)   += s2mu003_charger.o
 obj-$(CONFIG_CHARGER_DA9155)    += da9155_charger.o
 
+obj-$(CONFIG_WIRELESS_CHARGER_HAL_MFC)	+= mfc_hal_charger.o
 obj-$(CONFIG_WIRELESS_CHARGER_BQ51221)	+= bq51221_charger.o
 obj-$(CONFIG_WIRELESS_CHARGER_P9220)	+= p9220_charger.o
 obj-$(CONFIG_WIRELESS_CHARGER_MFC)	+= mfc_charger.o
+obj-$(CONFIG_WIRELESS_CHARGER_MFC_S2MIW04)	+= mfc_s2miw04_charger.o
 
 obj-$(CONFIG_CHARGER_PCA9468)	+= pca9468_charger.o

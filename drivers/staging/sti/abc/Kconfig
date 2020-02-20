@@ -29,6 +29,17 @@ config SEC_ABC_HUB_COND
 	  This function is to detect connect h/w problem
 	  It is sub module of ABC Hub Driver
 	  It depends on SEC_ABC_HUB Feature
+	  
+comment "Samsung ABC Hub Connect Detect Options"
+config SEC_ABC_HUB_COND_DAVINCI
+	bool "Samsung Davinci ABC Hub Connect Detect Feature"
+	depends on SEC_ABC_HUB_COND
+	default n
+	help
+	  Samsung COND(Connect Detect) Feature
+	  This function is to detect connect h/w problem
+	  It is sub module of ABC Hub Driver
+	  It depends on SEC_ABC_HUB Feature
 
 comment "Samsung ABC Hub Booting Time Check Options"
 config SEC_ABC_HUB_BOOTC

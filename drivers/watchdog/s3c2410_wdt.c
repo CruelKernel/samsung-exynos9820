@@ -985,7 +985,7 @@ static int s3c2410wdt_panic_handler(struct notifier_block *nb,
 	return 0;
 }
 
-inline int s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index)
+inline int __s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index, unsigned long addr)
 {
 	struct s3c2410_wdt *wdt = s3c_wdt[index];
 	unsigned int wtdat = 0;
@@ -994,6 +994,10 @@ inline int s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index)
 
 	if (!wdt)
 		return -ENODEV;
+
+#ifdef CONFIG_SEC_DEBUG
+	wdd_info->emerg_addr = addr;
+#endif
 
 	/* emergency reset with wdt reset */
 	wtcon = readl(wdt->reg_base + S3C2410_WTCON);
@@ -1004,6 +1008,11 @@ inline int s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index)
 	writel(wtcon, wdt->reg_base + S3C2410_WTCON);
 
 	return 0;
+}
+
+inline int s3c2410wdt_set_emergency_reset(unsigned int timeout_cnt, int index)
+{
+	return __s3c2410wdt_set_emergency_reset(timeout_cnt, index, _RET_IP_);
 }
 
 inline int s3c2410wdt_multistage_emergency_reset(unsigned int timeout_cnt)
@@ -1442,6 +1451,7 @@ static int s3c2410wdt_probe(struct platform_device *pdev)
 	if (wdd_info) {
 		wdd_info->init_done = false;
 		wdd_info->tm = &wdd_info_tm;
+		wdd_info->emerg_addr = 0;
 	}
 #endif
 

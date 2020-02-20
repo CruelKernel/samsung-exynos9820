@@ -1480,8 +1480,7 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 int xhci_hub_check_speed(struct usb_hcd *hcd)
 {
 	struct xhci_hcd	*xhci;
-	int slot_id;
-	int i;
+	int slot_id, i;
 	enum usb_device_speed speed;
 
 	if (!hcd)

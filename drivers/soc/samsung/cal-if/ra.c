@@ -61,10 +61,33 @@ static unsigned int ra_get_fixed_factor(struct cmucal_clk *clk)
 }
 
 static struct cmucal_pll_table *get_pll_table(struct cmucal_pll *pll_clk,
-					      unsigned long rate)
+					      unsigned long rate,
+					      unsigned long rate_hz)
 {
 	struct cmucal_pll_table *prate_table = pll_clk->rate_table;
 	int i;
+
+	if (rate_hz) {
+		unsigned long matching = rate_hz;
+
+		/* Skip Hz unit matching. It is too ideal. */
+
+		/* 10Hz unit */
+		do_div(matching, 10);
+		for (i = 0; i < pll_clk->rate_count; i++) {
+			if (matching == prate_table[i].rate / 10)
+				return &prate_table[i];
+		}
+
+		/* Fallback: 100Hz unit */
+		do_div(matching, 10);
+		for (i = 0; i < pll_clk->rate_count; i++) {
+			if (matching == prate_table[i].rate / 100)
+				return &prate_table[i];
+		}
+
+		/* Fallback: 1000Hz unit */
+	}
 
 	for (i = 0; i < pll_clk->rate_count; i++) {
 		if (rate == prate_table[i].rate / 1000)
@@ -270,7 +293,8 @@ static int ra_set_div_rate(struct cmucal_clk *clk, unsigned int rate)
 	return ret;
 }
 
-static int ra_set_pll(struct cmucal_clk *clk, unsigned int rate)
+static int ra_set_pll(struct cmucal_clk *clk, unsigned int rate,
+		      unsigned int rate_hz)
 {
 	struct cmucal_pll *pll;
 	struct cmucal_pll_table *rate_table;
@@ -289,14 +313,14 @@ static int ra_set_pll(struct cmucal_clk *clk, unsigned int rate)
 		}
 		ra_enable_pll(clk, 0);
 	} else {
-		rate_table = get_pll_table(pll, rate);
+		rate_table = get_pll_table(pll, rate, rate_hz);
 		if (!rate_table) {
 			if (IS_FIXED_RATE(clk->pid))
 				fin = ra_get_value(clk->pid);
 			else
 				fin = FIN_HZ_26M;
 
-			ret = pll_find_table(pll, &table, fin, rate);
+			ret = pll_find_table(pll, &table, fin, rate, rate_hz);
 			if (ret) {
 				pr_err("failed %s table %u\n", clk->name, rate);
 				return ret;
@@ -660,7 +684,7 @@ int ra_set_value(unsigned int id, unsigned int params)
 		ret = ra_set_div_mux(clk, params);
 		break;
 	case PLL_TYPE:
-		ret = ra_set_pll(clk, params);
+		ret = ra_set_pll(clk, params, 0);
 		break;
 	case GATE_TYPE:
 		ret = ra_set_gate(clk, params);
@@ -1075,7 +1099,7 @@ int ra_set_rate(unsigned int id, unsigned int rate)
 
 	switch (GET_TYPE(clk->id)) {
 	case PLL_TYPE:
-		ret = ra_set_pll(clk, rate/1000);
+		ret = ra_set_pll(clk, rate / 1000, rate);
 		break;
 	case DIV_TYPE:
 		ret = ra_set_div_rate(clk, rate);

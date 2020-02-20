@@ -126,15 +126,7 @@ int sensor_module_power_reset(struct v4l2_subdev *subdev, struct fimc_is_device_
 	if (ret)
 		err("gpio off is fail(%d)", ret);
 
-	ret = fimc_is_sensor_mclk_off(device, device->pdata->scenario, module->pdata->mclk_ch);
-	if (ret)
-		err("fimc_is_sensor_mclk_off is fail(%d)", ret);
-
 	usleep_range(10000, 10000);
-
-	ret = fimc_is_sensor_mclk_on(device, device->pdata->scenario, module->pdata->mclk_ch);
-	if (ret)
-		err("fimc_is_sensor_mclk_on is fail(%d)", ret);
 
 	ret = fimc_is_sensor_gpio_on(device);
 	if (ret)
@@ -206,13 +198,14 @@ int sensor_module_init(struct v4l2_subdev *subdev, u32 val)
 		}
 	}
 
-	ret = CALL_CISOPS(&sensor_peri->cis, cis_check_rev, subdev_cis);
+#ifdef CONFIG_VENDER_MCD
+	ret = CALL_CISOPS(&sensor_peri->cis, cis_check_rev_on_init, subdev_cis);
 	if (ret < 0) {
 		device = (struct fimc_is_device_sensor *)v4l2_get_subdev_hostdata(subdev_cis);
 		if (device != NULL && ret == -EAGAIN) {
 			err("Checking sensor revision is fail. So retry camera power sequence.");
 			sensor_module_power_reset(subdev, device);
-			ret = CALL_CISOPS(&sensor_peri->cis, cis_check_rev, subdev_cis);
+			ret = CALL_CISOPS(&sensor_peri->cis, cis_check_rev_on_init, subdev_cis);
 			if (ret < 0) {
 #ifdef USE_CAMERA_HW_BIG_DATA
 				fimc_is_sec_get_hw_param(&hw_param, sensor_peri->module->position);
@@ -223,6 +216,7 @@ int sensor_module_init(struct v4l2_subdev *subdev, u32 val)
 			}
 		}
 	}
+#endif
 
 	/* init kthread for sensor register setting when s_format */
 	ret = fimc_is_sensor_init_mode_change_thread(sensor_peri);
@@ -543,6 +537,15 @@ int sensor_module_g_ctrl(struct v4l2_subdev *subdev, struct v4l2_control *ctrl)
 			goto p_err;
 		}
 		break;
+	case V4L2_CID_SENSOR_GET_PD_VALUE:
+		ret = CALL_CISOPS(&sensor_peri->cis, cis_get_laser_photo_diode, sensor_peri->subdev_cis, (u16*)&ctrl->value);
+		info("%s value :%d",__func__,ctrl->value);
+		if (ret < 0) {
+			err("err!!! ret(%d)", ret);
+			ret = -EINVAL;
+			goto p_err;
+		}
+		break;
 	case V4L2_CID_SENSOR_ADJUST_ANALOG_GAIN:
 		/* TODO: v4l2 g_ctrl cannot support adjust function */
 #if 0
@@ -810,6 +813,20 @@ int sensor_module_s_ctrl(struct v4l2_subdev *subdev, struct v4l2_control *ctrl)
 			sensor_peri->subdev_cis, ctrl->value);
 		if (ret < 0) {
 			err("failed to control super slow motion: %d\n", ctrl->value);
+			goto p_err;
+		}
+		break;
+	case V4L2_CID_SENSOR_SET_FACTORY_CONTROL:
+		ret = CALL_CISOPS(&sensor_peri->cis, cis_set_factory_control, sensor_peri->subdev_cis, ctrl->value);
+		if (ret < 0) {
+			err("failed to factory control: %d\n", ctrl->value);
+			goto p_err;
+		}
+		break;
+	case V4L2_CID_SENSOR_SET_LASER_CONTORL:
+		ret = CALL_CISOPS(&sensor_peri->cis, cis_set_laser_control, sensor_peri->subdev_cis, ctrl->value);
+		if (ret < 0) {
+			err("failed to laser control: %d\n", ctrl->value);
 			goto p_err;
 		}
 		break;

@@ -2024,24 +2024,27 @@ static int memsize_reserved_show(struct seq_file *m, void *private)
 
 	sort(reserved_mem_reg, reserved_mem_reg_count,
 	     sizeof(reserved_mem_reg[0]), __rmem_reg_cmp, NULL);
+	seq_printf(m, "v1\n");
 	for (i = 0 ; i < reserved_mem_reg_count; i++)
 	{
 		rmem_reg = &reserved_mem_reg[i];
-#if defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-		seq_printf(m, "0x%08lx ( %7lu KB ) %s\n",
-			   (unsigned long)rmem_reg->size,
-			   (unsigned long)DIV_ROUND_UP(rmem_reg->size, SZ_1K),
-			   rmem_reg->name);
-#else
 		seq_printf(m, "0x%09lx-0x%09lx 0x%08lx ( %7lu KB ) %s %s %s\n",
+#if defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+			   0UL,
+			   0UL,
+#else
 			   (unsigned long)rmem_reg->base,
 			   (unsigned long)(rmem_reg->base + rmem_reg->size),
+#endif
 			   (unsigned long)rmem_reg->size,
 			   (unsigned long)DIV_ROUND_UP(rmem_reg->size, SZ_1K),
+#if defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+			   "xxxxx",
+#else
 			   rmem_reg->nomap ? "nomap" : "  map",
+#endif
 			   rmem_reg->reusable ? "reusable" : "unusable",
 			   rmem_reg->name);
-#endif
 		if (rmem_reg->reusable)
 			reusable += (unsigned long)rmem_reg->size;
 		else
@@ -2049,11 +2052,9 @@ static int memsize_reserved_show(struct seq_file *m, void *private)
 	}
 
 	kernel = get_memsize_kernel();
-#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-	seq_printf(m, "                        ");
-#endif
-	seq_printf(m, "0x%08lx ( %7lu KB ) %s\n",
-		   kernel, DIV_ROUND_UP(kernel, SZ_1K), "kernel");
+	seq_printf(m, "0x%09lx-0x%09lx 0x%08lx ( %7lu KB ) %s %s %s\n",
+		   0UL, 0UL, kernel, DIV_ROUND_UP(kernel, SZ_1K), "xxxxx",
+		   "unusable", "kernel");
 	total = kernel + dt_reserved + system;
 
 	seq_printf(m, "\n");

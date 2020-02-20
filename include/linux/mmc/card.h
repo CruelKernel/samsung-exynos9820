@@ -254,6 +254,9 @@ struct mmc_card_error_log {
 	u32	wp_cnt;			// status[26] : write protection error_count
 	u32	oor_cnt;		// status[31] : out of range error
 	u32	noti_cnt;		// uevent notification count
+	u32	halt_cnt;	// cq halt / unhalt fail
+	u32	cq_cnt;		// cq enable / disable fail
+	u32	rpmb_cnt;	// RPMB switch fail
 };
 
 /*

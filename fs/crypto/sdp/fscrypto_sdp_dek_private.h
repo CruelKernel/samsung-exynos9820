@@ -40,7 +40,7 @@ int fscrypt_sdp_set_protected(struct inode *inode, int engine_id);
 int fscrypt_sdp_add_chamber_directory(int engine_id, struct inode *inode);
 int fscrypt_sdp_remove_chamber_directory(struct inode *inode);
 int fscrypt_sdp_get_engine_id(struct inode *inode);
-int fscrypt_sdp_inherit_context(struct inode *parent, struct inode *child, struct fscrypt_context *ctx);
+int fscrypt_sdp_inherit_context(struct inode *parent, struct inode *child, struct fscrypt_context *ctx, void *fs_data);
 void fscrypt_sdp_finalize_tasks(struct inode *inode, u8 *raw_key, int key_len);
 struct sdp_info *fscrypt_sdp_alloc_sdp_info(void);
 void fscrypt_sdp_put_sdp_info(struct sdp_info *ci_sdp_info);

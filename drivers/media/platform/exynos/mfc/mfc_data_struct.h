@@ -1126,14 +1126,15 @@ struct mfc_enc_params {
 	u8 pad_cb;
 	u8 pad_cr;
 
-	u8 fixed_target_bit;
 	u8 rc_mb;		/* H.264: MFCv5, MPEG4/H.263: MFCv6 */
 	u8 rc_pvc;
 	u8 rc_frame;
+	u8 drop_control;
 	u32 rc_bitrate;
 	u32 rc_framerate;
 	u16 rc_reaction_coeff;
 	u16 rc_frame_delta;	/* MFC6.1 Only */
+	u32 rc_framerate_res;
 
 	u32 config_qp;
 	u32 dynamic_qp;
@@ -1150,6 +1151,7 @@ struct mfc_enc_params {
 	u8 weighted_enable;
 	u8 roi_enable;
 	u8 ivf_header_disable;	/* VP8, VP9 */
+	u8 fixed_target_bit;
 
 	u32 check_color_range;
 	u32 color_range;
@@ -1577,6 +1579,7 @@ struct mfc_ctx {
 	struct list_head ts_list;
 	int ts_count;
 	int ts_is_full;
+	int ts_last_interval;
 
 	/* bitrate control for QoS*/
 	struct mfc_bitrate bitrate_array[MAX_TIME_INDEX];

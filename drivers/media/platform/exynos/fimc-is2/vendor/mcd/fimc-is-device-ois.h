@@ -99,7 +99,7 @@ bool fimc_is_ois_check_fw(struct fimc_is_core *core);
 bool fimc_is_ois_auto_test(struct fimc_is_core *core,
 				int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y);
 bool fimc_is_ois_read_fw_ver(struct fimc_is_core *core, char *name, char *ver);
-#ifdef CAMERA_REAR2_OIS
+#ifdef CAMERA_2ND_OIS
 bool fimc_is_ois_auto_test_rear2(struct fimc_is_core *core,
 				int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y,
 				bool *x_result_2nd, bool *y_result_2nd, int *sin_x_2nd, int *sin_y_2nd);

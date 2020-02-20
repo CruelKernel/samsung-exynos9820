@@ -393,13 +393,14 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 {
 	struct fvmap_header *fvmap_header, *header;
 	struct rate_volt_header *old, *new;
+	struct dvfs_table *old_param, *new_param;
 	struct clocks *clks;
 	struct pll_header *plls;
 	struct vclk *vclk;
 	unsigned int member_addr;
-	unsigned int blk_idx;
+	unsigned int blk_idx, param_idx;
 	int size, margin;
-	int i, j;
+	int i, j, k;
 
 	fvmap_header = map_base;
 	header = sram_base;
@@ -475,6 +476,22 @@ static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base
 			pr_info("  lv : [%7d], volt = %d uV (%d %%) \n",
 				new->table[j].rate, new->table[j].volt,
 				volt_offset_percent);
+		}
+
+		old_param = sram_base + fvmap_header[i].o_tables;
+		new_param = map_base + fvmap_header[i].o_tables;
+		for (j = 0; j < fvmap_header[i].num_of_lv; j++) {
+			for (k = 0; k < fvmap_header[i].num_of_members; k++) {
+				param_idx = fvmap_header[i].num_of_members * j + k;
+				new_param->val[param_idx] = old_param->val[param_idx];
+				if (vclk->lut[j].params[k] != new_param->val[param_idx]) {
+					vclk->lut[j].params[k] = new_param->val[param_idx];
+					pr_info("Mis-match %s[%d][%d] : %d %d\n",
+						vclk->name, j, k,
+						vclk->lut[j].params[k],
+						new_param->val[param_idx]);
+				}
+			}
 		}
 	}
 }

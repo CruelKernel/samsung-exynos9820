@@ -114,11 +114,11 @@ static struct bio *get_bio(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 int exynos_ufs_fmp_cfg(struct ufs_hba *hba,
 		       struct ufshcd_lrb *lrbp,
 		       struct scatterlist *sg,
-		       uint32_t index, int sector_offset)
+		       uint32_t index, int sector_offset, int page_index)
 {
 	struct fmp_request req;
 	struct crypto_diskcipher *dtfm;
-	sector_t iv;
+	u64 iv;
 	struct bio *bio = get_bio(hba, lrbp);
 
 	if (!bio)
@@ -129,7 +129,15 @@ int exynos_ufs_fmp_cfg(struct ufs_hba *hba,
 		pr_warn("%s: fails to get crypt\n", __func__);
 		return -EINVAL;
 	} else if (dtfm) {
+#ifdef CONFIG_CRYPTO_DISKCIPHER_DUN
+		if (bio_dun(bio))
+			iv = bio_dun(bio) + page_index;
+		else
+			iv = bio->bi_iter.bi_sector + (sector_t) sector_offset;
+#else
 		iv = bio->bi_iter.bi_sector + (sector_t) sector_offset;
+#endif
+
 		req.table = (void *)&lrbp->ucd_prdt_ptr[index];
 		req.cmdq_enabled = 0;
 		req.iv = &iv;
@@ -142,7 +150,6 @@ int exynos_ufs_fmp_cfg(struct ufs_hba *hba,
 			return 0;
 		}
 #endif
-		crypto_diskcipher_check(bio);
 		if (crypto_diskcipher_set_crypt(dtfm, &req)) {
 			pr_warn("%s: fails to set crypt\n", __func__);
 			return -EINVAL;

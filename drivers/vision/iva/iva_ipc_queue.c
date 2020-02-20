@@ -936,10 +936,12 @@ int iva_ipcq_wait_res_usr(struct iva_proc *proc,
 			tmp_resp.ipc_cmd_type	= IPC_CMD_UNKNOWN_NOTIFY;
 		ret_param = &tmp_resp;
 
-		iva_mcu_print_flush_pending_mcu_log(iva);
+		if (!!iva->state) {
+			iva_mcu_print_flush_pending_mcu_log(iva);
 
-		iva_pmu_show_status(iva);
-		iva_vdma_show_status(iva);
+			iva_pmu_show_status(iva);
+			iva_vdma_show_status(iva);
+		}
 	} else {
 		switch (IPC_GET_FUNC(ret_param->header)) {
 		case ipc_func_sched_table:
@@ -958,10 +960,12 @@ int iva_ipcq_wait_res_usr(struct iva_proc *proc,
 				del_timer_sync(&ipcq->to_timer);
 				ipcq->to_in_ms = 0;
 
-				iva_mcu_print_flush_pending_mcu_log(iva);
+				if (!!iva->state) {
+					iva_mcu_print_flush_pending_mcu_log(iva);
 
-				iva_pmu_show_status(iva);
-				iva_vdma_show_status(iva);
+					iva_pmu_show_status(iva);
+					iva_vdma_show_status(iva);
+				}
 			}
 			break;
 		default:

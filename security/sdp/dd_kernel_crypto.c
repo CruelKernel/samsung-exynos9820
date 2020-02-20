@@ -33,7 +33,7 @@ extern int fscrypt_get_encryption_kek(struct inode *inode,
 								struct fscrypt_key *kek);
 extern int fscrypt_get_encryption_key(struct inode *inode, struct fscrypt_key *key);
 
-int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy) {
+int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy, void *fs_data) {
 	struct dd_crypt_context crypt_context;
 	int rc = 0;
 
@@ -147,7 +147,7 @@ out:
 		dd_error("failed to create crypt context rc:%d\n", rc);
 		return rc;
 	}
-	return dd_write_crypt_context(inode, &crypt_context);
+	return dd_write_crypt_context(inode, &crypt_context, fs_data);
 }
 
 #if USE_KEYRING
@@ -288,7 +288,7 @@ int dd_dump_key(int userid, int fd)
 	struct dd_crypt_context crypt_context;
 	struct fd f = {NULL, 0};
 	struct inode *inode;
-	unsigned char *dd_inner_file_encryption_key;
+	unsigned char *dd_inner_file_encryption_key = NULL;
 	int rc = 0;
 
 	dd_error("########## DUALDAR_DUMP - START ##########\n");
@@ -357,6 +357,7 @@ int dd_dump_key(int userid, int fd)
 	dd_hex_key_dump("[DUALDAR_DUMP] OUTER LAYER FILE ENCRYPTION KEY", dd_outer_file_encryption_key.raw, dd_outer_file_encryption_key.size);
 
 out:
+	if (dd_inner_file_encryption_key) kfree(dd_inner_file_encryption_key);
 	if (f.file)
 		fdput(f);
 	dd_error("########## DUALDAR_DUMP - END ##########\n");
@@ -554,6 +555,7 @@ int dd_sec_crypt_bio_pages(struct dd_info *info, struct bio *orig,
 			struct page *plaintext_page = orig_bv.bv_page;
 			struct page *ciphertext_page = clone_bv.bv_page;
 
+			BUG_ON(info->ino != orig_bv.bv_page->mapping->host->i_ino);
 			dd_dump("dd_crypto_bio_pages::encryption start", page_address(plaintext_page), PAGE_SIZE);
 			rc = dd_sec_crypt_page(info, DD_ENCRYPT, plaintext_page, ciphertext_page);
 			if (rc) {
@@ -568,6 +570,7 @@ int dd_sec_crypt_bio_pages(struct dd_info *info, struct bio *orig,
             struct bio_vec orig_bv = bio_iter_iovec(orig, orig->bi_iter);
             struct page *ciphertext_page = orig_bv.bv_page;
 
+			BUG_ON(info->ino != orig_bv.bv_page->mapping->host->i_ino);
 			dd_dump("dd_crypto_bio_pages::decryption start", page_address(ciphertext_page), PAGE_SIZE);
 			rc = dd_sec_crypt_page(info, DD_DECRYPT, ciphertext_page, ciphertext_page);
 			if (rc) {

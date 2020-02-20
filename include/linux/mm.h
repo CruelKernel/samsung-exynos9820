@@ -2045,12 +2045,16 @@ extern void zone_pcp_reset(struct zone *zone);
 extern int min_free_kbytes;
 extern int watermark_scale_factor;
 
-/* vmscan.c */
-extern void reclaim_contig_migrate_range(unsigned long start,
-					 unsigned long end, bool drain);
-/* ion_rbin_heap.c */
+/* ion_rbin_heap */
 void wake_ion_rbin_heap_prereclaim(void);
 void wake_ion_rbin_heap_shrink(void);
+
+/* rbincache.c */
+int init_rbincache(unsigned long pfn, unsigned long nr_pages);
+extern unsigned long totalrbin_pages;
+extern atomic_t rbin_allocated_pages;
+extern atomic_t rbin_cached_pages;
+extern atomic_t rbin_pool_pages;
 
 /* nommu.c */
 extern atomic_long_t mmap_pages_allocated;

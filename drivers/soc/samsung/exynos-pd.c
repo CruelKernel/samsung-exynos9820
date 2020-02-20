@@ -16,6 +16,7 @@
 #include <soc/samsung/bts.h>
 #include <soc/samsung/cal-if.h>
 #include <linux/apm-exynos.h>
+#include <linux/sec_debug.h>
 struct exynos_pm_domain *exynos_pd_lookup_name(const char *domain_name)
 {
 	struct exynos_pm_domain *exypd = NULL;
@@ -163,10 +164,12 @@ static int exynos_pd_power_off(struct generic_pm_domain *genpd)
 			ret = pd->pd_control(pd->cal_pdid, 0);
 			if (unlikely(ret)) {
 				pr_auto(ASL1, EXYNOS_PD_PREFIX "%s occur error at power off!\n", genpd->name);
+				sec_debug_set_extra_info_epd((char *)(genpd->name));
 				goto acc_unlock;
 			}
 		} else {
-			pr_auto(ASL1, EXYNOS_PD_PREFIX "%s occur error at power off!\n", genpd->name);
+			pr_auto(ASL1, EXYNOS_PD_PREFIX "%s occur error at power off!!\n", genpd->name);
+			sec_debug_set_extra_info_epd((char *)(genpd->name));
 			goto acc_unlock;
 		}
 	}
@@ -482,6 +485,7 @@ static int __init exynos_pd_init(void)
 		pr_info("%s PM Domain Initialize\n", EXYNOS_PD_PREFIX);
 		/* show information of power domain registration */
 		exynos_pd_show_power_domain();
+
 		return 0;
 	}
 #endif

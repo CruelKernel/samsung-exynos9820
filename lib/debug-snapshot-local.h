@@ -108,6 +108,7 @@ struct dbg_snapshot_desc {
 	int allcorelockup_detected;
 	int no_wdt_dev;
 	int debug_level;
+	int sjtag_status;
 };
 
 
@@ -116,4 +117,8 @@ extern struct dbg_snapshot_log *dss_log;
 extern struct dbg_snapshot_desc dss_desc;
 extern struct dbg_snapshot_item dss_items[];
 extern int dbg_snapshot_log_size;
+
+#ifdef CONFIG_SEC_PM_DEBUG
+extern ssize_t dss_log_work_print(char *buf);
+#endif /* CONFIG_SEC_PM_DEBUG */
 #endif

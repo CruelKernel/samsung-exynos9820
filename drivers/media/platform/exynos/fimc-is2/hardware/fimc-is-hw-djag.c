@@ -98,6 +98,7 @@ int fimc_is_hw_mcsc_update_djag_register(struct fimc_is_hw_ip *hw_ip,
 		u32 instance)
 {
 	int ret = 0;
+	struct fimc_is_device_ischain *ischain;
 	struct fimc_is_hw_mcsc *hw_mcsc = NULL;
 	struct fimc_is_hw_mcsc_cap *cap = GET_MCSC_HW_CAP(hw_ip);
 	u32 in_width, in_height;
@@ -112,7 +113,7 @@ int fimc_is_hw_mcsc_update_djag_register(struct fimc_is_hw_ip *hw_ip,
 	u32 yuv = 0;
 #endif
 	u32 white = 1023, black = 0;
-	bool djag_en = true, size_adjust = false;
+	bool djag_en = true;
 
 	FIMC_BUG(!hw_ip);
 	FIMC_BUG(!hw_ip->priv_info);
@@ -121,19 +122,13 @@ int fimc_is_hw_mcsc_update_djag_register(struct fimc_is_hw_ip *hw_ip,
 	if (cap->djag != MCSC_CAP_SUPPORT)
 		return ret;
 
+	ischain = hw_ip->group[instance]->device;
 	hw_mcsc = (struct fimc_is_hw_mcsc *)hw_ip->priv_info;
 
+	/* Decide DJAG input path based on the current streaming scenario. */
 	backup_in = hw_mcsc->djag_in;
-	if (hw_ip->hardware->video_mode) {
-		if (hw_ip->hardware->hs_mode) {
-			hw_mcsc->djag_in = MCSC_DJAG_IN_HS_VIDEO_MODE;
-			size_adjust = true;
-		} else {
-			hw_mcsc->djag_in = MCSC_DJAG_IN_VIDEO_MODE;
-		}
-	} else {
-		hw_mcsc->djag_in = MCSC_DJAG_IN_CAPTURE_MODE;
-	}
+	hw_mcsc->djag_in = hw_ip->id;
+	fimc_is_hw_djag_get_input(ischain, &hw_mcsc->djag_in);
 
 	/* The force means that sysfs control has higher priority than scenario. */
 	fimc_is_hw_mcsc_get_force_block_control(hw_ip, SUBBLK_IP_DJAG, cap->max_djag,
@@ -183,23 +178,14 @@ int fimc_is_hw_mcsc_update_djag_register(struct fimc_is_hw_ip *hw_ip,
 		}
 	}
 
+	fimc_is_hw_djag_adjust_out_size(ischain, in_width, in_height, &out_width, &out_height);
+
 	if (param->input.width > out_width || param->input.height > out_height) {
-		/*
-		 * To make DJAG be enabled even for down-scaling scenario,
-		 * set DJAG output size with input size.
-		 */
-		if (size_adjust) {
-			sdbg_hw(2, "Force set DJAG output size with %dx%d\n", hw_ip,
-					param->input.width, param->input.height);
-			out_width = param->input.width;
-			out_height = param->input.height;
-		} else {
-			sdbg_hw(2, "DJAG is not applied still.(input : %dx%d > output : %dx%d)\n", hw_ip,
-					param->input.width, param->input.height,
-					out_width, out_height);
-			fimc_is_scaler_set_djag_enable(hw_ip->regs, 0);
-			return ret;
-		}
+		sdbg_hw(2, "DJAG is not applied still.(input : %dx%d > output : %dx%d)\n", hw_ip,
+				param->input.width, param->input.height,
+				out_width, out_height);
+		fimc_is_scaler_set_djag_enable(hw_ip->regs, 0);
+		return ret;
 	}
 
 	/* check scale ratio if over 2.5 times */

@@ -66,12 +66,12 @@ extern struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *);
 #if defined(CONFIG_ION_CMA_HEAP) && defined(CONFIG_ION_EXYNOS)
 extern struct ion_heap *ion_cma_heap_create(struct cma *cma,
 					    struct ion_platform_heap *pheap);
-#ifdef CONFIG_RBIN
-extern struct ion_heap *ion_rbin_heap_create(struct cma *cma,
-					    struct ion_platform_heap *pheap);
-#endif
 #else
 #define ion_cma_heap_create(cma, p) ERR_PTR(-ENODEV)
+#endif
+
+#ifdef CONFIG_ION_RBIN_HEAP
+extern struct ion_heap *ion_rbin_heap_create(struct ion_platform_heap *pheap);
 #endif
 
 #if defined(CONFIG_ION_HPA_HEAP)

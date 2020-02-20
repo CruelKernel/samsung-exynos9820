@@ -1,0 +1,10 @@
+menu "Intelligence"
+
+config INTELLIGENCE
+	bool "Intelligent Resource Management"
+	default y
+	---help---
+	  Enable support for the Intelligence platform
+
+endmenu
+

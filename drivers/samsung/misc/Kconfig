@@ -1,0 +1,166 @@
+menuconfig SEC_MISC
+	bool "Enable SEC miscellaneous feature"
+	depends on SEC_EXT
+	default y
+
+choice
+	prompt "Version of GAF structure"
+	depends on SEC_DEBUG
+	default SEC_DEBUG_GAF_V5 if PROCA
+	default SEC_DEBUG_GAF_V4
+
+config SEC_DEBUG_GAF_V4
+	bool "Use GAF structure version 4"
+	help
+	  Default option for kernel without PROCA LSM module.
+
+config SEC_DEBUG_GAF_V5
+	bool "Use GAF structure version 5"
+	help
+	  Default option for kernel with PROCA LSM module.
+endchoice
+
+comment "Samsung Mobile Power Management Options"
+menuconfig SEC_PM
+	bool "Samsung Mobile Power Management"
+	default y
+	help
+	  This option enables support for various drivers and features for
+	  Samsung Mobile Power Management.
+
+config SEC_PM_DEBUG
+	bool "Enable Samsung Mobile Power management debug support"
+	default y
+	depends on SEC_PM
+	help
+	  This option enables Samsung Mobile Power management debug support.
+	  Intended for test and debug only.
+
+config SEC_PM_BIGDATA
+	bool "Enable Samsung Mobile Power management big data support"
+	default y
+	depends on SEC_PM
+	help
+	  This option enables Samsung Mobile Power management big data support.
+
+comment "Samsung TN Logging Options"
+config SEC_DEBUG_TSP_LOG
+	default n
+	bool "Enable tsp log support" if EMBEDDED
+	depends on SEC_EXT
+	help
+	  This option enables additional log buffer for tsp log.
+
+comment "Samsung TN NAD Options"
+config SEC_NAD
+	bool "Samsung TN NAD Feature"
+	default n
+	help
+	  Samsung TN NAD Feature, support AT CMD for NAD 2.0
+
+config SEC_NAD_MANUAL_PARAM_READTIME
+	int "Samsung TN NAD Feature"
+	depends on SEC_NAD
+	default "10"
+	help
+	  Samsung TN NAD Feature, set param reading time manually.
+
+config SEC_SUPPORT_SECOND_NAD
+	bool "Samsung TN 2nd NAD Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, support 2nd NAD feature.
+
+config SEC_NAD_BALANCER
+	bool "Samsung TN NAD Balancer Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  This option enables Samsung TN NAD Balancer Feature.
+	  This option also can generate thread to change dvfs frequency. It helps keep balancing
+	  between user and factory binary.
+
+config SEC_NAD_HPM
+	bool "Samsung TN NAD HPM Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD HPM
+
+config SEC_NAD_API
+	bool "Samsung TN NAD API Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Support NAD API to check gpio pull-up registance
+
+config SEC_SUPPORT_VST
+	bool "Samsung TN NAD 4.0 Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, support NAD 4.0 feature.
+
+config SEC_NAD_LOG
+	bool "Samsung TN NAD LOG Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD LOG
+
+config SEC_NAD_X
+	bool "Samsung TN NAD X Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD X
+
+config SEC_NAD_C
+	bool "Samsung TN NAD C Feature"
+	depends on SEC_NAD && SEC_NAD_X
+	default n
+	help
+	  Samsung TN NAD Feature, Enable NAD C
+
+config SEC_NAD_BPS_CLASSIFIER
+	bool " Samsung TN NAD BPS Classifier Feature"
+	depends on SEC_NAD
+	default n
+	help
+	  This option enables gathering bps classifier information during factory process.
+
+config SEC_HQM_DEVICE
+	bool "Samsung sec hqm device"
+	default n
+	help
+	  Samsung hqm device feature
+
+config ARGOS
+	bool "Throughput monitoring Feature"
+	default n
+	help
+	  This option enables monitoring the data throughput and doing several actions for
+	  enhancing the performance such as adjusting the CPU freqency, allocating the tasks
+	  to the appropriate CPU and so on
+
+config SEC_SYSUP
+	bool "Samsung System Update"
+	default n
+	help
+	  Samsung system update Feature
+
+comment "Logging Heavy Task Cpu Options"
+config SEC_HEAVY_TASK_CPU
+	bool "Enable heacy cpu core counting"
+	default n
+	help
+	  This option enables heavy cpu core counting.
+
+comment "NOTIFIER configs"
+config VBUS_NOTIFIER
+	bool "VBUS notifier support"
+	default n
+	help
+	  If you say yes here you will get support for
+	  the VBUS status change notification.
