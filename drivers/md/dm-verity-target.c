@@ -116,6 +116,7 @@ static int verity_hash_init(struct dm_verity *v, struct shash_desc *desc)
 	if (likely(v->version >= 1)) {
 		r = crypto_shash_update(desc, v->salt, v->salt_size);
 
+<<<<<<< HEAD
 		if (unlikely(r < 0)) {
 			DMERR("crypto_shash_update failed: %d", r);
 			return r;
@@ -123,6 +124,37 @@ static int verity_hash_init(struct dm_verity *v, struct shash_desc *desc)
 	}
 
 	return 0;
+=======
+	return ret;
+}
+
+static int verity_hash_update(struct dm_verity *v, struct ahash_request *req,
+				const u8 *data, size_t len,
+				struct verity_result *res)
+{
+	struct scatterlist sg;
+
+	if (likely(!is_vmalloc_addr(data))) {
+		sg_init_one(&sg, data, len);
+		ahash_request_set_crypt(req, &sg, NULL, len);
+		return verity_complete_op(res, crypto_ahash_update(req));
+	} else {
+		do {
+			int r;
+			size_t this_step = min_t(size_t, len, PAGE_SIZE - offset_in_page(data));
+			flush_kernel_vmap_range((void *)data, this_step);
+			sg_init_table(&sg, 1);
+			sg_set_page(&sg, vmalloc_to_page(data), this_step, offset_in_page(data));
+			ahash_request_set_crypt(req, &sg, NULL, this_step);
+			r = verity_complete_op(res, crypto_ahash_update(req));
+			if (unlikely(r))
+				return r;
+			data += this_step;
+			len -= this_step;
+		} while (len);
+		return 0;
+	}
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
 static int verity_hash_update(struct dm_verity *v, struct shash_desc *desc,
@@ -549,7 +581,6 @@ static void verity_prefetch_io(struct work_struct *work)
 		container_of(work, struct dm_verity_prefetch_work, work);
 	struct dm_verity *v = pw->v;
 	int i;
-	sector_t prefetch_size;
 
 	for (i = v->levels - 2; i >= 0; i--) {
 		sector_t hash_block_start;
@@ -572,14 +603,8 @@ static void verity_prefetch_io(struct work_struct *work)
 				hash_block_end = v->hash_blocks - 1;
 		}
 no_prefetch_cluster:
-		// for emmc, it is more efficient to send bigger read
-		prefetch_size = max((sector_t)CONFIG_DM_VERITY_HASH_PREFETCH_MIN_SIZE,
-			hash_block_end - hash_block_start + 1);
-		if ((hash_block_start + prefetch_size) >= (v->hash_start + v->hash_blocks)) {
-			prefetch_size = hash_block_end - hash_block_start + 1;
-		}
 		dm_bufio_prefetch(v->bufio, hash_block_start,
-				  prefetch_size);
+				  hash_block_end - hash_block_start + 1);
 	}
 
 	kfree(pw);
@@ -1016,7 +1041,20 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 		v->tfm = NULL;
 		goto bad;
 	}
+<<<<<<< HEAD
 	v->digest_size = crypto_shash_digestsize(v->tfm);
+=======
+
+	/*
+	 * dm-verity performance can vary greatly depending on which hash
+	 * algorithm implementation is used.  Help people debug performance
+	 * problems by logging the ->cra_driver_name.
+	 */
+	DMINFO("%s using implementation \"%s\"", v->alg_name,
+	       crypto_hash_alg_common(v->tfm)->base.cra_driver_name);
+
+	v->digest_size = crypto_ahash_digestsize(v->tfm);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	if ((1 << v->hash_dev_block_bits) < v->digest_size * 2) {
 		ti->error = "Digest size too big";
 		r = -EINVAL;

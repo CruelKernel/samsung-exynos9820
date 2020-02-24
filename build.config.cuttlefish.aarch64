@@ -6,7 +6,11 @@ DEFCONFIG=cuttlefish_defconfig
 EXTRA_CMDS=''
 KERNEL_DIR=common
 POST_DEFCONFIG_CMDS="check_defconfig"
+<<<<<<< HEAD
 CLANG_PREBUILT_BIN=prebuilts-master/clang/host/linux-x86/clang-r328903/bin
+=======
+CLANG_PREBUILT_BIN=prebuilts-master/clang/host/linux-x86/clang-r349610/bin
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN=prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin
 FILES="
 arch/arm64/boot/Image.gz

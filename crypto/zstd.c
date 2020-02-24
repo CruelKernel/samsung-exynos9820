@@ -23,7 +23,11 @@
 #include <crypto/internal/scompress.h>
 
 
+<<<<<<< HEAD
 #define ZSTD_DEF_LEVEL	1
+=======
+#define ZSTD_DEF_LEVEL	3
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 struct zstd_ctx {
 	ZSTD_CCtx *cctx;
@@ -34,7 +38,11 @@ struct zstd_ctx {
 
 static ZSTD_parameters zstd_params(void)
 {
+<<<<<<< HEAD
 	return ZSTD_getParams(ZSTD_DEF_LEVEL, PAGE_SIZE, 0);
+=======
+	return ZSTD_getParams(ZSTD_DEF_LEVEL, 0, 0);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
 static int zstd_comp_init(struct zstd_ctx *ctx)

@@ -7194,11 +7194,21 @@ tcp_parse_options(sock_net(sk), skb, &tmp_opt, NULL, 0,
 		af_ops->send_synack(fastopen_sk, dst, &fl, req,
 				    &foc, TCP_SYNACK_FASTOPEN);
 		/* Add the child socket directly into the accept queue */
+<<<<<<< HEAD
 #ifdef CONFIG_MPTCP
 		inet_csk_reqsk_queue_add(sk, req, meta_sk);
 #else
 		inet_csk_reqsk_queue_add(sk, req, fastopen_sk);
 #endif
+=======
+		if (!inet_csk_reqsk_queue_add(sk, req, fastopen_sk)) {
+			reqsk_fastopen_remove(fastopen_sk, req, false);
+			bh_unlock_sock(fastopen_sk);
+			sock_put(fastopen_sk);
+			reqsk_put(req);
+			goto drop;
+		}
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		sk->sk_data_ready(sk);
 		bh_unlock_sock(fastopen_sk);
 #ifdef CONFIG_MPTCP

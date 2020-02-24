@@ -466,7 +466,11 @@ struct files_struct init_files = {
 		.full_fds_bits	= init_files.full_fds_bits_init,
 	},
 	.file_lock	= __SPIN_LOCK_UNLOCKED(init_files.file_lock),
+<<<<<<< HEAD
 	.resize_wait    = __WAIT_QUEUE_HEAD_INITIALIZER(init_files.resize_wait),
+=======
+	.resize_wait	= __WAIT_QUEUE_HEAD_INITIALIZER(init_files.resize_wait),
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 };
 
 static unsigned int find_next_fd(struct fdtable *fdt, unsigned int start)

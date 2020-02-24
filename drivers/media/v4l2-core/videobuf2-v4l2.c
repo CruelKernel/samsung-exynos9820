@@ -146,7 +146,10 @@ static void vb2_warn_zero_bytesused(struct vb2_buffer *vb)
 		return;
 
 	check_once = true;
+<<<<<<< HEAD
 	/* WARN_ON(1); */
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	pr_warn("use of bytesused == 0 is deprecated and will be removed in the future,\n");
 	if (vb->vb2_queue->allow_zero_bytesused)

@@ -36,7 +36,7 @@
 DECLARE_KAIRISTICS(cpufreq, 8, 5, 22, 25);
 #endif
 
-unsigned long boosted_cpu_util(int cpu, unsigned long other_util);
+unsigned long boosted_cpu_util(int cpu);
 
 #define SUGOV_KTHREAD_PRIORITY	50
 
@@ -429,10 +429,11 @@ skip_betting:
 
 static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 {
-	unsigned long max_cap, rt;
+	unsigned long max_cap;
 
 	max_cap = arch_scale_cpu_capacity(NULL, cpu);
 
+<<<<<<< HEAD
 	rt = sched_get_rt_rq_util(cpu);
 
 #ifdef CONFIG_SCHED_EMS
@@ -441,6 +442,9 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 	*util = boosted_cpu_util(cpu, rt);
 #endif
 	*util = freqvar_boost_vector(cpu, *util);
+=======
+	*util = boosted_cpu_util(cpu);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	*util = min(*util, max_cap);
 	*max = max_cap;
 
@@ -964,10 +968,9 @@ fail:
 
 stop_kthread:
 	sugov_kthread_stop(sg_policy);
-
-free_sg_policy:
 	mutex_unlock(&global_tunables_lock);
 
+free_sg_policy:
 	sugov_policy_free(sg_policy);
 
 disable_fast_switch:

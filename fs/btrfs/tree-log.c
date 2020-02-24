@@ -3422,9 +3422,16 @@ static noinline int log_dir_items(struct btrfs_trans_handle *trans,
 	}
 	btrfs_release_path(path);
 
-	/* find the first key from this transaction again */
+	/*
+	 * Find the first key from this transaction again.  See the note for
+	 * log_new_dir_dentries, if we're logging a directory recursively we
+	 * won't be holding its i_mutex, which means we can modify the directory
+	 * while we're logging it.  If we remove an entry between our first
+	 * search and this search we'll not find the key again and can just
+	 * bail.
+	 */
 	ret = btrfs_search_slot(NULL, root, &min_key, path, 0, 0);
-	if (WARN_ON(ret != 0))
+	if (ret != 0)
 		goto done;
 
 	/*
@@ -4501,6 +4508,19 @@ static int logged_inode_size(struct btrfs_root *log, struct btrfs_inode *inode,
 		item = btrfs_item_ptr(path->nodes[0], path->slots[0],
 				      struct btrfs_inode_item);
 		*size_ret = btrfs_inode_size(path->nodes[0], item);
+		/*
+		 * If the in-memory inode's i_size is smaller then the inode
+		 * size stored in the btree, return the inode's i_size, so
+		 * that we get a correct inode size after replaying the log
+		 * when before a power failure we had a shrinking truncate
+		 * followed by addition of a new name (rename / new hard link).
+		 * Otherwise return the inode size from the btree, to avoid
+		 * data loss when replaying a log due to previously doing a
+		 * write that expands the inode's size and logging a new name
+		 * immediately after.
+		 */
+		if (*size_ret > inode->vfs_inode.i_size)
+			*size_ret = inode->vfs_inode.i_size;
 	}
 
 	btrfs_release_path(path);
@@ -5793,6 +5813,22 @@ static int btrfs_log_inode_parent(struct btrfs_trans_handle *trans,
 		ret = btrfs_log_all_parents(trans, orig_inode, ctx);
 		if (ret)
 			goto end_trans;
+	}
+
+	/*
+	 * If a new hard link was added to the inode in the current transaction
+	 * and its link count is now greater than 1, we need to fallback to a
+	 * transaction commit, otherwise we can end up not logging all its new
+	 * parents for all the hard links. Here just from the dentry used to
+	 * fsync, we can not visit the ancestor inodes for all the other hard
+	 * links to figure out if any is new, so we fallback to a transaction
+	 * commit (instead of adding a lot of complexity of scanning a btree,
+	 * since this scenario is not a common use case).
+	 */
+	if (inode->vfs_inode.i_nlink > 1 &&
+	    inode->last_link_trans > last_committed) {
+		ret = -EMLINK;
+		goto end_trans;
 	}
 
 	while (1) {

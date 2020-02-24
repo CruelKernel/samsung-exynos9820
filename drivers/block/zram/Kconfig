@@ -16,7 +16,7 @@ config ZRAM
 	  See Documentation/blockdev/zram.txt for more information.
 
 config ZRAM_WRITEBACK
-       bool "Write back incompressible page to backing device"
+       bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
        default n
        help
@@ -25,6 +25,12 @@ config ZRAM_WRITEBACK
 	 For this feature, admin should set up backing device via
 	 /sys/block/zramX/backing_dev.
 
+<<<<<<< HEAD
+=======
+	 With /sys/block/zramX/{idle,writeback}, application could ask
+	 idle page's writeback to the backing device to save in memory.
+
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	 See Documentation/blockdev/zram.txt for more information.
 
 config ZRAM_MEMORY_TRACKING

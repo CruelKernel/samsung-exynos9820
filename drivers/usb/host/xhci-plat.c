@@ -573,6 +573,7 @@ static int xhci_plat_remove(struct platform_device *dev)
 	struct usb_hcd	*hcd = platform_get_drvdata(dev);
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct clk *clk = xhci->clk;
+	struct usb_hcd *shared_hcd = xhci->shared_hcd;
 
 	dev_info(&dev->dev, "XHCI PLAT REMOVE\n");
 
@@ -595,12 +596,17 @@ static int xhci_plat_remove(struct platform_device *dev)
 	xhci->xhc_state |= XHCI_STATE_REMOVING;
 	xhci->xhci_alloc->offset = 0;
 
+<<<<<<< HEAD
 	dev_info(&dev->dev, "WAKE UNLOCK\n");
 	wake_unlock(xhci->wakelock);
 	wake_lock_destroy(xhci->wakelock);
 
 	pr_info("%s %d xhci->main_hcd = %pS\n", __func__, __LINE__, xhci->main_hcd);
 	usb_remove_hcd(xhci->shared_hcd);
+=======
+	usb_remove_hcd(shared_hcd);
+	xhci->shared_hcd = NULL;
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	usb_phy_shutdown(hcd->usb_phy);
 
 	/*
@@ -613,7 +619,7 @@ static int xhci_plat_remove(struct platform_device *dev)
 		hcd->phy = NULL;
 
 	usb_remove_hcd(hcd);
-	usb_put_hcd(xhci->shared_hcd);
+	usb_put_hcd(shared_hcd);
 
 	if (!IS_ERR(clk))
 		clk_disable_unprepare(clk);

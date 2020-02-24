@@ -429,10 +429,15 @@ static void rx_fill(struct eth_dev *dev, gfp_t gfp_flags)
 
 	/* fill unused rxq slots with some skb */
 	spin_lock_irqsave(&dev->req_lock, flags);
+<<<<<<< HEAD
 	while(!list_empty(&dev->rx_reqs)) {
 		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
 		if(!dev->port_usb || (++req_cnt > qlen(dev->gadget, dev->qmult)))
 			break;
+=======
+	while (!list_empty(&dev->rx_reqs)) {
+		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		list_del_init(&req->list);
 		spin_unlock_irqrestore(&dev->req_lock, flags);
 
@@ -1401,7 +1406,10 @@ void gether_disconnect(struct gether *link)
 {
 	struct eth_dev		*dev = link->ioport;
 	struct usb_request	*req;
+<<<<<<< HEAD
 	struct sk_buff		*skb;
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	WARN_ON(!dev);
 	if (!dev)
@@ -1427,7 +1435,11 @@ void gether_disconnect(struct gether *link)
 	spin_unlock(&dev->lock);
 
 	spin_lock(&dev->req_lock);
+<<<<<<< HEAD
 	while(!list_empty(&dev->tx_reqs)) {
+=======
+	while (!list_empty(&dev->tx_reqs)) {
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		req = list_first_entry(&dev->tx_reqs, struct usb_request, list);
 		list_del(&req->list);
 
@@ -1442,7 +1454,11 @@ void gether_disconnect(struct gether *link)
 
 	usb_ep_disable(link->out_ep);
 	spin_lock(&dev->req_lock);
+<<<<<<< HEAD
 	while(!list_empty(&dev->rx_reqs)) {
+=======
+	while (!list_empty(&dev->rx_reqs)) {
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		req = list_first_entry(&dev->rx_reqs, struct usb_request, list);
 		list_del(&req->list);
 

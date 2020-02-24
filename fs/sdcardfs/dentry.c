@@ -130,6 +130,7 @@ out:
 /* 1 = delete, 0 = cache */
 static int sdcardfs_d_delete(const struct dentry *d)
 {
+<<<<<<< HEAD
 #ifdef CONFIG_FSCRYPT_SDP
 	struct sdcardfs_dentry_info *info = SDCARDFS_D(d);
 	struct path *lower_path = &info->lower_path;
@@ -145,6 +146,8 @@ static int sdcardfs_d_delete(const struct dentry *d)
 			return 1;
 	}
 #endif
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	return SDCARDFS_SB(d->d_sb)->options.nocache ? 1 : 0;
 }
 

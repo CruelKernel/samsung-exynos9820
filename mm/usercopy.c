@@ -58,6 +58,7 @@ static noinline int check_stack_object(const void *obj, unsigned long len)
 	return GOOD_STACK;
 }
 
+<<<<<<< HEAD
 /*
  * If this function is reached, then CONFIG_HARDENED_USERCOPY has found an
  * unexpected state during a copy_from_user() or copy_to_user() call.
@@ -77,6 +78,13 @@ void __noreturn usercopy_abort(const char *name, const char *detail,
 		 detail ? " '" : "", detail ? : "", detail ? "'" : "",
 		 offset, len);
 
+=======
+static void report_usercopy(unsigned long len, bool to_user, const char *type)
+{
+	pr_emerg("kernel memory %s attempt detected %s '%s' (%lu bytes)\n",
+		to_user ? "exposure" : "overwrite",
+		to_user ? "from" : "to", type ? : "unknown", len);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	/*
 	 * For greater effect, it would be nice to do do_group_exit(),
 	 * but BUG() actually hooks all the lock-breaking and per-arch
@@ -261,6 +269,15 @@ void __check_object_size(const void *ptr, unsigned long n, bool to_user)
 	}
 
 	/* Check for object in kernel to avoid text exposure. */
+<<<<<<< HEAD
 	check_kernel_text_object((const unsigned long)ptr, n, to_user);
+=======
+	err = check_kernel_text_object(ptr, n);
+	if (!err)
+		return;
+
+report:
+	report_usercopy(n, to_user, err);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 EXPORT_SYMBOL(__check_object_size);

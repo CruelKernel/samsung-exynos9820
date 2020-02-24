@@ -308,11 +308,14 @@ static int sdcardfs_read_super(struct vfsmount *mnt, struct super_block *sb,
 	atomic_inc(&lower_sb->s_active);
 	sdcardfs_set_lower_super(sb, lower_sb);
 
+<<<<<<< HEAD
 	/* TODO: It need to be removed after vold and sdcardd change. */
 	if (lower_sb->s_magic != EXT4_SUPER_MAGIC &&
 			lower_sb->s_magic != F2FS_SUPER_MAGIC)
 		sb_info->options.nocache = true;
 
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	sb->s_stack_depth = lower_sb->s_stack_depth + 1;
 	if (sb->s_stack_depth > FILESYSTEM_MAX_STACK_DEPTH) {
 		pr_err("sdcardfs: maximum fs stacking depth exceeded\n");

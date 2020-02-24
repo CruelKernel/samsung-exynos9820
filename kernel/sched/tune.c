@@ -603,6 +603,7 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
 {
 	struct schedtune *st = css_st(css);
 	st->prefer_idle = !!prefer_idle;
+<<<<<<< HEAD
 
 	return 0;
 }
@@ -621,6 +622,8 @@ prefer_perf_write(struct cgroup_subsys_state *css, struct cftype *cft,
 {
 	struct schedtune *st = css_st(css);
 	st->prefer_perf = prefer_perf;
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 	return 0;
 }

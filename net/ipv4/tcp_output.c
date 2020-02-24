@@ -2064,7 +2064,9 @@ static int tso_fragment(struct sock *sk, struct sk_buff *skb, unsigned int len,
  * This algorithm is from John Heffner.
  */
 static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
-				 bool *is_cwnd_limited, u32 max_segs)
+				 bool *is_cwnd_limited,
+				 bool *is_rwnd_limited,
+				 u32 max_segs)
 {
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	u32 age, send_win, cong_win, limit, in_flight;
@@ -2072,6 +2074,7 @@ static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
 	struct sk_buff *head;
 	int win_divisor;
 
+<<<<<<< HEAD
 #ifdef CONFIG_MPTCP
 	if ((TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN) || mptcp_is_data_fin(skb))
 #else
@@ -2079,6 +2082,8 @@ static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
 #endif
 		goto send_now;
 
+=======
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 	if (icsk->icsk_ca_state >= TCP_CA_Recovery)
 		goto send_now;
 
@@ -2134,10 +2139,27 @@ static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
 	if (age < (tp->srtt_us >> 4))
 		goto send_now;
 
-	/* Ok, it looks like it is advisable to defer. */
+	/* Ok, it looks like it is advisable to defer.
+	 * Three cases are tracked :
+	 * 1) We are cwnd-limited
+	 * 2) We are rwnd-limited
+	 * 3) We are application limited.
+	 */
+	if (cong_win < send_win) {
+		if (cong_win <= skb->len) {
+			*is_cwnd_limited = true;
+			return true;
+		}
+	} else {
+		if (send_win <= skb->len) {
+			*is_rwnd_limited = true;
+			return true;
+		}
+	}
 
-	if (cong_win < send_win && cong_win <= skb->len)
-		*is_cwnd_limited = true;
+	/* If this packet won't get more data, do not wait. */
+	if (TCP_SKB_CB(skb)->tcp_flags & TCPHDR_FIN)
+		goto send_now;
 
 	return true;
 
@@ -2530,7 +2552,7 @@ bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 		} else {
 			if (!push_one &&
 			    tcp_tso_should_defer(sk, skb, &is_cwnd_limited,
-						 max_segs))
+						 &is_rwnd_limited, max_segs))
 				break;
 		}
 
@@ -2684,12 +2706,16 @@ void tcp_send_loss_probe(struct sock *sk)
 		skb = tcp_write_queue_tail(sk);
 	}
 
+	if (unlikely(!skb)) {
+		WARN_ONCE(tp->packets_out,
+			  "invalid inflight: %u state %u cwnd %u mss %d\n",
+			  tp->packets_out, sk->sk_state, tp->snd_cwnd, mss);
+		inet_csk(sk)->icsk_pending = 0;
+		return;
+	}
+
 	/* At most one outstanding TLP retransmission. */
 	if (tp->tlp_high_seq)
-		goto rearm_timer;
-
-	/* Retransmit last segment. */
-	if (WARN_ON(!skb))
 		goto rearm_timer;
 
 	if (skb_still_in_host_queue(sk, skb))

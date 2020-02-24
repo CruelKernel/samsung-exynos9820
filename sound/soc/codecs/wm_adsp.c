@@ -1080,6 +1080,7 @@ static unsigned int wm_adsp_region_to_reg(struct wm_adsp *dsp,
 
 static void wm_adsp2_show_fw_status(struct wm_adsp *dsp)
 {
+<<<<<<< HEAD
 	u16 *scratch;
 	int ret;
 
@@ -1102,10 +1103,28 @@ static void wm_adsp2_show_fw_status(struct wm_adsp *dsp)
 		 be16_to_cpu(scratch[3]));
 
 	kfree(scratch);
+=======
+	unsigned int scratch[4];
+	unsigned int addr = dsp->base + ADSP2_SCRATCH0;
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < ARRAY_SIZE(scratch); ++i) {
+		ret = regmap_read(dsp->regmap, addr + i, &scratch[i]);
+		if (ret) {
+			adsp_err(dsp, "Failed to read SCRATCH%u: %d\n", i, ret);
+			return;
+		}
+	}
+
+	adsp_dbg(dsp, "FW SCRATCH 0:0x%x 1:0x%x 2:0x%x 3:0x%x\n",
+		 scratch[0], scratch[1], scratch[2], scratch[3]);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 }
 
 static void wm_adsp2v2_show_fw_status(struct wm_adsp *dsp)
 {
+<<<<<<< HEAD
 	u32 *scratch;
 	int ret;
 
@@ -1119,11 +1138,24 @@ static void wm_adsp2v2_show_fw_status(struct wm_adsp *dsp)
 	if (ret) {
 		adsp_err(dsp, "Failed to read SCRATCH regs: %d\n", ret);
 		kfree(scratch);
+=======
+	unsigned int scratch[2];
+	int ret;
+
+	ret = regmap_read(dsp->regmap, dsp->base + ADSP2V2_SCRATCH0_1,
+			  &scratch[0]);
+	if (ret) {
+		adsp_err(dsp, "Failed to read SCRATCH0_1: %d\n", ret);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 		return;
 	}
 
-	scratch[0] = be32_to_cpu(scratch[0]);
-	scratch[1] = be32_to_cpu(scratch[1]);
+	ret = regmap_read(dsp->regmap, dsp->base + ADSP2V2_SCRATCH2_3,
+			  &scratch[1]);
+	if (ret) {
+		adsp_err(dsp, "Failed to read SCRATCH2_3: %d\n", ret);
+		return;
+	}
 
 	adsp_dbg(dsp, "FW SCRATCH 0:0x%x 1:0x%x 2:0x%x 3:0x%x\n",
 		 scratch[0] & 0xFFFF,

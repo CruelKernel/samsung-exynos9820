@@ -614,19 +614,20 @@ static int __xen_pgd_walk(struct mm_struct *mm, pgd_t *pgd,
 			  unsigned long limit)
 {
 	int i, nr, flush = 0;
-	unsigned hole_low, hole_high;
+	unsigned hole_low = 0, hole_high = 0;
 
 	/* The limit is the last byte to be touched */
 	limit--;
 	BUG_ON(limit >= FIXADDR_TOP);
 
+#ifdef CONFIG_X86_64
 	/*
 	 * 64-bit has a great big hole in the middle of the address
-	 * space, which contains the Xen mappings.  On 32-bit these
-	 * will end up making a zero-sized hole and so is a no-op.
+	 * space, which contains the Xen mappings.
 	 */
-	hole_low = pgd_index(USER_LIMIT);
-	hole_high = pgd_index(PAGE_OFFSET);
+	hole_low = pgd_index(GUARD_HOLE_BASE_ADDR);
+	hole_high = pgd_index(GUARD_HOLE_END_ADDR);
+#endif
 
 	nr = pgd_index(limit) + 1;
 	for (i = 0; i < nr; i++) {
@@ -2079,10 +2080,10 @@ void __init xen_relocate_p2m(void)
 				pt = early_memremap(pt_phys, PAGE_SIZE);
 				clear_page(pt);
 				for (idx_pte = 0;
-						idx_pte < min(n_pte, PTRS_PER_PTE);
-						idx_pte++) {
-					set_pte(pt + idx_pte,
-							pfn_pte(p2m_pfn, PAGE_KERNEL));
+				     idx_pte < min(n_pte, PTRS_PER_PTE);
+				     idx_pte++) {
+					pt[idx_pte] = pfn_pte(p2m_pfn,
+							      PAGE_KERNEL);
 					p2m_pfn++;
 				}
 				n_pte -= PTRS_PER_PTE;
@@ -2090,8 +2091,7 @@ void __init xen_relocate_p2m(void)
 				make_lowmem_page_readonly(__va(pt_phys));
 				pin_pagetable_pfn(MMUEXT_PIN_L1_TABLE,
 						PFN_DOWN(pt_phys));
-				set_pmd(pmd + idx_pt,
-						__pmd(_PAGE_TABLE | pt_phys));
+				pmd[idx_pt] = __pmd(_PAGE_TABLE | pt_phys);
 				pt_phys += PAGE_SIZE;
 			}
 			n_pt -= PTRS_PER_PMD;
@@ -2099,7 +2099,7 @@ void __init xen_relocate_p2m(void)
 			make_lowmem_page_readonly(__va(pmd_phys));
 			pin_pagetable_pfn(MMUEXT_PIN_L2_TABLE,
 					PFN_DOWN(pmd_phys));
-			set_pud(pud + idx_pmd, __pud(_PAGE_TABLE | pmd_phys));
+			pud[idx_pmd] = __pud(_PAGE_TABLE | pmd_phys);
 			pmd_phys += PAGE_SIZE;
 		}
 		n_pmd -= PTRS_PER_PUD;

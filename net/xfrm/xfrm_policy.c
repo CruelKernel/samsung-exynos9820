@@ -1628,7 +1628,14 @@ static struct dst_entry *xfrm_bundle_create(struct xfrm_policy *policy,
 		dst_copy_metrics(dst1, dst);
 
 		if (xfrm[i]->props.mode != XFRM_MODE_TRANSPORT) {
+<<<<<<< HEAD
 			__u32 mark = xfrm_smark_get(fl->flowi_mark, xfrm[i]);
+=======
+			__u32 mark = 0;
+
+			if (xfrm[i]->props.smark.v || xfrm[i]->props.smark.m)
+				mark = xfrm_smark_get(fl->flowi_mark, xfrm[i]);
+>>>>>>> refs/rewritten/Merge-4.14.113-into-android-4.14-q-2
 
 			family = xfrm[i]->props.family;
 			dst = xfrm_dst_lookup(xfrm[i], tos, fl->flowi_oif,
