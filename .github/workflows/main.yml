@@ -25,7 +25,7 @@ jobs:
       run: |
         ./build config                    \
                 model=G973F               \
-                name=NROM-V3-BTA8        \
+                name=NROM                 \
                 +magisk                   \
                 +nohardening              \
                 +ttl                      \
