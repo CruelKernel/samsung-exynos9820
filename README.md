@@ -1,4 +1,4 @@
-# Cruel Kernel Tree for G973F (Samsung S10)
+# Cruel Kernel Tree for Samsung S10, Note10 devices
 
 ![CI](https://github.com/CruelKernel/samsung-exynos9820/workflows/CI/badge.svg)
 
