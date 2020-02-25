@@ -90,7 +90,7 @@ def parse_args(configs):
 		print_usage(name, all_modes, configs)
 		fatal('Please, specify the mode from {}.'.format(all_modes))
 
-	if mode in modes:
+	if mode in modes or mode == ':mkimg':
 		for i in sys.argv:
 			if i.startswith('name'):
 				try:
