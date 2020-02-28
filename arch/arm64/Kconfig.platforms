@@ -321,6 +321,57 @@ config SOC_EXYNOS9820
 	select PINCTRL
 	select SAMSUNG_DMADEV
 
+choice
+	prompt "Samsung EXYNOS982[05] Model (only for device-trees)"
+	depends on SOC_EXYNOS9820
+	default MODEL_NONE
+
+	help
+	  Select the phone model.
+
+	config MODEL_NONE
+		bool "None"
+	config MODEL_G970F
+		bool "G970F"
+		select DTC
+	config MODEL_G970N
+		bool "G970N"
+		select DTC
+	config MODEL_G973F
+		bool "G973F"
+		select DTC
+	config MODEL_G973N
+		bool "G973N"
+		select DTC
+	config MODEL_G975F
+		bool "G975F"
+		select DTC
+	config MODEL_G975N
+		bool "G975N"
+		select DTC
+	config MODEL_G977B
+		bool "G977B"
+		select DTC
+	config MODEL_G977N
+		bool "G977N"
+		select DTC
+	config MODEL_N970F
+		bool "N970F"
+		select DTC
+	config MODEL_N971N
+		bool "N971N"
+		select DTC
+	config MODEL_N975F
+		bool "N975F"
+		select DTC
+	config MODEL_N976B
+		bool "N976B"
+		select DTC
+	config MODEL_N976N
+		bool "N976N"
+		select DTC
+endchoice
+
 config SOC_EXYNOS9820_EVT0
 	default n
 	bool "Samsung EXYNOS9820 EVT0"
