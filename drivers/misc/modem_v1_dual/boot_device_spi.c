@@ -232,7 +232,7 @@ static const struct file_operations modem_spi_boot_fops = {
 	.unlocked_ioctl = spi_boot_ioctl,
 };
 
-static int __init modem_spi_boot_probe(struct spi_device *spi)
+static int modem_spi_boot_probe(struct spi_device *spi)
 {
 	int ret;
 	struct device *dev = &spi->dev;
