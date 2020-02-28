@@ -1,0 +1,72 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_d2x_bc80.dtsi"
+
+/ {
+	fragment@battery {
+		target-path = "/";
+		__overlay__ {
+			battery {
+				battery,full_condition_vcell = <4280>;
+				battery,recharge_condition_vcell = <4280>;
+				battery,chg_float_voltage = <4380>;
+
+				/* cycle, chg_float_voltage, recharge_condition_vcell, full_condition_vcell, full_condition_soc, step charging condition */
+				battery,age_data = <0 4380 4310 4280 93 45
+						300 4370 4300 4270 92 45
+						400 4350 4280 4250 91 45
+						700 4330 4260 4230 90 45
+						1000 4280 4210 4180 89 45>;
+
+				/* direct step charging option */
+				battery,dc_step_chg_type = <0x6B>; /* origin(0x6B), soc option is temporary removed */
+				battery,dc_step_chg_charge_power = <22000>;
+				battery,dc_step_chg_step = <3>;
+				battery,dc_step_chg_step_45w = <3>;
+				battery,dc_step_chg_cond_vol = <4160 4250 4380 4160 4250 4380>; /*<25w 3step, 45w 3step> STEP_CHARGING_CONDITION_VOLTAGE */ 
+				battery,dc_step_chg_cond_iin = <1950 1550 0 1950 1550 0>; /* <25w 3step, 45w 3step> STEP_CHARGING_CONDITION_INPUT_CURRENT */
+				battery,dc_step_chg_iin_check_cnt = <3>;
+				battery,dc_step_chg_cond_soc = <40 60 100 40 60 100>; /* <25w 3step, 45w 3step> STEP_CHARGING_CONDITION_SOC */
+				battery,dc_step_chg_val_vfloat = <4160 4250 4380 4160 4250 4380>; /* <25w 3step, 45w 3step> STEP_CHARGING_CONDITION_FLOAT_VOLTAGE */
+				battery,dc_step_chg_val_iout = <5100 3900 3100 5100 3900 3100>; /* <25w 3step, 45w 3step> */
+			};
+
+			max77705-fuelgauge {
+				fuelgauge,capacity = <0x1130>;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+};
+
+&hsi2c_46 {
+	status = "disabled";
+
+	mfc-s2miw04-charger@3b {
+		status = "disabled";
+	};
+};
+
+&hsi2c_43 {
+	status = "okay";
+
+	bc80@55 {
+		compatible = "maxim,bc80";
+		reg = <0x55>;
+		status = "okay";
+
+		pinctrl-names = "default";
+		pinctrl-0     = <&vd_irq>;
+
+		bc80,irq-gpio = <&gpa3 3 0>;
+		bc80,en-gpio = <&expander_gpios 19 0>;
+	};
+};

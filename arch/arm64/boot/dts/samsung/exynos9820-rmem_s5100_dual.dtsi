@@ -1,0 +1,50 @@
+/*
+ * SAMSUNG EXYNOS device tree source for reserved-memory
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+&reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <1>;
+
+	modem_spare {
+		compatible = "exynos,modem_spare";
+		reg = <0x0 0xD0000000 0x1600000>;
+	};
+
+	/* External CP - S5100 */
+	modem_if2 {
+		/* 66MB: VSS 2MB, SHM MEM 64MB */
+		compatible = "exynos,modem_if2";
+		reg = <0x0 0xD1600000 0x4200000>;
+	};
+
+	/* CP2CP shared memory - 64MB */
+	cp2cp_shm {
+		compatible = "exynos,cp2cp_shm";
+		reg = <0x0 0xD5800000 0x4000000>;
+	};
+
+	s5100_msi {
+		/* 4KB */
+		compatible = "exynos,s5100-msi";
+		reg = <0x0 0xD9800000 0x1000>;
+	};
+
+	/* Internal CP - S500AP */
+	modem_if {
+		compatible = "exynos,modem_if";
+		reg = <0x0 0xF0000000 0xB900000>;
+	};
+
+	cp_ram_logging {
+		compatible = "exynos,cp_ram_logging";
+		reg = <0x0 0xFB900000 0x2000000>;
+	};
+};

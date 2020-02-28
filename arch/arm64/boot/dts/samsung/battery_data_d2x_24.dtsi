@@ -1,0 +1,78 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_d2x_common.dtsi"
+#include "battery_rx_data_idt.dtsi"
+#include "battery_rx_data_lsi.dtsi"
+
+/ {
+};
+
+&pinctrl_0 {
+	 vrect_int: vrect-int {
+		 samsung,pins = "gpa3-2";
+		 samsung,pin-function = <0>;
+		 samsung,pin-pud = <3>;
+		 samsung,pin-drv = <0>;
+	 };
+
+	chg_gpio_en: chg-gpio-en {
+		samsung,pins = "gpa4-1";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <0>;
+	};
+
+	pdet_b: pdet-b {
+		 samsung,pins = "gpa2-1";
+		 samsung,pin-function = <0>;
+		 samsung,pin-pud = <3>;
+		 samsung,pin-drv = <0>;
+	 };
+};
+
+&pinctrl_5 {
+	 wpc_en: wpc-en {
+		 samsung,pins = "gpp1-7";
+		 samsung,pin-function = <1>;
+		 samsung,pin-pud = <0>;
+		 samsung,pin-drv = <0>;
+	 };
+
+	 ping_nen: ping-nen {
+		 samsung,pins = "gpp2-2";
+		 samsung,pin-function = <0>;
+		 samsung,pin-pud = <3>;
+		 samsung,pin-drv = <0>;
+	 };
+};
+
+&hsi2c_45 {
+	pca9468@57 {
+		pinctrl-0     = <&dc_irq &chg_gpio_en>;
+	};
+};
+
+&hsi2c_46 {
+	mfc-hal-charger@7f {
+		compatible = "sec,mfc-hal-charger";
+		reg = <0x7f>;
+		status = "okay";
+
+		battery,wpc_det = <&gpa2 0 0>;
+
+		battery,charger_name = "max77705-charger";
+	};
+
+	mfc-s2miw04-charger@3b {
+		reg = <0x6f>;
+	};
+};
