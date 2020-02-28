@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 854674 2019-12-10 03:31:41Z $
+ * $Id: wl_cfg80211.c 857554 2020-01-02 09:14:29Z $
  */
 /* */
 #include <typedefs.h>
@@ -6593,7 +6593,7 @@ static void wl_cfg80211_wait_for_disconnection(struct bcm_cfg80211 *cfg, struct 
 			CFG80211_CONNECT_RESULT(dev, NULL, NULL, NULL, 0, NULL, 0,
 				WLAN_STATUS_UNSPECIFIED_FAILURE,
 				GFP_KERNEL);
-		} else if (wl_get_drv_status(cfg, CONNECTED, dev)) {
+		} else {
 			WL_INFORM_MEM(("force send disconnect event\n"));
 			CFG80211_DISCONNECTED(dev, WLAN_REASON_DEAUTH_LEAVING,
 				NULL, 0, false, GFP_KERNEL);
@@ -6614,11 +6614,11 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	u8 *curbssid = NULL;
 	u8 null_bssid[ETHER_ADDR_LEN];
 	s32 bssidx = 0;
+	bool connected;
+	bool conn_in_progress;
 	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	WL_ERR(("Reason %d\n", reason_code));
 	RETURN_EIO_IF_NOT_UP(cfg);
-	act = *(bool *) wl_read_prof(cfg, dev, WL_PROF_ACT);
-	curbssid = wl_read_prof(cfg, dev, WL_PROF_BSSID);
 
 	BCM_REFERENCE(dhdp);
 	DHD_STATLOG_CTRL(dhdp, ST(DISASSOC_START),
@@ -6627,17 +6627,18 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	dhd_cleanup_m4_state_work(dhdp, dhd_net2idx(dhdp->info, dev));
 #endif /* DHD_4WAYM4_FAIL_DISCONNECT */
 
-#ifdef ESCAN_RESULT_PATCH
-	if (wl_get_drv_status(cfg, CONNECTING, dev)) {
+	connected = wl_get_drv_status(cfg, CONNECTED, dev);
+	conn_in_progress = wl_get_drv_status(cfg, CONNECTING, dev);
+	curbssid = wl_read_prof(cfg, dev, WL_PROF_BSSID);
+	act = *(bool *) wl_read_prof(cfg, dev, WL_PROF_ACT);
+	WL_INFORM_MEM(("disconnect in connect state [%d:%d:%d]. reason:%d\n",
+		connected, conn_in_progress, act, reason_code));
+	if (conn_in_progress || connected) {
 		if (curbssid) {
-			WL_ERR(("Disconnecting while CONNECTING status"
-				" connecting device: " MACDBG "\n", MAC2STRDBG(curbssid)));
-		} else {
-			WL_ERR(("Disconnecting while CONNECTING status \n"));
+			WL_ERR(("curbssid:" MACDBG "\n", MAC2STRDBG(curbssid)));
 		}
 		act = true;
 	}
-#endif /* ESCAN_RESULT_PATCH */
 
 	if (!curbssid) {
 		WL_ERR(("Disconnecting while CONNECTING status %d\n", (int)sizeof(null_bssid)));
@@ -6662,19 +6663,18 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 		}
 		/* Set DISCONNECTING state. We are clearing this state in all exit paths */
 		wl_set_drv_status(cfg, DISCONNECTING, dev);
-		if (wl_get_drv_status(cfg, CONNECTING, dev) ||
-			wl_get_drv_status(cfg, CONNECTED, dev)) {
-				scbval.val = reason_code;
-				memcpy(&scbval.ea, curbssid, ETHER_ADDR_LEN);
-				scbval.val = htod32(scbval.val);
-				WL_INFORM_MEM(("[%s] wl disassoc\n", dev->name));
-				err = wldev_ioctl_set(dev, WLC_DISASSOC, &scbval,
-						sizeof(scb_val_t));
-				if (unlikely(err)) {
-					wl_clr_drv_status(cfg, DISCONNECTING, dev);
-					WL_ERR(("error (%d)\n", err));
-					goto exit;
-				}
+		if (conn_in_progress || connected) {
+			scbval.val = reason_code;
+			memcpy(&scbval.ea, curbssid, ETHER_ADDR_LEN);
+			scbval.val = htod32(scbval.val);
+			WL_INFORM_MEM(("[%s] wl disassoc\n", dev->name));
+			err = wldev_ioctl_set(dev, WLC_DISASSOC, &scbval,
+				sizeof(scb_val_t));
+			if (unlikely(err)) {
+				wl_clr_drv_status(cfg, DISCONNECTING, dev);
+				WL_ERR(("error (%d)\n", err));
+				goto exit;
+			}
 		}
 #ifdef WL_WPS_SYNC
 		/* If are in WPS reauth state, then we would be
@@ -6689,15 +6689,17 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 		}
 #endif /* WPS_SYNC */
 		wl_cfg80211_wait_for_disconnection(cfg, dev);
+	} else {
+		/* Not in connected or connection in progres states. Still receiving
+		 * disassoc indicates state mismatch with upper layer. Check for state
+		 * and issue disconnect indication if required.
+		 */
+		if (dev->ieee80211_ptr->current_bss) {
+			WL_INFORM_MEM(("report disconnect event\n"));
+			CFG80211_DISCONNECTED(dev, 0, NULL, 0, false, GFP_KERNEL);
+		}
 	}
 
-	if (dev->ieee80211_ptr->current_bss) {
-		/* If current_bss is still valid, indicate connect fail to clear state mismatch.
-		 */
-		WL_INFORM_MEM(("report connect result fail.\n"));
-		CFG80211_CONNECT_RESULT(dev, NULL, NULL, NULL, 0, NULL, 0,
-			WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_KERNEL);
-	}
 #ifdef CUSTOM_SET_CPUCORE
 	/* set default cpucore */
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
@@ -14161,6 +14163,8 @@ void wl_cfg80211_disassoc(struct net_device *ndev, uint32 reason)
 	err = wldev_ioctl_set(ndev, WLC_DISASSOC, &scbval, sizeof(scb_val_t));
 	if (err < 0) {
 		WL_ERR(("WLC_DISASSOC error %d\n", err));
+	} else {
+		WL_INFORM_MEM(("wl disassoc. reason:%d\n", reason));
 	}
 }
 void wl_cfg80211_del_all_sta(struct net_device *ndev, uint32 reason)
@@ -24939,3 +24943,20 @@ fail:
 	return err;
 }
 #endif /* WL_GET_RCC */
+
+s32
+wl_cfg80211_handle_macaddr_change(struct net_device *dev, u8 *macaddr)
+{
+	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
+
+	if (IS_STA_IFACE(dev->ieee80211_ptr) &&
+		wl_get_drv_status(cfg, CONNECTED, dev)) {
+		/* Macaddress change in connected state. The curent
+		 * connection will become invalid. Issue disconnect
+		 * to current AP to let the AP know about link down
+		 */
+		WL_INFORM_MEM(("macaddr change in connected state. Force disassoc.\n"));
+		wl_cfg80211_disassoc(dev, WLAN_REASON_DEAUTH_LEAVING);
+	}
+	return BCME_OK;
+}

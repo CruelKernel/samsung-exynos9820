@@ -416,7 +416,7 @@ void handle_cp_not_work(unsigned long arg)
 {
 	struct mem_link_device *mld = (struct mem_link_device *)arg;
 
-	shmem_forced_cp_crash(mld, CRASH_REASON_MIF_MDM_CTRL,
+	shmem_forced_cp_crash(mld, CRASH_REASON_CP_NOT_WORK,
 				   "cp not working for a while");
 }
 #endif
@@ -544,7 +544,7 @@ static void cmd_phone_start_handler(struct mem_link_device *mld)
 					cmd2int(phone_start_count - 100));
 			} else {
 				shmem_forced_cp_crash(mld,
-					CRASH_REASON_CP_RSV_0,
+					CRASH_REASON_CP_ABNORMAL_START,
 					"Abnormal CP_START from CP");
 			}
 			return;
@@ -3598,6 +3598,9 @@ static enum hrtimer_restart pktproc_print(struct hrtimer *timer)
 	char buf[BUFF_SIZE];
 	int len = 0;
 
+	if (!sbd_active(sl))
+		goto restart;
+
 	for (i = 0; i < ppa->num_queue; i++) {
 		q = ppa->q[i];
 
@@ -3606,16 +3609,14 @@ static enum hrtimer_restart pktproc_print(struct hrtimer *timer)
 		c_pktproc[2] = q->done_ptr;
 	}
 
-	if (likely(sbd_active(sl))) {
-		id = sbd_ch2id(sl, QOS_HIPRIO);
-		rb[TX] = &sl->ipc_dev[id].rb[TX];
-		rb[RX] = &sl->ipc_dev[id].rb[RX];
+	id = sbd_ch2id(sl, QOS_HIPRIO);
+	rb[TX] = &sl->ipc_dev[id].rb[TX];
+	rb[RX] = &sl->ipc_dev[id].rb[RX];
 
-		c_rwpointer[0] = *(u32 *)rb[TX]->rp;
-		c_rwpointer[1] = *(u32 *)rb[TX]->wp;
-		c_rwpointer[2] = *(u32 *)rb[RX]->rp;
-		c_rwpointer[3] = *(u32 *)rb[RX]->wp;
-	}
+	c_rwpointer[0] = *(u32 *)rb[TX]->rp;
+	c_rwpointer[1] = *(u32 *)rb[TX]->wp;
+	c_rwpointer[2] = *(u32 *)rb[RX]->rp;
+	c_rwpointer[3] = *(u32 *)rb[RX]->wp;
 
 	if (memcmp(p_pktproc, c_pktproc, sizeof(u32)*3) ||
 	    memcmp(p_rwpointer, c_rwpointer, sizeof(u32)*4))
@@ -4029,7 +4030,10 @@ struct link_device *pcie_create_link_device(struct platform_device *pdev)
 	mld->cp_not_work.expires = jiffies;
 	mld->cp_not_work.function = handle_cp_not_work;
 	mld->cp_not_work.data = (unsigned long)mld;
-	mld->not_work_time = 60; // init to 1 min
+	mld->not_work_time = 60 * 10; // init to 5 min : RIL try to recovery data stall in 3 min, backup that.
+
+	/* make link for access to NR crash reason */
+	nr_crash_reason = &mld->crash_reason;
 
 	mif_err("---\n");
 	return ld;

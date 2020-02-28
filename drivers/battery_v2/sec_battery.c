@@ -3890,19 +3890,23 @@ static void sec_bat_calc_time_to_full(struct sec_battery_info * battery)
 			charge = battery->pdata->ttf_hv_charge_current;
 		} else if (is_nv_wireless_type(battery->cable_type)) {
 			charge = battery->pdata->ttf_wireless_charge_current;
-		} else if (is_pd_wire_type(battery->cable_type) && battery->hv_pdo) {
-			if (battery->pd_max_charge_power > HV_CHARGER_STATUS_STANDARD4)
+		} else if (is_pd_apdo_wire_type(battery->cable_type) ||
+			(is_pd_fpdo_wire_type(battery->cable_type) && battery->hv_pdo)) {
+			if (battery->pd_max_charge_power > HV_CHARGER_STATUS_STANDARD4) {
 				charge = battery->pdata->ttf_dc45_charge_current;
-			else if (battery->pd_max_charge_power > HV_CHARGER_STATUS_STANDARD3)
+			} else if (battery->pd_max_charge_power > HV_CHARGER_STATUS_STANDARD3) {
 				charge = battery->pdata->ttf_dc25_charge_current;
-			else if (battery->pd_max_charge_power <= battery->pdata->pd_charging_charge_power &&
+			} else if (battery->pd_max_charge_power <= battery->pdata->pd_charging_charge_power &&
 				battery->pdata->charging_current[battery->cable_type].fast_charging_current >= \
-				battery->pdata->max_charging_current)
-				charge = battery->pdata->ttf_hv_charge_current; /* same PD power with AFC */
-			else
-				charge = battery->pd_max_charge_power / 5; /* other PD charging */
+				battery->pdata->max_charging_current) { /* same PD power with AFC */
+				charge = battery->pdata->ttf_hv_charge_current;
+			} else { /* other PD charging */
+				charge = (battery->pd_max_charge_power / 5) > battery->pdata->charging_current[battery->cable_type].fast_charging_current ?
+					battery->pdata->charging_current[battery->cable_type].fast_charging_current : (battery->pd_max_charge_power / 5);
+			}
 		} else {
-			charge = battery->max_charge_power / 5;
+			charge = (battery->max_charge_power / 5) > battery->pdata->charging_current[battery->cable_type].fast_charging_current ?
+					battery->pdata->charging_current[battery->cable_type].fast_charging_current : (battery->max_charge_power / 5);
 		}
 		value.intval = charge;
 		psy_do_property(battery->pdata->fuelgauge_name, get,
@@ -4480,7 +4484,7 @@ static void sec_bat_monitor_work(
 		sec_bat_check_tx_battery_drain(battery);
 		sec_bat_check_tx_temperature(battery);
 
-		if ((battery->wc_rx_type == SS_PHONE) || (battery->wc_rx_type == OTHER_DEV))
+		if ((battery->wc_rx_type == SS_PHONE) || (battery->wc_rx_type == OTHER_DEV) || (battery->wc_rx_type == SS_BUDS))
 			sec_bat_check_tx_current(battery);
 #endif
 		sec_bat_txpower_calc(battery);
@@ -4852,8 +4856,7 @@ static void sec_bat_wpc_tx_work(struct work_struct *work)
 		sec_bat_wireless_iout_cntl(battery, battery->pdata->tx_uno_iout, battery->pdata->tx_mfc_iout_gear);
 
 		break;
-	case SS_PHONE:
-	case OTHER_DEV:
+	default:
 		 if (battery->wire_status == SEC_BATTERY_CABLE_HV_TA_CHG_LIMIT) {
 			pr_info("@Tx_Mode %s : charging voltage change(5V -> 9V)\n", __func__);
 			muic_afc_set_voltage(SEC_INPUT_VOLTAGE_9V/10);
@@ -4976,8 +4979,6 @@ static void sec_bat_wpc_tx_work(struct work_struct *work)
 			}
 
 		}
-		break;
-	default:
 		break;
 	}
 	wake_unlock(&battery->wpc_tx_wake_lock);

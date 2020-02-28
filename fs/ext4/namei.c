@@ -36,6 +36,7 @@
 #include <linux/bio.h>
 #include "ext4.h"
 #include "ext4_jbd2.h"
+#include <linux/sec_debug.h>
 
 #include "xattr.h"
 #include "acl.h"
@@ -2465,6 +2466,24 @@ retry:
 		ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
+
+	if (!err && sec_debug_enter_upload()) {
+		char *buffer = NULL;
+		int ret;
+
+		buffer = (char *) kzalloc(1024, GFP_KERNEL);
+		if (buffer == NULL) {
+			pr_err("SELinux DEBUG: kmalloc failed");
+			goto out;
+		}
+
+		ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_SECURITY,
+				XATTR_SELINUX_SUFFIX, buffer, 1024);
+		BUG_ON(ret == -ENODATA || strstr(buffer, "unlabeled") ||
+				!strcmp(buffer, ""));
+		kfree(buffer);
+	}
+out:
 	return err;
 }
 

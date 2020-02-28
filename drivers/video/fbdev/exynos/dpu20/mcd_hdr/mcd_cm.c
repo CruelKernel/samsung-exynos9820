@@ -13,6 +13,8 @@
 #include "hdr_reg.h"
 #include "mcd_cm.h"
 
+#define TUNE_ACTIVATE
+
 enum pq_index luminance2pqindex(unsigned int luminance)
 {
     return (luminance ==    0) ? INDEX_PQ1000 :
@@ -178,7 +180,7 @@ void get_tables(struct cm_tables * tables, unsigned int is_hdr10p,
             //-------------------------------------------------------------------------------------------------
             // tuning
             if ((i_type == INDEX_TYPE_PQ) && (o_type == INDEX_TYPE_SDR)) {
-#ifdef TUNE_NETFLIX
+#ifdef TUNE_ACTIVATE
                 if ((src_max_luminance > 3000) && (dst_gamma == INDEX_GAMMA_GAMMA2_2)) {
                     const enum pq_index         idx_pq = luminance2pqindex(src_max_luminance);
                     const enum target_nit_index idx_td = luminance2targetindex(dst_max_luminance);
@@ -215,14 +217,23 @@ void customize_dataspace(enum gamma_index * src_gamma, enum gamut_index * src_ga
     const enum gamma_type_index i_type = (s_gamma == INDEX_GAMMA_ST2084) ? INDEX_TYPE_PQ :
                                          (s_gamma == INDEX_GAMMA_HLG   ) ? INDEX_TYPE_HLG : INDEX_TYPE_SDR;
     //-------------------------------------------------------------------------------------------------
-    *src_gamut = ((legacy_mode == 1) && (i_type == INDEX_TYPE_SDR)) ? INDEX_GAMUT_DCI_P3 : ((enum gamut_index)s_gamut);
-    *dst_gamut = ((legacy_mode == 1)                              ) ? INDEX_GAMUT_DCI_P3 : ((enum gamut_index)d_gamut);
-    *src_gamma = ((legacy_mode == 1) && (i_type == INDEX_TYPE_SDR)) ? INDEX_GAMMA_SRGB   : ((enum gamma_index)s_gamma);
-    *dst_gamma = (legacy_mode == 1) ? ((i_type == INDEX_TYPE_SDR) ? INDEX_GAMMA_SRGB : INDEX_GAMMA_GAMMA2_2) : ((enum gamma_index)d_gamma);
-#ifdef SMPTE170M_ASSUME_GAMMA22
-    if (*src_gamma == INDEX_GAMMA_SMPTE_170M) *src_gamma = INDEX_GAMMA_GAMMA2_2;
-    if (*dst_gamma == INDEX_GAMMA_SMPTE_170M) *dst_gamma = INDEX_GAMMA_GAMMA2_2;
+    if (legacy_mode == 1)
+    {
+        *src_gamut = (i_type == INDEX_TYPE_SDR) ? INDEX_GAMUT_DCI_P3 : ((enum gamut_index)s_gamut);
+        *src_gamma = (i_type == INDEX_TYPE_SDR) ? INDEX_GAMMA_SRGB   : ((enum gamma_index)s_gamma);
+        *dst_gamut = INDEX_GAMUT_DCI_P3;
+        *dst_gamma = (i_type == INDEX_TYPE_SDR) ? INDEX_GAMMA_SRGB   : INDEX_GAMMA_GAMMA2_2;
+    }
+    else
+    {
+        *src_gamut = (enum gamut_index)s_gamut;
+        *dst_gamut = (enum gamut_index)d_gamut;
+        *src_gamma = (enum gamma_index)s_gamma;
+        *dst_gamma = (enum gamma_index)d_gamma;
+#ifdef ASSUME_SRGB_IS_GAMMA22_FOR_HDR
+        if ((i_type != INDEX_TYPE_SDR) && ((*dst_gamma) == INDEX_GAMMA_SRGB)) *dst_gamma = INDEX_GAMMA_GAMMA2_2;
 #endif
+    }
 }
 
 void mcd_cm_sfr_bypass(struct mcd_hdr_device *hdr)

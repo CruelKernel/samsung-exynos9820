@@ -261,6 +261,9 @@ static int init_mailbox_regs(struct modem_ctl *mc)
 				sbi_sys_rev_mask, sbi_sys_rev_pos);
 	mif_info("hw_rev:%d\n", hw_rev);
 
+	mif_dt_read_u32(np, "sbi_nr_crash_type_mask", mc->sbi_nr_crash_type_mask);
+	mif_dt_read_u32(np, "sbi_nr_crash_type_pos", mc->sbi_nr_crash_type_pos);
+
 #ifdef CONFIG_EXYNOS_DECON_LCD
 	{//////* Detect and deliver device type to CP */
 	unsigned int sbi_device_type_mask, sbi_device_type_pos;

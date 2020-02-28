@@ -6275,6 +6275,13 @@ wl_cfgvendor_nan_enable_merge(struct wiphy *wiphy,
 		goto exit;
 	}
 exit:
+	if (cmd_data) {
+		if (cmd_data->scid.data) {
+			MFREE(cfg->osh, cmd_data->scid.data, cmd_data->scid.dlen);
+			cmd_data->scid.dlen = 0;
+		}
+		MFREE(cfg->osh, cmd_data, sizeof(*cmd_data));
+	}
 	NAN_DBG_EXIT();
 	return ret;
 }

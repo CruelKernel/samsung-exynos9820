@@ -2500,4 +2500,5 @@ do {	\
 	    band_chan_arr[k].flags = IEEE80211_CHAN_DISABLED;	\
 	}	\
 } while (0)
+extern s32 wl_cfg80211_handle_macaddr_change(struct net_device *dev, u8 *macaddr);
 #endif /* _wl_cfg80211_h_ */

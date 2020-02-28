@@ -1199,11 +1199,11 @@ static ssize_t disk_ios_show(struct device *dev,
 			   "\"IOT\":\"%lu\","
 			   "\"Hours\":\"%ld\"\n",
 			UNSIGNED_DIFF(new.ios[READ], old->ios[READ]),
-			UNSIGNED_DIFF(new.sectors[READ], old->sectors[READ]),
+			UNSIGNED_DIFF(new.sectors[READ], old->sectors[READ]) / 2, /* KB */
 			UNSIGNED_DIFF(new.ios[WRITE], old->ios[WRITE]),
-			UNSIGNED_DIFF(new.sectors[WRITE], old->sectors[WRITE]),
+			UNSIGNED_DIFF(new.sectors[WRITE], old->sectors[WRITE]) / 2,
 			UNSIGNED_DIFF(new.ios[DISCARD], old->ios[DISCARD]),
-			UNSIGNED_DIFF(new.sectors[DISCARD], old->sectors[DISCARD]),
+			UNSIGNED_DIFF(new.sectors[DISCARD], old->sectors[DISCARD]) / 2,
 			UNSIGNED_DIFF(new.iot, old->iot),
 			hours);
 
