@@ -1,0 +1,23 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+#include "exynos9820-beyondlte_input_common.dtsi"
+
+&hsi2c_10 {
+	status = "okay";
+	touchscreen@48 {
+		sec,project_name = "BEYONDX", "G977";
+		sec,firmware_name = "tsp_sec/y771_beyondx_phole.bin";
+		support_fod;
+		sec,tclm_level = <2>;
+		sec,afe_base = <0x0205>;
+	};
+};

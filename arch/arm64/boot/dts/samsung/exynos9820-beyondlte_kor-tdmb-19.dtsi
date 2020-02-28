@@ -1,0 +1,87 @@
+ /* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+  * only version 2 as published by the Free Software Foundation.
+  *
+  * This program is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  */
+
+
+&pinctrl_2 {
+	tdmb_irq_on: tdmb-irq-on {
+		samsung,pins = "gpm16-0";
+		samsung,pin-function = <0xf>; /* WEINT_GPM16[0] */
+		samsung,pin-pud = <0>;	/* PULL NONE */
+	};
+	tdmb_irq_off: tdmb-irq-off {
+		samsung,pins = "gpm16-0";
+		samsung,pin-function = <0>; /* INPUT */
+		samsung,pin-pud = <1>;	/* PULL DOWN */
+	};
+
+	tdmb_pwr_on: tdmb-pwr-on {
+		samsung,pins = "gpm27-0";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+	};
+	tdmb_pwr_off: tdmb-pwr-off {
+		samsung,pins = "gpm27-0";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+	};
+};
+
+&pinctrl_5 {
+	spi5_idle: spi5-idle {
+		samsung,pins = "gpp2-3", "gpp2-2", "gpp2-1", "gpp2-0";
+		samsung,pin-function = <0>;
+		samsung,pin-pud = <1>;
+		samsung,pin-drv = <0>;
+	};
+};
+
+&spi_5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+/*
+*		dma-mode;
+*		dmas = <&pdma0 9 &pdma0 8>;
+*/
+	status = "ok";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi5_bus &spi5_cs>;
+
+	tdmb-spi@0 {
+		compatible = "tdmb_spi_comp";
+		reg = <0>;
+		spi-max-frequency = <13000000>;
+		controller-data {
+			cs-gpio = <&gpp2 3 0>;
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
+};
+
+/ {
+	fragment@tdmb {
+		target-path = "/";
+		__overlay__ {
+			tdmb {
+				compatible = "samsung,tdmb";
+				pinctrl-names = "tdmb_on", "tdmb_off";
+				pinctrl-0 = <&tdmb_irq_on &tdmb_pwr_on>;
+				pinctrl-1 = <&tdmb_irq_off &tdmb_pwr_off>;
+				tdmb_pwr_en = <&gpm27 0 0>;
+				tdmb_irq = <&gpm16 0 0>;
+				tdmb_use_irq;
+				tdmb_xtal_freq = <24000>;
+			};
+		};
+	};
+};
+

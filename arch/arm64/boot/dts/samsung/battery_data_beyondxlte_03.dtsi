@@ -1,0 +1,26 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "battery_data_beyondxlte_common.dtsi"
+
+/ {
+	fragment@battery {
+		target-path = "/";
+		__overlay__ {
+			battery {
+				io-channels = <&exynos_adc 1>, <&exynos_adc 3>, <&exynos_adc 11>, <&exynos_adc 1>, <&exynos_adc 1>;
+				io-channel-names = "adc-temp", "adc-chg-temp", "adc-in-bat", "adc-wpc-temp", "adc-usb-temp";
+#io-channel-cells = <5>;
+				io-channel-ranges;
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+};

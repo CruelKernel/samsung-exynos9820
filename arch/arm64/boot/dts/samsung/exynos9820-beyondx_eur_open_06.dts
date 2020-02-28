@@ -1,0 +1,268 @@
+/*
+ * SAMSUNG EXYNOS9820 board device tree source
+ *
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+/plugin/;
+#include "exynos9820-sensorhub.dtsi"
+#include "exynos9820-display-lcd.dtsi"
+#include "battery_data_beyondxlte_common.dtsi"
+#include "exynos9820-beyondx_motor.dtsi"
+#include "exynos9820-beyondx_if-pmic-max77705.dtsi"
+#include <dt-bindings/clock/exynos9820.h>
+#include <dt-bindings/pci/pci.h>
+#include "exynos9820-beyondx_camera.dtsi"
+#include "exynos9820-beyondx_common.dtsi"
+#include "exynos9820-beyondx_fingerprint_04.dtsi"
+#include "exynos9820-beyondx_eur_open_gpio_00.dtsi"
+#include "exynos9820-beyondlte_kor-tdmb-19.dtsi"
+#include "exynos9820-beyondx_optics-r00.dtsi"
+
+/ {
+	compatible = "samsung,BEYONDX EUR OPEN 06", "samsung,EXYNOS9820";
+	dtbo-hw_rev = <6>;
+   	dtbo-hw_rev_end = <6>;
+
+	fragment@model {
+		target-path = "/";
+		__overlay__ {
+			#address-cells = <2>;
+			#size-cells = <1>;
+
+			model = "Samsung BEYONDX EUR OPEN 06 board based on EXYNOS9820";
+			pinctrl@15850000 {
+				bt_hostwake: bt-hostwake {
+					samsung,pins = "gpa2-3";
+					samsung,pin-function = <0>;
+					samsung,pin-pud = <1>;
+				};
+			};
+			pinctrl@10430000 {
+				bt_btwake: bt-btwake {
+					samsung,pins = "gpg2-0";
+					samsung,pin-function = <1>;
+					samsung,pin-pud = <0>;
+					samsung,pin-con-pdn = <3>;
+					samsung,pin-pud-pdn = <0>;
+				};
+			};
+			pinctrl@15C30000 {
+				bt_en: bt-en {
+					samsung,pins = "gpm8-0";
+					samsung,pin-function = <1>;
+					samsung,pin-pud = <0>;
+					samsung,pin-con-pdn = <3>;
+					samsung,pin-pud-pdn = <0>;
+				};
+
+				s5100_ap2cp_wakeup: s5100_ap2cp_wakeup {
+					samsung,pins = "gpm17-0";
+					samsung,pin-con-pdn = <3>;
+					samsung,pin-pud = <1>;
+				};
+			};
+			bluetooth {
+				compatible = "samsung,bcm43xx";
+				gpios = <&gpm8 0 0   /*BT_EN*/
+				&gpg2 0 0    /*BT_WAKE*/
+				&gpa2 3 0xF    /*BT_HOST_WAKE*/ >;
+				pinctrl-names = "default";
+				pinctrl-0=<&bt_hostwake &bt_btwake &bt_en>;
+				status = "okay";
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+
+	fragment@camera {
+		target-path = "/";
+		__overlay__ {
+			/* Ultra Wide CAMERA */
+			fimc_is_sensor_3p9: fimc-is_sensor_3p9@2D {
+				gpio_mipi_sel = <&gpm9 0 0x1>; /* mipi sw sel */
+			};
+		}; /* end of __overlay__ */
+	}; /* end of fragment */
+}; /* end of root */
+
+&pinctrl_6 {
+	spi7_bus_suspend: spi7-bus-suspend {
+		samsung,pins = "gpp4-2", "gpp4-1", "gpp4-0";
+		samsung,pin-function = <0>;	/* INPUT */
+		samsung,pin-pud = <1>;		/* DOWN */
+		samsung,pin-drv = <0>;
+	};
+	spi7_cs_suspend: spi7-cs-suspend {
+		samsung,pins = "gpp4-3";
+		samsung,pin-function = <0>;	/* INPUT */
+		samsung,pin-pud = <1>;		/* DOWN */
+		samsung,pin-drv = <0>;
+	};
+};
+
+/* SPI USI_PERIC1_USI06_SPI */
+&spi_7 {
+	status = "okay";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	pinctrl-names = "ese_active", "ese_suspend";
+	pinctrl-0 = <&spi7_bus &spi7_cs>;
+	pinctrl-1 = <&spi7_bus_suspend &spi7_cs_suspend>;
+
+	ese_spi@0 {
+		compatible = "ese_p3";
+		reg = <0>;
+		spi-max-frequency = <13000000>;
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		p3-vdd-1p8= "VDD_ESE_1P8";
+
+		clocks = <&clock GATE_USI06_USI>, <&clock DOUT_CLK_PERIC1_USI06_USI>;
+		clock-names = "pclk", "sclk";
+		ese_p3,cs-gpio = <&gpp4 3 0>;
+
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+			samsung,spi-chip-select-mode = <0>;
+		};
+	};
+};
+
+&pinctrl_6 {
+	nfc_en: nfc-en {
+		samsung,pins = "gpp6-2";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+
+	nfc_firm: nfc-firm {
+		samsung,pins = "gpp6-3";
+		samsung,pin-function = <1>;
+		samsung,pin-pud = <0>;
+		samsung,pin-con-pdn = <3>;
+		samsung,pin-pud-pdn = <0>;
+		};
+};
+
+&hsi2c_20 {
+	gpios = <&gpp5 0 0 &gpp5 1 0>;
+	status = "okay";
+	clock-frequency = <400000>;
+
+	sec-nfc@27 {
+		compatible = "sec-nfc";
+		reg = <0x27>;
+
+		interrupts = <2 0 0>;
+		interrupt-parent = <&gpa1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&nfc_en &nfc_firm>;
+
+		sec-nfc,ven-gpio = <&gpp6 2 0>;
+		sec-nfc,irq-gpio = <&gpa1 2 0>;
+		sec-nfc,firm-gpio = <&gpp6 3 0>;
+		sec-nfc,clk_req-gpio = <&gpa2 6 0xf>;
+		sec-nfc,clk_use = <2>;
+		sec-nfc,nfc_pvdd = "VDD_NFC_1P8";
+
+		clocks = <&clock OSC_NFC>;
+		clock-names = "oscclk_nfc";
+		sec-nfc,nfc_ap_clk;
+		sec-nfc,ldo_control;
+	};
+
+	max86915@57 {
+		compatible = "hrm_max";
+		reg = <0x57>;
+		interrupt-parent = <&gpp3>;
+		interrupts = <0 0 0>;
+		pinctrl-names = "default", "sleep", "idle";
+		pinctrl-0 = <&hrm_irq &hrm_en>;
+		pinctrl-1 = <&hrm_irqsleep &hrm_ensleep>;
+		pinctrl-2 = <&hrm_irqidle &hrm_enidle>;
+		hrmsensor,hrm_int-gpio = <&gpp3 0 0>;
+		hrmsensor,hrm_boost_en-gpio = <&gpg0 7 0>;
+		hrmsensor,vdd_1p8 = "S2MPB02_LDO8";
+		hrmsensor,i2c_1p8 = "VDD_NFC_1P8";
+		hrmsensor,thd = <100000 100000>;
+		hrmsensor,init_curr = <0x46 0x41 0x28 0x3c>;
+	};
+};
+
+&pinctrl_5 {
+	hrm_irq: hrm-irq {
+		samsung,pins = "gpp3-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <3>;
+	};
+
+	hrm_irqsleep: hrm-irqsleep {
+		samsung,pins = "gpp3-0";
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <0>;
+	};
+
+	hrm_irqidle: hrm-irqidle {
+		samsung,pins = "gpp3-0";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <3>;
+	};
+
+	hrm_en: hrm-en {
+		samsung,pins = "gpg0-7";
+		samsung,pin-function = <0>;
+		samsung,pin-pud = <1>;
+		samsung,pin-drv = <2>;
+	};
+
+	hrm_ensleep: hrm-ensleep {
+		samsung,pins = "gpg0-7";
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <1>;
+	};
+
+	hrm_enidle: hrm-enidle {
+		samsung,pins = "gpg0-7";
+		samsung,pin-function = <0>;
+		samsung,pin-pud = <1>;
+		samsung,pin-drv = <2>;
+	};
+};
+
+&spi_17 {
+	BCM4773@0 {
+		ssp-acc-position = <4>;
+		ssp-mag-position = <4>;
+		ssp-mag-array = /bits/ 8 <100 82 15 28 211 230 255 106 216 54 190 193 2 102 255 89 254 216 198
+					243 192 253 113 99 10 81 77>;
+		ssp-thermi-up = /bits/ 16 <3257 3328 3188 3140 3082 3005 2917 2805 2689 2552 2406 2248 2075 1915 
+					1744 1574 1422 1275 1131 988 874 763 664>;
+		ssp-thermi-sub = /bits/ 16 <4095 4095 4095 4046 3842 3599 3346 3067 2782 2495 2217 1953 1710 1489
+					1288 1111 962 826 712 601 521 451 383>;
+	};
+};
+
+&displayport {
+	status = "okay";
+	dp,usb_con_sel = <&gpg0 4 0>;
+};
+
+&hsi2c_22 {
+	status = "okay";
+	ptn36502@1a {
+		compatible = "ptn36502_driver";
+		reg = <0x1a>;
+		combo,con_sel = <&gpg0 4 0x0>;
+	};
+};

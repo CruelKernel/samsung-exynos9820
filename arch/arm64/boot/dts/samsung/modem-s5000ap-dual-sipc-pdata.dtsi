@@ -73,6 +73,8 @@
 				mbx_ap2cp_kerneltime = <9>;
 
 				/* Status bit info for mbx_ap2cp_united_status */
+				sbi_nr_crash_type_mask = <0xf>;
+				sbi_nr_crash_type_pos = <27>;
 				sbi_crash_type_mask = <0xf>;
 				sbi_crash_type_pos = <23>;
 				sbi_device_type_mask = <0x1f>;
