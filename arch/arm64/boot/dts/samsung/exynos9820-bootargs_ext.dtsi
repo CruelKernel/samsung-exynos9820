@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 
-#include "../../../../../include/generated/autoconf.h"
+#include <generated/autoconf.h>
 
 / {
 	fragment@model {
