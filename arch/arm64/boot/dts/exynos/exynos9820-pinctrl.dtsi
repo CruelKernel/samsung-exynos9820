@@ -129,6 +129,15 @@
 			samsung,pin-val = <0>;
 		};
 
+		uart1_bus_tx_dat: uart1-bus-tx-dat {
+			samsung,pins = "gpq0-1";
+			samsung,pin-val = <1>;
+		};
+
+		uart1_bus_tx_con: uart1-bus-tx-con {
+			samsung,pins = "gpq0-1";
+			samsung,pin-function = <1>;
+		};
 	};
 
 	/* AUD */

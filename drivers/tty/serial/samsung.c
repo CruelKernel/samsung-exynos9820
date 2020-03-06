@@ -203,6 +203,14 @@ static void change_uart_gpio(int value, struct s3c24xx_uart_port *ourport)
 	int status = 0;
 
 	if (value) {
+		if (!IS_ERR(ourport->uart_pinctrl_tx_dat)) {
+			ourport->default_uart_pinctrl->state = NULL;
+			status = pinctrl_select_state(ourport->default_uart_pinctrl, ourport->uart_pinctrl_tx_dat);
+			if (status)
+				dev_err(ourport->port.dev, "Can't set TXD uart pins!!!\n");
+			else
+				udelay(10);
+		}
 		if (!IS_ERR(ourport->uart_pinctrl_rts)) {
 			ourport->default_uart_pinctrl->state = NULL;
 			status = pinctrl_select_state(ourport->default_uart_pinctrl, ourport->uart_pinctrl_rts);
@@ -2113,6 +2121,8 @@ static int s3c24xx_serial_probe(struct platform_device *pdev)
 						"rts");
 			if (IS_ERR(ourport->uart_pinctrl_rts))
 				dev_err(&pdev->dev, "Can't get RTS pinstate!!!\n");
+			ourport->uart_pinctrl_tx_dat = pinctrl_lookup_state(ourport->default_uart_pinctrl,
+						"tx_dat");
 
 			ourport->uart_pinctrl_default = pinctrl_lookup_state(ourport->default_uart_pinctrl,
 						"default");

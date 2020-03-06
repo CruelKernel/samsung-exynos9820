@@ -81,6 +81,7 @@ struct s3c24xx_uart_port {
 	unsigned long			qos_timeout;
 	unsigned int			usi_v2;
 	unsigned int			uart_panic_log;
+	struct pinctrl_state 	*uart_pinctrl_tx_dat;
 	struct pinctrl_state 	*uart_pinctrl_rts;
 	struct pinctrl_state 	*uart_pinctrl_default;
 	struct pinctrl *default_uart_pinctrl;

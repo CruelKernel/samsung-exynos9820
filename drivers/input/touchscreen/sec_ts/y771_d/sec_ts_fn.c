@@ -5967,11 +5967,13 @@ static void fod_enable(void *device_data)
 	else
 		ts->lowpower_mode &= ~SEC_TS_MODE_SPONGE_PRESS;
 
-	ts->press_prop = !!sec->cmd_param[1];
+	ts->press_prop = (sec->cmd_param[1] & 0x01) | ((sec->cmd_param[2] & 0x01) << 1);
 
-	input_info(true, &ts->client->dev, "%s: %s, fast:%d, %02X\n",
+	input_info(true, &ts->client->dev, "%s: %s, fast:%s, strict:%s, %02X\n",
 			__func__, sec->cmd_param[0] ? "on" : "off",
-			ts->press_prop, ts->lowpower_mode);
+			ts->press_prop & 1 ? "on" : "off",
+			ts->press_prop & 2 ? "on" : "off",
+			ts->lowpower_mode);
 
 	mutex_lock(&ts->modechange);
 	if (ts->input_closed && !ts->lowpower_mode && !ts->ed_enable) {
