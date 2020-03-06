@@ -145,3 +145,7 @@ $ ./build :flash
 
 - [Telegram](https://t.me/joinchat/GsJfBBaxozXvVkSJhm0IOQ)
 - [XDA Thread](https://forum.xda-developers.com/galaxy-s10/development/kernel-cruel-kernel-s10-v2-t4048707)
+
+## Contributors
+
+- @bamsbamx ported boeffla_wakelock_blocker
