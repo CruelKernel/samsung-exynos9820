@@ -71,6 +71,7 @@ For example:
   helps to bypass tethering blocking in mobile networks.
 * wireguard - adds wireguard module to the kernel.
 * cifs - adds CIFS fs support.
+* boeffla_wl_blocker - enable boeffla wakelock blocker module.
 * +nohardening - removes Samsung kernel self-protection mechanisms. Potentially
   can increase the kernel performance. Enabled by default. Disable this if you
   want to make your system more secure.
