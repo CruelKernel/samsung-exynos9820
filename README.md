@@ -3,7 +3,7 @@
 ![CI](https://github.com/CruelKernel/samsung-exynos9820/workflows/CI/badge.svg)
 
 Based on samsung sources and android common tree.
-Supported devices: G970F, G973F, G975F, G977B, N970F, N971F, N976B.
+Supported devices: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 
 ## How to install
 
@@ -49,7 +49,7 @@ you need to edit lines:
 ```
 
 First of all, you need to change G973F model to the model of your phone.
-Supported models: G970F, G973F, G975F, G977B, N970F, N971F, N976B.
+Supported models: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 
 You can change the name of the kernel by replacing ```name=CRUEL-V3``` with,
 for example, ```name=my_own_kernel```. You can remove wireguard from the kernel
