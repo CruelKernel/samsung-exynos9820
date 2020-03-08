@@ -28,6 +28,7 @@ jobs:
         ./build config           \
                 model=G975F      \
                 name=CRUEL_TEST-V1    \
+                -magisk     \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
