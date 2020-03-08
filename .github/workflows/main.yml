@@ -26,8 +26,9 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
-                name=CRUEL-V3    \
+                model=G975F      \
+                name=CRUEL-V3-Custom    \
+                os_patch_level=2100-01 \
                 +magisk          \
                 +nohardening     \
                 +ttl             \
