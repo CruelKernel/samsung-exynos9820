@@ -29,7 +29,7 @@ jobs:
                 model=G975F      \
                 name=CRUEL-V3-Custom    \
                 os_patch_level=2100-01 \
-                +magisk          \
+                +magisk+canary          \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
