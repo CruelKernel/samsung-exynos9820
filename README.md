@@ -102,8 +102,9 @@ GitHub starts to build the kernel. You need to **wait** about 25-30 mins while g
 the kernel. If the build is successfully finished, you will find your boot.img in the Artifacts
 section. Download it, unzip and flash.
 
-To keep your version of the sources in sync with main tree, please look at this tutorial:
-https://stackoverflow.com/questions/20984802/how-can-i-keep-my-fork-in-sync-without-adding-a-separate-remote/21131381#21131381
+To keep your version of the sources in sync with main tree, please look at one of these tutorials:
+- [How can I keep my fork in sync without adding a separate remote?](https://stackoverflow.com/a/21131381)
+- [How do I update a GitHub forked repository?](https://stackoverflow.com/a/23853061)
 
 ## How to build the kernel locally on your PC
 
