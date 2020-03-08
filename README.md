@@ -26,6 +26,34 @@ $ sudo heimdall flash --BOOT boot.img
 
 Flash boot.img with FK Manager.
 
+## Pin problem
+
+The problem is not in sources. It's due to os_patch_level mismatch with you current
+kernel (and/or twrp). CruelKernel uses common security patch date to be in sync with
+the official twrp and samsung firmwares. You can check the default os_patch_level in
+build.mkbootimg.* files. However, this date can be lower than other kernels use. When
+you flash a kernel with an earlier patch date on top of the previous one with a higher
+date, android activates rollback protection mechanism and you face the pin problem. It's
+impossible to use a "universal" os_patch_level because different users use different
+custom kernels and different firmwares. CruelKernel uses the common date by default
+in order to suite most of users.
+
+How can you solve the problem? 4 ways:
+- You can restore your previous kernel and the pin problem will gone
+- You can do the full wipe during cruel kernel flashing
+- You can reboot to TWRP, navigate to data/system and delete 3 files those names starts
+  with 'lock'. Reboot. Login, set a new pin. However, this method will not solve Samsung
+  account activation problem
+- You can rebuild cruel kernel with os_patch_level that suites you. You need to know
+  os_patch_level of your current level. If you use the default samsung kernel then
+  you can check the date in "Software information" > "Android security patch level".
+  If you use a custom kernel then you need to extract the date from it's boot.img
+  (nemesis kernel uses "2099-12"). To extrat the date you can backup the kernel to
+  obtain boot.img, and use, for example, [AIK from osm0sis](https://forum.xda-developers.com/showthread.php?t=2073775)
+  to check the date of the image. After that you need to add the line
+  os_patch_level="\<your date\>" to the main.yml cruel configuration and rebuild it.
+  See the next section if you want to rebuild the kernel.
+
 ## How to customize the kernel
 
 It's possible to customize the kernel and build it from the browser.
@@ -88,11 +116,12 @@ For example, you can alter default configuration to something like:
 ```YAML
     - name: Kernel Configure
       run: |
-        ./build config              \
-                model=G975F         \
-                name=CRUEL-V3       \
-                +magisk+canary      \
-                +wireguard          \
+        ./build config                 \
+                os_patch_level=2020-12 \
+                model=G975F            \
+                name=OwnKernel         \
+                +magisk+canary         \
+                +wireguard             \
                 +nohardening
 ```
 
