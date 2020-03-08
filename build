@@ -202,11 +202,11 @@ def make_config(configs):
         'kernel/configs/cruel.conf']
     conf_msg = []
     kernel_configs = configs['kernel']
-    for key in kernel_configs:
+    for key in sorted(kernel_configs):
         if key == 'name' or key == 'model':
             continue
         if kernel_configs[key]['enabled']:
-            conf_msg.append(key + " (default: " + str(kernel_configs[key]['default']) + ")")
+            conf_msg.append(key + " (default: " + ("On" if kernel_configs[key]['default'] else "Off") + ")")
             list.append(kernel_configs[key]['path'])
     if conf_msg:
         print_info('Configuration:')
