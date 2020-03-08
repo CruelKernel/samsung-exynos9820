@@ -32,8 +32,7 @@ jobs:
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
-                +cifs            \
-                +schedondemand
+                +cifs
     - name: Kernel Build
       run: ./build :build
     - name: Create boot.img
@@ -43,10 +42,10 @@ jobs:
     - name: Upload Kernel
       uses: actions/upload-artifact@v1
       with:
-        name: Kernel Boot Image
+        name: CruelKernel
         path: boot.img
     - name: Upload Kernel Info
       uses: actions/upload-artifact@v1
       with:
-        name: Kernel Configuration Info
+        name: ConfigurationInfo
         path: build.info
