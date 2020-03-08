@@ -48,8 +48,8 @@ How can you solve the problem? 4 ways:
   os_patch_level of your current level. If you use the default samsung kernel then
   you can check the date in "Software information" > "Android security patch level".
   If you use a custom kernel then you need to extract the date from it's boot.img
-  (nemesis kernel uses "2099-12"). To extrat the date you can backup the kernel to
-  obtain boot.img, and use, for example, [AIK from osm0sis](https://forum.xda-developers.com/showthread.php?t=2073775)
+  (nemesis kernel uses "2099-12"). To extract the date you can backup the kernel and
+  obtain boot.img. Next use, for example, [AIK from osm0sis](https://forum.xda-developers.com/showthread.php?t=2073775)
   to check the date of the image. After that you need to add the line
   os_patch_level="\<your date\>" to the main.yml cruel configuration and rebuild it.
   See the next section if you want to rebuild the kernel.
@@ -175,7 +175,7 @@ $ ./build :flash
 ## Support
 
 - [Telegram](https://t.me/joinchat/GsJfBBaxozXvVkSJhm0IOQ)
-- [XDA Thread](https://forum.xda-developers.com/galaxy-s10/development/kernel-cruel-kernel-s10-v2-t4048707)
+- [XDA Thread](https://forum.xda-developers.com/galaxy-s10/samsung-galaxy-s10--s10--s10-5g-cross-device-development-exynos/kernel-cruel-kernel-s10-note10-v3-t4063495)
 
 ## Contributors
 
