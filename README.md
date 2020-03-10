@@ -113,6 +113,7 @@ For example:
   decrease response time. Disabled by default, untested.
 * size - optimize kernel for size.
 * noksm - disable Kernel Samepage Merging (KSM).
+* nomodules - disable loadable modules support.
 
 For example, you can alter default configuration to something like:
 ```YAML
