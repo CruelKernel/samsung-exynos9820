@@ -13,15 +13,6 @@ endif
 endif
 endif
 
-ifeq ($(SEC_BUILD_OPTION_VTS),false)
-ifeq ($(TARGET_BUILD_VARIANT), user)
-ifeq ($(SEC_BUILD_OPTION_PRODUCT_SHIP), true)
-ifeq ($(SEC_BUILD_OPTION_SELINUX_ENFORCE),true)
-ccflags-y += -DCONFIG_ALWAYS_ENFORCE=true
-endif
-endif
-endif
-endif
 # ] SEC_SELINUX_PORTING_COMMON
 
 obj-$(CONFIG_SECURITY_SELINUX) := selinux.o
