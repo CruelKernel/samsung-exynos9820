@@ -111,6 +111,7 @@ For example:
   decrease response time. Disabled by default, untested.
 * 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
   decrease response time. Disabled by default, untested.
+* size - optimize kernel for size.
 
 For example, you can alter default configuration to something like:
 ```YAML
