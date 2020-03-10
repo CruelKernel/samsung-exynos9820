@@ -2001,11 +2001,9 @@ int sec_ts_set_custom_library(struct sec_ts_data *ts)
 	if (!ts->use_sponge)
 		return 0;
 
-#ifdef CONFIG_SEC_FACTORY
-	/* enable FOD when LCD on state */
-	if (ts->plat_data->support_fod && ts->input_closed == false)
+	/* enable FOD when supported by device */
+	if (ts->plat_data->support_fod)
 		force_fod_enable = SEC_TS_MODE_SPONGE_PRESS;
-#endif
 
 	input_err(true, &ts->client->dev, "%s: Sponge (0x%02x)%s\n",
 			__func__, ts->lowpower_mode,
