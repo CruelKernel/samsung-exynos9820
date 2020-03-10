@@ -3,6 +3,7 @@
 #
 
 # Object files in subdirectories
+ccflags-y := -Wno-sizeof-pointer-div
 
 obj-y					+= cal-if.o
 obj-$(CONFIG_PMUCAL)			+= pmucal_system.o pmucal_local.o pmucal_cpu.o pmucal_rae.o
