@@ -330,15 +330,16 @@ DHDCFLAGS += -DDHD_4WAYM4_FAIL_DISCONNECT
 endif
 
 # Android Version Check from Platform source
-ifneq ($(ANDROID_VERSION),)
-MAJOR_VERSION := $(shell echo $(ANDROID_VERSION) | rev | cut -c 5- | rev)
-DHDCFLAGS += -DANDROID_PLATFORM_VERSION=$(MAJOR_VERSION)
-else
-ifneq ($(PLATFORM_VERSION),)
-MAJOR_VERSION := $(shell echo $(PLATFORM_VERSION) | cut -d "." -f 1)
-DHDCFLAGS += -DANDROID_PLATFORM_VERSION=$(MAJOR_VERSION)
-endif
-endif
+#ifneq ($(ANDROID_VERSION),)
+#MAJOR_VERSION := $(shell echo $(ANDROID_VERSION) | rev | cut -c 5- | rev)
+#DHDCFLAGS += -DANDROID_PLATFORM_VERSION=$(MAJOR_VERSION)
+#else
+#ifneq ($(PLATFORM_VERSION),)
+#MAJOR_VERSION := $(shell echo $(PLATFORM_VERSION) | cut -d "." -f 1)
+#DHDCFLAGS += -DANDROID_PLATFORM_VERSION=$(MAJOR_VERSION)
+#endif
+#endif
+DHDCFLAGS += -DANDROID_PLATFORM_VERSION=10
 
 # Change Dump path by Android Global DE Policy
 ifeq ($(CONFIG_WLAN_VENDOR_DUMP_ENABLE),y)
