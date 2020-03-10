@@ -112,6 +112,7 @@ For example:
 * 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
   decrease response time. Disabled by default, untested.
 * size - optimize kernel for size.
+* noksm - disable Kernel Samepage Merging (KSM).
 
 For example, you can alter default configuration to something like:
 ```YAML
