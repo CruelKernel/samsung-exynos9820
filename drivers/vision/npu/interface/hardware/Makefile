@@ -1,3 +1,5 @@
+ccflags-y := -Wno-memset-transposed-args
+
 obj-y				+= npu-interface.o
 #obj-y				+= npu-mailbox.o
 obj-y				+= mailbox_ipc.o
