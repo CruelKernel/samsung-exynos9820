@@ -27,7 +27,7 @@ jobs:
       run: |
         ./build config           \
                 model=G977B      \
-                name=VN™KERNEL-Test  \
+                name=VN™KERNEL-V3.1  \
                 +magisk          \
                 +nohardening     \
                 +ttl             \
