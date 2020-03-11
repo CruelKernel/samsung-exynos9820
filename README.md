@@ -115,6 +115,7 @@ For example:
 * noksm - disable Kernel Samepage Merging (KSM).
 * nomodules - disable loadable modules support.
 * mass_storage - enable usb mass storage drivers for drivedroid.
+* noaudit - disable kernel auditing subsystem.
 
 For example, you can alter default configuration to something like:
 ```YAML
