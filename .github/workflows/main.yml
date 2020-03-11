@@ -25,7 +25,7 @@ jobs:
       run: |
         ./build config                    \
                 model=G973F               \
-                name=NROM                 \
+                name=NROMkernel                 \
                 +magisk                   \
                 +nohardening              \
                 +ttl                      \
