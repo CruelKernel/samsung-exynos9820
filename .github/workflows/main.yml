@@ -26,8 +26,8 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
-                name=CRUEL-V3.1  \
+                model=G977B      \
+                name=CRUEL-VN™KERNEL-V3.1  \
                 +magisk          \
                 +nohardening     \
                 +ttl             \
