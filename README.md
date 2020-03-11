@@ -114,6 +114,7 @@ For example:
 * size - optimize kernel for size.
 * noksm - disable Kernel Samepage Merging (KSM).
 * nomodules - disable loadable modules support.
+* mass_storage - enable usb mass storage drivers for drivedroid.
 
 For example, you can alter default configuration to something like:
 ```YAML
