@@ -66,6 +66,7 @@ struct selinux_audit_data {
 
 void __init avc_init(void);
 
+#ifdef CONFIG_AUDIT
 static inline u32 avc_audit_required(u32 requested,
 			      struct av_decision *avd,
 			      int result,
@@ -142,6 +143,7 @@ static inline int avc_audit(u32 ssid, u32 tsid,
 			      requested, audited, denied, result,
 			      a, flags);
 }
+#endif
 
 #define AVC_STRICT 1 /* Ignore permissive mode. */
 #define AVC_EXTENDED_PERMS 2	/* update extended permissions */
