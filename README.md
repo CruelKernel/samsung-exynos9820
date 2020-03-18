@@ -118,6 +118,13 @@ For example:
 * nomodules - disable loadable modules support.
 * mass_storage - enable usb mass storage drivers for drivedroid.
 * noaudit - disable kernel auditing subsystem.
+* fake_config - Use defconfig for /proc/config.gz Some of the config presets, for
+  example nomodules, noaudit are safe but Android system checks kernel configuration
+  for these options to be enabled and issues the warning "There's an internal problem
+  with your device. Contact your manufacturer for details." in case they are not. This
+  config preset forces default configuration to be in /proc/config.gz This trick allows
+  to pass Android system check and shut up the warning. However, the kernel will use
+  other configuration during build.
 
 For example, you can alter default configuration to something like:
 ```YAML
