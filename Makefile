@@ -350,7 +350,9 @@ endif
 hdr-arch  := $(SRCARCH)
 
 KCONFIG_CONFIG	?= .config
+KCONFIG_BUILTINCONFIG ?= $(KCONFIG_CONFIG)
 export KCONFIG_CONFIG
+export KCONFIG_BUILTINCONFIG
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
