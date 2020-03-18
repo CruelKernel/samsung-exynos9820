@@ -26,7 +26,7 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                os_patch_level=2020-12\
+                os_patch_level=2020-03\
                 model=G975F      \
                 name=CRUEL-V3.1-Zunaid-PE  \
                 +magisk          \
