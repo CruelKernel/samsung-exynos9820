@@ -323,6 +323,10 @@ if __name__ == "__main__":
     setup_environ(ARCH='arm64', ANDROID_MAJOR_VERSION='q')
     stages = parse_args(configs)
 
+    if configs['kernel']['fake_config']['enabled']:
+        defconfig = 'arch/arm64/configs/' + models[configs['model']]['config']
+        setup_environ(KCONFIG_BUILTINCONFIG=defconfig)
+
     if 'config' in stages:
         if os.path.exists('build.info'):
             os.remove('build.info')
