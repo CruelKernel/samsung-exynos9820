@@ -92,6 +92,8 @@ For example:
 * +magisk - integrates magisk into the kernel. This allows to have root without
   booting from recovery. Enabled by default.
 * magisk+canary - integrates canary magisk into the kernel.
+* always_permit - pin SELinux to always use permissive mode. Required on LOS rom.
+* always_enforce - pin SELinux to always use enforcing mode.
 * bfq - enable bfq I/O scheduler in the kernel.
 * sched... - enable various (conservative, ondemand, powersave, userspace) CPU
   schedulers in the kernel.
