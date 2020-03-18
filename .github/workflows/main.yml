@@ -26,9 +26,11 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
-                name=CRUEL-V3.1  \
+                os_patch_level=2020-12\
+                model=G975F      \
+                name=CRUEL-V3.1-Zunaid-LOS  \
                 +magisk          \
+                +always_permit   \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
