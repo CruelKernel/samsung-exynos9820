@@ -27,8 +27,8 @@ jobs:
       run: |
         ./build config           \
                 os_patch_level=2020-03\
-                model=G975F      \
-                name=CRUEL-V3.1-Zunaid-PE  \
+                model=G970F      \
+                name=CRUEL-V3.1-3Vasion-LOS  \
                 +magisk          \
                 +always_permit   \
                 +nohardening     \
