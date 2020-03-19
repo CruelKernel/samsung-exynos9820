@@ -310,6 +310,7 @@ static void sec_cmd_store_function(struct sec_cmd_data *data)
 
 	sec_cmd_ptr->cmd_func(data);
 
+#ifdef SEC_DEBUG_TSP_LOG
 	if (cmd_found && sec_cmd_ptr->cmd_log) {
 		char tbuf[32];
 		unsigned long long t;
@@ -324,6 +325,7 @@ static void sec_cmd_store_function(struct sec_cmd_data *data)
 
 		sec_debug_tsp_command_history(tbuf);
 	}
+#endif
 }
 
 static ssize_t sec_cmd_store(struct device *dev, struct device_attribute *devattr,
@@ -355,6 +357,7 @@ static ssize_t sec_cmd_store(struct device *dev, struct device_attribute *devatt
 
 	list_for_each_entry(sec_cmd_ptr, &data->cmd_list_head, list) {
 		if (!strncmp(cmd.cmd, sec_cmd_ptr->cmd_name, strlen(sec_cmd_ptr->cmd_name))) {
+#ifdef SEC_DEBUG_TSP_LOG
 			if (sec_cmd_ptr->cmd_log) {
 				char task_info[40];
 				char tbuf[32];
@@ -374,6 +377,7 @@ static ssize_t sec_cmd_store(struct device *dev, struct device_attribute *devatt
 				sec_debug_tsp_command_history(tbuf);
 
 			}
+#endif
 			break;
 		}
 	}
