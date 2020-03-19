@@ -17,14 +17,14 @@ config SDFAT_FS
 
 config SDFAT_USE_FOR_EXFAT
 	bool "Register sdFAT as exFAT"
-	default y
+	default n
 	depends on SDFAT_FS && !EXFAT_FS
 	help
 	  If you want to register sdFAT as available for exFAT, say Y.
 
 config SDFAT_USE_FOR_VFAT
 	bool "Register sdFAT as VFAT"
-	default y
+	default n
 	depends on SDFAT_FS && !VFAT_FS
 	help
 	  If you want to register sdFAT as available for VFAT, say Y.
