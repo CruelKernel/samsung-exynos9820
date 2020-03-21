@@ -16,8 +16,8 @@
 
 #define BOEFFLA_WL_BLOCKER_VERSION	"1.1.0"
 
-#define LIST_WL_DEFAULT				"mmc0_detect"
+#define LIST_WL_DEFAULT			"19030000.decon_f;ssp_comm_wake_lock;GPSD;ssp_wake_lock;tsp_wakelock;umts_ipc0;umts_ipc1;mmc0_detect"
 
-#define LENGTH_LIST_WL				255
-#define LENGTH_LIST_WL_DEFAULT		150
+#define LENGTH_LIST_WL			2048
+#define LENGTH_LIST_WL_DEFAULT		255
 #define LENGTH_LIST_WL_SEARCH		LENGTH_LIST_WL + LENGTH_LIST_WL_DEFAULT + 5
