@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os, errno
-import sys
+from sys import argv, stderr
 import re
 from datetime import datetime
 from subprocess import run, DEVNULL
@@ -63,7 +63,7 @@ def setup_environ(**env):
         print(key + ' = ' + value)
 
 def fatal(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    print(*args, file=stderr, **kwargs)
     exit(1)
 
 def print_usage(name, modes, configs):
@@ -99,13 +99,13 @@ These configuration modes are meaningless with ':'<stage>.
 
 def parse_args(configs):
     stages = []
-    name = sys.argv.pop(0)
+    name = argv.pop(0)
     modes = ['config', 'build', 'mkimg', 'flash']
     omodes = [':build', ':mkimg', ':flash']
     all_modes = modes + omodes
 
     try:
-        mode = sys.argv.pop(0)
+        mode = argv.pop(0)
         if mode not in all_modes:
             raise Exception
 
@@ -118,7 +118,7 @@ def parse_args(configs):
         fatal('Please, specify the mode from {}.'.format(all_modes))
 
     if mode in modes or mode == ':mkimg':
-        for arg in sys.argv:
+        for arg in argv:
             if arg.find('=') != -1:
                 (key, value) = arg.split('=', 1)
 
