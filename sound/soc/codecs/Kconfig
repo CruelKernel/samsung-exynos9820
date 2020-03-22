@@ -1247,6 +1247,6 @@ config SND_SOC_TPA6130A2
 
 config MORO_SOUND
 	bool "Sound control for S10 madera driver"
-	default y
+	default n
 
 endmenu
