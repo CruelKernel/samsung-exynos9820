@@ -26,14 +26,15 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
-                name=CRUEL-V3.1  \
-                +magisk          \
+                model=G975F      \
+                name=CRUEL-V3.2  \
+                +magisk+canary   \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
                 +cifs            \
-                +boeffla_wl_blocker
+                +boeffla_wl_blocker \
+                +mass_storage
     - name: Kernel Build
       run: ./build :build
     - name: Create boot.img
