@@ -26,7 +26,7 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G975F      \
+                model=G975F     \
                 name=CRUEL-V3.2 - Zunaid - LOS  \
                 +magisk          \
                 +1000hz          \
