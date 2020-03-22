@@ -26,13 +26,14 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
-                name=CRUEL-V3.1  \
+                model=G975F      \
+                name=CRUEL-V3.2  \
                 +magisk          \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
                 +cifs            \
+                +mass_storage    \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
