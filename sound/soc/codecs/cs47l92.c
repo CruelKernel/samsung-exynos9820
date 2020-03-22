@@ -1978,10 +1978,9 @@ static int cs47l92_codec_probe(struct snd_soc_codec *codec)
 	unsigned int val = 0;
 
 	madera->dapm = snd_soc_codec_get_dapm(codec);
+	moro_sound_hook_madera_pcm_probe(madera->regmap);
 
-#ifdef CONFIG_MORO_SOUND
-	moro_sound_hook_moon_pcm_probe(madera->regmap);
-#endif
+	cs47l92->core.madera->dapm = snd_soc_codec_get_dapm(codec);
 
 	ret = madera_init_inputs(codec,
 				 cs47l92_dmic_inputs,
