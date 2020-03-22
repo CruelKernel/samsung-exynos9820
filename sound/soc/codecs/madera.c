@@ -16,6 +16,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/tlv.h>
+#include "moro_sound.h"
 
 #include <linux/mfd/madera/core.h>
 #include <linux/mfd/madera/registers.h>
