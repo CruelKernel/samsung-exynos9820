@@ -26,9 +26,9 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G970F     \
-                name=CRUEL-V3.2 - Zunaid - LOS  \
-                +magisk          \
+                model=G973F      \
+                name=CRUEL-V3.2-Zunaid-LOS  \
+                +magisk+canary   \
                 +1000hz          \
                 +always_permit   \
                 +nohardening     \
@@ -48,7 +48,7 @@ jobs:
     - name: Upload Kernel
       uses: actions/upload-artifact@v1
       with:
-        name: CruelKernel
+        name: CruelKernel-G973F-LOS
         path: boot.img
     - name: Upload Kernel Info
       uses: actions/upload-artifact@v1
