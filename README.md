@@ -94,32 +94,33 @@ For example:
 * magisk+canary - integrates canary magisk into the kernel.
 * always_permit - pin SELinux to always use permissive mode. Required on LOS rom.
 * always_enforce - pin SELinux to always use enforcing mode.
+* 300hz - increases kernel clock rate from 250hz to 300hz. Potentially can
+  decrease response time. Disabled by default, untested.
+* 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
+  decrease response time. Disabled by default, untested.
 * bfq - enable bfq I/O scheduler in the kernel.
 * +sdfat - use sdfat for exFAT and VFAT filesystems.
 * ntfs - enable ntfs filesystem support (read only).
+* cifs - adds CIFS fs support.
+* +cubic - use CUBIC as default TCP congestion control.
 * sched_... - enable various (performance, conservative, ondemand, powersave,
   userspace) CPU schedulers in the kernel.
 * ttl - adds iptables filters for altering ttl values of network packets. This
   helps to bypass tethering blocking in mobile networks.
+* mass_storage - enable usb mass storage drivers for drivedroid.
 * wireguard - adds wireguard module to the kernel.
-* cifs - adds CIFS fs support.
-* boeffla_wl_blocker - enable boeffla wakelock blocker module.
 * morosound - enable moro sound control module.
+* boeffla_wl_blocker - enable boeffla wakelock blocker module.
 * +nohardening - removes Samsung kernel self-protection mechanisms. Potentially
   can increase the kernel performance. Enabled by default. Disable this if you
   want to make your system more secure.
 * nohardening2 - removes Android kernel self-protection mechanisms. Potentially
   can increase the kernel performance. Don't use it if you don't know what you are
   doing. Almost completely disables kernel self-protection. Very insecure.
-* nodebug - remove debugging information from the kernel.
-* 300hz - increases kernel clock rate from 250hz to 300hz. Potentially can
-  decrease response time. Disabled by default, untested.
-* 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
-  decrease response time. Disabled by default, untested.
 * size - optimize kernel for size.
+* nodebug - remove debugging information from the kernel.
 * noksm - disable Kernel Samepage Merging (KSM).
 * nomodules - disable loadable modules support.
-* mass_storage - enable usb mass storage drivers for drivedroid.
 * noaudit - disable kernel auditing subsystem.
 * fake_config - Use defconfig for /proc/config.gz Some of the config presets, for
   example nomodules, noaudit are safe but Android system checks kernel configuration
