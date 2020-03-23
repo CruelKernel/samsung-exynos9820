@@ -463,6 +463,13 @@ config INET_DIAG_DESTROY
 	  had been disconnected.
 	  If unsure, say N.
 
+config LARGE_TCP_INITIAL_BUFFER
+	bool "TCP: lock the initial window size to 64K"
+	default n
+	---help---
+	  Lock the initial TCP window size to 64K.
+	  If unsure, say N.
+
 menuconfig TCP_CONG_ADVANCED
 	bool "TCP: advanced congestion control"
 	---help---
