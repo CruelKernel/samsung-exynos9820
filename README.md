@@ -197,5 +197,6 @@ $ ./build :flash
 
 ## Contributors
 
+- thehacker911 for overall improvements and advices
 - @bamsbamx ported boeffla_wakelock_blocker
 - Nico (@NicoMax2012) ported moro sound module
