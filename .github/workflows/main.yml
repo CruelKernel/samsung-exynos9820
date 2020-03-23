@@ -37,7 +37,6 @@ jobs:
                 +sdfat           \
                 +ntfs            \
                 +morosound       \
-                +cubic           \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
