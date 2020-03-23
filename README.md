@@ -5,6 +5,12 @@
 Based on samsung sources and android common tree.
 Supported devices: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 
+## Contributors
+
+- thehacker911 - overall improvements and advices
+- @bamsbamx - ported boeffla_wakelock_blocker module
+- Nico (@NicoMax2012) - ported moro sound module
+
 ## How to install
 
 First of all, TWRP Recovery + multidisabler should be installed in all cases.
@@ -195,8 +201,3 @@ $ ./build :flash
 - [Telegram](https://t.me/joinchat/GsJfBBaxozXvVkSJhm0IOQ)
 - [XDA Thread](https://forum.xda-developers.com/galaxy-s10/samsung-galaxy-s10--s10--s10-5g-cross-device-development-exynos/kernel-cruel-kernel-s10-note10-v3-t4063495)
 
-## Contributors
-
-- thehacker911 for overall improvements and advices
-- @bamsbamx ported boeffla_wakelock_blocker
-- Nico (@NicoMax2012) ported moro sound module
