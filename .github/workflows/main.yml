@@ -27,7 +27,7 @@ jobs:
       run: |
         ./build config           \
                 model=G973F      \
-                name=CRUEL-V3.2-dev  \
+                name=CRUEL-V3.3-dev  \
                 os_patch_level=2020-12 \
                 +magisk          \
                 +nohardening     \
@@ -37,6 +37,7 @@ jobs:
                 +sdfat           \
                 +ntfs            \
                 +morosound       \
+                +cubic           \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
