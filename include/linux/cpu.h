@@ -120,7 +120,6 @@ extern void cpu_hotplug_disable(void);
 extern void cpu_hotplug_enable(void);
 void clear_tasks_mm_cpumask(int cpu);
 int cpu_down(unsigned int cpu);
-int cpu_down_nocheck(unsigned int cpu);
 
 #else /* CONFIG_HOTPLUG_CPU */
 
