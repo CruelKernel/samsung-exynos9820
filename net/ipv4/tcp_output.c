@@ -272,6 +272,15 @@ void tcp_select_initial_window(int __space, __u32 mss,
 		*rcv_wnd = min(*rcv_wnd, init_rcv_wnd * mss);
 	}
 
+#ifdef CONFIG_LARGE_TCP_INITIAL_BUFFER
+	pr_info("TCP: default window size: %u\n", *rcv_wnd);
+	/* Lock the initial TCP window size to 64K.
+	 * Assuming 1500 packet size, 64240 is the largest multiple
+	 * of MSS (44 * 1460) under 65535 (2 << 15).
+	 */
+	*rcv_wnd = 64240;
+#endif
+
 	/* Set the clamp no higher than max representable value */
 	(*window_clamp) = min_t(__u32, U16_MAX << (*rcv_wscale), *window_clamp);
 }
