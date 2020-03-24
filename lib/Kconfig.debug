@@ -1960,6 +1960,14 @@ config BUG_ON_DATA_CORRUPTION
 
 	  If unsure, say N.
 
+config CC_WERROR
+	bool "Treat all compile warnings as errors"
+	default y
+	help
+	  Select this option to set compiler warnings as errors,
+	  to prevent easily-fixable problems from creeping into
+	  the codebase.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
