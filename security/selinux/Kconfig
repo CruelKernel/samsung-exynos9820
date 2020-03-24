@@ -23,6 +23,11 @@ config ALWAYS_ENFORCE
 	help
 	  Pin enforcing mode.
 
+config ALWAYS_PERMIT
+	bool "Always Permit mode"
+	help
+	  Pin permissive mode.
+
 endchoice
 
 config SECURITY_SELINUX_BOOTPARAM
