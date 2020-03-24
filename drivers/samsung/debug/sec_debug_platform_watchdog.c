@@ -169,7 +169,7 @@ static void sec_platform_watchdog_timer_fn(unsigned long data)
 	mod_timer(&sec_platform_watchdog_timer, jiffies + sample_period * HZ);	
 }
 
-static void sec_platform_watchdog_start_timer()
+static void sec_platform_watchdog_start_timer(void)
 {
 	del_timer_sync(&sec_platform_watchdog_timer);
 	mod_timer(&sec_platform_watchdog_timer, jiffies + sample_period * HZ);
