@@ -210,7 +210,7 @@ void blk_crypt_put_context(blk_crypt_t *bc_ctx)
 }
 
 /* H/W algorithm APIs */
-static int blk_crypt_initialize()
+static int blk_crypt_initialize(void)
 {
 	if (likely(blk_crypt_cachep))
 		return 0;
