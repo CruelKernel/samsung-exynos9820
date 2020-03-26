@@ -203,7 +203,9 @@ def config_name(name):
     run(['scripts/config', '--set-str', 'LOCALVERSION', '-' + name])
 
 def config_model(model):
-    run(['scripts/config', '--enable', 'CONFIG_MODEL_' + model])
+    run(['scripts/config',
+        '--disable', 'CONFIG_MODEL_NONE',
+        '--enable', 'CONFIG_MODEL_' + model])
 
 def make_config(configs):
     list = ['scripts/kconfig/merge_config.sh',
