@@ -122,6 +122,7 @@ For example:
 * magisk+canary - integrates canary magisk into the kernel.
 * always_permit - pin SELinux to always use permissive mode. Required on LOS rom.
 * always_enforce - pin SELinux to always use enforcing mode.
+* los - Fixes MTP on LOS ROM. Also enables always_permit for booting LOS.
 * 300hz - increases kernel clock rate from 250hz to 300hz. Potentially can
   decrease response time. Disabled by default, untested.
 * 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
