@@ -7,6 +7,7 @@ Supported devices: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 
 ## Contributors
 
+- ExtremeGrief - for overall improvements, porting maple scheduler
 - thehacker911 - overall improvements and advices
 - @bamsbamx - ported boeffla_wakelock_blocker module
 - Nico (@NicoMax2012) - ported moro sound module
