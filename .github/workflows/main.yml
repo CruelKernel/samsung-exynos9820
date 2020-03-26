@@ -4,8 +4,11 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        model: [ "G973F", "G975F" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -27,7 +30,7 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                model=G973F      \
+                model=${{ matrix.model}} \
                 name=CRUEL-V3.2  \
                 +magisk          \
                 +nohardening     \
@@ -48,10 +51,10 @@ jobs:
     - name: Upload Kernel
       uses: actions/upload-artifact@v1
       with:
-        name: CruelKernel
+        name: CruelKernel-${{ matrix.model }}
         path: boot.img
     - name: Upload Kernel Info
       uses: actions/upload-artifact@v1
       with:
-        name: ConfigurationInfo
+        name: ConfigurationInfo-${{ matrix.model }}
         path: build.info
