@@ -24,7 +24,7 @@ config IOSCHED_DEADLINE
 
 config IOSCHED_MAPLE
         tristate "Maple I/O scheduler"
-        default y
+        default n
 
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
