@@ -128,13 +128,14 @@ For example:
   want to make your system more secure.
 * nohardening2 - removes Android kernel self-protection mechanisms. Potentially
   can increase the kernel performance. Don't use it if you don't know what you are
-  doing. Almost completely disables kernel self-protection. Very insecure.
+  doing. Almost completely disables kernel self-protection. Very insecure. (fake_config
+  to shut-up android warning)
 * size - optimize kernel for size.
 * nodebug - remove debugging information from the kernel.
 * noksm - disable Kernel Samepage Merging (KSM).
-* nomodules - disable loadable modules support.
-* noaudit - disable kernel auditing subsystem.
-* noswap - disable swapping.
+* nomodules - disable loadable modules support (fake_config to shut-up android warning).
+* noaudit - disable kernel auditing subsystem (fake_config to shut-up android warning).
+* noswap - disable swapping (fake_config to shut-up android warning).
 * nozram - disable nozram.
 * fake_config - Use defconfig for /proc/config.gz Some of the config presets, for
   example nomodules, noaudit are safe but Android system checks kernel configuration
