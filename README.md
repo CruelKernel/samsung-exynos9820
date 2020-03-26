@@ -115,7 +115,6 @@ For example:
 * cifs - adds CIFS fs support.
 * tcp_cubic - use CUBIC as default TCP congestion control.
 * tcp_westwood - use WestWood as default TCP congestion control.
-* tcp_window_64k - lock the initial TCP window size to 64K.
 * sched_... - enable various (performance, conservative, ondemand, powersave,
   userspace) CPU schedulers in the kernel.
 * ttl - adds iptables filters for altering ttl values of network packets. This
