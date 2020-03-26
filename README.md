@@ -62,33 +62,50 @@ How can you solve the problem? 4 ways:
 
 ## How to customize the kernel
 
-It's possible to customize the kernel and build it from the browser.
-First of all, create and account on GitHub. Next, **fork** this repository.
-**Switch** to the "Actions" tab and activate GitHub Actions. At this step you've
-got your copy of the sources and you can build it with GitHub Actions. You need
-to open github actions [configuration file](.github/workflows/main.yml) and
-**edit** it from the browser. For example, to alter the kernel configuration
-you need to edit lines:
+It's possible to customize the kernel and build it from a web browser.
+First of all, you need to create an account on GitHub. Next, **fork**
+this repository. **Switch** to the "Actions" tab and activate GitHub Actions.
+At this step you've got your copy of the sources and you can build it with
+GitHub Actions. You need to open github actions [configuration file](.github/workflows/main.yml)
+and **edit** it from the browser.
+
+First of all, you need to edit model argument (by default it's G973F) to the model
+of your phone. You can multiple models. Supported models are: G970F, G973F, G975F,
+G977B, N970F, N975F, N976B.
+
+Edit model:
+```YAML
+    strategy:
+      matrix:
+        model: [ "G973F" ]
+```
+
+For example, you can add two models:
+```YAML
+    strategy:
+      matrix:
+        model: [ "G973F", "G975F" ]
+```
+
+
+To alter the kernel configuration you need to edit lines:
 ```YAML
     - name: Kernel Configure
       run: |
-        ./build config           \
-                model=G973F      \
-                name=CRUEL-V3.2  \
-                +magisk          \
-                +nohardening     \
-                +ttl             \
-                +wireguard       \
-                +cifs            \
-                +sdfat           \
-                +ntfs            \
-                +tcp_cibuc       \
-                +morosound       \
+        ./build config                    \
+                model=${{ matrix.model }} \
+                name=CRUEL-V3.2           \
+                +magisk                   \
+                +nohardening              \
+                +ttl                      \
+                +wireguard                \
+                +cifs                     \
+                +sdfat                    \
+                +ntfs                     \
+                +tcp_cibuc                \
+                +morosound                \
                 +boeffla_wl_blocker
 ```
-
-First of all, you need to change G973F model to the model of your phone.
-Supported models: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 
 You can change the name of the kernel by replacing ```name=CRUEL-V3``` with,
 for example, ```name=my_own_kernel```. You can remove wireguard from the kernel
@@ -149,13 +166,13 @@ For example, you can alter default configuration to something like:
 ```YAML
     - name: Kernel Configure
       run: |
-        ./build config                 \
-                os_patch_level=2020-12 \
-                model=G975F            \
-                name=OwnKernel         \
-                +magisk+canary         \
-                +wireguard             \
-                +nohardening           \
+        ./build config                    \
+                os_patch_level=2020-12    \
+                model=${{ matrix.model }} \
+                name=OwnKernel            \
+                +magisk+canary            \
+                +wireguard                \
+                +nohardening              \
                 +1000hz
 ```
 
