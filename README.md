@@ -128,6 +128,7 @@ For example:
 * 1000hz - increases kernel clock rate from 250hz to 1000hz. Potentially can
   decrease response time. Disabled by default, untested.
 * bfq - enable bfq I/O scheduler in the kernel.
+* maple - enable maple I/O scheduler in the kernel and set it as default
 * sdfat - use sdfat for exFAT and VFAT filesystems.
 * ntfs - enable ntfs filesystem support (read only).
 * cifs - adds CIFS fs support.
