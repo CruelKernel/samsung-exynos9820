@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # Copyright (c) 2016 Samsung Electronics Co., Ltd.
 # Authors:	James Gleeson <jagleeso@gmail.com>
