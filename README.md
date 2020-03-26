@@ -136,6 +136,7 @@ For example:
 * nomodules - disable loadable modules support.
 * noaudit - disable kernel auditing subsystem.
 * noswap - disable swapping.
+* nozram - disable nozram.
 * fake_config - Use defconfig for /proc/config.gz Some of the config presets, for
   example nomodules, noaudit are safe but Android system checks kernel configuration
   for these options to be enabled and issues the warning "There's an internal problem
