@@ -22,6 +22,10 @@ config IOSCHED_DEADLINE
 	  a new point in the service tree and doing a batch of IO from there
 	  in case of expiry.
 
+config IOSCHED_MAPLE
+	tristate "Maple I/O scheduler"
+	default n
+
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
 	default y
@@ -57,6 +61,9 @@ choice
 	config DEFAULT_BFQ
 		bool "BFQ" if IOSCHED_BFQ=y && SCSI_MQ_DEFAULT=y
 
+	config DEFAULT_MAPLE
+		bool "MAPLE" if IOSCHED_MAPLE=y
+
 	config DEFAULT_NOOP
 		bool "No-op"
 
@@ -67,6 +74,7 @@ config DEFAULT_IOSCHED
 	default "deadline" if DEFAULT_DEADLINE
 	default "cfq" if DEFAULT_CFQ
 	default "bfq" if DEFAULT_BFQ
+	default "maple" if DEFAULT_MAPLE
 	default "noop" if DEFAULT_NOOP
 
 config MQ_IOSCHED_DEADLINE
