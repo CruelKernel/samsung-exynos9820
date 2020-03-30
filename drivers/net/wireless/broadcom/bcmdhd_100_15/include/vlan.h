@@ -1,7 +1,7 @@
 /*
  * 802.1Q VLAN protocol definitions
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -57,13 +57,13 @@ struct vlan_header {
 	uint16	vlan_tag;		/* priority, cfi and vid */
 };
 
-struct ethervlan_header {
+BWL_PRE_PACKED_STRUCT struct ethervlan_header {
 	uint8	ether_dhost[ETHER_ADDR_LEN];
 	uint8	ether_shost[ETHER_ADDR_LEN];
 	uint16	vlan_type;		/* 0x8100 */
 	uint16	vlan_tag;		/* priority, cfi and vid */
 	uint16	ether_type;
-};
+} BWL_POST_PACKED_STRUCT;
 
 struct dot3_mac_llc_snapvlan_header {
 	uint8	ether_dhost[ETHER_ADDR_LEN];	/* dest mac */

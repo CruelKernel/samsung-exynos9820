@@ -6835,19 +6835,21 @@ static int fimc_is_ischain_paf_shot(struct fimc_is_device_ischain *device,
 		if (captureIntent != AA_CAPTURE_INTENT_CUSTOM) {
 			frame->shot->ctl.aa.captureIntent = captureIntent;
 			frame->shot->ctl.aa.vendor_captureCount = group->intent_ctl.vendor_captureCount;
+			frame->shot->ctl.aa.vendor_captureExposureTime = group->intent_ctl.vendor_captureExposureTime;
+			frame->shot->ctl.aa.vendor_captureEV = group->intent_ctl.vendor_captureEV;
 			if (group->remainIntentCount > 0) {
 				group->remainIntentCount--;
 			} else {
 				group->intent_ctl.captureIntent = AA_CAPTURE_INTENT_CUSTOM;
 				group->intent_ctl.vendor_captureCount = 0;
-			}
-			if (group->intent_ctl.vendor_captureExposureTime > 0) {
-				frame->shot->ctl.aa.vendor_captureExposureTime = group->intent_ctl.vendor_captureExposureTime;
 				group->intent_ctl.vendor_captureExposureTime = 0;
+				group->intent_ctl.vendor_captureEV = 0;
 			}
-			minfo("frame count(%d), intent(%d), count(%d) captureExposureTime(%d) remainIntentCount(%d)\n", device, frame->fcount,
+			minfo("frame count(%d), intent(%d), count(%d), EV(%d), captureExposureTime(%d) remainIntentCount(%d)\n",
+				device, frame->fcount,
 				frame->shot->ctl.aa.captureIntent, frame->shot->ctl.aa.vendor_captureCount,
-				frame->shot->ctl.aa.vendor_captureExposureTime, group->remainIntentCount);
+				frame->shot->ctl.aa.vendor_captureEV, frame->shot->ctl.aa.vendor_captureExposureTime,
+				group->remainIntentCount);
 		}
 
 		/*
@@ -7087,24 +7089,26 @@ static int fimc_is_ischain_3aa_shot(struct fimc_is_device_ischain *device,
 	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &group->state)) {
 		enum aa_capture_intent captureIntent;
 		captureIntent = group->intent_ctl.captureIntent;
-
-                if (captureIntent != AA_CAPTURE_INTENT_CUSTOM) {
-                        frame->shot->ctl.aa.captureIntent = captureIntent;
-                        frame->shot->ctl.aa.vendor_captureCount = group->intent_ctl.vendor_captureCount;
-                        if (group->remainIntentCount > 0) {
-                                group->remainIntentCount--;
-                        } else {
-                                group->intent_ctl.captureIntent = AA_CAPTURE_INTENT_CUSTOM;
-                                group->intent_ctl.vendor_captureCount = 0;
-                        }
-                        if (group->intent_ctl.vendor_captureExposureTime > 0) {
-                                frame->shot->ctl.aa.vendor_captureExposureTime = group->intent_ctl.vendor_captureExposureTime;
-                                group->intent_ctl.vendor_captureExposureTime = 0;
-                        }
-                        minfo("frame count(%d), intent(%d), count(%d) captureExposureTime(%d) remainIntentCount(%d)\n", device, frame->fcount,
-                                frame->shot->ctl.aa.captureIntent, frame->shot->ctl.aa.vendor_captureCount,
-                                frame->shot->ctl.aa.vendor_captureExposureTime, group->remainIntentCount);
-                }
+		
+		if (captureIntent != AA_CAPTURE_INTENT_CUSTOM) {
+			frame->shot->ctl.aa.captureIntent = captureIntent;
+			frame->shot->ctl.aa.vendor_captureCount = group->intent_ctl.vendor_captureCount;
+			frame->shot->ctl.aa.vendor_captureExposureTime = group->intent_ctl.vendor_captureExposureTime;
+			frame->shot->ctl.aa.vendor_captureEV = group->intent_ctl.vendor_captureEV;
+			if (group->remainIntentCount > 0) {
+				group->remainIntentCount--;
+			} else {
+				group->intent_ctl.captureIntent = AA_CAPTURE_INTENT_CUSTOM;
+				group->intent_ctl.vendor_captureCount = 0;
+				group->intent_ctl.vendor_captureExposureTime = 0;
+				group->intent_ctl.vendor_captureEV = 0;
+			}
+			minfo("frame count(%d), intent(%d), count(%d), EV(%d), captureExposureTime(%d) remainIntentCount(%d)\n",
+				device, frame->fcount,
+				frame->shot->ctl.aa.captureIntent, frame->shot->ctl.aa.vendor_captureCount,
+				frame->shot->ctl.aa.vendor_captureEV, frame->shot->ctl.aa.vendor_captureExposureTime,
+				group->remainIntentCount);
+		}
 
 		if (group->lens_ctl.aperture != 0) {
 			frame->shot->ctl.lens.aperture = group->lens_ctl.aperture;

@@ -20,7 +20,6 @@
 
 #define DD_XTS_TWEAK_SIZE       16
 
-#define DD_AES_256_XTS_KEY_SIZE 64
 #define DD_AES_256_GCM_KEY_SIZE 32
 #define DD_AES_256_GCM_TAG_SIZE 16
 #define DD_AES_256_GCM_IV_SIZE  12
@@ -33,6 +32,41 @@ extern int fscrypt_get_encryption_kek(struct inode *inode,
 								struct fscrypt_info *crypt_info,
 								struct fscrypt_key *kek);
 extern int fscrypt_get_encryption_key(struct inode *inode, struct fscrypt_key *key);
+
+#define DD_CRYPT_MODE_INVALID     0
+#define DD_CRYPT_MODE_AES_256_XTS 1
+#define DD_CRYPT_MODE_AES_256_CBC 2
+
+static struct dd_crypt_mode {
+	const char *cipher_str;
+	int keysize;
+} available_modes[] = {
+	[DD_CRYPT_MODE_AES_256_XTS] = {
+		.cipher_str = "xts(aes)",
+		.keysize = 64,
+	},
+	[DD_CRYPT_MODE_AES_256_CBC] = {
+		.cipher_str = "cbc(aes)",
+		.keysize = 32,
+	},
+};
+
+static struct dd_crypt_mode* dd_get_crypt_mode(const struct dd_policy* policy) {
+	char version;
+	if (policy == NULL)
+		return &available_modes[DD_CRYPT_MODE_INVALID];
+
+	version = policy->version;
+	switch(version) {
+		case DDAR_DRIVER_VERSION_0:
+		case DDAR_DRIVER_VERSION_1:
+			return &available_modes[DD_CRYPT_MODE_AES_256_XTS];
+		case DDAR_DRIVER_VERSION_2:
+			return &available_modes[DD_CRYPT_MODE_AES_256_CBC];
+		default:
+			return &available_modes[DD_CRYPT_MODE_INVALID];
+	}
+}
 
 int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy, void *fs_data) {
 	struct dd_crypt_context crypt_context;
@@ -54,6 +88,8 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 		unsigned char *tag;
 		unsigned char *file_encryption_key;
 		unsigned char *cipher_file_encryption_key;
+		struct dd_crypt_mode* mode = dd_get_crypt_mode(policy);
+		dd_verbose("%s - cipher : %s, keysize : %d\n", __func__, mode->cipher_str, mode->keysize);
 
 		rc = get_dd_master_key(policy->userid, &master_key);
 		if (rc) {
@@ -61,8 +97,8 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 			return -ENOKEY;
 		}
 
-		file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
-		cipher_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+		file_encryption_key = kzalloc(mode->keysize, GFP_KERNEL);
+		cipher_file_encryption_key = kzalloc(mode->keysize, GFP_KERNEL);
 		aad = kzalloc(strlen(DD_AES_256_GCM_AAD)+1, GFP_KERNEL);
 		tag = kzalloc(DD_AES_256_GCM_TAG_SIZE, GFP_KERNEL);
 		if (!file_encryption_key || !cipher_file_encryption_key || !tag || !aad) {
@@ -77,11 +113,11 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 
 		dd_dump("ddar master key", master_key.raw, master_key.size);
 
-		rc = sdp_crypto_generate_key(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		rc = sdp_crypto_generate_key(file_encryption_key, mode->keysize);
 		if (rc)
-			memset(file_encryption_key, 0, DD_AES_256_XTS_KEY_SIZE);
+			memset(file_encryption_key, 0, mode->keysize);
 
-		dd_dump("ddar file key", file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		dd_dump("ddar file key", file_encryption_key, mode->keysize);
 
 		key_aead = crypto_alloc_aead("gcm(aes)", 0, CRYPTO_ALG_ASYNC);
 		if (IS_ERR(key_aead)) {
@@ -104,16 +140,16 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 
 		sg_init_table(src_sg, 3);
 		sg_set_buf(&src_sg[0], aad, strlen(aad));
-		sg_set_buf(&src_sg[1], file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		sg_set_buf(&src_sg[1], file_encryption_key, mode->keysize);
 		sg_set_buf(&src_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
 
 		sg_init_table(dst_sg, 3);
 		sg_set_buf(&dst_sg[0], aad, strlen(aad));
-		sg_set_buf(&dst_sg[1], cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		sg_set_buf(&dst_sg[1], cipher_file_encryption_key, mode->keysize);
 		sg_set_buf(&dst_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
 
 		aead_request_set_ad(aead_req, strlen(aad));
-		aead_request_set_crypt(aead_req, src_sg, dst_sg, DD_AES_256_XTS_KEY_SIZE, iv);
+		aead_request_set_crypt(aead_req, src_sg, dst_sg, mode->keysize, iv);
 		if (crypto_aead_setkey(key_aead, master_key.raw, DD_AES_256_GCM_KEY_SIZE)) {
 			rc = -EAGAIN;
 			goto out;
@@ -125,9 +161,9 @@ int dd_create_crypt_context(struct inode *inode, const struct dd_policy *policy,
 			goto out;
 		}
 
-		memcpy(crypt_context.cipher_file_encryption_key, cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		memcpy(crypt_context.cipher_file_encryption_key, cipher_file_encryption_key, mode->keysize);
 		memcpy(crypt_context.tag, tag, DD_AES_256_GCM_TAG_SIZE);
-		dd_dump("ddar file key (cipher)", crypt_context.cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		dd_dump("ddar file key (cipher)", crypt_context.cipher_file_encryption_key, mode->keysize);
 		dd_dump("ddar tag ", crypt_context.tag, DD_AES_256_GCM_TAG_SIZE);
 
 		dd_verbose("crypt context created (kernel crypto)\n");
@@ -136,7 +172,7 @@ out:
 		crypto_free_aead(key_aead);
 
 		if (file_encryption_key) {
-			memzero_explicit(file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+			memzero_explicit(file_encryption_key, mode->keysize);
 			kfree(file_encryption_key);
 		}
 		if (cipher_file_encryption_key) kfree(cipher_file_encryption_key);
@@ -293,6 +329,7 @@ int dd_dump_key(int userid, int fd)
 	struct inode *inode;
 	unsigned char *dd_inner_file_encryption_key = NULL;
 	int rc = 0;
+	struct dd_crypt_mode* mode;
 
 	dd_error("########## DUALDAR_DUMP - START ##########\n");
 	f = fdget(fd);
@@ -308,13 +345,15 @@ int dd_dump_key(int userid, int fd)
 		goto out;
 	}
 
+	mode = dd_get_crypt_mode(&(crypt_context.policy));
+
 	/**
 	 * DUMP KEY FOR INNER LAYER
 	 */
 	if (dd_policy_kernel_crypto(crypt_context.policy.flags) && S_ISREG(inode->i_mode)) {
 		dd_error("[DUALDAR_DUMP] DUMP KEYS FOR KERNEL CRYPTO\n");
 
-		dd_inner_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+		dd_inner_file_encryption_key = kzalloc(mode->keysize, GFP_KERNEL);
 		if (!dd_inner_file_encryption_key) {
 			rc = -ENOMEM;
 			goto out;
@@ -333,7 +372,7 @@ int dd_dump_key(int userid, int fd)
 			dd_error("[DUALDAR_DUMP] failed to retrieve inner fek, rc:%d\n", rc);
 			goto out;
 		}
-		dd_hex_key_dump("[DUALDAR_DUMP] INNER LAYER FILE ENCRYPTION KEY", dd_inner_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+		dd_hex_key_dump("[DUALDAR_DUMP] INNER LAYER FILE ENCRYPTION KEY", dd_inner_file_encryption_key, mode->keysize);
 
 	} else {
 		dd_error("[DUALDAR_DUMP] DUMP KEYS FOR THIRD-PARTY CRYPTO\n");
@@ -380,8 +419,11 @@ static int get_dd_file_key(struct dd_crypt_context *crypt_context,
 	char *tag = NULL;
 
 	int rc = 0;
+	unsigned char *cipher_file_encryption_key;
+	struct dd_crypt_mode* mode = dd_get_crypt_mode(&(crypt_context->policy));
+	dd_verbose("%s - cipher : %s, keysize : %d\n", __func__, mode->cipher_str, mode->keysize);
 
-	unsigned char *cipher_file_encryption_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+	cipher_file_encryption_key = kzalloc(mode->keysize, GFP_KERNEL);
 	aad = kzalloc(strlen(DD_AES_256_GCM_AAD)+1, GFP_KERNEL);
 	tag = kzalloc(DD_AES_256_GCM_TAG_SIZE, GFP_KERNEL);
 	if (!cipher_file_encryption_key || !aad || !tag) {
@@ -414,21 +456,21 @@ static int get_dd_file_key(struct dd_crypt_context *crypt_context,
 		goto out;
 	}
 
-	dd_dump("ddar file key (cipher)", crypt_context->cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
-	memcpy(cipher_file_encryption_key, crypt_context->cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+	dd_dump("ddar file key (cipher)", crypt_context->cipher_file_encryption_key, mode->keysize);
+	memcpy(cipher_file_encryption_key, crypt_context->cipher_file_encryption_key, mode->keysize);
 
 	sg_init_table(src_sg, 3);
 	sg_set_buf(&src_sg[0], aad, strlen(aad));
-	sg_set_buf(&src_sg[1], cipher_file_encryption_key, DD_AES_256_XTS_KEY_SIZE);
+	sg_set_buf(&src_sg[1], cipher_file_encryption_key, mode->keysize);
 	sg_set_buf(&src_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
 
 	sg_init_table(dst_sg, 3);
 	sg_set_buf(&dst_sg[0], aad, strlen(aad));
-	sg_set_buf(&dst_sg[1], raw_key, DD_AES_256_XTS_KEY_SIZE);
+	sg_set_buf(&dst_sg[1], raw_key, mode->keysize);
 	sg_set_buf(&dst_sg[2], tag, DD_AES_256_GCM_TAG_SIZE);
 
 	aead_request_set_ad(aead_req, strlen(aad));
-	aead_request_set_crypt(aead_req, src_sg, dst_sg, DD_AES_256_XTS_KEY_SIZE + DD_AES_256_GCM_TAG_SIZE, iv);
+	aead_request_set_crypt(aead_req, src_sg, dst_sg, mode->keysize + DD_AES_256_GCM_TAG_SIZE, iv);
 	if (crypto_aead_setkey(key_aead, dd_master_key->raw, DD_AES_256_GCM_KEY_SIZE)) {
 		rc = -EAGAIN;
 		goto out;
@@ -440,7 +482,7 @@ static int get_dd_file_key(struct dd_crypt_context *crypt_context,
 		goto out;
 	}
 
-	dd_dump("ddar file key", raw_key, DD_AES_256_XTS_KEY_SIZE);
+	dd_dump("ddar file key", raw_key, mode->keysize);
 out:
     if (rc)
         dd_error("file key derivation failed\n");
@@ -459,8 +501,10 @@ struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, vo
 	struct crypto_skcipher *ctfm = NULL;
 	unsigned char *raw_key;
 	int rc;
+	struct dd_crypt_mode* mode = dd_get_crypt_mode(&(crypt_context->policy));
+	dd_verbose("%s - cipher : %s, keysize : %d\n", __func__, mode->cipher_str, mode->keysize);
 
-	raw_key = kzalloc(DD_AES_256_XTS_KEY_SIZE, GFP_KERNEL);
+	raw_key = kzalloc(mode->keysize, GFP_KERNEL);
 	if (!raw_key) {
 		rc = -ENOMEM;
 		goto out;
@@ -472,7 +516,7 @@ struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, vo
 		goto out;
 	}
 
-	ctfm = crypto_alloc_skcipher("xts(aes)", 0, 0);
+	ctfm = crypto_alloc_skcipher(mode->cipher_str, 0, 0);
 	if (!ctfm || IS_ERR(ctfm)) {
 		rc = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
 		dd_error("Failed allocating crypto tfm rc:%d\n", rc);
@@ -481,7 +525,7 @@ struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, vo
 
 	crypto_skcipher_clear_flags(ctfm, ~0);
 	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
-	rc = crypto_skcipher_setkey(ctfm, raw_key, DD_AES_256_XTS_KEY_SIZE);
+	rc = crypto_skcipher_setkey(ctfm, raw_key, mode->keysize);
 	if (rc) {
 		dd_error("failed to set file key rc:%d\n", rc);
 		goto out;
@@ -489,7 +533,7 @@ struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, vo
 
 out:
 	if (raw_key) {
-		secure_zeroout(__func__, raw_key, DD_AES_256_XTS_KEY_SIZE);
+		secure_zeroout(__func__, raw_key, mode->keysize);
 		kfree(raw_key);
 	}
 

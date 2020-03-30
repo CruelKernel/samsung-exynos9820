@@ -21,6 +21,9 @@
 #include <linux/version.h>
 #include <linux/memory.h>
 #include <linux/fs.h>
+#include <linux/mm.h>
+#include <linux/rcupdate.h>
+#include <linux/atomic.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 
@@ -123,7 +126,12 @@ static inline u64 get_kimage_voffset(void)
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 8)
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return dentry;
+}
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 static inline struct dentry *d_real_comp(struct dentry *dentry)
 {
 	return d_real(dentry);
@@ -142,6 +150,38 @@ static inline struct dentry *d_real_comp(struct dentry *dentry)
 static inline struct dentry *d_real_comp(struct dentry *dentry)
 {
 	return d_real(dentry, NULL);
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 22)
+
+#define get_file_rcu(x) atomic_long_inc_not_zero(&(x)->f_count)
+
+static inline struct file *_get_mm_exe_file(struct mm_struct *mm)
+{
+	struct file *exe_file;
+
+	rcu_read_lock();
+	exe_file = rcu_dereference(mm->exe_file);
+	if (exe_file && !get_file_rcu(exe_file))
+		exe_file = NULL;
+	rcu_read_unlock();
+	return exe_file;
+}
+
+static inline struct file *get_task_exe_file(struct task_struct *task)
+{
+	struct file *exe_file = NULL;
+	struct mm_struct *mm;
+
+	task_lock(task);
+	mm = task->mm;
+	if (mm) {
+		if (!(task->flags & PF_KTHREAD))
+			exe_file = _get_mm_exe_file(mm);
+	}
+	task_unlock(task);
+	return exe_file;
 }
 #endif
 

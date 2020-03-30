@@ -104,36 +104,6 @@ static int read_xattr(struct dentry *dentry, const char *name,
 	return ret;
 }
 
-static bool is_cert_relevant_to_task(
-				const struct proca_certificate *parsed_cert,
-				struct task_struct *task)
-{
-	const char system_server_app_name[] = "/system/framework/services.jar";
-	const char system_server[] = "system_server";
-	const size_t max_app_name = 1024;
-	char cmdline[max_app_name + 1];
-	int cmdline_size;
-
-	cmdline_size = get_cmdline(task, cmdline, max_app_name);
-	cmdline[cmdline_size] = 0;
-
-	// Special case for system_server
-	if (!strncmp(parsed_cert->app_name, system_server_app_name,
-			parsed_cert->app_name_size)) {
-		if (strncmp(cmdline, system_server, sizeof(system_server)))
-			return false;
-	} else if (parsed_cert->app_name[0] != '/') {
-		// Case for Android applications
-		PROCA_DEBUG_LOG("Task %d has cmdline : %s\n",
-			task->pid, cmdline);
-		if (strncmp(cmdline, parsed_cert->app_name,
-				parsed_cert->app_name_size))
-			return false;
-	}
-
-	return true;
-}
-
 static struct proca_task_descr *prepare_unsigned_proca_task_descr(
 					struct task_struct *task,
 					struct file *file)
@@ -196,7 +166,7 @@ static struct proca_task_descr *prepare_proca_task_descr(
 				    &parsed_cert))
 		goto five_xattr_cleanup;
 
-	if (!is_cert_relevant_to_task(&parsed_cert, task))
+	if (!is_certificate_relevant_to_task(&parsed_cert, task))
 		goto proca_cert_cleanup;
 
 	PROCA_DEBUG_LOG("%s xattr was found for task %d\n", XATTR_NAME_PA,

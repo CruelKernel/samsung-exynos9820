@@ -47,6 +47,13 @@ struct f_signature_context {
 	struct f_signature_task payload;
 };
 
+struct five_stat {
+	u64 inode_iversion;
+	u64 cache_iversion;
+	u32 cache_status;
+	u32 is_dm_verity;
+};
+
 /* Internal FIVE function definitions */
 int five_init(void);
 

@@ -117,6 +117,9 @@ struct max77705_pd_data {
 	bool bPPS_on;
 #endif
 
+	struct workqueue_struct *wqueue;
+	struct delayed_work retry_work;
+
 	int cc_status;
 
 	/* wakelock */

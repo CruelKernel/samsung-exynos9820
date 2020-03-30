@@ -412,6 +412,9 @@ int load_file_list(const char *name)
 				!strncmp(str, "/system/", 8) ||
 				!strncmp(str, "/tmp/", 5) ||
 				!strncmp(str, "/vendor/", 8) ||
+#if defined(CONFIG_SEC_FACTORY)
+				!strncmp(str, "/data/", 6) ||
+#endif
 				!strncmp(str, "/apex/", 6))) {
 			remove_substr(str, "/root/");
 			found = remove_substr(str, "/recovery/");

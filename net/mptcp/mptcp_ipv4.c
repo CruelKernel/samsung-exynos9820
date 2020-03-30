@@ -425,7 +425,6 @@ out:
 	return ret;
 
 err_reqsk_create:
-	kfree(ops->slab_name);
 	ops->slab_name = NULL;
 	goto out;
 }

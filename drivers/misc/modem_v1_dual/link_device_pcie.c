@@ -4030,7 +4030,7 @@ struct link_device *pcie_create_link_device(struct platform_device *pdev)
 	mld->cp_not_work.expires = jiffies;
 	mld->cp_not_work.function = handle_cp_not_work;
 	mld->cp_not_work.data = (unsigned long)mld;
-	mld->not_work_time = 60 * 10; // init to 5 min : RIL try to recovery data stall in 3 min, backup that.
+	mld->not_work_time = 60; // init to 1 min
 
 	/* make link for access to NR crash reason */
 	nr_crash_reason = &mld->crash_reason;

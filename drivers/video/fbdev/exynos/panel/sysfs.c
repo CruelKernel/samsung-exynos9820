@@ -482,6 +482,12 @@ static ssize_t manufacture_code_show(struct device *dev,
 	return strlen(buf);
 }
 
+static ssize_t SVC_OCTA_DDI_CHIPID_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return manufacture_code_show(dev, attr, buf);
+}
+
 static ssize_t cell_id_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -3750,6 +3756,7 @@ struct device_attribute panel_attrs[] = {
 	__PANEL_ATTR_RO(octa_id, 0444),
 	__PANEL_ATTR_RO(SVC_OCTA, 0444),
 	__PANEL_ATTR_RO(SVC_OCTA_CHIPID, 0444),
+	__PANEL_ATTR_RO(SVC_OCTA_DDI_CHIPID, 0444),
 #ifdef CONFIG_SUPPORT_XTALK_MODE
 	__PANEL_ATTR_RW(xtalk_mode, 0664),
 #endif

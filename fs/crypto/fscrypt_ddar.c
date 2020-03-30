@@ -222,3 +222,18 @@ int fscrypt_dd_may_submit_bio(struct bio *bio)
 
 	return fscrypt_dd_submit_bio(inode, bio);
 }
+
+long fscrypt_dd_get_ino(struct bio *bio)
+{
+	struct inode *inode = fscrypt_bio_get_inode(bio);
+	if (fscrypt_dd_encrypted_inode(inode))
+		return inode->i_ino;
+
+	return 0;
+}
+
+int fscrypt_dd_encrypted(struct bio *bio)
+{
+	struct inode *inode = fscrypt_bio_get_inode(bio);
+	return fscrypt_dd_encrypted_inode(inode);
+}

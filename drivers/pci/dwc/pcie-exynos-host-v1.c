@@ -2265,7 +2265,8 @@ static void exynos_pcie_resumed_phydown(struct pcie_port *pp)
 	exynos_pcie_clock_enable(pp, PCIE_DISABLE_CLOCK);
 }
 
-int exynos_pcie_host_v1_lanechange(int ch_num, int lane) {
+int exynos_pcie_host_v1_lanechange(int ch_num, int lane)
+{
 	struct exynos_pcie *exynos_pcie = &g_pcie_host_v1[ch_num];
 	struct dw_pcie *pci = exynos_pcie->pci;
 	struct pcie_port *pp = &pci->pp;
@@ -2306,15 +2307,15 @@ int exynos_pcie_host_v1_lanechange(int ch_num, int lane) {
 	val = val | DIRECT_LINK_WIDTH_CHANGE_MASK;
 	exynos_pcie_wr_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, val);
 
-	if (lane == 2) {
-		for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
-			val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & 0x3f;
 
-			if (val == 0x11)
-				break;
-			udelay(10);
-		}
+	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
+		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & 0x3f;
+
+		if (val == 0x11)
+			break;
+		udelay(10);
 	}
+
 
 	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
 		exynos_pcie_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &lane_num);

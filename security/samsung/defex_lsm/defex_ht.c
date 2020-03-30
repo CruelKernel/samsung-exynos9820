@@ -21,7 +21,10 @@ DECLARE_HASHTABLE(creds_hash, 15);
 #endif /* DEFEX_PED_ENABLE */
 
 struct proc_cred_data {
-	unsigned int uid, fsuid, egid;
+	unsigned int uid, fsuid, egid, p_root;
+#ifdef DEFEX_PED_BASED_ON_TGID_ENABLE
+	int tcnt;
+#endif /* DEFEX_PED_BASED_ON_TGID_ENABLE */
 };
 
 struct proc_cred_struct {
@@ -48,11 +51,11 @@ int is_task_creds_ready(void)
 }
 
 #ifdef DEFEX_PED_ENABLE
-void get_task_creds(int pid, unsigned int *uid_ptr, unsigned int *fsuid_ptr, unsigned int *egid_ptr)
+void get_task_creds(int pid, unsigned int *uid_ptr, unsigned int *fsuid_ptr, unsigned int *egid_ptr, unsigned int *p_root_ptr)
 {
 	struct proc_cred_struct *obj;
 	struct proc_cred_data *cred_data;
-	unsigned int uid = 0, fsuid = 0, egid = 0;
+	unsigned int uid = 0, fsuid = 0, egid = 0, p_root = 1;
 	unsigned long flags;
 
 	if (pid <= MAX_PID_32) {
@@ -62,6 +65,7 @@ void get_task_creds(int pid, unsigned int *uid_ptr, unsigned int *fsuid_ptr, uns
 			uid = cred_data->uid;
 			fsuid = cred_data->fsuid;
 			egid = cred_data->egid;
+			p_root = cred_data->p_root;
 		}
 		spin_unlock_irqrestore(&creds_hash_update_lock, flags);
 	} else {
@@ -70,6 +74,7 @@ void get_task_creds(int pid, unsigned int *uid_ptr, unsigned int *fsuid_ptr, uns
 			uid = obj->cred_data.uid;
 			fsuid = obj->cred_data.fsuid;
 			egid = obj->cred_data.egid;
+			p_root = obj->cred_data.p_root;
 			break;
 		}
 		spin_unlock_irqrestore(&creds_hash_update_lock, flags);
@@ -77,9 +82,10 @@ void get_task_creds(int pid, unsigned int *uid_ptr, unsigned int *fsuid_ptr, uns
 	*uid_ptr = uid;
 	*fsuid_ptr = fsuid;
 	*egid_ptr = egid;
+	*p_root_ptr = p_root;
 }
 
-int set_task_creds(int pid, unsigned int uid, unsigned int fsuid, unsigned int egid)
+int set_task_creds(int pid, unsigned int uid, unsigned int fsuid, unsigned int egid, unsigned int p_root)
 {
 	struct proc_cred_struct *obj;
 	struct proc_cred_data *cred_data = NULL, *tmp_data = NULL;
@@ -100,12 +106,16 @@ alloc_obj:;
 				goto alloc_obj;
 			}
 			cred_data = tmp_data;
+#ifdef DEFEX_PED_BASED_ON_TGID_ENABLE
+			cred_data->tcnt = 1;
+#endif /* DEFEX_PED_BASED_ON_TGID_ENABLE */
 			creds_fast_hash[pid] = cred_data;
 			tmp_data = NULL;
 		}
 		cred_data->uid = uid;
 		cred_data->fsuid = fsuid;
 		cred_data->egid = egid;
+		cred_data->p_root = p_root;
 		spin_unlock_irqrestore(&creds_hash_update_lock, flags);
 		if (tmp_data)
 			kfree(tmp_data);
@@ -117,6 +127,7 @@ alloc_obj:;
 		obj->cred_data.uid = uid;
 		obj->cred_data.fsuid = fsuid;
 		obj->cred_data.egid = egid;
+		obj->cred_data.p_root = p_root;
 		spin_unlock_irqrestore(&creds_hash_update_lock, flags);
 		return 0;
 	}
@@ -127,6 +138,10 @@ alloc_obj:;
 	obj->cred_data.uid = uid;
 	obj->cred_data.fsuid = fsuid;
 	obj->cred_data.egid = egid;
+	obj->cred_data.p_root = p_root;
+#ifdef DEFEX_PED_BASED_ON_TGID_ENABLE
+	obj->cred_data.tcnt = 1;
+#endif /* DEFEX_PED_BASED_ON_TGID_ENABLE */
 	spin_lock_irqsave(&creds_hash_update_lock, flags);
 	hash_add(creds_hash, &obj->node, pid);
 	spin_unlock_irqrestore(&creds_hash_update_lock, flags);
@@ -134,6 +149,44 @@ alloc_obj:;
 }
 #endif /* DEFEX_PED_ENABLE */
 
+#ifdef DEFEX_PED_BASED_ON_TGID_ENABLE
+void set_task_creds_tcnt(int tgid, int addition)
+{
+	struct proc_cred_struct *obj;
+	struct proc_cred_data *cred_data = NULL;
+	unsigned long flags;
+
+	if (tgid <= MAX_PID_32) {
+		spin_lock_irqsave(&creds_hash_update_lock, flags);
+		cred_data = creds_fast_hash[tgid];
+		if (cred_data) {
+			cred_data->tcnt += addition;
+			if (!cred_data->tcnt) {
+				creds_fast_hash[tgid] = NULL;
+				spin_unlock_irqrestore(&creds_hash_update_lock, flags);
+				kfree(cred_data);
+				return;
+			}
+		}
+		spin_unlock_irqrestore(&creds_hash_update_lock, flags);
+		return;
+	}
+
+	spin_lock_irqsave(&creds_hash_update_lock, flags);
+	hash_for_each_possible(creds_hash, obj, node, tgid) {
+		obj->cred_data.tcnt += addition;
+		if (!obj->cred_data.tcnt) {
+			hash_del(&obj->node);
+			spin_unlock_irqrestore(&creds_hash_update_lock, flags);
+			kfree(obj);
+			return;
+		}
+		break;
+	}
+	spin_unlock_irqrestore(&creds_hash_update_lock, flags);
+	return;
+}
+#else
 void delete_task_creds(int pid)
 {
 	struct proc_cred_struct *obj;
@@ -158,4 +211,5 @@ void delete_task_creds(int pid)
 	}
 	spin_unlock_irqrestore(&creds_hash_update_lock, flags);
 }
+#endif /* DEFEX_PED_BASED_ON_TGID_ENABLE */
 

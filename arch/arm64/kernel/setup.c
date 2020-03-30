@@ -129,7 +129,7 @@ int __init early_init_dt_scan_ect(unsigned long node, const char *uname,
 		return -1;
 
 	pr_info("[ECT] Address %x, Size %x\b", be32_to_cpu(*paddr), be32_to_cpu(*psize));
-	set_memsize_reserved_name("ETC_param");
+	set_memsize_reserved_name("ECT_param");
 	memblock_reserve(be32_to_cpu(*paddr), be32_to_cpu(*psize));
 	unset_memsize_reserved_name();
 	ect_init(be32_to_cpu(*paddr), be32_to_cpu(*psize));

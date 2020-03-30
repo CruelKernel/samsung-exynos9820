@@ -337,7 +337,7 @@ static ssize_t motor_type_show(struct device *dev,
 		"%s\n", ddata->vib_type);
 }
 
-
+#if 0
 static ssize_t force_touch_intensity_store(struct device *dev,
 		struct device_attribute *devattr, const char *buf, size_t count)
 {
@@ -369,7 +369,7 @@ static ssize_t force_touch_intensity_show(struct device *dev,
 	return snprintf(buf, VIB_BUFSIZE,
 		"force touch intensity: %u\n", ddata->force_touch_intensity);
 }
-
+#endif
 static ssize_t multi_freq_store(struct device *dev,
 	struct device_attribute *devattr, const char *buf, size_t count)
 {
@@ -512,7 +512,7 @@ static ssize_t enable_store(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR_RW(haptic_engine);
 static DEVICE_ATTR_RW(multi_freq);
 static DEVICE_ATTR_RW(intensity);
-static DEVICE_ATTR_RW(force_touch_intensity);
+//static DEVICE_ATTR_RW(force_touch_intensity);
 static DEVICE_ATTR_RW(enable);
 static DEVICE_ATTR(motor_type, S_IWUSR | S_IRUGO, motor_type_show, NULL);
 
@@ -530,7 +530,7 @@ static struct attribute_group timed_output_attr_group = {
 static struct attribute *multi_freq_attributes[] = {
 	&dev_attr_haptic_engine.attr,
 	&dev_attr_multi_freq.attr,
-	&dev_attr_force_touch_intensity.attr,
+//	&dev_attr_force_touch_intensity.attr,
 	NULL,
 };
 
@@ -627,7 +627,7 @@ int sec_haptic_unregister(struct sec_haptic_drvdata *ddata)
 	kfree(ddata);
 	return 0;
 }
-
+#if 0
 extern int haptic_homekey_press(void)
 {
 	struct sec_haptic_drvdata *ddata = pddata;
@@ -685,6 +685,6 @@ extern int haptic_homekey_release(void)
 
 	return 0;
 }
-
+#endif
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("sec haptic driver");

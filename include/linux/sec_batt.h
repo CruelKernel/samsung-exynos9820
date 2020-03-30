@@ -29,6 +29,7 @@ extern int factory_mode;
 extern unsigned long wireless_offset;
 extern unsigned int wireless_fw_ver_param;
 extern unsigned int wireless_chip_id_param;
+extern unsigned int wireless_fw_mode_param;
 #endif
 
 void exynos5_universal5430_pmic_init(void);

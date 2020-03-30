@@ -147,6 +147,13 @@ void sec_debug_get_kevent_info(struct ess_info_offset *p, int type)
 		p->per_core = 0;
 		break;
 
+	case DSS_KEVENT_MFRQ:
+		p->base = kevent_base_pa + (unsigned long)(dss_log->freq_misc) - kevent_base_va;
+		p->nr = DSS_LOG_MAX_NUM;
+		p->size = sizeof(struct __freq_misc_log);
+		p->per_core = 0;
+		break;
+
 	default:
 		p->base = 0;
 		p->nr = 0;

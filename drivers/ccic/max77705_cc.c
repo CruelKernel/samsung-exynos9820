@@ -435,6 +435,7 @@ static irqreturn_t max77705_ccistat_irq(int irq, void *data)
 #if defined(CONFIG_TYPEC)
 	enum typec_pwr_opmode mode = TYPEC_PWR_MODE_USB;
 #endif
+	usbc_cmd_data value;
 
 	max77705_read_reg(usbc_data->muic, REG_CC_STATUS0, &cc_data->cc_status0);
 	pr_debug("%s: IRQ(%d)_IN\n", __func__, irq);
@@ -460,6 +461,18 @@ static irqreturn_t max77705_ccistat_irq(int irq, void *data)
 #if defined(CONFIG_TYPEC)
 		mode = TYPEC_PWR_MODE_3_0A;
 #endif
+		if (usbc_data->srcccap_request_retry) {
+			usbc_data->pn_flag = false;			
+			usbc_data->srcccap_request_retry = false;
+			value.opcode = OPCODE_SRCCAP_REQUEST;
+			value.write_data[0] = pd_noti.sink_status.selected_pdo_num;
+			value.write_length = 1;
+			value.read_length = 1;
+			max77705_usbc_opcode_write(usbc_data, &value);
+			pr_info("%s : OPCODE(0x%02x) W_LENGTH(%d) R_LENGTH(%d) NUM(%d)\n",
+				__func__, value.opcode, value.write_length, value.read_length,
+				pd_noti.sink_status.selected_pdo_num);
+		}
 		break;
 
 	default:
@@ -606,6 +619,7 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			usbc_data->is_samsung_accessory_enter_mode = 0;
 			usbc_data->pn_flag = false;
 			usbc_data->pd_support = false;
+			usbc_data->srcccap_request_retry = false;
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
 			if (!usbc_data->try_state_change)
 #elif defined(CONFIG_TYPEC)
@@ -669,6 +683,7 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			msg_maxim("ccstat : cc_SOURCE");
 			usbc_data->pd_data->cc_status = CC_SRC;
 			usbc_data->pn_flag = false;
+			usbc_data->srcccap_request_retry = false;
 #if defined(CONFIG_DUAL_ROLE_USB_INTF)
 			usbc_data->power_role = DUAL_ROLE_PROP_PR_SRC;
 			if (usbc_data->dual_role != NULL &&

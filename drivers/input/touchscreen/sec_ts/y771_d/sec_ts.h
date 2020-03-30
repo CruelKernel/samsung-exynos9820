@@ -103,10 +103,10 @@
 
 #define SEC_TS_EVENTID_HOVER		10
 
-#define SEC_TS_DEFAULT_FW_NAME		"tsp_sec/y771_beyond2.bin"
-#define SEC_TS_DEFAULT_UMS_FW		"/sdcard/Firmware/TSP/lsi.bin"
-#define SEC_TS_DEFAULT_SPU_FW		"/spu/TSP/ffu_tsp.bin"
-#define SEC_TS_DEFAULT_FFU_FW		"ffu_tsp.bin"
+#define TSP_PATH_EXTERNAL_FW		"/sdcard/Firmware/TSP/tsp.bin"
+#define TSP_PATH_EXTERNAL_FW_SIGNED	"/sdcard/Firmware/TSP/tsp_signed.bin"
+#define TSP_PATH_SPU_FW_SIGNED		"/spu/TSP/ffu_tsp.bin"
+
 #define SEC_TS_MAX_FW_PATH		64
 #define SEC_TS_FW_BLK_SIZE_MAX		(512)
 #define SEC_TS_FW_BLK_SIZE_DEFAULT	(512)	// y761 & y771 ~

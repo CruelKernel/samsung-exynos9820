@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 Vendor Extension Code
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 854674 2019-12-10 03:31:41Z $
+ * $Id: wl_cfgvendor.c 863133 2020-02-06 10:16:12Z $
  */
 
 /*
@@ -1516,6 +1516,7 @@ wl_cfgvendor_set_hal_started(struct wiphy *wiphy,
 			dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
 				int ret;
 #endif /* WL_STA_ASSOC_RAND */
+	RETURN_EIO_IF_NOT_UP(cfg);
 	WL_INFORM(("%s,[DUMP] HAL STARTED\n", __FUNCTION__));
 
 	cfg->hal_started = true;
@@ -5668,29 +5669,36 @@ wl_cfgvendor_terminate_dp_rng_sessions(struct bcm_cfg80211 *cfg,
 	uint8 i = 0;
 	int status = BCME_ERROR;
 	nan_ranging_inst_t *ranging_inst = NULL;
+	dhd_pub_t *dhdp = wl_cfg80211_get_dhdp(wdev->netdev);
 
+	*ssn_exists = false;
 	/* Cleanup active Data Paths If any */
 	for (i = 0; i < NAN_MAX_NDP_PEER; i++) {
 		if (cfg->nancfg.ndp_id[i]) {
-			*ssn_exists = true;
 			WL_DBG(("Found entry of ndp id = [%d], end dp associated to it\n",
 					cfg->nancfg.ndp_id[i]));
-			wl_cfgnan_data_path_end_handler(wdev->netdev, cfg,
+			ret = wl_cfgnan_data_path_end_handler(wdev->netdev, cfg,
 					cfg->nancfg.ndp_id[i], &status);
+			if ((ret == BCME_OK) && cfg->nan_enable &&
+				dhdp->up) {
+				*ssn_exists = true;
+			}
 		}
 	}
 
 	/* Cancel ranging sessiosns */
 	for (i = 0; i < NAN_MAX_RANGING_INST; i++) {
 		ranging_inst = &cfg->nan_ranging_info[i];
-		if (ranging_inst->range_id) {
-			*ssn_exists = true;
+		if (ranging_inst->in_use &&
+				(NAN_RANGING_IS_IN_PROG(ranging_inst->range_status))) {
 			ret = wl_cfgnan_cancel_ranging(bcmcfg_to_prmry_ndev(cfg), cfg,
-				ranging_inst->range_id,
-				NAN_RNG_TERM_FLAG_NONE, &status);
+					&ranging_inst->range_id,
+					NAN_RNG_TERM_FLAG_NONE, &status);
 			if (unlikely(ret) || unlikely(status)) {
 				WL_ERR(("nan range cancel failed ret = %d status = %d\n",
-				ret, status));
+					ret, status));
+			} else {
+				*ssn_exists = true;
 			}
 		}
 	}
@@ -5727,6 +5735,7 @@ wl_cfgvendor_nan_stop_handler(struct wiphy *wiphy,
 			*/
 			WL_INFORM_MEM(("Schedule Nan Disable Req with NAN_DISABLE_CMD_DELAY\n"));
 			delay_ms = NAN_DISABLE_CMD_DELAY;
+			DHD_NAN_WAKE_LOCK_TIMEOUT(cfg->pub, NAN_WAKELOCK_TIMEOUT);
 		} else {
 			delay_ms = 0;
 		}
@@ -6327,7 +6336,6 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	int err = 0, i;
 	wifi_radio_stat *radio;
 	wifi_radio_stat_h radio_h;
-	wl_wme_cnt_t *wl_wme_cnt;
 	const wl_cnt_wlc_t *wlc_cnt;
 	scb_val_t scbval;
 	char *output = NULL;
@@ -6389,38 +6397,11 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	output += sizeof(wifi_radio_stat_h);
 	output += (NUM_CHAN * sizeof(wifi_channel_stat));
 
-	err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "wme_counters", NULL, 0,
-		iovar_buf, WLC_IOCTL_MAXLEN, NULL);
-	if (unlikely(err)) {
-		WL_ERR(("error (%d)\n", err));
-		goto exit;
-	}
-	wl_wme_cnt = (wl_wme_cnt_t *)iovar_buf;
-
 	COMPAT_BZERO_IFACE(wifi_iface_stat, iface);
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].ac, WIFI_AC_VO);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].tx_mpdu, wl_wme_cnt->tx[AC_VO].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].rx_mpdu, wl_wme_cnt->rx[AC_VO].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VO].mpdu_lost,
-		wl_wme_cnt->tx_failed[WIFI_AC_VO].packets);
-
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VI].ac, WIFI_AC_VI);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VI].tx_mpdu, wl_wme_cnt->tx[AC_VI].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VI].rx_mpdu, wl_wme_cnt->rx[AC_VI].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_VI].mpdu_lost,
-		wl_wme_cnt->tx_failed[WIFI_AC_VI].packets);
-
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].ac, WIFI_AC_BE);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].tx_mpdu, wl_wme_cnt->tx[AC_BE].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].rx_mpdu, wl_wme_cnt->rx[AC_BE].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].mpdu_lost,
-		wl_wme_cnt->tx_failed[WIFI_AC_BE].packets);
-
 	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BK].ac, WIFI_AC_BK);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BK].tx_mpdu, wl_wme_cnt->tx[AC_BK].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BK].rx_mpdu, wl_wme_cnt->rx[AC_BK].packets);
-	COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BK].mpdu_lost,
-		wl_wme_cnt->tx_failed[WIFI_AC_BK].packets);
 
 	err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "counters", NULL, 0,
 		iovar_buf, WLC_IOCTL_MAXLEN, NULL);
@@ -6466,10 +6447,18 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 				if_stats->version));
 			goto exit;
 		}
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].tx_mpdu,
+			(uint32)(if_stats->txfrmsnt - if_stats->txmulti));
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].rx_mpdu, (uint32)if_stats->rxframe);
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].mpdu_lost, (uint32)if_stats->txfail);
 		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].retries, (uint32)if_stats->txretrans);
 	} else
 #endif /* !DISABLE_IF_COUNTERS */
 	{
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].tx_mpdu,
+			(wlc_cnt->txfrmsnt - wlc_cnt->txmulti));
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].rx_mpdu, wlc_cnt->rxframe);
+		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].mpdu_lost, wlc_cnt->txfail);
 		COMPAT_ASSIGN_VALUE(iface, ac[WIFI_AC_BE].retries, wlc_cnt->txretrans);
 	}
 

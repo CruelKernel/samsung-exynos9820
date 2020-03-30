@@ -1879,22 +1879,22 @@ int sensor_2l4_cis_set_exposure_time(struct v4l2_subdev *subdev, struct ae_param
 			if (MAX(target_exposure->long_val, target_exposure->short_val) > 80000) {
 				cit_shifter_idx = MIN(MAX(MAX(target_exposure->long_val, target_exposure->short_val) / 80000, 0), 16);
 				cit_shifter_val = MAX(cit_shifter_array[cit_shifter_idx], cis_data->frame_length_lines_shifter);
-				target_exposure->long_val = target_exposure->long_val / cit_denom_array[cit_shifter_val];
-				target_exposure->short_val = target_exposure->short_val / cit_denom_array[cit_shifter_val];
 			} else {
 				cit_shifter_val = (u16)(cis_data->frame_length_lines_shifter);
 			}
+			target_exposure->long_val = target_exposure->long_val / cit_denom_array[cit_shifter_val];
+			target_exposure->short_val = target_exposure->short_val / cit_denom_array[cit_shifter_val];
 			coarse_integration_time_shifter = ((cit_shifter_val<<8) & 0xFF00) + (cit_shifter_val & 0x00FF);
 			break;
 		default:
 			if (MAX(target_exposure->long_val, target_exposure->short_val) > 160000) {
 				cit_shifter_idx = MIN(MAX(MAX(target_exposure->long_val, target_exposure->short_val) / 160000, 0), 16);
 				cit_shifter_val = MAX(cit_shifter_array[cit_shifter_idx], cis_data->frame_length_lines_shifter);
-				target_exposure->long_val = target_exposure->long_val / cit_denom_array[cit_shifter_val];
-				target_exposure->short_val = target_exposure->short_val / cit_denom_array[cit_shifter_val];
 			} else {
 				cit_shifter_val = (u16)(cis_data->frame_length_lines_shifter);
 			}
+			target_exposure->long_val = target_exposure->long_val / cit_denom_array[cit_shifter_val];
+			target_exposure->short_val = target_exposure->short_val / cit_denom_array[cit_shifter_val];
 			coarse_integration_time_shifter = ((cit_shifter_val<<8) & 0xFF00) + (cit_shifter_val & 0x00FF);
 			break;
 		}
@@ -2270,9 +2270,14 @@ int sensor_2l4_cis_set_frame_duration(struct v4l2_subdev *subdev, u32 frame_dura
 		goto p_err;
 	}
 
-	sensor_2l4_frame_duration_backup = frame_duration;
-
 	cis_data = cis->cis_data;
+
+	if (frame_duration < cis_data->min_frame_us_time) {
+		dbg_sensor(1, "frame duration is less than min(%d)\n", frame_duration);
+		frame_duration = cis_data->min_frame_us_time;
+	}
+
+	sensor_2l4_frame_duration_backup = frame_duration;
 
 	if (sensor_2l4_ln_mode_delay_count > 0)
 		sensor_2l4_ln_mode_delay_count--;
@@ -2306,11 +2311,6 @@ int sensor_2l4_cis_set_frame_duration(struct v4l2_subdev *subdev, u32 frame_dura
 			}
 			break;
 		}
-	}
-
-	if (frame_duration < cis_data->min_frame_us_time) {
-		dbg_sensor(1, "frame duration is less than min(%d)\n", frame_duration);
-		frame_duration = cis_data->min_frame_us_time;
 	}
 
 	vt_pic_clk_freq_mhz = cis_data->pclk / (1000);

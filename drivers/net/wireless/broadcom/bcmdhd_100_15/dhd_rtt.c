@@ -1,7 +1,7 @@
 /*
  * Broadcom Dongle Host Driver (DHD), RTT
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -656,20 +656,18 @@ exit:
 }
 
 static wl_proxd_iov_t *
-rtt_alloc_getset_buf(wl_proxd_method_t method, wl_proxd_session_id_t session_id,
+rtt_alloc_getset_buf(dhd_pub_t *dhd, wl_proxd_method_t method, wl_proxd_session_id_t session_id,
 	wl_proxd_cmd_t cmdid, uint16 tlvs_bufsize, uint16 *p_out_bufsize)
 {
 	uint16 proxd_iovsize;
-	uint32 kflags;
 	wl_proxd_tlv_t *p_tlv;
 	wl_proxd_iov_t *p_proxd_iov = (wl_proxd_iov_t *) NULL;
 
 	*p_out_bufsize = 0;	/* init */
-	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 	/* calculate the whole buffer size, including one reserve-tlv entry in the header */
 	proxd_iovsize = sizeof(wl_proxd_iov_t) + tlvs_bufsize;
 
-	p_proxd_iov = kzalloc(proxd_iovsize, kflags);
+	p_proxd_iov = (wl_proxd_iov_t *)MALLOCZ(dhd->osh, proxd_iovsize);
 	if (p_proxd_iov == NULL) {
 		DHD_RTT_ERR(("error: failed to allocate %d bytes of memory\n", proxd_iovsize));
 		return NULL;
@@ -706,7 +704,7 @@ dhd_rtt_common_get_handler(dhd_pub_t *dhd, ftm_subcmd_info_t *p_subcmd_info,
 		ftm_cmdid_to_str(p_subcmd_info->cmdid)));
 #endif // endif
 	/* alloc mem for ioctl headr + reserved 0 bufsize for tlvs (initialize to zero) */
-	p_proxd_iov = rtt_alloc_getset_buf(method, session_id, p_subcmd_info->cmdid,
+	p_proxd_iov = rtt_alloc_getset_buf(dhd, method, session_id, p_subcmd_info->cmdid,
 		0, &proxd_iovsize);
 
 	if (p_proxd_iov == NULL)
@@ -717,7 +715,7 @@ dhd_rtt_common_get_handler(dhd_pub_t *dhd, ftm_subcmd_info_t *p_subcmd_info,
 	if (status != BCME_OK) {
 		DHD_RTT(("%s failed: status=%d\n", __FUNCTION__, status));
 	}
-	kfree(p_proxd_iov);
+	MFREE(dhd->osh, p_proxd_iov, proxd_iovsize);
 	return status;
 }
 
@@ -753,8 +751,8 @@ dhd_rtt_common_set_handler(dhd_pub_t *dhd, const ftm_subcmd_info_t *p_subcmd_inf
 
 	/* allocate and initialize a temp buffer for 'set proxd' iovar */
 	proxd_iovsize = 0;
-	p_proxd_iov = rtt_alloc_getset_buf(method, session_id, p_subcmd_info->cmdid,
-							0, &proxd_iovsize);		/* no TLV */
+	p_proxd_iov = rtt_alloc_getset_buf(dhd, method, session_id, p_subcmd_info->cmdid,
+					0, &proxd_iovsize);		/* no TLV */
 	if (p_proxd_iov == NULL)
 		return BCME_NOMEM;
 
@@ -766,7 +764,7 @@ dhd_rtt_common_set_handler(dhd_pub_t *dhd, const ftm_subcmd_info_t *p_subcmd_inf
 	}
 #endif // endif
 	/* clean up */
-	kfree(p_proxd_iov);
+	MFREE(dhd->osh, p_proxd_iov, proxd_iovsize);
 
 	return ret;
 }
@@ -1315,7 +1313,7 @@ dhd_rtt_ftm_config(dhd_pub_t *dhd, wl_proxd_session_id_t session_id,
 	subcmd_info.name = "config";
 	subcmd_info.cmdid = WL_PROXD_CMD_CONFIG;
 
-	p_proxd_iov = rtt_alloc_getset_buf(WL_PROXD_METHOD_FTM, session_id, subcmd_info.cmdid,
+	p_proxd_iov = rtt_alloc_getset_buf(dhd, WL_PROXD_METHOD_FTM, session_id, subcmd_info.cmdid,
 		FTM_IOC_BUFSZ, &proxd_iovsize);
 
 	if (p_proxd_iov == NULL) {
@@ -1346,7 +1344,7 @@ dhd_rtt_ftm_config(dhd_pub_t *dhd, wl_proxd_session_id_t session_id,
 		}
 	}
 	/* clean up */
-	kfree(p_proxd_iov);
+	MFREE(dhd->osh, p_proxd_iov, proxd_iovsize);
 	return ret;
 }
 
@@ -1814,19 +1812,20 @@ dhd_rtt_remove_geofence_target(dhd_pub_t *dhd, struct ether_addr *peer_addr)
 	}
 
 	/* left shift all the valid entries, as we dont keep holes in list */
-	for (j = index; (j+1) < geofence_target_cnt; j++) {
-		if (geofence_target_info[j].valid == TRUE) {
-			/*
-			 * src and dest buffer len same, pointers of same DS
-			 * statically allocated
-			 */
+	for (j = index; j < geofence_target_cnt; j++) {
+		/*
+		 * src and dest buffer len same, pointers of same DS
+		 * statically allocated
+		 */
+		if ((j + 1) < geofence_target_cnt) {
 			(void)memcpy_s(&geofence_target_info[j], sizeof(geofence_target_info[j]),
-				&geofence_target_info[j + 1],
-				sizeof(geofence_target_info[j + 1]));
+				&geofence_target_info[j + 1], sizeof(geofence_target_info[j + 1]));
 		} else {
-			break;
+			/* reset the last target info */
+			bzero(&geofence_target_info[j], sizeof(rtt_geofence_target_info_t));
 		}
 	}
+
 	rtt_status->geofence_cfg.geofence_target_cnt--;
 	if ((rtt_status->geofence_cfg.geofence_target_cnt == 0) ||
 		(index == rtt_status->geofence_cfg.cur_target_idx)) {
@@ -1902,6 +1901,9 @@ dhd_rtt_sched_geofencing_target(dhd_pub_t *dhd)
 		rtt_invalid_reason = dhd_rtt_invalid_states(dev,
 				&geofence_target_info->peer_addr);
 		if (rtt_invalid_reason != RTT_STATE_VALID) {
+			/* TODO: see if we can move to next target..
+			* i.e, if invalid state is due to DP with same peer
+			*/
 			ret = BCME_BUSY;
 			DHD_RTT_ERR(("DRV State is not valid for RTT, "
 				"invalid_state = %d\n", rtt_invalid_reason));
@@ -2072,9 +2074,10 @@ dhd_rtt_stop(dhd_pub_t *dhd, struct ether_addr *mac_list, int mac_cnt)
 				list_for_each_entry_safe(rtt_result, next2,
 					&entry->result_list, list) {
 					list_del(&rtt_result->list);
-					kfree(rtt_result);
+					MFREE(dhd->osh, rtt_result,
+						sizeof(rtt_result_t));
 				}
-				kfree(entry);
+				MFREE(dhd->osh, entry, sizeof(rtt_results_header_t));
 			}
 			GCC_DIAGNOSTIC_POP();
 		}
@@ -2161,7 +2164,7 @@ dhd_rtt_timeout(dhd_pub_t *dhd)
 		if (!ranging_inst) {
 			goto exit;
 		}
-		ret =  wl_cfgnan_cancel_ranging(ndev, cfg, ranging_inst->range_id,
+		ret =  wl_cfgnan_cancel_ranging(ndev, cfg, &ranging_inst->range_id,
 				NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
 		if (unlikely(ret) || unlikely(status)) {
 			WL_ERR(("%s:nan range cancel failed ret = %d status = %d\n",
@@ -2552,7 +2555,7 @@ dhd_rtt_register_noti_callback(dhd_pub_t *dhd, void *ctx, dhd_rtt_compl_noti_fn 
 			goto exit;
 		}
 	}
-	cb = kmalloc(sizeof(struct rtt_noti_callback), GFP_ATOMIC);
+	cb = (struct rtt_noti_callback *)MALLOCZ(dhd->osh, sizeof(struct rtt_noti_callback));
 	if (!cb) {
 		err = -ENOMEM;
 		goto exit;
@@ -2588,7 +2591,7 @@ dhd_rtt_unregister_noti_callback(dhd_pub_t *dhd, dhd_rtt_compl_noti_fn noti_fn)
 
 	spin_unlock_bh(&noti_list_lock);
 	if (cb) {
-		kfree(cb);
+		MFREE(dhd->osh, cb, sizeof(struct rtt_noti_callback));
 	}
 	return err;
 }
@@ -3163,9 +3166,10 @@ dhd_rtt_handle_rtt_session_end(dhd_pub_t *dhd)
 				list_for_each_entry_safe(rtt_result, next2,
 					&entry->result_list, list) {
 					list_del(&rtt_result->list);
-					kfree(rtt_result);
+					MFREE(dhd->osh, rtt_result,
+						sizeof(rtt_result_t));
 				}
-				kfree(entry);
+				MFREE(dhd->osh, entry, sizeof(rtt_results_header_t));
 			}
 		}
 		GCC_DIAGNOSTIC_POP();
@@ -3210,7 +3214,8 @@ dhd_rtt_create_failure_result(rtt_status_info_t *rtt_status,
 		sizeof(rtt_result_t));
 	if (!rtt_result) {
 		ret = -ENOMEM;
-		kfree(rtt_results_header);
+		/* Free rtt result header */
+		MFREE(rtt_status->dhd->osh, rtt_results_header, sizeof(rtt_results_header_t));
 		goto exit;
 	}
 	/* fill out the results from the configuration param */
@@ -3368,8 +3373,8 @@ exit:
 			" ret = %d, err_at = %d\n", ret, err_at));
 		if (rtt_results_header) {
 			list_del(&rtt_results_header->list);
-			kfree(rtt_results_header);
-			rtt_results_header = NULL;
+			MFREE(dhd->osh, rtt_results_header,
+				sizeof(rtt_results_header_t));
 		}
 	}
 	return ret;
@@ -3389,7 +3394,6 @@ dhd_rtt_nan_range_report(struct bcm_cfg80211 *cfg,
 		goto exit;
 	}
 	bzero(&range_res, sizeof(range_res));
-	range_res.indication = 0;
 	range_res.dist_mm = rtt_result->report.distance;
 	/* same src and header len, ignoring ret val here */
 	(void)memcpy_s(&range_res.peer_m_addr, ETHER_ADDR_LEN,
@@ -3501,6 +3505,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 	rtt_status_info_t *rtt_status;
 	rtt_results_header_t *rtt_results_header = NULL;
 	bool is_new = TRUE;
+	rtt_target_info_t *target = NULL;
 #endif /* WL_CFG80211 */
 
 	DHD_RTT(("Enter %s \n", __FUNCTION__));
@@ -3577,6 +3582,16 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			goto exit;
 		}
 	}
+
+	/* check current target_mac and event_mac are matching */
+	target = &rtt_status->rtt_config.target_info[rtt_status->cur_idx];
+	if (memcmp(&target->addr, &event->addr, ETHER_ADDR_LEN)) {
+		DHD_RTT(("Ignore Proxd event for the unexpected peer "MACDBG
+			" expected peer "MACDBG"\n", MAC2STRDBG(&event->addr),
+			MAC2STRDBG(&target->addr)));
+		goto exit;
+	}
+
 #endif /* WL_CFG80211 */
 
 #ifdef WL_CFG80211
@@ -3606,8 +3621,8 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 		ret = dhd_rtt_handle_directed_rtt_burst_end(dhd, &event->addr,
 			p_event, tlvs_len, rtt_result, FALSE);
 		if (rtt_result && (ret != BCME_OK)) {
-			kfree(rtt_result);
-			rtt_result = NULL;
+			MFREE(dhd->osh, rtt_result,
+				sizeof(rtt_result_t));
 			goto exit;
 		}
 		break;
@@ -3679,7 +3694,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			ret = bcm_unpack_xtlv_buf(buffer,
 				(uint8 *)&p_event->tlvs[0], tlvs_len,
 				BCM_XTLV_OPTION_NONE, rtt_unpack_xtlv_cbfn);
-			kfree(buffer);
+			MFREE(dhd->osh, buffer, tlvs_len);
 			if (ret != BCME_OK) {
 				DHD_RTT_ERR(("%s : Failed to unpack xtlv for event %d\n",
 					__FUNCTION__, event_type));
@@ -3699,7 +3714,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			ret = bcm_unpack_xtlv_buf(buffer,
 				(uint8 *)&p_event->tlvs[0], tlvs_len,
 				BCM_XTLV_OPTION_NONE, rtt_unpack_xtlv_cbfn);
-			kfree(buffer);
+			MFREE(dhd->osh, buffer, tlvs_len);
 			if (ret != BCME_OK) {
 				DHD_RTT_ERR(("%s : Failed to unpack xtlv for event %d\n",
 					__FUNCTION__, event_type));
@@ -4031,8 +4046,9 @@ dhd_rtt_init(dhd_pub_t *dhd)
 	mutex_unlock(&rtt_status->rtt_work_mutex);
 exit:
 	if (err < 0) {
-		kfree(rtt_status->rtt_config.target_info);
-		kfree(dhd->rtt_state);
+		MFREE(dhd->osh, rtt_status->rtt_config.target_info,
+			TARGET_INFO_SIZE(RTT_MAX_TARGET_CNT));
+		MFREE(dhd->osh, dhd->rtt_state, sizeof(rtt_status_info_t));
 	}
 #endif /* WL_CFG80211 */
 	return err;
@@ -4051,6 +4067,19 @@ dhd_rtt_deinit(dhd_pub_t *dhd)
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
+
+	if (delayed_work_pending(&rtt_status->rtt_retry_timer)) {
+		cancel_delayed_work_sync(&rtt_status->rtt_retry_timer);
+	}
+
+	if (work_pending(&rtt_status->work)) {
+		cancel_work_sync(&rtt_status->work);
+	}
+
+	if (delayed_work_pending(&rtt_status->proxd_timeout)) {
+		cancel_delayed_work_sync(&rtt_status->proxd_timeout);
+	}
+
 	rtt_status->status = RTT_STOPPED;
 	DHD_RTT(("rtt is stopped %s \n", __FUNCTION__));
 	/* clear evt callback list */
@@ -4058,7 +4087,7 @@ dhd_rtt_deinit(dhd_pub_t *dhd)
 	if (!list_empty(&rtt_status->noti_fn_list)) {
 		list_for_each_entry_safe(iter, iter2, &rtt_status->noti_fn_list, list) {
 			list_del(&iter->list);
-			kfree(iter);
+			MFREE(dhd->osh, iter, sizeof(struct rtt_noti_callback));
 		}
 	}
 	/* remove the rtt results */
@@ -4068,24 +4097,15 @@ dhd_rtt_deinit(dhd_pub_t *dhd)
 			list_for_each_entry_safe(rtt_result, next2,
 				&rtt_header->result_list, list) {
 				list_del(&rtt_result->list);
-				kfree(rtt_result);
+				MFREE(dhd->osh, rtt_result, sizeof(rtt_result_t));
 			}
-			kfree(rtt_header);
+			MFREE(dhd->osh, rtt_header, sizeof(rtt_results_header_t));
 		}
 	}
 	GCC_DIAGNOSTIC_POP();
-
-	if (delayed_work_pending(&rtt_status->rtt_retry_timer)) {
-		cancel_delayed_work_sync(&rtt_status->rtt_retry_timer);
-	}
-
-	if (delayed_work_pending(&rtt_status->proxd_timeout)) {
-		cancel_delayed_work_sync(&rtt_status->proxd_timeout);
-	}
-
-	kfree(rtt_status->rtt_config.target_info);
-	kfree(dhd->rtt_state);
-	dhd->rtt_state = NULL;
+	MFREE(dhd->osh, rtt_status->rtt_config.target_info,
+		TARGET_INFO_SIZE(RTT_MAX_TARGET_CNT));
+	MFREE(dhd->osh, dhd->rtt_state, sizeof(rtt_status_info_t));
 #endif /* WL_CFG80211 */
 	return err;
 }

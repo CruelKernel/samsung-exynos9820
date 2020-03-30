@@ -89,6 +89,9 @@ EXPORT_SYMBOL(wireless_fw_ver_param);
 
 unsigned int wireless_chip_id_param;
 EXPORT_SYMBOL(wireless_chip_id_param);
+
+unsigned int wireless_fw_mode_param;
+EXPORT_SYMBOL(wireless_fw_mode_param);
 static int __init sec_bat_get_wireless_ic(char *str)
 {
 	int ic_info;
@@ -101,9 +104,11 @@ static int __init sec_bat_get_wireless_ic(char *str)
 	if (get_option(&str, &ic_info)) {
 		wireless_chip_id_param = (ic_info & 0xFF000000) >> 24;
 		wireless_fw_ver_param = (ic_info & 0x00FFFF00) >> 8;
+		wireless_fw_mode_param = (ic_info & 0x000000F0) >> 4;
 
-		printk(KERN_ERR "wireless_ic() : ic_info(0x%08X), chip_id(0x%02X), fw_ver(0x%04X)\n",
-			ic_info, wireless_chip_id_param, wireless_fw_ver_param);
+		printk(KERN_ERR "wireless_ic() : ic_info(0x%08X), chip_id(0x%02X), "
+			"fw_ver(0x%04X), fw_mode(0x%01X)\n", ic_info,
+			wireless_chip_id_param, wireless_fw_ver_param, wireless_fw_mode_param);
 
 		return 0;
 	}

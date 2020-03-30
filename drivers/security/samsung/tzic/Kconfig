@@ -1,0 +1,37 @@
+#
+# TZIC configuration
+#
+
+config TZIC
+    bool "TZIC Driver"
+    default y
+    ---help---
+      Enable TZIC Driver support.
+
+choice
+    prompt "IC Secure OS"
+    depends on TZIC
+    default TZIC_USE_QSEECOM if QSEECOM
+    default TZIC_USE_TZDEV if TZDEV
+    default TZIC_USE_TRUSTONIC
+    ---help---
+      Select Secure OS for TZIC
+
+    config TZIC_USE_TRUSTONIC
+        bool "TZIC based on Trustonic Secure OS"
+        depends on TRUSTONIC_TEE
+        ---help---
+          Use Trustonic as base Trusted Execution Environment
+
+    config TZIC_USE_TZDEV
+        bool "TZIC based on TEEgris Secure OS"
+        depends on TZDEV
+        ---help---
+          Use TEEgris as base Trusted Execution Environment
+
+    config TZIC_USE_QSEECOM
+        bool "TZIC based on Qualcomm Secure OS"
+        depends on QSEECOM
+        ---help---
+          Use Qualcomm as base Trusted Execution Environment
+endchoice

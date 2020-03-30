@@ -82,6 +82,12 @@ enum fimc_is_rom_dualcal_index {
 	ROM_DUALCAL_NOTHING	= 100
 };
 
+struct capture_intent_info_t {
+	u16 captureIntent;
+	u16 captureCount;
+	s16 captureEV;
+};
+
 #define TOF_CAL_SIZE_MAX 10
 #define TOF_CAL_UID_MAX 10
 #define TOF_CAL_VALID_MAX 10

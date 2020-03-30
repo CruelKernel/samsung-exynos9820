@@ -156,7 +156,7 @@ static LIST_HEAD(drvdata_list);
 #define USI_HWACG_CLKSTOP_ON		(1<<2)
 
 /* MAX SIZE of COUNT_VALUE in PACKET_CNT_REG */
-#define S3C64XX_SPI_PACKET_CNT_MAX 0xffff
+#define S3C64XX_SPI_PACKET_CNT_MAX 0xfff0
 
 /**
  * struct s3c64xx_spi_info - SPI Controller hardware info

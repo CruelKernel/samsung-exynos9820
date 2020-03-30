@@ -312,6 +312,8 @@ static int s5000ap_on(struct modem_ctl *mc)
 	mif_info("+++\n");
 	mif_info("cp_active:%d cp_status:%d\n", cp_active, cp_status);
 
+	mc->receive_first_ipc = 0;
+
 #ifndef CONFIG_CP_SECURE_BOOT
 	exynos_cp_init();
 #endif

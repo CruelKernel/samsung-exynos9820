@@ -46,7 +46,7 @@ static const unsigned long vmpressure_win = SWAP_CLUSTER_MAX * 16;
  * essence, they are percents: the higher the value, the more number
  * unsuccessful reclaims there were.
  */
-static const unsigned int vmpressure_level_med = 60;
+static const unsigned int vmpressure_level_med = CONFIG_VMPRESSURE_LEVEL_MED;
 static const unsigned int vmpressure_level_critical = 95;
 
 /*

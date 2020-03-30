@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_common.c 823731 2019-06-05 07:07:02Z $
+ * $Id: dhd_common.c 853337 2019-12-02 07:21:10Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -1525,11 +1525,18 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		/* Need to have checked buffer length */
 		dhd_ver_len = strlen(dhd_version);
 		bus_api_rev_len = strlen(bus_api_revision);
-		if (dhd_ver_len)
-			bcm_strncpy_s((char*)arg, dhd_ver_len, dhd_version, dhd_ver_len);
-		if (bus_api_rev_len)
-			bcm_strncat_s((char*)arg + dhd_ver_len, bus_api_rev_len, bus_api_revision,
-				bus_api_rev_len);
+		if (len > dhd_ver_len + bus_api_rev_len) {
+			bcmerror = memcpy_s((char *)arg, len, dhd_version, dhd_ver_len);
+			if (bcmerror != BCME_OK) {
+				break;
+			}
+			bcmerror = memcpy_s((char *)arg + dhd_ver_len, len - dhd_ver_len,
+				bus_api_revision, bus_api_rev_len);
+			if (bcmerror != BCME_OK) {
+				break;
+			}
+			*((char *)arg + dhd_ver_len + bus_api_rev_len) = '\0';
+		}
 		break;
 
 	case IOV_GVAL(IOV_MSGLEVEL):
@@ -2507,7 +2514,7 @@ dhd_ioctl(dhd_pub_t * dhd_pub, dhd_ioctl_t *ioc, void *buf, uint buflen)
 				for (arg = buf, arglen = buflen; *arg && arglen; arg++, arglen--)
 					;
 
-				if (*arg) {
+				if (arglen == 0 || *arg) {
 					bcmerror = BCME_BUFTOOSHORT;
 					goto unlock_exit;
 				}

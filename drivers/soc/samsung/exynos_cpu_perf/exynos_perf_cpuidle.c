@@ -233,13 +233,13 @@ static void clear_stats(struct cpuidle_stats *stats)
 
 static void reset_profile(void)
 {
-	int cpu, i;
+	int cpu, i, f;
 
 	profile_start_time = 0;
 
 	for (i = 0; i < cpu_idle_state_count; i++)
 		for_each_possible_cpu(cpu)
-			for (int f = 0; f < MAX_FREQ; f++)
+			for (f = 0; f < MAX_FREQ; f++)
 				clear_stats(&cpu_idle_state[i].stats[cpu][f]);
 
 	/* refill cpufreq list */
@@ -292,12 +292,12 @@ static int calculate_percent(s64 residency)
 static unsigned long long cpu_idle_time(int cpu)
 {
 	unsigned long long idle_time = 0;
-	int i;
+	int i, f;
 	int cluster_index;
 
 	cluster_index = get_cluster_index(cpu);
 	for (i = 0; i < cpu_idle_state_count; i++)
-		for (int f = 0; f < MAX_FREQ; f++) {
+		for (f = 0; f < MAX_FREQ; f++) {
 			if (cpufreq_list[cluster_index][f] == 0)
 				break;
 			idle_time += cpu_idle_state[i].stats[cpu][f].time;

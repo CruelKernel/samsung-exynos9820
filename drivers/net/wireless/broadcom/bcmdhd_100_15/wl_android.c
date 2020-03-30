@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Android related functions
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.c 851171 2019-11-18 12:03:07Z $
+ * $Id: wl_android.c 855877 2019-12-18 03:16:29Z $
  */
 
 #include <linux/module.h>
@@ -5764,7 +5764,7 @@ wl_android_set_roam_vsie_enab(struct net_device *dev, const char *cmd, u32 cmd_l
 {
 	s32 err = BCME_OK;
 	u32 roam_vsie_enable = 0;
-	u32 cmd_str_len = strlen(CMD_ROAM_VSIE_ENAB_SET);
+	u32 cmd_str_len = (u32)strlen(CMD_ROAM_VSIE_ENAB_SET);
 	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
 
 	/* <CMD><SPACE><VAL> */

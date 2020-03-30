@@ -1,7 +1,7 @@
 /*
  * Linux OS Independent Layer
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: linux_osl.h 815919 2019-04-22 09:06:50Z $
+ * $Id: linux_osl.h 862862 2020-02-05 09:10:41Z $
  */
 
 #ifndef _linux_osl_h_
@@ -171,7 +171,7 @@ extern bool osl_is_flag_set(osl_t *osh, uint32 mask);
 #define BUS_SWAP32(v)		(v)
 	#define MALLOC(osh, size)	osl_malloc((osh), (size))
 	#define MALLOCZ(osh, size)	osl_mallocz((osh), (size))
-	#define MFREE(osh, addr, size)	osl_mfree((osh), (addr), (size))
+	#define MFREE(osh, addr, size)	({osl_mfree((osh), ((void *)addr), (size));(addr) = NULL;})
 	#define VMALLOC(osh, size)	osl_vmalloc((osh), (size))
 	#define VMALLOCZ(osh, size)	osl_vmallocz((osh), (size))
 	#define VMFREE(osh, addr, size)	osl_vmfree((osh), (addr), (size))

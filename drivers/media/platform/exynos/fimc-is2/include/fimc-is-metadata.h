@@ -741,6 +741,10 @@ enum aa_capture_intent {
 	AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_VEHDR_DYNAMIC_SHOT,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_VENR_DYNAMIC_SHOT,
 	AA_CAPTURE_INTENT_STILL_CAPTURE_LLS_FLASH,
+	AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_HANDHELD_FAST,    // 1st frame for JPEG+Thumbnail
+	AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD_FAST,      // 1st frame for JPEG+Thumbnail
+	AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD_LE_FAST,   // 1st frame for JPEG+Thumbnail
+	AA_CAPTURE_INTENT_STILL_CAPTURE_CROPPED_REMOSAIC_DYNAMIC_SHOT,
 };
 
 enum aa_mode {
@@ -804,13 +808,17 @@ enum aa_scene_mode {
     AA_SCENE_MODE_FACTORY_LN2      = 128,
     AA_SCENE_MODE_FACTORY_LN4      = 129,
     AA_SCENE_MODE_LABS             = 130,
-    AA_SCENE_MODE_SELFI_FOCUS      = 131,
-    AA_SCENE_MODE_STICKER          = 132,
-    AA_SCENE_MODE_INSTAGRAM        = 133,
-    AA_SCENE_MODE_FAST_AE          = 134,
-    AA_SCENE_MODE_ILLUMINANCE      = 135,
-    AA_SCENE_MODE_SUPER_NIGHT      = 136,
-    AA_SCENE_MODE_BOKEH_VIDEO      = 137,
+    AA_SCENE_MODE_REMOSAIC_PURE_BAYER_ONLY = 131,
+    AA_SCENE_MODE_REMOSAIC_MFHDR_PURE_BAYER_ONLY = 132,
+    AA_SCENE_MODE_SELFI_FOCUS      = 133,
+    AA_SCENE_MODE_STICKER          = 134,
+    AA_SCENE_MODE_INSTAGRAM        = 135,
+    AA_SCENE_MODE_FAST_AE          = 136,
+    AA_SCENE_MODE_ILLUMINANCE      = 137,
+    AA_SCENE_MODE_SUPER_NIGHT      = 138,
+    AA_SCENE_MODE_BOKEH_VIDEO      = 139,
+    AA_SCENE_MODE_SINGLE_TAKE      = 140,
+    AA_SCENE_MODE_DIRECTORS_VIEW   = 141,
 };
 
 enum aa_effect_mode {
@@ -1071,6 +1079,11 @@ enum aa_enable_dynamicshot {
     AA_DYNAMICSHOT_LLS_ONLY,
 };
 
+enum aa_night_timelaps_mode {
+	AA_NIGHT_TIMELAPS_MODE_OFF = 0,
+	AA_NIGHT_TIMELAPS_MODE_ON,
+};
+
 struct camera2_video_output_size {
 	uint16_t			width;
 	uint16_t			height;
@@ -1120,7 +1133,12 @@ struct camera2_aa_ctl {
 	float				vendor_expBracketingCapture;
 	enum aa_supernightmode		vendor_superNightShotMode;
 	struct camera2_video_output_size	vendor_videoOutputSize;
-	uint32_t			vendor_reserved[6];
+	enum aa_night_timelaps_mode	vendor_nightTimelapsMode;
+	uint32_t			vendor_personalPresetIndex;
+	uint32_t			vendor_captureHint;
+	int32_t				vendor_captureEV;
+	uint32_t			vendor_ssrmHint;
+	uint32_t			vendor_reserved[10];
 };
 
 struct aa_apexInfo {
@@ -1873,6 +1891,8 @@ struct camera2_dcp_uctl {
 };
 
 enum camera2_scene_index {
+	SCENE_INDEX_OFF                 = -2,
+	SCENE_INDEX_SCANNING            = -1,
 	SCENE_INDEX_INVALID		= 0,
 	SCENE_INDEX_FOOD		= 1,
 	SCENE_INDEX_TEXT		= 2,

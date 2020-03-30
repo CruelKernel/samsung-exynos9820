@@ -677,6 +677,7 @@ static int __init psci_0_1_init(struct device_node *np)
 {
 	u32 id;
 	int err;
+	u32 ret;
 
 	err = get_set_conduit_method(np);
 
@@ -703,6 +704,12 @@ static int __init psci_0_1_init(struct device_node *np)
 	if (!of_property_read_u32(np, "migrate", &id)) {
 		psci_function_id[PSCI_FN_MIGRATE] = id;
 		psci_ops.migrate = psci_migrate;
+	}
+
+	ret = invoke_psci_fn(ARM_SMCCC_VERSION_FUNC_ID, 0, 0, 0);
+	if (ret == ARM_SMCCC_VERSION_1_1) {
+		pr_info("smccc_version 0x%x\n", SMCCC_VERSION_1_1);
+		psci_ops.smccc_version = SMCCC_VERSION_1_1;
 	}
 
 out_put_node:

@@ -38,7 +38,7 @@ static struct key *five_request_asymmetric_key(uint32_t keyid)
 	struct key *key;
 	char name[12];
 
-	sprintf(name, "id:%08x", keyid);
+	snprintf(name, sizeof(name), "id:%08x", keyid);
 
 	pr_debug("key search: \"%s\"\n", name);
 

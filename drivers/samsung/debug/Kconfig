@@ -140,7 +140,7 @@ config SEC_BOOTSTAT
 
 config SEC_DEBUG_PWDT
 	bool "Platform Watchdog"
-	default y
+	default n
 	help
 	  Samsung Platform lockup detection
 
@@ -164,3 +164,10 @@ config SEC_DEBUG_WORKQUEUE_LOCKUP_PANIC
 	help
 	  This option enables the kernel to panic on workqueue lockup
 
+config SEC_DEBUG_SOFTDOG_PWDT
+	bool "Enable Soft Watchdog for Platform"
+	default y
+	depends on WATCHDOG
+	select SOFT_WATCHDOG
+	help
+	  This option enables soft watchdog device and soft_panic.

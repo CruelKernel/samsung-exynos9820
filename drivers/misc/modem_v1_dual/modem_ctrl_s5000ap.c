@@ -310,6 +310,7 @@ static int init_mailbox_regs(struct modem_ctl *mc)
 
 
 static struct modem_ctl *g_mc;
+extern receive_first_ipc;
 
 static int s5000ap_on(struct modem_ctl *mc)
 {
@@ -323,6 +324,8 @@ static int s5000ap_on(struct modem_ctl *mc)
 
 	mif_info("+++\n");
 	mif_info("cp_active:%d cp_status:%d\n", cp_active, cp_status);
+
+	receive_first_ipc = 0;
 
 #ifndef CONFIG_CP_SECURE_BOOT
 	exynos_cp_init();
@@ -410,8 +413,6 @@ exit:
 	mif_info("---\n");
 	return 0;
 }
-
-extern receive_first_ipc;
 
 static int s5000ap_reset(struct modem_ctl *mc)
 {

@@ -669,6 +669,24 @@ static long fps_qbt2000_ioctl(
 		fps_qbt2000_noise_control(drvdata, QBT2000_NOISE_ON);
 #endif
 		break;
+	case QBT2000_NOISE_REQUEST_STATUS:
+#ifdef QBT2000_AVOID_NOISE
+		pr_info("QBT2000_NOISE_REQUEST_STATUS : %d\n", drvdata->noise_onoff_flag);
+		if (copy_to_user((void __user *)priv_arg, &drvdata->noise_onoff_flag, sizeof(drvdata->noise_onoff_flag)) != 0) {
+			pr_err("Failed to copy REQUEST_STATUS to user\n");
+			rc = -EFAULT;
+			goto end;
+		}
+#endif
+		break;
+	case QBT2000_GET_MODELINFO:
+		pr_info("QBT2000_GET_MODELINFO : %s\n", drvdata->model_info);
+		if (copy_to_user((void __user *)priv_arg, drvdata->model_info, 10)) {
+			pr_err("Failed to copy GET_MODELINFO to user\n");
+			rc = -EFAULT;
+			goto end;
+		}
+		break;
 	default:
 		pr_err("invalid cmd %d\n", cmd);
 		rc = -ENOIOCTLCMD;
@@ -1324,6 +1342,12 @@ static int fps_qbt2000_read_device_tree(struct platform_device *pdev,
 			(const char **)&drvdata->sensor_position))
 		drvdata->sensor_position = "13.77,0.00,9.00,4.00,14.80,14.80,11.00,11.00,5.00";
 	pr_info("Sensor Position: %s\n", drvdata->sensor_position);
+
+	if (of_property_read_string_index(pdev->dev.of_node, "qcom,modelinfo", 0,
+			(const char **)&drvdata->model_info)) {
+		drvdata->model_info = "NONE";
+	}
+	pr_info("modelinfo: %s\n", drvdata->model_info);
 
 	pr_info("finished\n");
 	return rc;

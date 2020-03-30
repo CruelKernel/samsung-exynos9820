@@ -4,7 +4,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -58,14 +58,21 @@
 
 #define D2HRING_SNAPSHOT_CMPLT_ITEMSIZE		20
 
-#define H2DRING_TXPOST_MAX_ITEM			512
-#define H2DRING_RXPOST_MAX_ITEM			512
 #define H2DRING_CTRL_SUB_MAX_ITEM		64
-#define D2HRING_TXCMPLT_MAX_ITEM		1024
-#define D2HRING_RXCMPLT_MAX_ITEM		512
-
 #define H2DRING_DYNAMIC_INFO_MAX_ITEM          32
 #define D2HRING_DYNAMIC_INFO_MAX_ITEM          32
+
+#if defined(DHD_HTPUT_TUNABLES)
+#define H2DRING_TXPOST_MAX_ITEM			1024
+#define H2DRING_RXPOST_MAX_ITEM			1024
+#define D2HRING_RXCMPLT_MAX_ITEM		1024
+#define D2HRING_TXCMPLT_MAX_ITEM		2048
+#else
+#define H2DRING_TXPOST_MAX_ITEM			512
+#define H2DRING_RXPOST_MAX_ITEM			512
+#define D2HRING_TXCMPLT_MAX_ITEM		1024
+#define D2HRING_RXCMPLT_MAX_ITEM		512
+#endif /* DHD_HTPUT_TUNABLES */
 
 #define D2HRING_EDL_HDR_SIZE			48u
 #define D2HRING_EDL_ITEMSIZE			2048u
@@ -432,7 +439,9 @@ typedef struct pcie_dma_xfer_params {
 	uint8		flags;
 } pcie_dma_xfer_params_t;
 
-#define BCMPCIE_FLOW_RING_INTF_HP2P 0x1
+#define BCMPCIE_FLOW_RING_INTF_HP2P		0x1
+#define BCMPCIE_FLOW_RING_OPT_EXT_TXSTATUS	0x2
+
 /** Complete msgbuf hdr for flow ring update from host to dongle */
 typedef struct tx_flowring_create_request {
 	cmn_msg_hdr_t   msg;
@@ -1388,5 +1397,10 @@ typedef struct ts_host_timestamping_config {
 #define FLAG_CONFIG_NODROP	(1 << 1)
 #define IS_CONFIG_NODROP(x)	((x) & FLAG_CONFIG_NODROP)
 #define CLEAR_CONFIG_NODROP(x)	((x) & ~FLAG_CONFIG_NODROP)
+
+/* HP2P RLLW Extended TxStatus info when host enables the same */
+#define D2H_TXSTATUS_EXT_PKT_WITH_OVRRD	0x8000 /**< set when pkt had override bit on */
+#define D2H_TXSTATUS_EXT_PKT_XMIT_ON5G	0x4000 /**< set when pkt xmitted on 5G */
+#define D2H_TXSTATUS_EXT_PKT_BT_DENY	0x2000 /**< set when WLAN is given prio over BT */
 
 #endif /* _bcmmsgbuf_h_ */

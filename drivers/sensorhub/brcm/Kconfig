@@ -751,7 +751,7 @@ config SSP_SUPPORT_MAGNETIC_OVERFLOW
 
 config SENSORS_SSP_LIGHT_LUX_RAW
 	tristate "Sensors ssp light lux"
-	default n
+	default y if ANDROID_VERSION >= "100000"
 	depends on SPI
 	help
 	  If you want to use lux raw value, it should be set.
