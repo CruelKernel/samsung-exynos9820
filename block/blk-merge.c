@@ -847,17 +847,13 @@ enum elv_merge blk_try_merge(struct request *rq, struct bio *bio)
 		return ELEVATOR_DISCARD_MERGE;
 	} else if (blk_rq_pos(rq) + blk_rq_sectors(rq) ==
 						bio->bi_iter.bi_sector) {
-#ifdef CONFIG_BLK_DEV_CRYPT_DUN
 		if (!blk_crypt_mergeable(rq->bio, bio))
 			return ELEVATOR_NO_MERGE;
-#endif
 		return ELEVATOR_BACK_MERGE;
 	} else if (blk_rq_pos(rq) - bio_sectors(bio) ==
 						bio->bi_iter.bi_sector) {
-#ifdef CONFIG_BLK_DEV_CRYPT_DUN
 		if (!blk_crypt_mergeable(bio, rq->bio))
 			return ELEVATOR_NO_MERGE;
-#endif
 		return ELEVATOR_FRONT_MERGE;
 	}
 	return ELEVATOR_NO_MERGE;

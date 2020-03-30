@@ -738,6 +738,8 @@ static unsigned int g2d_default_ppc[] = {
 	3200, 2000, 1900, 3300, 5200, 7000, //yuv2p rotated
 	2400, 1900, 1900, 2700, 3100, 4100, //8+2 non-rotated
 	2500, 900, 900, 2200, 2900, 3700, //8+2 rotated
+	2800, 3000, 1600, 1600, 2400, 3200, //afbc non-rotated
+	2800, 3000, 1600, 1600, 2400, 3200, //afbc rotated
 	3800, //colorfill
 };
 

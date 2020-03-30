@@ -2,7 +2,7 @@
 
 config FIVE
 	bool "File Based Task Integrity Verifier (FIVE)(based on IMA)"
-	depends on INTEGRITY
+	depends on INTEGRITY && DM_VERITY && BLK_DEV_LOOP
 	select CRYPTO
 	select CRYPTO_SHA1
 	select CRYPTO_HASH_INFO

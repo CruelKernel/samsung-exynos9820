@@ -3400,14 +3400,11 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		t->buffer = NULL;
 		//[SAnP
-		// if (return_error_param == -ENOSPC) {
-		//	mutex_lock(&binder_procs_lock);
-		//	print_binder_proc_inner(target_proc);  
-		// 	mutex_unlock(&binder_procs_lock);   
-		// }
-        mutex_lock(&binder_procs_lock);
-        print_binder_proc_inner(target_proc);  
-        mutex_unlock(&binder_procs_lock);   
+		if (return_error_param == -ENOSPC) {
+			mutex_lock(&binder_procs_lock);
+			print_binder_proc_inner(target_proc);  
+			mutex_unlock(&binder_procs_lock);   
+		}
 		//SAnP]
 		goto err_binder_alloc_buf_failed;
 	}

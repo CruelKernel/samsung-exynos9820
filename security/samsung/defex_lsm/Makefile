@@ -4,6 +4,7 @@
 
 # Features to Enable
 PED_ENABLE=true
+PED_BASED_ON_TGID_ENABLE=true
 SAFEPLACE_ENABLE=true
 IMMUTABLE_ENABLE=true
 LP_ENABLE=true
@@ -26,6 +27,7 @@ RAMDISK_ENABLE=true
 SIGN_ENABLE=true
 
 obj-y := defex_lsm.o
+obj-y += defex_common.o
 obj-y += defex_catch_list.o
 obj-y += defex_ht.o
 obj-y += defex_config.o
@@ -53,6 +55,9 @@ endif
 ifeq ($(PED_ENABLE), true)
     obj-y += defex_priv.o
     DEFEX_DEFINES += -DDEFEX_PED_ENABLE
+ifeq ($(PED_BASED_ON_TGID_ENABLE), true)
+    DEFEX_DEFINES += -DDEFEX_PED_BASED_ON_TGID_ENABLE
+endif
 endif
 
 ifeq ($(SAFEPLACE_ENABLE), true)
@@ -168,4 +173,3 @@ else
     EXTRA_CFLAGS += $(DEFEX_DEFINES)
     EXTRA_AFLAGS += $(DEFEX_DEFINES)
 endif
-

@@ -153,7 +153,19 @@ inode_query_iversion(struct inode *inode)
 #include <linux/iversion.h>
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 8)
+static inline struct dentry *file_dentry(const struct file *file)
+{
+	return file->f_path.dentry;
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 2)
+static inline struct dentry *d_real_comp(struct dentry *dentry)
+{
+	return dentry;
+}
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 static inline struct dentry *d_real_comp(struct dentry *dentry)
 {
 	return d_real(dentry);
@@ -175,7 +187,10 @@ static inline struct dentry *d_real_comp(struct dentry *dentry)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 16)
+/* d_real_inode was added in v4.4.16, removed in v4.5.0 and added again in v4.6.5 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 16) || \
+	(LINUX_VERSION_CODE > KERNEL_VERSION(4, 5, 0) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 5))
 static inline struct inode *d_real_inode(struct dentry *dentry)
 {
 	return d_backing_inode(d_real_comp(dentry));

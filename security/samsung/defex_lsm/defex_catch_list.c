@@ -23,7 +23,7 @@ const int defex_nr_syscalls = DEFEX_CATCH_COUNT;
 
 const struct local_syscall_struct *get_local_syscall(int syscall_no)
 {
-	if (syscall_no >= __NR_syscalls)
+	if ((unsigned int)syscall_no >= __NR_syscalls)
 		return NULL;
 
 	if (!syscall_catch_arr[syscall_no].local_syscall && !syscall_catch_arr[syscall_no].err_code && syscall_no) {

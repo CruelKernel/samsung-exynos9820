@@ -1,7 +1,7 @@
 /*
  * Neighbor Awareness Networking
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.c 854674 2019-12-10 03:31:41Z $
+ * $Id: wl_cfgnan.c 863148 2020-02-06 10:48:09Z $
  */
 
 #ifdef WL_NAN
@@ -92,7 +92,9 @@ static void wl_cfgnan_terminate_ranging_session(struct bcm_cfg80211 *cfg,
 
 #ifdef RTT_SUPPORT
 static s32 wl_cfgnan_clear_peer_ranging(struct bcm_cfg80211 * cfg,
-	struct ether_addr * peer, int reason);
+	nan_ranging_inst_t *rng_inst, int reason);
+static s32 wl_cfgnan_handle_dp_ranging_concurrency(struct bcm_cfg80211 *cfg,
+        struct ether_addr *peer, int reason);
 #endif /* RTT_SUPPORT */
 
 static void wl_cfgnan_terminate_all_obsolete_ranging_sessions(struct bcm_cfg80211 *cfg);
@@ -123,6 +125,9 @@ static const char *nan_event_to_str(u16 cmd)
 	C2S(WL_NAN_EVENT_DATAPATH_ESTB)
 	C2S(WL_NAN_EVENT_SDF_RX)
 	C2S(WL_NAN_EVENT_DATAPATH_END)
+	C2S(WL_NAN_EVENT_PEER_DATAPATH_RESP)
+	C2S(WL_NAN_EVENT_PEER_DATAPATH_CONF)
+	C2S(WL_NAN_EVENT_PEER_DATAPATH_SEC_INST)
 	C2S(WL_NAN_EVENT_RNG_REQ_IND)
 	C2S(WL_NAN_EVENT_RNG_RPT_IND)
 	C2S(WL_NAN_EVENT_RNG_TERM_IND)
@@ -131,6 +136,54 @@ static const char *nan_event_to_str(u16 cmd)
 
 	default:
 		return "WL_NAN_EVENT_UNKNOWN";
+	}
+}
+
+static const char *nan_frm_type_to_str(u16 frm_type)
+{
+	switch (frm_type) {
+	C2S(WL_NAN_FRM_TYPE_PUBLISH)
+	C2S(WL_NAN_FRM_TYPE_SUBSCRIBE)
+	C2S(WL_NAN_FRM_TYPE_FOLLOWUP)
+
+	C2S(WL_NAN_FRM_TYPE_DP_REQ)
+	C2S(WL_NAN_FRM_TYPE_DP_RESP)
+	C2S(WL_NAN_FRM_TYPE_DP_CONF)
+	C2S(WL_NAN_FRM_TYPE_DP_INSTALL)
+	C2S(WL_NAN_FRM_TYPE_DP_END)
+
+	C2S(WL_NAN_FRM_TYPE_SCHED_REQ)
+	C2S(WL_NAN_FRM_TYPE_SCHED_RESP)
+	C2S(WL_NAN_FRM_TYPE_SCHED_CONF)
+	C2S(WL_NAN_FRM_TYPE_SCHED_UPD)
+
+	C2S(WL_NAN_FRM_TYPE_RNG_REQ)
+	C2S(WL_NAN_FRM_TYPE_RNG_RESP)
+	C2S(WL_NAN_FRM_TYPE_RNG_TERM)
+	C2S(WL_NAN_FRM_TYPE_RNG_REPORT)
+
+	default:
+		return "WL_NAN_FRM_TYPE_UNKNOWN";
+	}
+}
+
+static const char *nan_event_cause_to_str(u8 cause)
+{
+	switch (cause) {
+	C2S(WL_NAN_DP_TERM_WITH_INACTIVITY)
+	C2S(WL_NAN_DP_TERM_WITH_FSM_DESTROY)
+	C2S(WL_NAN_DP_TERM_WITH_PEER_DP_END)
+	C2S(WL_NAN_DP_TERM_WITH_STALE_NDP)
+	C2S(WL_NAN_DP_TERM_WITH_DISABLE)
+	C2S(WL_NAN_DP_TERM_WITH_NDI_DEL)
+	C2S(WL_NAN_DP_TERM_WITH_PEER_HB_FAIL)
+	C2S(WL_NAN_DP_TERM_WITH_HOST_IOVAR)
+	C2S(WL_NAN_DP_TERM_WITH_ESTB_FAIL)
+	C2S(WL_NAN_DP_TERM_WITH_SCHED_REJECT);
+		break;
+
+	default:
+		return "WL_NAN_EVENT_CAUSE_UNKNOWN";
 	}
 }
 
@@ -2423,6 +2476,9 @@ wl_cfgnan_check_nan_disable_pending(struct bcm_cfg80211 *cfg,
 		 * rely on dhd_stop context to do the nan clean up work and
 		 * just do return from delayed WQ based on state check.
 		 */
+
+		DHD_NAN_WAKE_UNLOCK(cfg->pub);
+
 		if (is_sync_reqd == true) {
 			cancel_delayed_work_sync(&cfg->nan_disable);
 		} else {
@@ -2963,6 +3019,9 @@ wl_cfgnan_delayed_disable(struct work_struct *work)
 		WL_INFORM_MEM(("nan is in disabled state\n"));
 	}
 	rtnl_unlock();
+
+	DHD_NAN_WAKE_UNLOCK(cfg->pub);
+
 	return;
 }
 
@@ -3420,7 +3479,7 @@ process_resp_buf(void *iov_resp,
 
 int
 wl_cfgnan_cancel_ranging(struct net_device *ndev,
-	struct bcm_cfg80211 *cfg, uint8 range_id, uint8 flags, uint32 *status)
+	struct bcm_cfg80211 *cfg, uint8 *range_id, uint8 flags, uint32 *status)
 {
 	bcm_iov_batch_buf_t *nan_buf = NULL;
 	s32 ret = BCME_OK;
@@ -3435,14 +3494,19 @@ wl_cfgnan_cancel_ranging(struct net_device *ndev,
 
 	NAN_DBG_ENTER();
 
+	if (*range_id == 0) {
+		WL_ERR(("Invalid Range ID\n"));
+		ret = BCME_BADARG;
+		goto fail;
+	}
 	if (cfg->nancfg.version >= NAN_RANGE_EXT_CANCEL_SUPPORT_VER) {
 		size_of_iov = sizeof(rng_cncl);
 	} else {
-		size_of_iov = sizeof(range_id);
+		size_of_iov = sizeof(*range_id);
 	}
 
 	bzero(&rng_cncl, sizeof(rng_cncl));
-	rng_cncl.range_id = range_id;
+	rng_cncl.range_id = *range_id;
 	rng_cncl.flags = flags;
 
 	nan_buf = MALLOCZ(cfg->osh, nan_buf_size);
@@ -3487,7 +3551,7 @@ wl_cfgnan_cancel_ranging(struct net_device *ndev,
 			&rng_cncl, size_of_iov);
 	} else {
 		(void)memcpy_s(sub_cmd->data, nan_iov_data->nan_iov_len,
-			&range_id, size_of_iov);
+			range_id, size_of_iov);
 	}
 
 	nan_buf->is_set = true;
@@ -3496,10 +3560,13 @@ wl_cfgnan_cancel_ranging(struct net_device *ndev,
 	ret = wl_cfgnan_execute_ioctl(ndev, cfg, nan_buf, nan_buf_size, status,
 			(void*)resp_buf, NAN_IOCTL_BUF_SIZE);
 	if (unlikely(ret) || unlikely(*status)) {
-		WL_ERR(("Range ID %d cancel failed ret %d status %d \n", range_id, ret, *status));
+		WL_ERR(("Range ID %d cancel failed ret %d status %d \n", *range_id, ret, *status));
 		goto fail;
 	}
-	WL_MEM(("Range cancel with Range ID [%d] successfull\n", range_id));
+	WL_MEM(("Range cancel with Range ID [%d] successfull\n", *range_id));
+
+	/* Resetting range id */
+	*range_id = 0;
 fail:
 	if (nan_buf) {
 		MFREE(cfg->osh, nan_buf, NAN_IOCTL_BUF_SIZE);
@@ -3694,8 +3761,8 @@ wl_cfgnan_terminate_directed_rtt_sessions(struct net_device *ndev,
 	for (i = 0; i < NAN_MAX_RANGING_INST; i++) {
 		ranging_inst = &cfg->nan_ranging_info[i];
 		if (ranging_inst->range_id && ranging_inst->range_type == RTT_TYPE_NAN_DIRECTED) {
-			if (ranging_inst->range_status == NAN_RANGING_IN_PROGRESS) {
-				ret =  wl_cfgnan_cancel_ranging(ndev, cfg, ranging_inst->range_id,
+			if (NAN_RANGING_IS_IN_PROG(ranging_inst->range_status)) {
+				ret =  wl_cfgnan_cancel_ranging(ndev, cfg, &ranging_inst->range_id,
 					NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
 				if (unlikely(ret) || unlikely(status)) {
 					WL_ERR(("nan range cancel failed ret = %d status = %d\n",
@@ -3728,13 +3795,18 @@ wl_cfgnan_suspend_geofence_rng_session(struct net_device *ndev,
 	nan_ranging_inst_t *ranging_inst = NULL;
 	struct ether_addr* peer_addr = NULL;
 	struct bcm_cfg80211 *cfg = wl_get_cfg(ndev);
+	int suspend_req_dropped_at = 0;
 #ifdef RTT_SUPPORT
 	dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
 	rtt_geofence_target_info_t *geofence_target_info;
+#endif /* RTT_SUPPORT */
 
+	UNUSED_PARAMETER(suspend_req_dropped_at);
+#ifdef RTT_SUPPORT
 	geofence_target_info = dhd_rtt_get_geofence_current_target(dhd);
 	if (!geofence_target_info) {
 		WL_DBG(("No Geofencing Targets, suspend req dropped\n"));
+		suspend_req_dropped_at = 1;
 		goto exit;
 	}
 	peer_addr = &geofence_target_info->peer_addr;
@@ -3742,31 +3814,33 @@ wl_cfgnan_suspend_geofence_rng_session(struct net_device *ndev,
 	if (peer && memcmp(peer_addr, peer, ETHER_ADDR_LEN)) {
 		WL_DBG(("Geofencing Ranging not in progress with given peer,"
 			" suspend req dropped\n"));
+		suspend_req_dropped_at = 2;
 		goto exit;
 	}
 
 	ranging_inst = wl_cfgnan_check_for_ranging(cfg, peer_addr);
 	if (dhd_rtt_get_geofence_rtt_state(dhd) == FALSE) {
 		WL_DBG(("Geofencing Ranging not in progress, suspend req dropped\n"));
+		suspend_req_dropped_at = 3;
 		goto exit;
 	}
 
 #endif /* RTT_SUPPORT */
 
 	if (ranging_inst) {
-		if (ranging_inst->range_status != NAN_RANGING_IN_PROGRESS) {
+		if (!NAN_RANGING_IS_IN_PROG(ranging_inst->range_status)) {
 			WL_DBG(("Ranging Inst with peer not in progress, "
 			" suspend req dropped\n"));
+			suspend_req_dropped_at = 4;
 			goto exit;
 		}
 		cancel_flags |= NAN_RNG_TERM_FLAG_IMMEDIATE;
 		ret =  wl_cfgnan_cancel_ranging(ndev, cfg,
-				ranging_inst->range_id, cancel_flags, &status);
+				&ranging_inst->range_id, cancel_flags, &status);
 		if (unlikely(ret) || unlikely(status)) {
 			WL_ERR(("Geofence Range suspended failed, err = %d, status = %d,"
-				" range_id = %d, suspend_reason = %d, " MACDBG " \n",
-				ret, status, ranging_inst->range_id,
-				suspend_reason, MAC2STRDBG(peer_addr)));
+				"suspend_reason = %d, " MACDBG " \n",
+				ret, status, suspend_reason, MAC2STRDBG(peer_addr)));
 		}
 		ranging_inst->range_status = NAN_RANGING_REQUIRED;
 		WL_INFORM_MEM(("Geofence Range suspended, range_id = %d,"
@@ -3786,6 +3860,16 @@ exit:
 		wl_cfgnan_disc_result_on_geofence_cancel(cfg, ranging_inst);
 	}
 
+	if (suspend_req_dropped_at) {
+		if (ranging_inst) {
+			WL_INFORM_MEM(("Ranging Suspend Req with peer: " MACDBG
+				", dropped at = %d\n", MAC2STRDBG(&ranging_inst->peer_addr),
+				suspend_req_dropped_at));
+		} else {
+			WL_INFORM_MEM(("Ranging Suspend Req dropped at = %d\n",
+				suspend_req_dropped_at));
+		}
+	}
 	return ret;
 }
 
@@ -3817,11 +3901,6 @@ wl_cfgnan_terminate_ranging_session(struct bcm_cfg80211 *cfg,
 	int8 index;
 #endif /* RTT_SUPPORT */
 
-	if (ranging_inst->range_id == 0) {
-		/* Make sure, range inst is valid in caller */
-		return;
-	}
-
 	if (ranging_inst->num_svc_ctx != 0) {
 		/*
 		 * Make sure to remove all svc_insts for range_inst
@@ -3831,9 +3910,9 @@ wl_cfgnan_terminate_ranging_session(struct bcm_cfg80211 *cfg,
 	}
 
 	/* Cancel Ranging if in progress for rang_inst */
-	if (ranging_inst->range_status == NAN_RANGING_IN_PROGRESS) {
+	if (NAN_RANGING_IS_IN_PROG(ranging_inst->range_status)) {
 		ret =  wl_cfgnan_cancel_ranging(bcmcfg_to_prmry_ndev(cfg),
-				cfg, ranging_inst->range_id,
+				cfg, &ranging_inst->range_id,
 				NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
 		if (unlikely(ret) || unlikely(status)) {
 			WL_ERR(("%s:nan range cancel failed ret = %d status = %d\n",
@@ -3946,11 +4025,9 @@ wl_cfgnan_trigger_geofencing_ranging(struct net_device *dev,
 		goto exit;
 	}
 
-	ASSERT(ranging_inst->range_status !=
-		NAN_RANGING_IN_PROGRESS);
+	ASSERT(!NAN_RANGING_IS_IN_PROG(ranging_inst->range_status));
 
-	if (ranging_inst->range_status !=
-			NAN_RANGING_IN_PROGRESS) {
+	if (!NAN_RANGING_IS_IN_PROG(ranging_inst->range_status)) {
 		WL_DBG(("Trigger range request with first svc in svc list of range inst\n"));
 		ret = wl_cfgnan_trigger_ranging(bcmcfg_to_prmry_ndev(cfg),
 				cfg, ranging_inst, ranging_inst->svc_idx[0],
@@ -4019,8 +4096,8 @@ wl_cfgnan_check_disc_result_for_ranging(struct bcm_cfg80211 *cfg,
 		ASSERT(ranging_inst->range_role != NAN_RANGING_ROLE_INVALID);
 
 		/* For responder role, range state should be in progress only */
-		ASSERT(ranging_inst->range_role == NAN_RANGING_ROLE_INITIATOR ||
-			ranging_inst->range_status == NAN_RANGING_IN_PROGRESS);
+		ASSERT((ranging_inst->range_role == NAN_RANGING_ROLE_INITIATOR) ||
+			NAN_RANGING_IS_IN_PROG(ranging_inst->range_status));
 
 		/*
 		 * On rec disc result with ranging required, add target, if
@@ -4029,7 +4106,7 @@ wl_cfgnan_check_disc_result_for_ranging(struct bcm_cfg80211 *cfg,
 		 */
 		add_target = ((ranging_inst->range_role ==  NAN_RANGING_ROLE_RESPONDER) ||
 			((ranging_inst->range_role ==  NAN_RANGING_ROLE_INITIATOR) &&
-			(ranging_inst->range_status != NAN_RANGING_IN_PROGRESS)));
+			(!NAN_RANGING_IS_IN_PROG(ranging_inst->range_status))));
 		if (add_target) {
 			WL_DBG(("Add Range request to geofence target list\n"));
 #ifdef RTT_SUPPORT
@@ -4089,7 +4166,7 @@ wl_cfgnan_ranging_allowed(struct bcm_cfg80211 *cfg)
 
 	for (i =  0; i < NAN_MAX_RANGING_INST; i++) {
 		ranging_inst = &cfg->nan_ranging_info[i];
-		if (ranging_inst->range_status == NAN_RANGING_IN_PROGRESS) {
+		if (NAN_RANGING_IS_IN_PROG(ranging_inst->range_status)) {
 			rng_progress_count++;
 		}
 	}
@@ -4112,12 +4189,12 @@ wl_cfgnan_cancel_rng_responders(struct net_device *ndev,
 
 	for (i =  0; i < NAN_MAX_RANGING_INST; i++) {
 		ranging_inst = &cfg->nan_ranging_info[i];
-		if (ranging_inst->range_status == NAN_RANGING_IN_PROGRESS &&
-			ranging_inst->range_role == NAN_RANGING_ROLE_RESPONDER) {
+		if (NAN_RANGING_IS_IN_PROG(ranging_inst->range_status) &&
+			(ranging_inst->range_role == NAN_RANGING_ROLE_RESPONDER)) {
 			num_resp_cancelled++;
 			WL_ERR((" Cancelling responder\n"));
 			ret = wl_cfgnan_cancel_ranging(bcmcfg_to_prmry_ndev(cfg), cfg,
-				ranging_inst->range_id, NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
+				&ranging_inst->range_id, NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
 			if (unlikely(ret) || unlikely(status)) {
 				WL_ERR(("wl_cfgnan_cancel_rng_responders: Failed to cancel"
 					" existing ranging, ret = (%d)\n", ret));
@@ -4143,8 +4220,18 @@ wl_cfgnan_handle_ranging_ind(struct bcm_cfg80211 *cfg,
 	bool accept = TRUE;
 	nan_ranging_inst_t tmp_rng_inst;
 	struct net_device *ndev = bcmcfg_to_prmry_ndev(cfg);
+	struct ether_addr * peer_addr = &(rng_ind->peer_m_addr);
+	uint8 rtt_invalid_state;
 
 	WL_DBG(("Trigger range response\n"));
+
+	/* Check if ranging is allowed */
+	rtt_invalid_state = dhd_rtt_invalid_states(ndev, peer_addr);
+	if (rtt_invalid_state != RTT_STATE_VALID) {
+		WL_INFORM_MEM(("Cannot allow ranging due to reason %d \n", rtt_invalid_state));
+		ret = BCME_NORESOURCE;
+		goto done;
+	}
 
 	/* check if we are already having any ranging session with peer.
 	* If so below are the policies
@@ -4152,7 +4239,7 @@ wl_cfgnan_handle_ranging_ind(struct bcm_cfg80211 *cfg,
 	* then silently teardown the current session and accept the REQ.
 	* If we are in direct rtt initiator role then reject.
 	*/
-	ranging_inst = wl_cfgnan_check_for_ranging(cfg, &(rng_ind->peer_m_addr));
+	ranging_inst = wl_cfgnan_check_for_ranging(cfg, peer_addr);
 	if (ranging_inst) {
 		if (ranging_inst->range_type == RTT_TYPE_NAN_GEOFENCE ||
 			ranging_inst->range_role == NAN_RANGING_ROLE_RESPONDER) {
@@ -4169,7 +4256,7 @@ wl_cfgnan_handle_ranging_ind(struct bcm_cfg80211 *cfg,
 					cancel_flags);
 			} else {
 				ret = wl_cfgnan_cancel_ranging(ndev, cfg,
-					ranging_inst->range_id, cancel_flags, &status);
+					&ranging_inst->range_id, cancel_flags, &status);
 				if (unlikely(ret)) {
 					WL_ERR(("wl_cfgnan_handle_ranging_ind: Failed to cancel"
 						" existing ranging, ret = (%d)\n", ret));
@@ -4342,8 +4429,8 @@ wl_cfgnan_trigger_ranging(struct net_device *ndev, struct bcm_cfg80211 *cfg,
 				&ranging_inst->range_id, WL_NAN_CMD_RANGE_REQUEST);
 		WL_INFORM_MEM(("ranging instance returned %d\n", ranging_inst->range_id));
 	}
-	/* Preventing continuous range requests */
-	ranging_inst->range_status = NAN_RANGING_IN_PROGRESS;
+	/* Move Ranging instance to set up in progress state */
+	ranging_inst->range_status = NAN_RANGING_SETUP_IN_PROGRESS;
 
 fail:
 	if (nan_buf) {
@@ -5031,7 +5118,8 @@ wl_cfgnan_publish_handler(struct net_device *ndev,
 		WL_ERR(("%s: fail to handle pub, ret=%d\n", __FUNCTION__, ret));
 		goto fail;
 	}
-	WL_INFORM_MEM(("[NAN] Service published for instance id:%d\n", cmd_data->pub_id));
+	WL_INFORM_MEM(("[NAN] Service published for instance id:%d is_update %d\n",
+		cmd_data->pub_id, cmd_data->svc_update));
 
 fail:
 	NAN_MUTEX_UNLOCK();
@@ -5117,7 +5205,8 @@ wl_cfgnan_subscribe_handler(struct net_device *ndev,
 		WL_ERR(("%s: fail to handle svc, ret=%d\n", __FUNCTION__, ret));
 		goto fail;
 	}
-	WL_INFORM_MEM(("[NAN] Service subscribed for instance id:%d\n", cmd_data->sub_id));
+	WL_INFORM_MEM(("[NAN] Service subscribed for instance id:%d is_update %d\n",
+		cmd_data->sub_id, cmd_data->svc_update));
 
 fail:
 	NAN_MUTEX_UNLOCK();
@@ -6117,7 +6206,7 @@ wl_cfgnan_data_path_request_handler(struct net_device *ndev,
 	/* cancel any ongoing RTT session with peer
 	* as we donot support DP and RNG to same peer
 	*/
-	wl_cfgnan_clear_peer_ranging(cfg, &cmd_data->mac_addr,
+	wl_cfgnan_handle_dp_ranging_concurrency(cfg, &cmd_data->mac_addr,
 		RTT_GEO_SUSPN_HOST_NDP_TRIGGER);
 #endif /* RTT_SUPPORT */
 
@@ -6310,8 +6399,9 @@ wl_cfgnan_data_path_request_handler(struct net_device *ndev,
 	ret = wl_cfgnan_execute_ioctl(ndev, cfg, nan_buf, data_size,
 			&(cmd_data->status), resp_buf, data_size + NAN_IOVAR_NAME_SIZE);
 	if (unlikely(ret) || unlikely(cmd_data->status)) {
-		WL_ERR(("nan data path request handler failed, ret = %d status %d\n",
-				ret, cmd_data->status));
+		WL_ERR(("nan data path request handler failed, ret = %d,"
+			" status %d, peer: " MACDBG "\n",
+			ret, cmd_data->status, MAC2STRDBG(&(cmd_data->mac_addr))));
 		goto fail;
 	}
 
@@ -6321,8 +6411,8 @@ wl_cfgnan_data_path_request_handler(struct net_device *ndev,
 				ndp_instance_id, WL_NAN_CMD_DATA_DATAREQ);
 		cmd_data->ndp_instance_id = *ndp_instance_id;
 	}
-	WL_INFORM_MEM(("[NAN] DP request successfull (ndp_id:%d)\n",
-		cmd_data->ndp_instance_id));
+	WL_INFORM_MEM(("[NAN] DP request successfull (ndp_id:%d), peer: " MACDBG " \n",
+		cmd_data->ndp_instance_id, MAC2STRDBG(&cmd_data->mac_addr)));
 	/* Add peer to data ndp peer list */
 	wl_cfgnan_data_add_peer(cfg, &datareq->peer_mac);
 
@@ -6443,6 +6533,13 @@ wl_cfgnan_data_path_response_handler(struct net_device *ndev,
 
 	/* Interface is not mandatory, when it is a reject from framework */
 	if (dataresp->status != WL_NAN_DP_STATUS_REJECTED) {
+#ifdef RTT_SUPPORT
+		/* cancel any ongoing RTT session with peer
+		* as we donot support DP and RNG to same peer
+		*/
+		wl_cfgnan_handle_dp_ranging_concurrency(cfg, &cmd_data->mac_addr,
+			RTT_GEO_SUSPN_HOST_NDP_TRIGGER);
+#endif /* RTT_SUPPORT */
 		/* Retrieve mac from given iface name */
 		wdev = wl_cfg80211_get_wdev_from_ifname(cfg,
 				(char *)cmd_data->ndp_iface);
@@ -6792,34 +6889,67 @@ fail:
 #ifdef RTT_SUPPORT
 static s32
 wl_cfgnan_clear_peer_ranging(struct bcm_cfg80211 *cfg,
-	struct ether_addr *peer, int reason)
+		nan_ranging_inst_t *rng_inst, int reason)
 {
 	uint32 status = 0;
-	nan_ranging_inst_t *rng_inst = NULL;
 	int err = BCME_OK;
 	struct net_device *ndev = bcmcfg_to_prmry_ndev(cfg);
 	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 
-	rng_inst = wl_cfgnan_check_for_ranging(cfg, peer);
-	if (rng_inst) {
 		if (rng_inst->range_type == RTT_TYPE_NAN_GEOFENCE) {
 			err = wl_cfgnan_suspend_geofence_rng_session(ndev,
-				peer, reason, 0);
+				&rng_inst->peer_addr, reason, 0);
 		} else {
 			if (rng_inst->range_type == RTT_TYPE_NAN_DIRECTED) {
 				dhd_rtt_handle_nan_rtt_session_end(dhdp,
-					peer);
+				&rng_inst->peer_addr);
 			}
 			/* responder */
 			err = wl_cfgnan_cancel_ranging(ndev, cfg,
-				rng_inst->range_id,
+				&rng_inst->range_id,
 				NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
+			WL_INFORM_MEM(("Removing Ranging Instance " MACDBG " reason %d\n",
+				MAC2STRDBG(&(rng_inst->peer_addr)), reason));
 			bzero(rng_inst, sizeof(*rng_inst));
+	}
+
+	if (err) {
+		WL_ERR(("Failed to stop ranging with peer, err : %d\n", err));
+	}
+
+	return err;
+}
+/*
+ * Handle NDP-Ranging Concurrency,
+ * for incoming DP Reuest
+ * Cancel Ranging with same peer
+ * Cancel Ranging for set up in prog
+ * for all other peers
+ */
+static s32
+wl_cfgnan_handle_dp_ranging_concurrency(struct bcm_cfg80211 *cfg,
+		struct ether_addr *peer, int reason)
+{
+	uint8 i = 0;
+	nan_ranging_inst_t *cur_rng_inst = NULL;
+	nan_ranging_inst_t *rng_inst = NULL;
+	int err = BCME_OK;
+
+	cur_rng_inst = wl_cfgnan_check_for_ranging(cfg, peer);
+
+	for (i = 0; i < NAN_MAX_RANGING_INST; i++) {
+		rng_inst = &cfg->nan_ranging_info[i];
+		if (rng_inst->in_use) {
+			if ((cur_rng_inst && cur_rng_inst == rng_inst) ||
+				NAN_RANGING_SETUP_IS_IN_PROG(rng_inst->range_status)) {
+				err = wl_cfgnan_clear_peer_ranging(cfg, rng_inst,
+						RTT_GEO_SUSPN_HOST_NDP_TRIGGER);
+			}
 		}
 	}
 
 	if (err) {
-		WL_ERR(("Failed to stop ranging with peer %d\n", err));
+		WL_ERR(("Failed to handle dp ranging concurrency, err : %d\n", err));
 	}
 
 	return err;
@@ -6917,7 +7047,7 @@ wl_nan_dp_cmn_event_data(struct bcm_cfg80211 *cfg, void *event_data,
 				/* cancel any ongoing RTT session with peer
 				* as we donot support DP and RNG to same peer
 				*/
-				wl_cfgnan_clear_peer_ranging(cfg, &ev_dp->peer_nmi,
+			wl_cfgnan_handle_dp_ranging_concurrency(cfg, &ev_dp->peer_nmi,
 					RTT_GEO_SUSPN_PEER_NDP_TRIGGER);
 #endif /* RTT_SUPPORT */
 				ret = BCME_OK;
@@ -6996,9 +7126,10 @@ wl_nan_dp_cmn_event_data(struct bcm_cfg80211 *cfg, void *event_data,
 			/* Remove peer from data ndp peer list */
 			wl_cfgnan_data_remove_peer(cfg, &ev_dp->peer_nmi);
 			wl_cfgnan_update_dp_info(cfg, false, nan_event_data->ndp_id);
+			WL_INFORM_MEM(("DP_END for REMOTE_NMI: " MACDBG " with %s\n",
+				MAC2STRDBG(&ev_dp->peer_nmi),
+				nan_event_cause_to_str(ev_dp->event_cause)));
 #ifdef RTT_SUPPORT
-			WL_INFORM_MEM(("DP_END for REMOTE_NMI: " MACDBG "\n",
-				MAC2STRDBG(&ev_dp->peer_nmi)));
 			rng_inst = wl_cfgnan_check_for_ranging(cfg, &ev_dp->peer_nmi);
 			if (rng_inst) {
 				/* Trigger/Reset geofence RTT */
@@ -7033,11 +7164,6 @@ wl_cfgnan_check_ranging_cond(nan_svc_info_t *svc_info, uint32 distance,
 	uint32 ingress_limit = svc_info->ingress_limit;
 	uint32 egress_limit = svc_info->egress_limit;
 
-	WL_DBG(("wl_cfgnan_check_ranging_cond: Checking the svc ranging cnd %d"
-		" distance %d prev_distance %d, range_rep_ev_once %d\n",
-		svc_ind, distance, prev_distance, range_rep_ev_once));
-	WL_DBG(("wl_cfgnan_check_ranging_cond: Checking the SVC ingress and"
-		" egress limits %d %d\n", ingress_limit, egress_limit));
 	if (svc_ind & NAN_RANGE_INDICATION_CONT) {
 		*ranging_ind = NAN_RANGE_INDICATION_CONT;
 		notify = TRUE;
@@ -7053,10 +7179,10 @@ wl_cfgnan_check_ranging_cond(nan_svc_info_t *svc_info, uint32 distance,
 				(!IN_GEOFENCE(ingress_limit, egress_limit,
 				prev_distance))) {
 				notify = TRUE;
-				if (distance < ingress_limit) {
-					*ranging_ind = NAN_RANGE_INDICATION_INGRESS;
-				} else {
+				if (distance > prev_distance) {
 					*ranging_ind = NAN_RANGE_INDICATION_EGRESS;
+				} else {
+					*ranging_ind = NAN_RANGE_INDICATION_INGRESS;
 				}
 				WL_ERR(("\n%s :Svc has geofence Ind %d res_ind %d\n",
 					__FUNCTION__, __LINE__, *ranging_ind));
@@ -7092,6 +7218,10 @@ wl_cfgnan_check_ranging_cond(nan_svc_info_t *svc_info, uint32 distance,
 		goto done;
 	}
 done:
+	WL_INFORM_MEM(("SVC ranging Ind %d distance %d prev_distance %d, "
+		"range_rep_ev_once %d ingress_limit %d egress_limit %d notify %d\n",
+		svc_ind, distance, prev_distance, range_rep_ev_once,
+		ingress_limit, egress_limit, notify));
 	svc_info->svc_range_status |= SVC_RANGE_REP_EVENT_ONCE;
 	return notify;
 }
@@ -7116,26 +7246,29 @@ wl_cfgnan_notify_disc_with_ranging(struct bcm_cfg80211 *cfg,
 	nan_ranging_inst_t *rng_inst, nan_event_data_t *nan_event_data, uint32 distance)
 {
 	nan_svc_info_t *svc_info;
-	bool notify_svc = FALSE;
+	bool notify_svc = TRUE;
 	nan_disc_result_cache *disc_res = cfg->nan_disc_cache;
 	uint8 ranging_ind = 0;
 	int ret = BCME_OK;
 	int i = 0, j = 0;
+	uint8 result_present = nan_event_data->ranging_result_present;
 
 	for (i = 0; i < MAX_SUBSCRIBES; i++) {
 		svc_info = rng_inst->svc_idx[i];
-		if (svc_info) {
-			if (nan_event_data->ranging_result_present) {
+		if (svc_info && svc_info->ranging_required) {
+			/* if ranging_result is present notify disc result if
+			* result satisfies the conditions.
+			* if ranging_result is not present, then notify disc
+			* result with out ranging info.
+			*/
+			if (result_present) {
 				notify_svc = wl_cfgnan_check_ranging_cond(svc_info, distance,
-						&ranging_ind, rng_inst->prev_distance_mm);
+					&ranging_ind, rng_inst->prev_distance_mm);
 				nan_event_data->ranging_ind = ranging_ind;
-			} else {
-				/* Report only if ranging was needed */
-				notify_svc = svc_info->ranging_required;
 			}
-			WL_DBG(("wl_cfgnan_notify_disc_with_ranging: Ranging notify for"
-				" svc_id %d, notify %d and ind %d\n",
-				svc_info->svc_id, notify_svc, ranging_ind));
+			WL_INFORM_MEM(("Ranging notify for svc_id %d, notify %d and ind %d"
+				" distance_mm %d result_present %d\n", svc_info->svc_id, notify_svc,
+				ranging_ind, distance, result_present));
 		} else {
 			continue;
 		}
@@ -7164,17 +7297,16 @@ wl_cfgnan_notify_disc_with_ranging(struct bcm_cfg80211 *cfg,
 #ifdef RTT_SUPPORT
 static int32
 wl_cfgnan_handle_directed_rtt_report(struct bcm_cfg80211 *cfg,
-	nan_ranging_inst_t *rng_inst, uint8 rng_id)
+	nan_ranging_inst_t *rng_inst)
 {
 	int ret = BCME_OK;
 	uint32 status;
 	dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
 
 	ret = wl_cfgnan_cancel_ranging(bcmcfg_to_prmry_ndev(cfg), cfg,
-			rng_id, NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
+			&rng_inst->range_id, NAN_RNG_TERM_FLAG_IMMEDIATE, &status);
 	if (unlikely(ret) || unlikely(status)) {
-		WL_ERR(("%s:nan range cancel failed ret = %d status = %d\n",
-			__FUNCTION__, ret, status));
+		WL_ERR(("nan range cancel failed ret = %d status = %d\n", ret, status));
 	}
 	dhd_rtt_handle_nan_rtt_session_end(dhd, &rng_inst->peer_addr);
 
@@ -7255,7 +7387,7 @@ wl_cfgnan_process_range_report(struct bcm_cfg80211 *cfg,
 					rng_inst, RTT_SCHED_RNG_RPT_GEOFENCE);
 		}
 	} else if (rng_inst->range_type == RTT_TYPE_NAN_DIRECTED) {
-		wl_cfgnan_handle_directed_rtt_report(cfg, rng_inst, range_res->rng_id);
+		wl_cfgnan_handle_directed_rtt_report(cfg, rng_inst);
 	}
 
 exit:
@@ -7266,37 +7398,22 @@ exit:
 static void
 wl_nan_print_status(wl_nan_conf_status_t *nstatus)
 {
-	printf("> enabled: %d\n", nstatus->enabled);
-	printf("> Current NMI: " MACDBG "\n", MAC2STRDBG(nstatus->nmi.octet));
-	printf("> Current cluster_id: " MACDBG "\n", MAC2STRDBG(nstatus->cid.octet));
+	WL_INFORM_MEM(("> NMI: " MACDBG " Cluster_ID: " MACDBG "\n",
+		MAC2STRDBG(nstatus->nmi.octet),
+		MAC2STRDBG(nstatus->cid.octet)));
 
-	switch (nstatus->role) {
-	case WL_NAN_ROLE_AUTO:
-		printf("> role: %s (%d)\n", "auto", nstatus->role);
-		break;
-	case WL_NAN_ROLE_NON_MASTER_NON_SYNC:
-		printf("> role: %s (%d)\n", "non-master-non-sync", nstatus->role);
-		break;
-	case WL_NAN_ROLE_NON_MASTER_SYNC:
-		printf("> role: %s (%d)\n", "non-master-sync", nstatus->role);
-		break;
-	case WL_NAN_ROLE_MASTER:
-		printf("> role: %s (%d)\n", "master", nstatus->role);
-		break;
-	case WL_NAN_ROLE_ANCHOR_MASTER:
-		printf("> role: %s (%d)\n", "anchor-master", nstatus->role);
-		break;
-	default:
-		printf("> role: %s (%d)\n", "undefined", nstatus->role);
-		break;
-	}
+	WL_INFORM_MEM(("> NAN Device Role %s\n", nan_role_to_str(nstatus->role)));
+	WL_INFORM_MEM(("> Social channels: %d, %d\n",
+		nstatus->social_chans[0], nstatus->social_chans[1]));
 
-	printf("> social channels: %d, %d\n",
-		nstatus->social_chans[0], nstatus->social_chans[1]);
-	printf("> master_rank: " NMRSTR "\n", NMR2STR(nstatus->mr));
-	printf("> amr        : " NMRSTR "\n", NMR2STR(nstatus->amr));
-	printf("> hop_count: %d\n", nstatus->hop_count);
-	printf("> ambtt: %d\n", nstatus->ambtt);
+	WL_INFORM_MEM(("> Master_rank: " NMRSTR " AMR : " NMRSTR " Hop Count : %d, AMBTT : %d\n",
+		NMR2STR(nstatus->mr),
+		NMR2STR(nstatus->amr),
+		nstatus->hop_count,
+		nstatus->ambtt));
+
+	WL_INFORM_MEM(("> Cluster TSF_H: %x , Cluster TSF_L: %x\n",
+		nstatus->cluster_tsf_h, nstatus->cluster_tsf_l));
 }
 
 static void
@@ -7348,14 +7465,15 @@ wl_cfgnan_reset_geofence_ranging(struct bcm_cfg80211 *cfg,
 	int8 index = DHD_RTT_INVALID_TARGET_INDEX;
 	bool geofence_state = dhd_rtt_get_geofence_rtt_state(dhd);
 	bool retry = FALSE;
+	nan_ranging_inst_t *lrng_inst = NULL;
+	int i;
 
-	WL_INFORM_MEM(("wl_cfgnan_reset_geofence_ranging, sched_reason = %d, cur_idx = %d, "
-		"geofence_interval = %d\n", sched_reason, rtt_status->geofence_cfg.cur_target_idx,
+	WL_INFORM_MEM(("sched_reason = %d, cur_idx = %d, geofence_interval = %d\n",
+		sched_reason, rtt_status->geofence_cfg.cur_target_idx,
 		rtt_status->geofence_cfg.geofence_rtt_interval));
 	cur_idx = dhd_rtt_get_geofence_cur_target_idx(dhd);
 	if (cur_idx == -1) {
-		WL_INFORM_MEM(("wl_cfgnan_reset_geofence_ranging, "
-			"Removing Ranging Instance " MACDBG "\n",
+		WL_INFORM_MEM(("Removing Ranging Instance " MACDBG "\n",
 			MAC2STRDBG(&(rng_inst->peer_addr))));
 		bzero(rng_inst, sizeof(*rng_inst));
 		/* Cancel pending retry timer if any */
@@ -7372,7 +7490,7 @@ wl_cfgnan_reset_geofence_ranging(struct bcm_cfg80211 *cfg,
 	dhd_rtt_get_geofence_target(dhd,
 		&rng_inst->peer_addr, &index);
 	if ((sched_reason == RTT_SCHED_RTT_RETRY_GEOFENCE) &&
-		(rng_inst->range_status == NAN_RANGING_IN_PROGRESS)) {
+		(NAN_RANGING_IS_IN_PROG(rng_inst->range_status))) {
 		/* if we are already inprogress with peer
 		* (responder or directed RTT initiator)
 		* retyr later if sched_reason = timeout
@@ -7427,6 +7545,22 @@ wl_cfgnan_reset_geofence_ranging(struct bcm_cfg80211 *cfg,
 		retry = TRUE;
 	}
 
+	if (sched_reason == RTT_SCHED_RTT_RETRY_GEOFENCE) {
+		/*
+		 * In case of retry, check for running responder ranging,
+		 * and retry later if any, in progress
+		 */
+		for (i = 0; i < NAN_MAX_RANGING_INST; i++) {
+			lrng_inst = &cfg->nan_ranging_info[i];
+			if (lrng_inst->in_use &&
+				(lrng_inst->range_role == NAN_RANGING_ROLE_RESPONDER) &&
+				(NAN_RANGING_IS_IN_PROG(lrng_inst->range_status))) {
+					retry = TRUE;
+					break;
+			}
+		}
+	}
+
 	if (retry && (rtt_status->geofence_cfg.geofence_rtt_interval >= 0)) {
 		/* Move to first target and retry over a timer */
 		WL_DBG(("Retry over a timer, cur_idx = %d\n",
@@ -7465,6 +7599,14 @@ wl_cfgnan_reset_geofence_ranging_for_cur_target(dhd_pub_t *dhd, int sched_reason
 		WL_DBG(("reset ranging request dropped: ranging instance null\n"));
 		goto exit;
 	}
+
+	if (NAN_RANGING_IS_IN_PROG(ranging_inst->range_status) &&
+		(ranging_inst->range_type == RTT_TYPE_NAN_GEOFENCE)) {
+		WL_DBG(("Ranging is already in progress for Current target "
+			MACDBG " \n", MAC2STRDBG(&ranging_inst->peer_addr)));
+		goto exit;
+	}
+
 	wl_cfgnan_reset_geofence_ranging(cfg, ranging_inst, sched_reason);
 
 exit:
@@ -7556,8 +7698,9 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 		ret = -EINVAL;
 		goto exit;
 	}
-	WL_DBG((">> Nan Event Received: %s (num=%d, len=%d)\n",
-		nan_event_to_str(event_num), event_num, data_len));
+
+	WL_INFORM_MEM((">> Nan Event Received: %s (num=%d, len=%d)\n",
+			nan_event_to_str(event_num), event_num, data_len));
 
 #ifdef WL_NAN_DEBUG
 	prhex("nan_event_data:", event_data, data_len);
@@ -7606,9 +7749,10 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 			goto exit;
 		}
 		nan_event_data->nan_de_evt_type = event_num;
-#ifdef WL_NAN_DEBUG
-		wl_nan_print_status(nstatus);
-#endif /* WL_NAN_DEBUG */
+		if (event_num == WL_NAN_EVENT_ROLE) {
+			wl_nan_print_status(nstatus);
+		}
+
 		if (event_num == WL_NAN_EVENT_START) {
 			OSL_SMP_WMB();
 			cfg->nancfg.nan_event_recvd = true;
@@ -7684,8 +7828,8 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 		wl_nan_event_txs_t *txs = (wl_nan_event_txs_t *)xtlv->data;
 		wl_nan_event_sd_txs_t *txs_sd = NULL;
 		if (txs->status == WL_NAN_TXS_SUCCESS) {
-			WL_INFORM_MEM(("TXS success for type %d token %d\n",
-				txs->type, txs->host_seq));
+			WL_INFORM_MEM(("TXS success for type %s(%d) token %d\n",
+				nan_frm_type_to_str(txs->type), txs->type, txs->host_seq));
 			nan_event_data->status = NAN_STATUS_SUCCESS;
 			ret = memcpy_s(nan_event_data->nan_reason,
 				sizeof(nan_event_data->nan_reason),
@@ -7699,8 +7843,9 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 			/* TODO : populate status based on reason codes
 			For now adding it as no ACK, so that app/framework can retry
 			*/
-			WL_INFORM_MEM(("TXS failed for type %d status %d token %d\n",
-				txs->type, txs->status, txs->host_seq));
+			WL_INFORM_MEM(("TXS failed for type %s(%d) status %d token %d\n",
+				nan_frm_type_to_str(txs->type), txs->type, txs->status,
+				txs->host_seq));
 			nan_event_data->status = NAN_STATUS_NO_OTA_ACK;
 			ret = memcpy_s(nan_event_data->nan_reason,
 				sizeof(nan_event_data->nan_reason),
@@ -7721,6 +7866,24 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 				nan_event_data->local_inst_id = txs_sd->inst_id;
 			} else {
 				WL_ERR(("Invalid params in TX status for trasnmit followup"));
+				ret = -EINVAL;
+				goto exit;
+			}
+		} else if (txs->type == WL_NAN_FRM_TYPE_RNG_RESP) {
+			xtlv = (bcm_xtlv_t *)(txs->opt_tlvs);
+			if (txs->opt_tlvs_len && xtlv->id == WL_NAN_XTLV_RNG_TXS) {
+				wl_nan_range_txs_t* txs_rng_resp = (wl_nan_range_txs_t*)xtlv->data;
+				nan_ranging_inst_t *rng_inst =
+					wl_cfgnan_get_rng_inst_by_id(cfg, txs_rng_resp->range_id);
+				if (rng_inst &&
+					NAN_RANGING_SETUP_IS_IN_PROG(rng_inst->range_status)) {
+					/* range set up is over now, move to range in progress */
+					rng_inst->range_status = NAN_RANGING_SESSION_IN_PROGRESS;
+					WL_DBG(("Txs for range resp, rng_id = %d\n",
+						rng_inst->range_id));
+				}
+			} else {
+				WL_ERR(("Invalid params in TX status for range response"));
 				ret = -EINVAL;
 				goto exit;
 			}
@@ -7753,6 +7916,9 @@ wl_cfgnan_notify_nan_status(struct bcm_cfg80211 *cfg,
 					(xtlv_len >= sizeof(*cache_entry))) {
 				cache_entry = &cache_data->cache_exp_list[entry_idx];
 				/* Handle ranging cases for cache timeout */
+				WL_INFORM_MEM(("WL_NAN_EVENT_DISC_CACHE_TIMEOUT peer: " MACDBG
+					" l_id:%d r_id:%d\n", MAC2STRDBG(&cache_entry->r_nmi_addr),
+					cache_entry->l_sub_id, cache_entry->r_pub_id));
 				wl_cfgnan_ranging_clear_publish(cfg, &cache_entry->r_nmi_addr,
 					cache_entry->l_sub_id);
 				/* Invalidate local cache info */

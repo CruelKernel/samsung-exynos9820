@@ -344,7 +344,7 @@ static int lookup_tree(const char *file_path, int attribute, struct file *f)
 		if (cur_item->feature_type & attribute) {
 #ifdef DEFEX_INTEGRITY_ENABLE
 			/* Integrity acceptable only for files */
-			if (cur_item->feature_type & feature_is_file) {
+			if ((cur_item->feature_type & feature_is_file) && f) {
 				if (defex_integrity_default(file_path)
 					&& defex_check_integrity(f, cur_item->integrity))
 					return DEFEX_INTEGRITY_FAIL;
@@ -367,24 +367,15 @@ static int lookup_tree(const char *file_path, int attribute, struct file *f)
 }
 #endif /* DEFEX_USE_PACKED_RULES */
 
-int rules_lookup(const struct path *dpath, int attribute, struct file *f)
+int rules_lookup2(const char *target_file, int attribute, struct file *f)
 {
 	int ret = 0;
 #if (defined(DEFEX_SAFEPLACE_ENABLE) || defined(DEFEX_IMMUTABLE_ENABLE) || defined(DEFEX_PED_ENABLE))
 	static const char system_root_txt[] = "/system_root";
-	char *target_file, *buff;
 #ifndef DEFEX_USE_PACKED_RULES
 	int i, count, end;
 	const struct static_rule *current_rule;
 #endif
-	buff = kzalloc(PATH_MAX, GFP_ATOMIC);
-	if (!buff)
-		return ret;
-	target_file = d_path(dpath, buff, PATH_MAX);
-	if (IS_ERR(target_file)) {
-		kfree(buff);
-		return ret;
-	}
 	if (check_system_mount() &&
 		!strncmp(target_file, system_root_txt, sizeof(system_root_txt) - 1))
 		target_file += (sizeof(system_root_txt) - 1);
@@ -409,10 +400,26 @@ int rules_lookup(const struct path *dpath, int attribute, struct file *f)
 		}
 	}
 #endif /* DEFEX_USE_PACKED_RULES */
-	kfree(buff);
 #endif
 	return ret;
 }
+
+int rules_lookup(const struct path *dpath, int attribute, struct file *f)
+{
+	int ret = 0;
+	char *target_file, *buff;
+
+	buff = kzalloc(PATH_MAX, GFP_ATOMIC);
+	if (!buff)
+		return ret;
+	target_file = d_path(dpath, buff, PATH_MAX);
+	if (!IS_ERR(target_file)) {
+		ret = rules_lookup2(target_file, attribute, f);
+	}
+	kfree(buff);
+	return ret;
+}
+
 
 int __init defex_init_sysfs(void)
 {

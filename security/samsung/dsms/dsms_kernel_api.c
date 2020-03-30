@@ -26,7 +26,7 @@
 #define VALUE_STRLEN (22)
 
 // Command: <<DSMS_BINARY>> <<feature_code>> <<detail>> <<value>>
-#define DSMS_BINARY "/system/bin/dsms"
+#define DSMS_BINARY "/system/bin/umh/dsms"
 static const char *dsms_command[] = {
 	DSMS_BINARY,
 	NULL,

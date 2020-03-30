@@ -215,7 +215,9 @@ struct g2d_task_data {
 #define G2D_PERF_LAYER_SCALING		(1 << 1)
 #define G2D_PERF_LAYER_YUV2P		(1 << 4)
 #define G2D_PERF_LAYER_YUV2P_82		(1 << 5)
-#define G2D_PERF_LAYER_FMTMASK		(3 << 4)
+#define G2D_PERF_LAYER_COMPRESSED	(1 << 6)
+
+#define G2D_PERF_LAYER_FMTMASK		(7 << 4)
 
 /*
  * struct g2d_performance_frame_data - description of needed performance.

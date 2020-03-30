@@ -17,7 +17,7 @@ ssize_t	uh_log_read(struct file *filep, char __user *buf, size_t size, loff_t *o
 
 	if(!*offset){
 		log_buf_size = 0;
-		while(((char *)log_addr)[log_buf_size] != 0 && log_buf_size != UH_LOG_SIZE)
+		while(log_buf_size < UH_LOG_SIZE && ((char *)log_addr)[log_buf_size] != 0)
 			log_buf_size++;
 	}
 
@@ -60,4 +60,3 @@ static void __exit uh_log_exit(void)
 
 module_init(uh_log_init);
 module_exit(uh_log_exit);
-

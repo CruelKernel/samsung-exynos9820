@@ -39,12 +39,6 @@ config ECT_DUMP
 	default n
 	depends on ECT
 
-config EPX
-	bool "Enable Exynos Performance Box"
-	default y
-	depends on ARCH_EXYNOS
-	depends on !SAMSUNG_PRODUCT_SHIP
-
 config EXYNOS_RGT
 	bool "Exynos Regulator Debug Support"
 	depends on REGULATOR

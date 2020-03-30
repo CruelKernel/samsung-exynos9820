@@ -15,4 +15,9 @@ ccflags-$(CONFIG_ICD_USE_TZDEV) += -Idrivers/misc/tzdev/3.0
 else
 ccflags-$(CONFIG_ICD_USE_TZDEV) += -Idrivers/misc/tzdev
 endif
-obj-$(CONFIG_ICD_USE_TRUSTONIC) += kinibi_oemflag.o
+
+ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6768"))
+	obj-y += kinibi_atf_oemflag.o
+else
+	obj-$(CONFIG_ICD_USE_TRUSTONIC) += kinibi_oemflag.o
+endif

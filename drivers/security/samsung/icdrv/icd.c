@@ -98,7 +98,7 @@ static bool cmdline_check(struct task_struct *task, const char *str)
 	first_arg = get_first_argument_from_cmdline(task);
 	if (first_arg != NULL) {
 		pr_debug("IOF: first_arg: %s\n", first_arg);
-		if (!strncmp(first_arg, str, PATH_MAX))
+		if (!strncmp(first_arg, str, strlen(str)))
 			ret = true;
 	}
 	kfree(first_arg);
@@ -174,11 +174,11 @@ static void icd_hook_integrity_reset(struct task_struct *task)
 	}
 
 	oemid = affected_oemflag_id(task, execpath);
-	pr_info("ICD: %s: %u\n", execpath, oemid);
 
 	if (oemid != OEMFLAG_NONE) {
 		int ret;
 
+		pr_info("ICD: %s: %u\n", execpath, oemid);
 		ret = oem_flags_set(oemid);
 		if (ret)
 			pr_err("oem_flags_set err: %d\n", ret);

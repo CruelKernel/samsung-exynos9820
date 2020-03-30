@@ -397,7 +397,9 @@ enum max77705_usbc_SYSMsg {
 	SYSMSG_SBUx_GND_SHORT = 0x62,
 	SYSMSG_SBUx_5V_SHORT = 0x63,
 
+#ifdef CONFIG_MAX77705_GRL_ENABLE
 	SYSMSG_SET_GRL = 0x64,
+#endif
 
 	SYSMSG_PD_CCx_5V_SHORT = 0x65,
 	SYSMSG_PD_SBUx_5V_SHORT = 0x66,
@@ -410,6 +412,15 @@ enum max77705_usbc_SYSMsg {
 	SYSERROR_POWER_NEGO = 0x80,
 	SYSERROR_CCRP_HIGH = 0x90, /* PD Charger Connected while Water state */
 	SYSERROR_CCRP_LOW = 0x91, /* PD Charger Disconnected while Water state */
+
+	/* TypeC earphone is attached during PD charging */
+	SYSMSG_10K_TO_22K = 0xB0,
+	SYSMSG_10K_TO_56K = 0xB1,
+	SYSMSG_22K_TO_56K = 0xB2,
+	/* TypeC earphone is detached during PD charging */
+	SYSMSG_56K_TO_22K = 0xB3,
+	SYSMSG_56K_TO_10K = 0xB4,
+	SYSMSG_22K_TO_10K = 0xB5,
 };
 
 enum max77705_pdmsg {
@@ -565,7 +576,11 @@ typedef enum {
 	OPCODE_READ_SELFTEST = 0x59,
 	OPCODE_SAMSUNG_GPIO5_CONTROL = 0x5B,
 	OPCODE_SAMSUNG_READ_MESSAGE = 0x5D,
+#ifdef CONFIG_MAX77705_GRL_ENABLE
 	OPCODE_GRL_COMMAND = 0x70,
+#else
+	OPCODE_FW_OPCODE_CLEAR = 0x70,
+#endif
 	OPCODE_RAM_TEST_COMMAND = 0xD1,
 	OPCODE_NONE = 0xff,
 } max77705_opcode_list;

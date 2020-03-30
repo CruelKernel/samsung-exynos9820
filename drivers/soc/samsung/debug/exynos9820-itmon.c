@@ -1718,10 +1718,11 @@ static ssize_t itmon_timeout_fix_val_store(struct kobject *kobj,
 				const char *buf, size_t count)
 {
 	unsigned long val = 0;
+	int ret = 0;
 	struct itmon_platdata *pdata = g_itmon->pdata;
 
-	kstrtoul(buf, 16, &val);
-	if (val > 0 && val <= 0xFFFFF)
+	ret = kstrtoul(buf, 16, &val);
+	if (!ret && val > 0UL && val <= 0xFFFFFUL)
 		pdata->sysfs_tmout_val = val;
 
 	return count;

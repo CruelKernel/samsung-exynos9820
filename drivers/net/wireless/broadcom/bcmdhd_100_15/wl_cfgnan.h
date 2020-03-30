@@ -1,7 +1,7 @@
 /*
  * Neighbor Awareness Networking
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.h 854674 2019-12-10 03:31:41Z $
+ * $Id: wl_cfgnan.h 863133 2020-02-06 10:16:12Z $
  */
 
 #ifndef _wl_cfgnan_h_
@@ -73,7 +73,7 @@
 #define WL_AVAIL_BANDWIDTH_5G	WL_CHANSPEC_BW_80
 #define NAN_RANGING_PERIOD WL_AVAIL_PERIOD_1024
 #define NAN_SYNC_DEF_AWAKE_DW	1
-#define NAN_RNG_TERM_FLAG_NONE 0
+#define NAN_RNG_TERM_FLAG_NONE	0
 
 #define NAN_BLOOM_LENGTH_DEFAULT        240u
 #define NAN_SRF_MAX_MAC (NAN_BLOOM_LENGTH_DEFAULT / ETHER_ADDR_LEN)
@@ -165,7 +165,8 @@
 #define NAN_SVC_INST_SIZE 32u
 #define NAN_START_STOP_TIMEOUT	5000
 #define NAN_MAX_NDP_PEER 8u
-#define NAN_DISABLE_CMD_DELAY	2000u
+#define NAN_DISABLE_CMD_DELAY			530u
+#define NAN_WAKELOCK_TIMEOUT			(NAN_DISABLE_CMD_DELAY + 100u)
 
 #define NAN_NMI_RAND_PVT_CMD_VENDOR		(1 << 31)
 #define NAN_NMI_RAND_CLUSTER_MERGE_ENAB		(1 << 30)
@@ -216,6 +217,9 @@
 #define NAN_RNG_REQ_ACCEPTED_BY_HOST    1
 #define NAN_RNG_REQ_REJECTED_BY_HOST    0
 
+#define NAN_RNG_REQ_ACCEPTED_BY_PEER	0
+#define NAN_RNG_REQ_REJECTED_BY_PEER	1
+
 #define NAN_RNG_GEOFENCE_MAX_RETRY_CNT	3u
 
 /*
@@ -230,7 +234,8 @@ typedef uint32 nan_data_path_id;
 typedef enum nan_range_status {
 	NAN_RANGING_INVALID = 0,
 	NAN_RANGING_REQUIRED = 1,
-	NAN_RANGING_IN_PROGRESS = 2
+	NAN_RANGING_SETUP_IN_PROGRESS = 2,
+	NAN_RANGING_SESSION_IN_PROGRESS = 3
 } nan_range_status_t;
 
 typedef enum nan_range_role {
@@ -249,6 +254,13 @@ typedef struct nan_svc_inst {
 
 /* Range Status Flag bits for svc info */
 #define SVC_RANGE_REP_EVENT_ONCE 0x01
+
+#define NAN_RANGING_SETUP_IS_IN_PROG(status) \
+	((status) == NAN_RANGING_SETUP_IN_PROGRESS)
+
+#define NAN_RANGING_IS_IN_PROG(status) \
+	(((status) == NAN_RANGING_SETUP_IN_PROGRESS) || \
+	((status) == NAN_RANGING_SESSION_IN_PROGRESS))
 
 typedef struct nan_svc_info {
 	bool valid;
@@ -764,7 +776,7 @@ void wl_cfgnan_process_range_report(struct bcm_cfg80211 *cfg,
 	wl_nan_ev_rng_rpt_ind_t *range_res);
 #endif /* RTT_SUPPORT */
 int wl_cfgnan_cancel_ranging(struct net_device *ndev,
-	struct bcm_cfg80211 *cfg, uint8 range_id, uint8 flags, uint32 *status);
+	struct bcm_cfg80211 *cfg, uint8 *range_id, uint8 flags, uint32 *status);
 bool wl_cfgnan_ranging_allowed(struct bcm_cfg80211 *cfg);
 uint8 wl_cfgnan_cancel_rng_responders(struct net_device *ndev,
 	struct bcm_cfg80211 *cfg);

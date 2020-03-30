@@ -1935,8 +1935,12 @@ static inline int input_available_p(struct tty_struct *tty, int poll)
 
 	if (ldata->icanon && !L_EXTPROC(tty))
 		return ldata->canon_head != ldata->read_tail;
-	else
+	else {
+		if (amt == 0)
+			pr_err("%s WARNIGN: amt is zero! poll:%d TIME_CHAR:%d MIN_CHAR:%d\n",
+					__func__, poll, TIME_CHAR(tty), MIN_CHAR(tty));
 		return ldata->commit_head - ldata->read_tail >= amt;
+	}
 }
 
 /**

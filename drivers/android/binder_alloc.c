@@ -525,12 +525,12 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	buffer->extra_buffers_size = extra_buffers_size;
 	if (is_async) {
 		alloc->free_async_space -= size + sizeof(struct binder_buffer);
-		if ((system_server_pid == alloc->pid) && (alloc->free_async_space <= 102400)) { // 100K
-			pr_info("%d: [free_size<100K] binder_alloc_buf size %zd async free %zd\n",
+		if ((system_server_pid == alloc->pid) && (alloc->free_async_space <= 153600)) { // 150K
+			pr_info("%d: [free_size<150K] binder_alloc_buf size %zd async free %zd\n",
                                  alloc->pid, size, alloc->free_async_space);
                 }
-		if ((system_server_pid == alloc->pid) && (size >= 204800)) { // 200K
-			pr_info("%d: [alloc_size>200K] binder_alloc_buf size %zd async free %zd\n",
+		if ((system_server_pid == alloc->pid) && (size >= 122880)) { // 120K
+			pr_info("%d: [alloc_size>120K] binder_alloc_buf size %zd async free %zd\n",
 				alloc->pid, size, alloc->free_async_space);
 		}
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC_ASYNC,

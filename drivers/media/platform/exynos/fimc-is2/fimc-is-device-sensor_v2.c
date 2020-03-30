@@ -1714,7 +1714,6 @@ int fimc_is_sensor_open(struct fimc_is_device_sensor *device,
 	 */
 	clear_bit(FIMC_IS_SENSOR_S_INPUT, &device->state);
 	clear_bit(FIMC_IS_SENSOR_S_CONFIG, &device->state);
-	clear_bit(FIMC_IS_SENSOR_DRIVING, &device->state);
 	clear_bit(FIMC_IS_SENSOR_STAND_ALONE, &device->state);
 	clear_bit(FIMC_IS_SENSOR_FRONT_START, &device->state);
 	clear_bit(FIMC_IS_SENSOR_FRONT_DTP_STOP, &device->state);

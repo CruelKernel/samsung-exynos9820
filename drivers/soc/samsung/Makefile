@@ -20,8 +20,6 @@ obj-$(CONFIG_EXYNOS_FLEXPMU_DBG)        += exynos-flexpmu-dbg.o
 # ACPM
 obj-$(CONFIG_EXYNOS_ACPM)       += acpm/
 
-obj-$(CONFIG_EPX)             += epx.o
-
 # ECT
 obj-$(CONFIG_ECT)               += ect_parser.o
 obj-$(CONFIG_EXYNOS_BCM_DBG)    += exynos-bcm_dbg.o exynos-bcm_dbg-dt.o

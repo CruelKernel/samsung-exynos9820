@@ -147,6 +147,8 @@ struct page *alloc_zeroed_page(void)
 		if (trylock_page(page)) {
 			list_del(&page->lru);
 			unset_kzerod_page(page);
+			/* The page will be served soon. Let's clean it up */
+			page->mapping = NULL;
 			unlock_page(page);
 			nr_prezeroed--;
 		} else {
@@ -155,16 +157,28 @@ struct page *alloc_zeroed_page(void)
 	}
 	spin_unlock(&prezeroed_lock);
 
-	/* The page will be served soon. Let's clean it up */
-	if (page)
-		page->mapping = NULL;
-
 	if (!kzerod_wmark_low_ok() && (kzerod_state != KZEROD_RUNNING)) {
 		trace_printk("kzerod: %d to %d\n", kzerod_state,
 			     KZEROD_RUNNING);
 		kzerod_state = KZEROD_RUNNING,
 		wake_up(&kzerod_wait);
 	}
+
+	/*
+	 * putback to prezereoed list and return NULL
+	 * if page is being touched by migration context
+	 */
+	if (page && page_count(page) != 1) {
+		lock_page(page);
+		spin_lock(&prezeroed_lock);
+		set_kzerod_page(page);
+		list_add_tail(&page->lru, &prezeroed_list);
+		nr_prezeroed++;
+		spin_unlock(&prezeroed_lock);
+		unlock_page(page);
+		page = NULL;
+	}
+
 	return page;
 }
 

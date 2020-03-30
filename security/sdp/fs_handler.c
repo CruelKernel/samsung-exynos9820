@@ -107,7 +107,9 @@ static int __handle_request(sdp_fs_handler_request_t *req, char *ret) {
 
     nlh = nlmsg_put(skb_in, 0, 0, NLMSG_DONE, nl_msg_size, 0);
     NETLINK_CB(skb_in).dst_group = 0;
-    memcpy(nlmsg_data(nlh), nl_msg, nl_msg_size);
+    if(nlh != NULL) {
+        memcpy(nlmsg_data(nlh), nl_msg, nl_msg_size);
+    }
 
     mutex_lock(&g_send_mutex);
     rc = nlmsg_unicast(g_sock, skb_in, g_user_pid);

@@ -184,7 +184,7 @@ static LIST_HEAD(drvdata_list);
 #define HSI2C_SLV_ADDR_SLV(x)			((x & 0x3ff) << 0)
 #define HSI2C_SLV_ADDR_MAS(x)			((x & 0x3ff) << 10)
 #define HSI2C_MASTER_ID(x)			((x & 0xff) << 24)
-#define MASTER_ID(x)				((x & 0x7) + 0x08)
+#define MASTER_ID(x)				((((x << 1) + 0x1) & 0x7) + 0x08)
 
 /*
  * Controller operating frequency, timing values for operation
@@ -755,7 +755,10 @@ static int exynos5_i2c_xfer_msg(struct exynos5_i2c *i2c,
 	i2c_addr = readl(i2c->regs + HSI2C_ADDR);
 	i2c_addr &= ~(0x3ff << 10);
 	i2c_addr &= ~(0x3ff << 0);
-	i2c_addr &= ~(0xff << 24);
+	if (i2c->speed_mode != HSI2C_HIGH_SPD) {
+		i2c_addr &= ~(0xff << 24);
+		i2c_addr |= (0x7 << 24);
+	}
 	i2c_addr |= ((msgs->addr & 0x7f) << 10);
 	writel(i2c_addr, i2c->regs + HSI2C_ADDR);
 

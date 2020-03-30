@@ -230,6 +230,7 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	}
 
 	index = filter_cstate(dev->cpu, index);
+
 	/* Take note of the planned idle state. */
 	sched_idle_set_state(target_state, index);
 	trace_cpu_idle_rcuidle(index, dev->cpu);

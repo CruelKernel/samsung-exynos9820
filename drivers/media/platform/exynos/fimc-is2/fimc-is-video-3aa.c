@@ -577,11 +577,27 @@ static int fimc_is_3aa_video_s_ctrl(struct file *file, void *priv,
 	case V4L2_CID_IS_INTENT:
 		value = (unsigned int)ctrl->value;
 		captureIntent = (value >> 16) & 0x0000FFFF;
-		if (captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_OIS_DYNAMIC_SHOT) {
+		switch (captureIntent) {
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_DEBLUR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_OIS_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_EXPOSURE_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_MFHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_HANDHELD:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLHDR_VEHDR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_VENR_DYNAMIC_SHOT:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_LLS_FLASH:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_HANDHELD_FAST:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD_FAST:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_SUPER_NIGHT_SHOT_TRIPOD_LE_FAST:
+		case AA_CAPTURE_INTENT_STILL_CAPTURE_CROPPED_REMOSAIC_DYNAMIC_SHOT:
 			captureCount = value & 0x0000FFFF;
-		} else {
+			break;
+		default:
 			captureIntent = ctrl->value;
 			captureCount = 0;
+			break;
 		}
 		device->group_3aa.intent_ctl.captureIntent = captureIntent;
 		device->group_3aa.intent_ctl.vendor_captureCount = captureCount;
@@ -675,6 +691,33 @@ static int fimc_is_3aa_video_s_ext_ctrl(struct file *file, void *priv,
 			}
 			break;
 #endif
+		case V4L2_CID_SENSOR_SET_CAPTURE_INTENT_INFO:
+		{
+			struct fimc_is_group *head;
+			struct capture_intent_info_t info;
+
+			ret = copy_from_user(&info, ext_ctrl->ptr, sizeof(struct capture_intent_info_t));
+			if (ret) {
+				err("fail to copy_from_user, ret(%d)\n", ret);
+				goto p_err;
+			}
+
+			head = GET_HEAD_GROUP_IN_DEVICE(FIMC_IS_DEVICE_ISCHAIN, (&device->group_3aa));
+
+			head->intent_ctl.captureIntent = info.captureIntent;
+			head->intent_ctl.vendor_captureCount = info.captureCount;
+			head->intent_ctl.vendor_captureEV = info.captureEV;
+
+			if (info.captureIntent == AA_CAPTURE_INTENT_STILL_CAPTURE_OIS_MULTI) {
+				head->remainIntentCount = 2;
+			} else {
+				head->remainIntentCount = 0;
+			}
+
+			info("s_ext_ctrl SET_CAPTURE_INTENT_INFO, intent(%d) count(%d) captureEV(%d) remainIntentCount(%d)\n",
+				info.captureIntent, info.captureCount, info.captureEV, head->remainIntentCount);
+			break;
+		}
 		default:
 			ctrl.id = ext_ctrl->id;
 			ctrl.value = ext_ctrl->value;

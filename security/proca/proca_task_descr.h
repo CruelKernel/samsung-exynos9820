@@ -15,8 +15,20 @@
  */
 
 #ifndef __LINUX_PROCA_TASK_DESCR_H
+#define __LINUX_PROCA_TASK_DESCR_H
 
-#include <linux/proca.h>
+#include <linux/file.h>
+#include <linux/types.h>
+#include <linux/sched.h>
+
+#include "proca_identity.h"
+
+struct proca_task_descr {
+	struct task_struct *task;
+	struct proca_identity proca_identity;
+	struct hlist_node pid_map_node;
+	struct hlist_node app_name_map_node;
+};
 
 struct proca_task_descr *create_proca_task_descr(struct task_struct *task,
 						 struct proca_identity *ident);

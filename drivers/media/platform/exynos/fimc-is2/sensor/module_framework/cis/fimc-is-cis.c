@@ -585,14 +585,17 @@ int sensor_cis_wait_streamon(struct v4l2_subdev *subdev)
 	    goto p_err;
 	}
 
+	if (cis_data->dual_slave == true) {
+		time_out_cnt = time_out_cnt * 2;
+	} else if (cis_data->cur_frame_us_time > 300000 && cis_data->cur_frame_us_time < 2000000) {
+		time_out_cnt = (cis_data->cur_frame_us_time / CIS_STREAM_ON_WAIT_TIME) + 100; // for Hyperlapse night mode
+	}
+
 	I2C_MUTEX_LOCK(cis->i2c_lock);
 	ret = fimc_is_sensor_read8(client, 0x0005, &sensor_fcount);
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 	if (ret < 0)
 	    err("i2c transfer fail addr(%x), val(%x), ret = %d\n", 0x0005, sensor_fcount, ret);
-
-	if (cis_data->dual_slave == true)
-		time_out_cnt = time_out_cnt * 2;
 
 	/*
 	 * Read sensor frame counter (sensor_fcount address = 0x0005)

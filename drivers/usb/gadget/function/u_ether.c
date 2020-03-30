@@ -692,6 +692,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	unsigned long	tx_timeout;
 	bool eth_multi_pkt_xfer = 0;
 	bool eth_supports_multi_frame = 0;
+	bool eth_is_fixed = 0;
 
 	if (dev->en_timer) {
 		hrtimer_cancel(&dev->tx_timer);
@@ -704,6 +705,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		cdc_filter = dev->port_usb->cdc_filter;
 		eth_multi_pkt_xfer = dev->port_usb->multi_pkt_xfer;
 		eth_supports_multi_frame = dev->port_usb->supports_multi_frame;
+		eth_is_fixed = dev->port_usb->is_fixed;
 	} else {
 		in = NULL;
 		cdc_filter = 0;
@@ -811,9 +813,19 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		dev->tx_skb_hold_count = 0;
 		spin_unlock_irqrestore(&dev->lock, flags);
 	} else {
-		req->length = skb->len;
-		req->buf = skb->data;
-		req->context = skb;
+		if (eth_is_fixed) { /* ncm case */
+			req->length = skb->len;
+			req->buf = skb->data;
+			req->context = skb;
+		} else { /* rndis case : multipacket not used */
+			req->length = skb->len;
+			/* copy skb data */
+			memcpy(req->buf, skb->data,
+				skb->len);
+			dev_kfree_skb_any(skb);
+			req->context = NULL;
+		}
+
 	}
 
 	if (dev->port_usb) {

@@ -399,16 +399,16 @@ static ssize_t sec_hw_param_ap_info_show(struct kobject *kobj,
 				"\"ASV_MIF\":\"%d\",", asv_ids_information(mifg));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
-				"\"IDS_BIG\":\"%d\"", asv_ids_information(bids));
+				"\"IDS_BIG\":\"%d\",", asv_ids_information(bids));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
-				"\"IDS_MID\":\"%d\"", asv_ids_information(mids));
+				"\"IDS_MID\":\"%d\",", asv_ids_information(mids));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
-				"\"IDS_LIT\":\"%d\"", asv_ids_information(lids));
+				"\"IDS_LIT\":\"%d\",", asv_ids_information(lids));
 	info_size +=
 		snprintf((char *)(buf + info_size), DATA_SIZE - info_size,
-				"\"IDS_G3D\":\"%d\"", asv_ids_information(gids));
+				"\"IDS_G3D\":\"%d\",", asv_ids_information(gids));
 
 	return info_size;
 }

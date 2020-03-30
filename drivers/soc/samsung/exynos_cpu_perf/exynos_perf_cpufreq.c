@@ -185,7 +185,11 @@ static int cpufreq_log_thread(void *data)
 			}
 		}
 		// mif
+#if defined(CONFIG_SOC_EXYNOS9830) || defined(CONFIG_SOC_EXYNOS991)
+		mif = (uint)exynos_devfreq_get_domain_freq(devfreq_mif) / 1000;
+#else
 		mif = (uint)cal_dfs_cached_get_rate(cal_id_mif) / 1000;
+#endif
 		// gpu
 		gpu_util = gpu_dvfs_get_utilization();
 		gpu = (uint)cal_dfs_cached_get_rate(cal_id_g3d) / 1000;
@@ -236,6 +240,7 @@ static void cpufreq_log_stop(void)
 	}	\
 	static ssize_t name##_seq_write(struct file *file, const char __user *buffer, size_t count, loff_t *off) {	\
 		char buf[20];	\
+		count = (count > 20)? 20 : count;	\
 		if (copy_from_user(buf, buffer, count) != 0)	\
 			return -EFAULT;	\
 		sscanf(buf, "%d", &name);	\

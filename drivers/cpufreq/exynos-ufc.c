@@ -233,6 +233,9 @@ static ssize_t store_cpufreq_min_limit(struct kobject *kobj,
 			if (sse_mode && r_ufc_32)
 				r_ufc = r_ufc_32;
 
+			if (policy->freq_table == NULL)
+				continue;
+
 			index = cpufreq_frequency_table_target(policy, freq, CPUFREQ_RELATION_L);
 			req_limit_freq = r_ufc->info.freq_table[index].limit_freq;
 			req_last_freq = r_ufc->info.freq_table[index].last_freq;
@@ -351,6 +354,9 @@ static ssize_t store_cpufreq_min_limit_wo_boost(struct kobject *kobj,
 		if (r_ufc) {
 			if (sse_mode && r_ufc_32)
 				r_ufc = r_ufc_32;
+
+			if (policy->freq_table == NULL)
+				continue;
 
 			index = cpufreq_frequency_table_target(policy, freq, CPUFREQ_RELATION_L);
 			req_limit_freq = r_ufc->info.freq_table[index].limit_freq;
@@ -539,6 +545,9 @@ static void cpufreq_max_limit_update(int input_freq)
 		if (policy && r_ufc) {
 			if (sse_mode && r_ufc_32)
 				r_ufc = r_ufc_32;
+
+			if (policy->freq_table == NULL)
+				continue;
 
 			index = cpufreq_frequency_table_target(policy, freq, CPUFREQ_RELATION_L);
 			req_limit_freq = r_ufc->info.freq_table[index].limit_freq;

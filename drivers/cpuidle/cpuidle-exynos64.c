@@ -19,6 +19,7 @@
 #include <linux/of.h>
 #include <linux/psci.h>
 #include <linux/cpuidle_profiler.h>
+#include <linux/exynos-ucc.h>
 
 #include <asm/tlbflush.h>
 #include <asm/cpuidle.h>
@@ -376,7 +377,7 @@ static int __init exynos_idle_init(void)
 	cpufreq_register_notifier(&exynos_cpufreq_trans_nb,
 					CPUFREQ_TRANSITION_NOTIFIER);
 
-
+	init_exynos_ucc();
 
 	pr_info("Exynos cpuidle driver Initialized\n");
 

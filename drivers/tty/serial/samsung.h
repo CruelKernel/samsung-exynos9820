@@ -31,6 +31,7 @@ struct s3c24xx_uart_info {
 	unsigned long		tx_fifomask;
 	unsigned long		tx_fifoshift;
 	unsigned long		tx_fifofull;
+	unsigned int		rts_trig_shift;
 	unsigned int		def_clk_sel;
 	unsigned long		num_clks;
 	unsigned long		clksel_mask;
@@ -86,6 +87,7 @@ struct s3c24xx_uart_port {
 	struct pinctrl_state 	*uart_pinctrl_default;
 	struct pinctrl *default_uart_pinctrl;
 	unsigned int		rts_control;
+	unsigned int		rts_trig_level;
 
 	/* reference to platform data */
 	struct s3c2410_uartcfg		*cfg;

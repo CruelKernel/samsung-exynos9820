@@ -270,6 +270,7 @@ struct sec_debug_kernel_data {
 	uint64_t dev_shutdown_end;
 	uint64_t dev_shutdown_duration;
 	uint64_t dev_shutdown_func;
+	uint64_t sysrq_ptr;
 	struct watchdogd_info wddinfo;
 	struct bad_stack_info bsi;
 	struct suspend_dev_info sdi;
@@ -324,6 +325,7 @@ enum {
 	DSS_KEVENT_IDLE,
 	DSS_KEVENT_THRM,
 	DSS_KEVENT_ACPM,
+	DSS_KEVENT_MFRQ,
 };
 
 extern unsigned int get_smpl_warn_number(void);
@@ -642,7 +644,6 @@ struct sec_debug_next {
 	struct sec_debug_ess_info ss_info;
 	struct sec_debug_spinlock_info rlock;
 	struct sec_debug_kernel_data kernd;
-	size_t sysrq_ptr;
 
 	struct sec_debug_auto_comment auto_comment;
 	struct sec_debug_shared_buffer extra_info;

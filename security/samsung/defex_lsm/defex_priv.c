@@ -39,6 +39,17 @@ ssize_t task_defex_privesc_show_status(struct defex_privesc *privesc_obj,
 	return snprintf(buf, 3, "%u\n", privesc_obj->status);
 }
 
+ssize_t task_defex_privesc_show_tgid(struct defex_privesc *privesc_obj,
+		struct privesc_attribute *attr, char *buf)
+{
+#ifdef DEFEX_PED_BASED_ON_TGID_ENABLE
+	unsigned int val = 1;
+#else
+	unsigned int val = 0;
+#endif
+	return snprintf(buf, 3, "%u\n", val);
+}
+
 ssize_t task_defex_privesc_attr_store(struct kobject *kobj,
 		struct attribute *attr, const char *buf, size_t len)
 {
@@ -111,9 +122,12 @@ void task_defex_destroy_privesc_obj(struct defex_privesc *privesc)
 static struct privesc_attribute privesc_status_attribute =
 	__ATTR(status, 0660, task_defex_privesc_show_status, task_defex_privesc_store_status);
 
+static struct privesc_attribute privesc_tgid_attribute =
+	__ATTR(tgid, 0444, task_defex_privesc_show_tgid, NULL);
 
 static struct attribute *privesc_default_attrs[] = {
 	&privesc_status_attribute.attr,
+	&privesc_tgid_attribute.attr,
 	NULL,
 };
 

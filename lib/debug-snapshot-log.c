@@ -262,6 +262,9 @@ unsigned long sec_debug_get_kevent_index_addr(int type)
 	case DSS_KEVENT_ACPM:
 		return virt_to_phys(&(dss_idx.acpm_log_idx));
 
+	case DSS_KEVENT_MFRQ:
+		return virt_to_phys(&(dss_idx.freq_misc_log_idx));
+
 	default:
 		return 0;
 	}

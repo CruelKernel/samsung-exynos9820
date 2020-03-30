@@ -143,8 +143,10 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int other_free = global_zone_page_state(NR_FREE_PAGES) - totalreserve_pages;
 	int other_file = global_node_page_state(NR_FILE_PAGES) -
 				global_node_page_state(NR_SHMEM) -
+				global_node_page_state(NR_UNEVICTABLE) -
 				total_swapcache_pages();
 	static DEFINE_RATELIMIT_STATE(lmk_rs, DEFAULT_RATELIMIT_INTERVAL, 1);
+	static DEFINE_RATELIMIT_STATE(lmk_rs2, 60 * HZ, 1);
 	unsigned long nr_cma_free;
 	int migratetype;
 #if defined(CONFIG_SWAP)
@@ -284,7 +286,8 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		lowmem_lmkcount++;
 		show_mem_extra_call_notifiers();
 		show_memory();
-		if ((selected_oom_score_adj <= 100) && (__ratelimit(&lmk_rs)))
+		if (((selected_oom_score_adj <= 100) && (__ratelimit(&lmk_rs))) ||
+				((min_score_adj <= 250) && (__ratelimit(&lmk_rs2))))
 			dump_tasks(NULL, NULL);
 	}
 

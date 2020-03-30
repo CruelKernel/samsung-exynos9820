@@ -321,7 +321,7 @@ early_param("sec_debug.fmm_lock_offset", sec_debug_fmm_lock_offset);
 static ssize_t store_FMM_lock(struct device *dev,
                 struct device_attribute *attr, const char *buf, size_t count)
 {
-       	char lock;
+	char lock;
 
 	sscanf(buf, "%c", &lock);
 	pr_info("%s: store %c in FMM_lock\n", __func__, lock);
@@ -753,9 +753,9 @@ void sec_debug_set_sysrq_crash(struct task_struct *task)
 #ifdef CONFIG_SEC_DEBUG_SYSRQ_KMSG
 		if (task) {
 			if (strcmp(task->comm, "init") == 0)
-				sdn->sysrq_ptr = sec_debug_get_curr_init_ptr();
+				sdn->kernd.sysrq_ptr = sec_debug_get_curr_init_ptr();
 			else
-				sdn->sysrq_ptr = dbg_snapshot_get_curr_ptr_for_sysrq();
+				sdn->kernd.sysrq_ptr = dbg_snapshot_get_curr_ptr_for_sysrq();
 #endif
 		}
 	}
@@ -879,6 +879,7 @@ static void sec_debug_set_essinfo(void)
 	init_ess_info(index++, "kevnt-idle");
 	init_ess_info(index++, "kevnt-thrm");
 	init_ess_info(index++, "kevnt-acpm");
+	init_ess_info(index++, "kevnt-mfrq");
 
 	for (; index < SD_NR_ESSINFO_ITEMS;)
 		init_ess_info(index++, "empty");

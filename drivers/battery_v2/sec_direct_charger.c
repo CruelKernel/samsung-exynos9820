@@ -161,7 +161,10 @@ static int sec_direct_chg_check_charging_source(struct sec_direct_charger_info *
 		(charger->batt_status == POWER_SUPPLY_STATUS_DISCHARGING))
 		return SEC_DIRECT_CHG_CHARGING_SOURCE_SWITCHING;
 
-	if (charger->direct_chg_done || (charger->capacity >= 95))
+	psy_do_property("battery", get,
+				POWER_SUPPLY_EXT_PROP_DIRECT_HAS_APDO, value);
+
+	if (charger->direct_chg_done || (charger->capacity >= 95) || !value.intval)
 		return SEC_DIRECT_CHG_CHARGING_SOURCE_SWITCHING;
 
 	return SEC_DIRECT_CHG_CHARGING_SOURCE_DIRECT;
@@ -519,6 +522,11 @@ static int sec_direct_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_DIRECT_ADC_CTRL:
 			psy_do_property(charger->pdata->direct_charger_name, set,
 				ext_psp, value);
+			break;
+		case POWER_SUPPLY_EXT_PROP_DIRECT_CLEAR_ERR:
+			/* If SRCCAP is changed by Src, clear DC err variables */
+			charger->dc_err = false;
+			charger->dc_retry_cnt = 0;
 			break;
  		default:
 			ret = psy_do_property(charger->pdata->main_charger_name, set, ext_psp, value);

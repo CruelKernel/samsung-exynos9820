@@ -2,7 +2,7 @@
  * Basic types and constants relating to 802.11ax/HE STA
  * This is a portion of 802.11ax definition. The rest are in 802.11.h.
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -349,14 +349,19 @@ typedef uint8 he_phy_cap_t[HE_PHY_CAP_INFO_SIZE];
 #define HE_MAC_MAX_AMPDU_EXP_ADOPT_VHT	(0)
 /* Max. AMPDU length =
  * 2^(20 + MAX_AMPDU_LEN_HE_EXPO_1) -1 (if this value in VHT CAP is 7) or
- * 2^(16 + MAX_AMPDU_LEN_HE_EXPO_1) -1 (if this value in HT CAP is 7).
+ * 2^(16 + MAX_AMPDU_LEN_HE_EXPO_1) -1 (if this value in HT CAP is 3).
  */
 #define HE_MAC_MAX_AMPDU_EXP_HE_1	(1)
 /* Max. AMPDU length =
  * 2^(20 + MAX_AMPDU_LEN_HE_EXPO_2) -1 (if this value in VHT CAP is 7) or
- * 2^(16 + MAX_AMPDU_LEN_HE_EXPO_2) -1 (if this value in HT CAP is 7).
+ * 2^(16 + MAX_AMPDU_LEN_HE_EXPO_2) -1 (if this value in HT CAP is 3).
  */
 #define HE_MAC_MAX_AMPDU_EXP_HE_2	(2)
+/* Max. AMPDU length =
+ * 2^(20 + MAX_AMPDU_LEN_HE_EXPO_3) -1 (if this value in VHT CAP is 7) or
+ * 2^(16 + MAX_AMPDU_LEN_HE_EXPO_3) -1 (if this value in HT CAP is 3).
+ */
+#define HE_MAC_MAX_AMPDU_EXP_HE_3	(3)
 
 /* HE PHY Capabilities values */
 /* b1-b7: Channel Width Support field */
@@ -637,8 +642,10 @@ typedef struct he_op_ie he_op_ie_t;
 #define HE_6G_OP_BW_80              2u
 #define HE_6G_OP_BW_160_80P80       3u
 
+/* Figure 9-787l Control field format in Draft P802.11ax_D5.0 */
 #define HE_6G_CTL_CHBW_MASK         0x03u
 #define HE_6G_OP_CTL_CHBW(ctl) (ctl & HE_6G_CTL_CHBW_MASK)
+#define HE_6G_CTL_DUP_BCN_MASK      0x04u
 
 /* HE 6G Operation info */
 BWL_PRE_PACKED_STRUCT struct he_6g_op_info {
@@ -662,11 +669,14 @@ BWL_PRE_PACKED_STRUCT struct he_6g_cap_ie {
 typedef struct he_6g_cap_ie he_6g_cap_ie_t;
 #define HE_6G_CAP_IE_LEN  sizeof(he_6g_cap_ie_t)
 
-/* HE Capabilities Information bit position and fieldwidth */
+/* HE Capabilities Information bit position and fieldwidth.
+ * Figure 9-787ai Capabilities Information field format in
+ * Draft P802.11ax_D5.0.
+ */
 #define HE_6G_CAP_MIN_MPDU_START_MASK          0x0007u
 #define HE_6G_CAP_MAX_AMPDU_LEN_EXP_MASK       0x0038u
 #define HE_6G_CAP_MAX_AMPDU_LEN_EXP_SHIFT           3u
-#define HE_6G_CAP_MAX_MPDU_LEN_MASK            0x01C0u
+#define HE_6G_CAP_MAX_MPDU_LEN_MASK            0x00C0u
 #define HE_6G_CAP_MAX_MPDU_LEN_SHIFT                6u
 #define HE_6G_CAP_SM_PW_SAVE_MASK              0x0600u
 #define HE_6G_CAP_SM_PW_SAVE_SHIFT                  9u

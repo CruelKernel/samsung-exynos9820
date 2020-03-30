@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 857554 2020-01-02 09:14:29Z $
+ * $Id: wl_cfg80211.c 862085 2020-01-31 01:26:59Z $
  */
 /* */
 #include <typedefs.h>
@@ -2045,6 +2045,9 @@ wl_cfg80211_iface_state_ops(struct wireless_dev *wdev,
 			if (wl_iftype == WL_IF_TYPE_P2P_GC) {
 				/* Disable firmware roaming for P2P interface  */
 				wldev_iovar_setint(ndev, "roam_off", 1);
+
+				/* set retry_max to CUSTOM_ASSOC_RETRY_MAX(3) */
+				wldev_iovar_setint(ndev, "assoc_retry_max", CUSTOM_ASSOC_RETRY_MAX);
 			}
 			if (wl_mode == WL_MODE_AP) {
 				/* Common code for AP/GO */
@@ -24948,6 +24951,8 @@ s32
 wl_cfg80211_handle_macaddr_change(struct net_device *dev, u8 *macaddr)
 {
 	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
+	uint8 wait_cnt = WAIT_FOR_DISCONNECT_MAX;
+	u32 status = TRUE;
 
 	if (IS_STA_IFACE(dev->ieee80211_ptr) &&
 		wl_get_drv_status(cfg, CONNECTED, dev)) {
@@ -24957,6 +24962,12 @@ wl_cfg80211_handle_macaddr_change(struct net_device *dev, u8 *macaddr)
 		 */
 		WL_INFORM_MEM(("macaddr change in connected state. Force disassoc.\n"));
 		wl_cfg80211_disassoc(dev, WLAN_REASON_DEAUTH_LEAVING);
+
+		while ((status = wl_get_drv_status(cfg, CONNECTED, dev)) && wait_cnt) {
+			WL_DBG(("Waiting for disconnection, wait_cnt: %d\n", wait_cnt));
+			wait_cnt--;
+			OSL_SLEEP(50);
+		}
 	}
 	return BCME_OK;
 }

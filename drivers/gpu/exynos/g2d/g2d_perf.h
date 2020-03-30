@@ -20,7 +20,7 @@ struct g2d_context;
 struct g2d_performance_data;
 
 #define perf_index_fmt(layer) \
-		((((layer)->layer_attr) & G2D_PERF_LAYER_FMTMASK) >> 4)
+		(fls((((layer)->layer_attr) & G2D_PERF_LAYER_FMTMASK) >> 4))
 #define perf_index_rotate(layer) \
 		(((layer)->layer_attr) & G2D_PERF_LAYER_ROTATE)
 #define is_perf_frame_colorfill(frame) \

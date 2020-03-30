@@ -71,6 +71,11 @@ int hwfc_request_buffer(struct shared_buffer_info *info, int owner)
 	info->pixel_format = ctx->info.pixel_format;
 	info->width = ctx->info.width;
 	info->height = ctx->info.height;
+	if (ctx->info.buffer_count > MAX_SHARED_BUF_NUM) {
+		print_repeater_debug(RPT_ERROR, "%s, buffer_count is invalid %d",
+			__func__, ctx->info.buffer_count);
+		ctx->info.buffer_count = MAX_SHARED_BUF_NUM;
+	}
 	info->buffer_count = ctx->info.buffer_count;
 	buf_fd = ctx->info.buf_fd;
 
@@ -360,7 +365,8 @@ void encoding_work_handler(struct work_struct *work)
 	print_repeater_debug(RPT_INT_INFO, "%s--\n", __func__);
 }
 
-int repeater_ioctl_map_buf(struct repeater_context *ctx)
+int repeater_ioctl_map_buf(
+	struct repeater_context *ctx, struct repeater_info *info)
 {
 	int ret = 0;
 	unsigned long flags;
@@ -369,6 +375,8 @@ int repeater_ioctl_map_buf(struct repeater_context *ctx)
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
 
 	spin_lock_irqsave(&repeater_spinlock, flags);
+
+	memcpy(&ctx->info, info, sizeof(struct repeater_info));
 
 	if (ctx->info.buffer_count > MAX_SHARED_BUF_NUM) {
 		print_repeater_debug(RPT_ERROR, "%s, buffer_count is invalid %d",
@@ -396,6 +404,8 @@ int repeater_ioctl_map_buf(struct repeater_context *ctx)
 		print_repeater_debug(RPT_ERROR, "%s, ctx_status is invalid %d",
 			__func__, ctx->ctx_status);
 	}
+
+	memcpy(info, &ctx->info, sizeof(struct repeater_info));
 
 	spin_unlock_irqrestore(&repeater_spinlock, flags);
 
@@ -690,6 +700,7 @@ static long repeater_ioctl(struct file *filp,
 {
 	int ret = 0;
 	struct repeater_context *ctx;
+	struct repeater_info info;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
 
@@ -702,17 +713,17 @@ static long repeater_ioctl(struct file *filp,
 
 	switch (cmd) {
 	case REPEATER_IOCTL_MAP_BUF:
-		if (copy_from_user(&ctx->info,
+		if (copy_from_user(&info,
 			(struct repeater_info __user *)arg,
 			sizeof(struct repeater_info))) {
 			ret = -EFAULT;
 			break;
 		}
 
-		ret = repeater_ioctl_map_buf(ctx);
+		ret = repeater_ioctl_map_buf(ctx, &info);
 
 		if (copy_to_user((struct repeater_info __user *)arg,
-			&ctx->info,
+			&info,
 			sizeof(struct repeater_info))) {
 			ret = -EFAULT;
 			break;
