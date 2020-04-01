@@ -29,8 +29,7 @@ jobs:
         ./build config                  \
                 os_patch_level=2020-04  \
                 model=G975F             \
-                name=CRUEL-V3.2         \
-                +magisk                 \
+                name=Daniel_CRUEL-V3.2  \
                 +nohardening            \
                 +ttl                    \
                 +bfq                    \
@@ -38,7 +37,8 @@ jobs:
                 +sdfat                  \
                 +ntfs                   \
                 +noksm                  \
-                +boeffla_wl_blocker
+                +boeffla_wl_blocker     \
+                +tcp_cubic              \
     - name: Kernel Build
       run: ./build :build
     - name: Create boot.img
