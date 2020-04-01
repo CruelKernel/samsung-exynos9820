@@ -464,17 +464,17 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
 
 	inode = f2fs_iget(dir->i_sb, ino);
 	if (IS_ERR(inode)) {
-		if (PTR_ERR(inode) != -ENOMEM) {
+		err = PTR_ERR(inode);
+		if (err != -ENOMEM) {
 			struct f2fs_sb_info *sbi = F2FS_I_SB(dir);
 
 			printk_ratelimited(KERN_ERR "F2FS-fs: Invalid inode referenced: %u"
-					"at parent inode : %lu\n",ino, dir->i_ino);
+					" at parent inode : %lu, ret : %d\n",ino, dir->i_ino, err);
 			print_block_data(sbi->sb, page->index,
 					page_address(page), 0, F2FS_BLKSIZE);
 			f2fs_bug_on(sbi, 1);
 		}
 		f2fs_put_page(page, 0);
-		err = PTR_ERR(inode);
 		goto out;
 	}
 	f2fs_put_page(page, 0);

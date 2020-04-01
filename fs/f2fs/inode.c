@@ -364,8 +364,8 @@ static int do_read_inode(struct inode *inode)
 	}
 
 	if (!sanity_check_inode(inode, node_page)) {
-		f2fs_put_page(node_page, 1);
-		return -EINVAL;
+		err = -EINVAL;
+		goto corrupted_inode;
 	}
 
 	/* check data exist */
@@ -384,8 +384,7 @@ static int do_read_inode(struct inode *inode)
 	if (S_ISREG(inode->i_mode)) {
 		err = __written_first_block(sbi, ri);
 		if (err < 0) {
-			f2fs_put_page(node_page, 1);
-			return err;
+			goto corrupted_inode;
 		}
 		if (!err)
 			set_inode_flag(inode, FI_FIRST_BLOCK_WRITTEN);
@@ -428,6 +427,28 @@ static int do_read_inode(struct inode *inode)
 	stat_inc_inline_dir(inode);
 
 	return 0;
+
+corrupted_inode:
+	printk_ratelimited(KERN_ERR "F2FS-fs: On-disk inode is corrupted: "
+			"err: %ld, inode: %u, first Non-zero: %lu\n",
+			err, inode->i_ino,
+			find_first_bit(page_address(node_page), F2FS_BLKSIZE));
+	print_block_data(sbi->sb, node_page->index,
+			page_address(node_page), 0, F2FS_BLKSIZE);
+
+	if (unlikely(!ignore_fs_panic)) {
+		f2fs_set_sb_extra_flag(sbi, F2FS_SEC_EXTRA_FSCK_MAGIC);
+#ifdef CONFIG_F2FS_STRICT_BUG_ON
+		panic("F2FS 0x%p %x",
+			page_address(node_page),
+			find_first_bit(page_address(node_page), F2FS_BLKSIZE*8));
+#else
+		WARN_ON(1);
+#endif
+	}
+
+	f2fs_put_page(node_page, 1);
+	return err;
 }
 
 struct inode *f2fs_iget(struct super_block *sb, unsigned long ino)
