@@ -103,7 +103,7 @@ To alter the kernel configuration you need to edit lines:
                 +cifs                     \
                 +sdfat                    \
                 +ntfs                     \
-                +tcp_cibuc                \
+                +tcp_cubic                \
                 +morosound                \
                 +boeffla_wl_blocker
 ```
