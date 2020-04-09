@@ -26,15 +26,16 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config           \
-                os_patch_level=2020-03\
+                os_patch_level=2020-04\
                 model=G970F      \
-                name=CRUEL-V3.1-3Vasion-LOS  \
+                name=B00st-V3.3  \
                 +magisk          \
                 +always_permit   \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
                 +cifs            \
+                +1000hz          \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
