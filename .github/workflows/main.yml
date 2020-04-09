@@ -28,7 +28,7 @@ jobs:
         ./build config           \
                 os_patch_level=2020-04\
                 model=G970F      \
-                name=B00st-V3.3  \
+                name=B00st-V1    \
                 +magisk          \
                 +always_permit   \
                 +nohardening     \
