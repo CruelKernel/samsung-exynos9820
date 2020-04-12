@@ -718,6 +718,16 @@ KBUILD_CFLAGS   += -O2
 endif
 endif
 
+ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
+KBUILD_CFLAGS	+= -O3 
+KBUILD_CFLAGS += \
+    -finline-functions \
+    -funswitch-loops \
+    -fpredictive-commoning \
+    -ffast-math \
+    -funsafe-math-optimizations
+endif
+
 KBUILD_CFLAGS += $(call cc-ifversion, -lt, 0409, \
 			$(call cc-disable-warning,maybe-uninitialized,))
 
