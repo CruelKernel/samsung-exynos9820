@@ -12,6 +12,9 @@ Supported devices: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
 - @bamsbamx - ported boeffla_wakelock_blocker module
 - Nico (@NicoMax2012) - ported moro sound module
 
+Default settings for BoefflaWLBlocker were taken from HadesKernel.
+Thanks, corsicanu for you great kernel!
+
 ## How to install
 
 First of all, TWRP Recovery + multidisabler should be installed in all cases.
