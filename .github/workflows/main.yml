@@ -31,16 +31,9 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name=CRUEL-V3.3          \
+                name=GoogyMAX-v0.1       \
                 +magisk                  \
-                +nohardening             \
-                +ttl                     \
-                +wireguard               \
-                +cifs                    \
-                +sdfat                   \
-                +ntfs                    \
-                +morosound               \
-                +boeffla_wl_blocker
+                +nohardening             
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
