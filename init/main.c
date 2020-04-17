@@ -550,6 +550,8 @@ void __init parse_early_param(void)
 	static int done __initdata;
 	static char tmp_cmdline[COMMAND_LINE_SIZE] __initdata;
 
+	/* parameters may set static keys */
+	jump_label_init();
 	if (done)
 		return;
 
@@ -763,8 +765,6 @@ asmlinkage __visible void __init start_kernel(void)
 	if (!IS_ERR_OR_NULL(after_dashes))
 		parse_args("Setting init args", after_dashes, NULL, 0, -1, -1,
 			   NULL, set_init_arg);
-
-	jump_label_init();
 
 	/*
 	 * These use large bootmem allocations and must precede
