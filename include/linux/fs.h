@@ -3006,6 +3006,7 @@ enum {
 };
 
 void dio_end_io(struct bio *bio);
+void dio_warn_stale_pagecache(struct file *filp);
 
 #ifdef CONFIG_DDAR
 struct inode *dio_bio_get_inode(struct bio *bio);
