@@ -147,7 +147,7 @@ def parse_args(configs):
                 opt = arg[1:]
                 if switch not in ['+', '-']:
                     print_usage(name, all_modes, configs)
-                    fatal("Unknown switch '{0}'. Please, use '+{0}'/'-{0}' to enable/disable option.".format(i))
+                    fatal("Unknown switch '{0}'. Please, use '+{0}'/'-{0}' to enable/disable option.".format(arg))
 
                 if opt == 'magisk+canary':
                     opt = 'magisk'
