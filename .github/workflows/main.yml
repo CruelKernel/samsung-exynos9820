@@ -31,7 +31,7 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name=GoogyMAX-v0.1       \
+                name=GoogyMax-v0.2       \
                 +magisk                  \
                 +nohardening             
     - name: Show information about build
@@ -43,7 +43,7 @@ jobs:
     - name: Upload Kernel
       uses: actions/upload-artifact@v1
       with:
-        name: CruelKernel-${{ matrix.model }}
+        name: GoogyMax-${{ matrix.model }}
         path: boot.img
     - name: Upload Kernel Info
       uses: actions/upload-artifact@v1
