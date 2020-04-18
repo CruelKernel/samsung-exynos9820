@@ -406,6 +406,13 @@ static void hvs_open_connection(struct vmbus_channel *chan)
 	 */
 	hvs_set_channel_pending_send_size(chan);
 
+	/* Set the pending send size to max packet size to always get
+	 * notifications from the host when there is enough writable space.
+	 * The host is optimized to send notifications only when the pending
+	 * size boundary is crossed, and not always.
+	 */
+	hvs_set_channel_pending_send_size(chan);
+
 	if (conn_from_host) {
 		new->sk_state = TCP_ESTABLISHED;
 		sk->sk_ack_backlog++;
