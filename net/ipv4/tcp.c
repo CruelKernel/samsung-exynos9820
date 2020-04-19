@@ -986,22 +986,6 @@ static void tcp_remove_empty_skb(struct sock *sk, struct sk_buff *skb)
 	}
 }
 
-/* In some cases, both sendpage() and sendmsg() could have added
- * an skb to the write queue, but failed adding payload on it.
- * We need to remove it to consume less memory, but more
- * importantly be able to generate EPOLLOUT for Edge Trigger epoll()
- * users.
- */
-static void tcp_remove_empty_skb(struct sock *sk, struct sk_buff *skb)
-{
-	if (skb && !skb->len &&
-	    TCP_SKB_CB(skb)->end_seq == TCP_SKB_CB(skb)->seq) {
-		tcp_unlink_write_queue(skb, sk);
-		tcp_check_send_head(sk, skb);
-		sk_wmem_free_skb(sk, skb);
-	}
-}
-
 ssize_t do_tcp_sendpages(struct sock *sk, struct page *page, int offset,
 			 size_t size, int flags)
 {
