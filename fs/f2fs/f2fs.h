@@ -30,6 +30,9 @@
 #define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_F2FS_FS_ENCRYPTION)
 #include <linux/fscrypt.h>
 
+#define EFSBADCRC	EBADMSG		/* Bad CRC detected */
+#define EFSCORRUPTED	EUCLEAN		/* Filesystem is corrupted */
+
 #ifdef CONFIG_F2FS_STRICT_BUG_ON
 #define	BUG_ON_CHKFS	BUG_ON
 #else
