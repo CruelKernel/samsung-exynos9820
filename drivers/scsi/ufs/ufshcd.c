@@ -10008,6 +10008,9 @@ int ufshcd_shutdown(struct ufs_hba *hba)
 	struct SEC_UFS_QUERY_count *query_cnt = &(err_info->query_count);
 	int ret = 0;
 
+	if (!hba->is_powered)
+		goto out;
+
 	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba))
 		goto out;
 
