@@ -832,7 +832,6 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 	}
 #endif
 
-	die("Oops - bad mode", regs, 0);
 	local_irq_disable();
 	panic("bad mode");
 }
