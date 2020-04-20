@@ -948,6 +948,11 @@ static int __init parse_kpti(char *str)
 early_param("kpti", parse_kpti);
 
 #ifdef CONFIG_ARM64_VHE
+static bool runs_at_el2(const struct arm64_cpu_capabilities *entry, int __unused)
+{
+	return is_kernel_in_hyp_mode();
+}
+
 static void cpu_copy_el2regs(const struct arm64_cpu_capabilities *__unused)
 {
 	/*
