@@ -1207,6 +1207,12 @@ static void f2fs_umount_end(struct super_block *sb, int flags)
 			f2fs_write_checkpoint(F2FS_SB(sb), &cpc);
 		}
 	}
+	/*
+	 * In case of checkpoint=disable, we must flush quota blocks.
+	 * This can cause NULL exception for node_inode in end_io, since
+	 * put_super already dropped it.
+	 */
+	sync_filesystem(sb);
 }
 
 static void f2fs_put_super(struct super_block *sb)
