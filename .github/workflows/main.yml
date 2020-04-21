@@ -35,7 +35,10 @@ jobs:
                 +ttl             \
                 +wireguard       \
                 +cifs            \
-                +300hz          \
+                +1000hz          \
+                +size            \
+                +nohardening     \
+                +fake_config     \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
