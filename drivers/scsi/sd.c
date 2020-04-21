@@ -3185,11 +3185,11 @@ static int sd_revalidate_disk(struct gendisk *disk)
 		sdkp->opt_xfer_blocks * sdp->sector_size >= PAGE_SIZE)
 		rw_max = q->limits.io_opt =
 			sdkp->opt_xfer_blocks * sdp->sector_size;
-	} else {
+    else {
 		q->limits.io_opt = 0;
 		rw_max = min_not_zero(logical_to_sectors(sdp, dev_max),
 				      (sector_t)BLK_DEF_MAX_SECTORS);
-	}
+        }
 
 	/* Do not exceed controller limit */
 	rw_max = min(rw_max, queue_max_hw_sectors(q));
