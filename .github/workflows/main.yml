@@ -30,7 +30,7 @@ jobs:
                 model=G970F      \
                 name=B00st    \
                 +magisk          \
-                +always_enforce   \
+                +always_permit   \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
