@@ -3693,8 +3693,6 @@ static void r8152_aldps_en(struct r8152 *tp, bool enable)
 		ocp_reg_write(tp, OCP_ALDPS_CONFIG, ENPDNPS | LINKENA |
 						    DIS_SDSAVE);
 		msleep(20);
-		if (test_bit(RTL8152_UNPLUG, &tp->flags))
-			break;
 	}
 }
 
