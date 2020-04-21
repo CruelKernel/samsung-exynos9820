@@ -29,13 +29,13 @@ jobs:
                 os_patch_level=2020-04\
                 model=G970F      \
                 name=B00st    \
-                +magisk          \
-                +always_permit   \
+                +magisk+stable          \
+                +always_enforce   \
                 +nohardening     \
                 +ttl             \
                 +wireguard       \
                 +cifs            \
-                +1000hz          \
+                +300hz          \
                 +boeffla_wl_blocker
     - name: Kernel Build
       run: ./build :build
