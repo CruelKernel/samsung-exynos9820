@@ -305,6 +305,9 @@ static const struct usb_device_id usb_quirk_list[] = {
 	{ USB_DEVICE(0x04e8, 0xa04f), .driver_info = USB_QUIRK_RESET },
 	{ USB_DEVICE(0x04e8, 0xa057), .driver_info = USB_QUIRK_RESET },
 
+	/* novation SoundControl XL */
+	{ USB_DEVICE(0x1235, 0x0061), .driver_info = USB_QUIRK_RESET_RESUME },
+
 	{ }  /* terminating entry must be last */
 };
 
