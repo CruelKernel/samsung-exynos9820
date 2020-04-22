@@ -3,7 +3,8 @@
 ![CI](https://github.com/CruelKernel/samsung-exynos9820/workflows/CI/badge.svg)
 
 Based on samsung sources and android common tree.
-Supported devices: G970F, G973F, G975F, G977B, N970F, N975F, N976B.
+Supported devices: G970F, G970N, G973F, G975F, G977B, N970F, N975F,
+N971N, N976B, N976N.
 
 ## Contributors
 
@@ -70,8 +71,8 @@ GitHub Actions. You need to open github actions [configuration file](.github/wor
 and **edit** it from the browser.
 
 First of all, you need to edit model argument (by default it's G973F) to the model
-of your phone. You can multiple models. Supported models are: G970F, G973F, G975F,
-G977B, N970F, N975F, N976B.
+of your phone. You can multiple models. Supported models are: G970F, G970N, G973F, G975F,
+G977B, N970F, N971N, N975F, N976B, N976N.
 
 Edit model:
 ```YAML
