@@ -8,10 +8,13 @@ from subprocess import run, DEVNULL
 
 models = {
     'G970F': {
-        'config': 'exynos9820-beyond0lte_defconfig',
+        'config': 'exynos9820-beyond0lte_defconfig'
+    },
+    'G970N': {
+        'config': 'exynos9820-beyond0lteks_defconfig'
     },
     'G973F': {
-        'config': 'exynos9820-beyond1lte_defconfig',
+        'config': 'exynos9820-beyond1lte_defconfig'
     },
     'G975F': {
         'config': 'exynos9820-beyond2lte_defconfig'
@@ -22,11 +25,17 @@ models = {
     'N970F': {
         'config': 'exynos9820-d1_defconfig'
     },
+    'N971N': {
+        'config': 'exynos9820-d1xks_defconfig'
+    },
     'N975F': {
         'config': 'exynos9820-d2s_defconfig'
     },
     'N976B': {
         'config': 'exynos9820-d2x_defconfig'
+    },
+    'N976N': {
+        'config': 'exynos9820-d2xks_defconfig'
     }
 }
 
