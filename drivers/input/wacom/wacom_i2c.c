@@ -3024,6 +3024,7 @@ static int wacom_i2c_probe(struct i2c_client *client,
 	mutex_init(&wac_i2c->update_lock);
 	mutex_init(&wac_i2c->irq_lock);
 	mutex_init(&wac_i2c->mode_lock);
+	mutex_init(&wac_i2c->ble_charge_mode_lock);
 
 	wake_lock_init(&wac_i2c->fw_wakelock, WAKE_LOCK_SUSPEND, "wacom");
 	wake_lock_init(&wac_i2c->wakelock, WAKE_LOCK_SUSPEND, "wacom_wakelock");
@@ -3102,6 +3103,7 @@ err_register_input_dev:
 	mutex_destroy(&wac_i2c->update_lock);
 	mutex_destroy(&wac_i2c->lock);
 	mutex_destroy(&wac_i2c->mode_lock);
+	mutex_destroy(&wac_i2c->ble_charge_mode_lock);
 
 	i2c_unregister_device(wac_i2c->client_boot);
 
@@ -3215,6 +3217,7 @@ static int wacom_i2c_remove(struct i2c_client *client)
 	mutex_destroy(&wac_i2c->update_lock);
 	mutex_destroy(&wac_i2c->lock);
 	mutex_destroy(&wac_i2c->mode_lock);
+	mutex_destroy(&wac_i2c->ble_charge_mode_lock);
 
 	wacom_sec_remove(wac_i2c);
 
