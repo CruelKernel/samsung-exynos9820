@@ -1,0 +1,57 @@
+/*
+ * SAMSUNG UNIVERSAL9820 board device tree source
+ *
+ * Copyright (c) 2019 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+&pinctrl_6 {
+	als_irq: als_irq-irq {
+		samsung,pins = "gpd0-3";
+		samsung,pin-function = <0>;
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <0>;
+	};
+
+	als_irqsleep: als_irqsleep {
+		samsung,pins = "gpd0-3";
+		samsung,pin-con-pdn = <2>;
+		samsung,pin-pud-pdn = <0>;
+	};
+
+	als_irqidle: als_irqidle {
+		samsung,pins = "gpd0-3";
+		samsung,pin-function = <0xf>;
+		samsung,pin-pud = <0>;
+		samsung,pin-drv = <3>;
+	};
+};
+
+&hsi2c_20 {
+	gpios = <&gpp5 0 0 &gpp5 1 0>;
+	status = "okay";
+	clock-frequency = <400000>;
+
+	als_rear@29 {
+		compatible = "ams,tcs3407";
+		reg = <0x29>;
+		interrupt-parent = <&gpd0>;
+		interrupts = <3 0 0>;
+		pinctrl-names = "default", "sleep", "idle";
+		pinctrl-0 = <&als_irq>;
+		pinctrl-1 = <&als_irqsleep>;
+		pinctrl-2 = <&als_irqidle>;
+		als_rear,int-gpio = <&gpd0 3 0>;
+		als_rear,led_en-gpio = <&gpg2 4 0>;  /* CAM_TORCH_EN */
+		als_rear,vdd_1p8 = "VDD_FLICKER_1P8";  /* LDO25 */
+		als_rear,i2c_1p8 = "VDD_NFC_1P8";  /* LDO22 */
+		als_rear,gain_max = <0xbc>;
+		als_rear,ir_spec = <0 500000 0 500000>;
+		als_rear,clear_spec = <0 500000 0 500000>;
+		als_rear,icratio_spec = <0 10000 0 10000>;
+	};
+};
