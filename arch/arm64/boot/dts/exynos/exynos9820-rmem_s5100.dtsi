@@ -19,11 +19,13 @@
 		reg = <0x0 0xF0000000 0x4200000>;
 	};
 
-	cp_ram_logging {
+#if 0 //ggy
+    cp_ram_logging {
 		/* 32MB */
 		compatible = "exynos,cp_ram_logging";
 		reg = <0x0 0xF4200000 0x2000000>;
 	};
+#endif
 
 	s5100_msi {
 		/* 4KB */

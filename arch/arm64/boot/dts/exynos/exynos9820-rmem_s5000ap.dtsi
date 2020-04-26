@@ -18,10 +18,12 @@
 		reg = <0x0 0xF0000000 0xB900000>;
 	};
 
+#if 0 //ggy
 	cp_ram_logging {
 		compatible = "exynos,cp_ram_logging";
 		reg = <0x0 0xFB900000 0x2000000>;
 	};
+#endif
 
 	modem_spare {
 		compatible = "exynos,modem_spare";

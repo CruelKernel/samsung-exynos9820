@@ -28,11 +28,13 @@
 			reg = <0x0 0xF0000000 0x9200000>;
 		};
 
+#if 0 //ggy
 		cp_ram_logging {
 			compatible = "exynos,cp_ram_logging";
 			reg = <0x0 0xF9200000 0x2000000>;
 		};
-
+#endif
+        
 		ion_video_fw {
 			compatible = "exynos9820-ion";
 			ion,heapname = "vfw_heap";
