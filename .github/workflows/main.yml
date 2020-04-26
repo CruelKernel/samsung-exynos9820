@@ -33,7 +33,8 @@ jobs:
                 model=${{ matrix.model}} \
                 name=GoogyMax-v0.2       \
                 +magisk                  \
-                +nohardening             
+                +nohardening         \
+                +noksm
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
