@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
+        version : [ "0.3" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -30,11 +31,12 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config                   \
+        		os_patch_level=2020-05    \
                 model=${{ matrix.model}} \
-                name=GoogyMax-v0.2       \
+                name=GoogyMax-v${{ matrix.version }} \
                 +magisk                  \
                 +nohardening         \
-                +noksm
+                +nozram
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
@@ -44,7 +46,7 @@ jobs:
     - name: Upload Kernel
       uses: actions/upload-artifact@v1
       with:
-        name: GoogyMax-${{ matrix.model }}
+        name: GoogyMax-${{ matrix.model }}-v${{ matrix.version }}
         path: boot.img
     - name: Upload Kernel Info
       uses: actions/upload-artifact@v1
