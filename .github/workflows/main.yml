@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G975F" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -31,15 +31,14 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name=CRUEL-V3.3          \
-                +magisk                  \
+                name=CRUEL-V3.3 von E.J. \
+                +magisk+canary           \
                 +nohardening             \
                 +ttl                     \
-                +wireguard               \
+                +sched_powersave         \
                 +cifs                    \
                 +sdfat                   \
                 +ntfs                    \
-                +morosound               \
                 +boeffla_wl_blocker
     - name: Show information about build
       run: cat build.info
