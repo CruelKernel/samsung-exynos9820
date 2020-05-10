@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "0.3" ]
+        version : [ "0.3.2" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -31,7 +31,6 @@ jobs:
     - name: Kernel Configure
       run: |
         ./build config                   \
-        		os_patch_level=2020-05    \
                 model=${{ matrix.model}} \
                 name=GoogyMax-v${{ matrix.version }} \
                 +magisk                  \
