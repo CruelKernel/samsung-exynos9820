@@ -413,6 +413,7 @@ static ssize_t run_seq_write(struct file *file, const char __user *buffer, size_
 {
 	int run;
 	char buf[10];
+	count = (count > 10)? 10 : count;
 	if (copy_from_user(buf, buffer, count) != 0)
 		return -EFAULT;
 

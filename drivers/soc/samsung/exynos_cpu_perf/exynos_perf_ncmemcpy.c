@@ -638,6 +638,7 @@ static int event_seq_show(struct seq_file *file, void *unused)
 static ssize_t event_seq_write(struct file *file, const char __user *buffer, size_t count, loff_t *off)
 {
 	char buf[128];
+	count = (count > 128)? 128 : count;
 	if (copy_from_user(buf, buffer, count) != 0)
 		return -EFAULT;
 	sscanf(buf, "%x %x %x %x %x %x %x",
@@ -809,87 +810,87 @@ static int __init perf_init(void)
 		pr_err("%s: create debugfs\n", __FILE__);
 		return -ENOMEM;
 	}
-	d = debugfs_create_file("level", 0777, root,
+	d = debugfs_create_file("level", S_IRUSR, root,
 					(unsigned int *)0,
 					&level_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("setway", 0777, root,
+	d = debugfs_create_file("setway", S_IRUSR, root,
 					(unsigned int *)0,
 					&setway_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("src_mset", 0777, root,
+	d = debugfs_create_file("src_mset", S_IRUSR, root,
 					(unsigned int *)0,
 					&src_mset_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("chk", 0777, root,
+	d = debugfs_create_file("chk", S_IRUSR, root,
 					(unsigned int *)0,
 					&chk_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("pmu", 0777, root,
+	d = debugfs_create_file("pmu", S_IRUSR, root,
 					(unsigned int *)0,
 					&pmu_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("dump", 0777, root,
+	d = debugfs_create_file("dump", S_IRUSR, root,
 					(unsigned int *)0,
 					&dump_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("flush", 0777, root,
+	d = debugfs_create_file("flush", S_IRUSR, root,
 					(unsigned int *)0,
 					&flush_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("align", 0777, root,
+	d = debugfs_create_file("align", S_IRUSR, root,
 					(unsigned int *)0,
 					&align_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("val", 0777, root,
+	d = debugfs_create_file("val", S_IRUSR, root,
 					(unsigned int *)0,
 					&val_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("start_size", 0777, root,
+	d = debugfs_create_file("start_size", S_IRUSR, root,
 					(unsigned int *)0,
 					&start_size_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("end_size", 0777, root,
+	d = debugfs_create_file("end_size", S_IRUSR, root,
 					(unsigned int *)0,
 					&end_size_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("func", 0777, root,
+	d = debugfs_create_file("func", S_IRUSR, root,
 					(unsigned int *)0,
 					&func_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("type", 0777, root,
+	d = debugfs_create_file("type", S_IRUSR, root,
 					(unsigned int *)0,
 					&type_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("core", 0777, root,
+	d = debugfs_create_file("core", S_IRUSR, root,
 					(unsigned int *)0,
 					&core_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("event", 0777, root,
+	d = debugfs_create_file("event", S_IRUSR, root,
 					(unsigned int *)0,
 					&event_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("run", 0777, root,
+	d = debugfs_create_file("run", S_IRUSR, root,
 					(unsigned int *)0,
 					&run_debugfs_fops);
 	if (!d)
 		return -ENOMEM;
-	d = debugfs_create_file("info", 0666, root,
+	d = debugfs_create_file("info", S_IRUSR, root,
 					(unsigned int *)0,
 					&info_debugfs_fops);
 	if (!d)
