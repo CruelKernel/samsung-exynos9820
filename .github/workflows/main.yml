@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "0.3.2" ]
+        version : [ "0.3.3" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -35,7 +35,9 @@ jobs:
                 name=GoogyMax-v${{ matrix.version }} \
                 +magisk                  \
                 +nohardening         \
-                +nozram
+                +morosound                \
+                +boeffla_wl_blocker \
+                +nodebug
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
