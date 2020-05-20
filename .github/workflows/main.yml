@@ -28,7 +28,7 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name=[-VN-V3.3-G975X-]-fix      \
+                name=[-VN-V3.3-G975X-fix-]     \
                 +magisk                  \
                 +nohardening             \
                 +ttl                     \
