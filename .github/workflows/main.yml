@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G975F" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -28,7 +28,7 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name="CRUEL-V3.3"        \
+                name="[-VN-V3.3-G975X-Fix-]"        \
                 +magisk                  \
                 +nohardening             \
                 +ttl                     \
