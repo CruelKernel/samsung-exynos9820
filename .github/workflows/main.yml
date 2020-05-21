@@ -9,18 +9,15 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "0.3.3" ]
+        version : [ "CTC9_052020_181" ]
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install mkbootimg (osm0sis)
+    - name: Install mkbootimg
       run: |
-        wget https://github.com/osm0sis/mkbootimg/archive/master.zip
-        unzip master.zip
-        cd mkbootimg-master
-        sed -i -e 's/-Werror//g' Makefile
-        make
-        sudo mv mkbootimg /usr/local/bin/mkbootimg
+        wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py
+        chmod +x mkbootimg.py
+        sudo mv mkbootimg.py /usr/local/bin/mkbootimg
     - name: Install avbtool
       run: |
         wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/android10-dev.tar.gz -O - | tar xzf - avbtool
@@ -32,12 +29,9 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name=GoogyMax-v${{ matrix.version }} \
+                name="GoogyMax-${{ matrix.version }}"  \
                 +magisk                  \
-                +nohardening         \
-                +morosound                \
-                +boeffla_wl_blocker \
-                +nodebug
+                +nohardening
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
