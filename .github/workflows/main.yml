@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "CTC9_052020_181" ]
+        version : [ "CTC9_052020_182" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -30,8 +30,11 @@ jobs:
         ./build config                   \
                 model=${{ matrix.model}} \
                 name="GoogyMax-${{ matrix.version }}"  \
-                +magisk                  \
-                +nohardening
+                +magisk                 \
+                +nohardening        \
+                +cifs                     \
+                +sdfat                    \
+                +ntfs                     
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
