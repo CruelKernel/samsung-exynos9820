@@ -37,11 +37,10 @@ jobs:
                 +sdfat                   \
                 +ntfs                    \
                 +morosound               \
-                +boeffla_wl_blocker
-                +sched_conservative
-                +sched_powersave
-                +sched_userspace
-                +sched_performance
+                +boeffla_wl_blocker      \
+                +sched_powersave         \
+                +sched_userspace         \
+                +sched_performance       \
                 
     - name: Show information about build
       run: cat build.info
