@@ -8,11 +8,11 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G975F" ]
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install mkbootimg
+    - name: kernel SKyfall
       run: |
         wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py
         chmod +x mkbootimg.py
@@ -38,6 +38,11 @@ jobs:
                 +ntfs                    \
                 +morosound               \
                 +boeffla_wl_blocker
+                +sched_conservative
+                +sched_powersave
+                +sched_userspace
+                +sched_performance
+                
     - name: Show information about build
       run: cat build.info
     - name: Kernel Build
