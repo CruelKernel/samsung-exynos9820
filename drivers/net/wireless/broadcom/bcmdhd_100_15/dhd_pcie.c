@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pcie.c 851108 2019-11-18 07:01:36Z $
+ * $Id: dhd_pcie.c 871395 2020-04-01 06:47:36Z $
  */
 
 /* include files */
@@ -1939,13 +1939,12 @@ dhdpcie_bus_release_dongle(dhd_bus_t *bus, osl_t *osh, bool dongle_isolation, bo
 		bus->dhd, bus->dhd->dongle_reset));
 
 	if ((bus->dhd && bus->dhd->dongle_reset) && reset_flag) {
-		DHD_TRACE(("%s Exit\n", __FUNCTION__));
-		return;
+		goto fail;
 	}
 
 	if (bus->is_linkdown) {
 		DHD_ERROR(("%s : Skip release dongle due to linkdown \n", __FUNCTION__));
-		return;
+		goto fail;
 	}
 
 	if (bus->sih) {
@@ -1974,13 +1973,15 @@ dhdpcie_bus_release_dongle(dhd_bus_t *bus, osl_t *osh, bool dongle_isolation, bo
 			/* Disable CLKREQ# */
 			dhdpcie_clkreq(bus->osh, 1, 0);
 		}
-
-		if (bus->sih != NULL) {
-			si_detach(bus->sih);
-			bus->sih = NULL;
-		}
-		if (bus->vars && bus->varsz)
-			MFREE(osh, bus->vars, bus->varsz);
+	}
+fail:
+	/* Resources should be freed */
+	if (bus->sih) {
+		si_detach(bus->sih);
+		bus->sih = NULL;
+	}
+	if (bus->vars && bus->varsz) {
+		MFREE(osh, bus->vars, bus->varsz);
 		bus->vars = NULL;
 	}
 
@@ -2145,6 +2146,13 @@ bool dhd_bus_watchdog(dhd_pub_t *dhd)
 } /* dhd_bus_watchdog */
 
 #if defined(SUPPORT_MULTIPLE_REVISION)
+#if defined(SUPPORT_MULTIPLE_MODULE_CIS) && defined(USE_CID_CHECK) && \
+	defined(SUPPORT_BCM4359_MIXED_MODULES)
+#define VENDOR_MURATA "murata"
+#define VENDOR_WISOL "wisol"
+#define VNAME_DELIM "_"
+#endif /* SUPPORT_MULTIPLE_MODULE_CIS && USE_CID_CHECK && SUPPORT_BCM4359_MIXED_MODULES */
+
 static int concate_revision_bcm4358(dhd_bus_t *bus, char *fw_path, char *nv_path)
 {
 	uint32 chiprev;
@@ -2205,6 +2213,7 @@ static int concate_revision_bcm4359(dhd_bus_t *bus, char *fw_path, char *nv_path
 #if defined(SUPPORT_MULTIPLE_MODULE_CIS) && defined(USE_CID_CHECK) && \
 	defined(SUPPORT_BCM4359_MIXED_MODULES)
 	int module_type = -1;
+	char chipver_tag_nv[20] = {0, };
 #endif /* SUPPORT_MULTIPLE_MODULE_CIS && USE_CID_CHECK && SUPPORT_BCM4359_MIXED_MODULES */
 
 	chip_ver = bus->sih->chiprev;
@@ -2216,7 +2225,31 @@ static int concate_revision_bcm4359(dhd_bus_t *bus, char *fw_path, char *nv_path
 		strncat(chipver_tag, "_b1", strlen("_b1"));
 	} else if (chip_ver == 9) {
 		DHD_ERROR(("----- CHIP 4359 C0 -----\n"));
+#if defined(SUPPORT_MULTIPLE_MODULE_CIS) && defined(USE_CID_CHECK) && \
+	defined(SUPPORT_BCM4359_MIXED_MODULES)
+		if (dhd_check_module(VENDOR_MURATA)) {
+			strncat(chipver_tag_nv, VNAME_DELIM, strlen(VNAME_DELIM));
+			strncat(chipver_tag_nv, VENDOR_MURATA, strlen(VENDOR_MURATA));
+		} else if (dhd_check_module(VENDOR_WISOL)) {
+			strncat(chipver_tag_nv, VNAME_DELIM, strlen(VNAME_DELIM));
+			strncat(chipver_tag_nv, VENDOR_WISOL, strlen(VENDOR_WISOL));
+		}
+		/* In case of SEMCO module, extra vendor string doen not need to add */
+		strncat(chipver_tag_nv, "_c0", strlen("_c0"));
+		DHD_ERROR(("%s chipver_tag_nv = %s\n", __FUNCTION__, chipver_tag_nv));
+#endif /* SUPPORT_MULTIPLE_MODULE_CIS && USE_CID_CHECK && SUPPORT_BCM4359_MIXED_MODULES */
 		strncat(chipver_tag, "_c0", strlen("_c0"));
+#if defined(CONFIG_WLAN_GRACE) || defined(CONFIG_SEC_GRACEQLTE_PROJECT) || \
+	defined(CONFIG_SEC_LYKANLTE_PROJECT) || defined(CONFIG_SEC_KELLYLTE_PROJECT)
+		DHD_ERROR(("----- Adding _plus string -----\n"));
+		strncat(chipver_tag, "_plus", strlen("_plus"));
+#if defined(SUPPORT_MULTIPLE_MODULE_CIS) && defined(USE_CID_CHECK) && \
+	defined(SUPPORT_BCM4359_MIXED_MODULES)
+		strncat(chipver_tag_nv, "_plus", strlen("_plus"));
+#endif /* SUPPORT_MULTIPLE_MODULE_CIS && USE_CID_CHECK && SUPPORT_BCM4359_MIXED_MODULES */
+#endif /* CONFIG_WLAN_GRACE || CONFIG_SEC_GRACEQLTE_PROJECT || CONFIG_SEC_LYKANLTE_PROJECT ||
+	* CONFIG_SEC_KELLYLTE_PROJECT
+	*/
 	} else {
 		DHD_ERROR(("----- Unknown chip version, ver=%x -----\n", chip_ver));
 		return -1;
@@ -2240,7 +2273,11 @@ static int concate_revision_bcm4359(dhd_bus_t *bus, char *fw_path, char *nv_path
 				strncat(fw_path, "_b90s", strlen("_b90s"));
 			}
 			strcat(fw_path, chipver_tag);
-			strcat(nv_path, chipver_tag);
+			if (!(strstr(nv_path, VENDOR_MURATA) || strstr(nv_path, VENDOR_WISOL))) {
+				strcat(nv_path, chipver_tag_nv);
+			} else {
+				strcat(nv_path, chipver_tag);
+			}
 			break;
 	}
 #else /* SUPPORT_MULTIPLE_MODULE_CIS && USE_CID_CHECK && SUPPORT_BCM4359_MIXED_MODULES */
@@ -2270,7 +2307,10 @@ static int concate_revision_bcm4359(dhd_bus_t *bus, char *fw_path, char *nv_path
 #define DEFAULT_CIDINFO_FOR_B0		"r01i_e32_b0"
 #define MAX_VID_LEN					8
 #define CIS_TUPLE_HDR_LEN		2
-#if defined(BCM4361_CHIP)
+#if defined(BCM4359_CHIP)
+#define CIS_TUPLE_START_ADDRESS		0x18011110
+#define CIS_TUPLE_END_ADDRESS		0x18011167
+#elif defined(BCM4361_CHIP)
 #define CIS_TUPLE_START_ADDRESS		0x18011110
 #define CIS_TUPLE_END_ADDRESS		0x18011167
 #elif defined(BCM4375_CHIP)
@@ -2362,6 +2402,7 @@ naming_info_t bcm4375_naming_table[] = {
 	{ {"1rh_es44"}, {"_1rh_es44_b1"}, {"_b1"} }
 };
 
+#if !defined(BCM4359_CHIP)
 static naming_info_t *
 dhd_find_naming_info(naming_info_t table[], int table_size, char *module_type)
 {
@@ -2549,6 +2590,7 @@ dhd_find_naming_info_by_chip_rev(naming_info_t table[], int table_size,
 
 	return info;
 }
+#endif /* !BCM4359_CHIP */
 #endif /* USE_CID_CHECK */
 
 static int

@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 854461 2019-12-09 02:16:27Z $
+ * $Id: wl_cfg80211.h 874925 2020-04-24 08:58:32Z $
  */
 
 /**
@@ -90,6 +90,11 @@ struct wl_ibss;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0) && !defined(WL_FILS_ROAM_OFFLD))
 #define WL_FILS_ROAM_OFFLD
 #endif // endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0))
+/* Use driver managed regd */
+#define WL_SELF_MANAGED_REGDOM
+#endif /* KERNEL >= 4.0 */
 
 #ifdef WL_SAE
 #define IS_AKM_SAE(akm) (akm == WLAN_AKM_SUITE_SAE)
@@ -1030,6 +1035,8 @@ typedef struct wl_btm_event_type_data wl_btm_event_type_data_t;
 typedef struct wl_bssid_prune_evt_info wl_bssid_pruned_evt_info_t;
 #endif /* WL_MBO || WL_OCE */
 
+#define WL_CCODE_LEN 2
+
 #ifdef WL_NAN
 #define NAN_MAX_NDI		1u
 typedef struct wl_ndi_data
@@ -1146,6 +1153,16 @@ typedef struct buf_data {
 	u32 buf_threshold;
 	const void *data_buf[1]; /* array of user space buffer pointers. */
 } buf_data_t;
+
+#ifdef CONFIG_COMPAT
+typedef struct compat_buf_data {
+	u32 ver; /* version of struct */
+	u32 len; /* Total len */
+	/* size of each buffer in case of split buffers (0 - single buffer). */
+	u32 buf_threshold;
+	u32 data_buf; /* array of user space buffer pointers. */
+} compat_buf_data_t;
+#endif /* CONFIG_COMPAT */
 
 /* private data of cfg80211 interface */
 struct bcm_cfg80211 {
@@ -1327,9 +1344,9 @@ struct bcm_cfg80211 {
 	u32 roam_count;
 #endif /* DHD_ENABLE_BIGDATA_LOGGING */
 	u16 ap_oper_channel;
-#if defined(SUPPORT_RANDOM_MAC_SCAN)
-	bool random_mac_enabled;
-#endif /* SUPPORT_RANDOM_MAC_SCAN */
+#if defined(DHD_RANDOM_MAC_SCAN)
+	bool random_mac_running;
+#endif /* DHD_RANDOM_MAC_SCAN */
 #ifdef DHD_LOSSLESS_ROAMING
 	timer_list_compat_t roam_timeout;   /* Timer for catch roam timeout */
 #endif // endif
@@ -2447,7 +2464,7 @@ extern int wl_cfg80211_ifstats_counters(struct net_device *dev, wl_if_stats_t *i
 extern s32 wl_cfg80211_set_dbg_verbose(struct net_device *ndev, u32 level);
 extern int wl_cfg80211_deinit_p2p_discovery(struct bcm_cfg80211 * cfg);
 extern int wl_cfg80211_set_frameburst(struct bcm_cfg80211 *cfg, bool enable);
-extern int wl_cfg80211_determine_p2p_rsdb_mode(struct bcm_cfg80211 *cfg);
+extern int wl_cfg80211_determine_p2p_rsdb_scc_mode(struct bcm_cfg80211 *cfg);
 extern uint8 wl_cfg80211_get_bus_state(struct bcm_cfg80211 *cfg);
 #ifdef WL_WPS_SYNC
 void wl_handle_wps_states(struct net_device *ndev, u8 *dump_data, u16 len, bool direction);
@@ -2501,4 +2518,5 @@ do {	\
 	}	\
 } while (0)
 extern s32 wl_cfg80211_handle_macaddr_change(struct net_device *dev, u8 *macaddr);
+extern bool dhd_force_country_change(struct net_device *dev);
 #endif /* _wl_cfg80211_h_ */

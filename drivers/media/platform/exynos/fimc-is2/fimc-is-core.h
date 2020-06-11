@@ -251,6 +251,7 @@ struct fimc_is_dual_info {
 	int max_fps_master;
 	int max_fps_slave;
 	int tick_count;
+	int max_fps[SENSOR_POSITION_MAX];
 };
 
 #ifdef FIXED_SENSOR_DEBUG

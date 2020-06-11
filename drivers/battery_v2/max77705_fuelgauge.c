@@ -1057,7 +1057,7 @@ int max77705_fg_alert_init(struct max77705_fuelgauge_data *fuelgauge, int soc)
 	if (read_data != 0x7f80)
 		pr_err("%s: TALRT_THRESHOLD_REG is not valid (0x%x)\n",
 		       __func__, read_data);
-	/*mdelay(100); */
+	/* msleep(100); */
 
 	/* Enable SOC alerts */
 	if (max77705_bulk_read(fuelgauge->i2c, CONFIG_REG, 2, config_data) < 0) {
@@ -1557,10 +1557,8 @@ static int max77705_fg_get_property(struct power_supply *psy,
 {
 	struct max77705_fuelgauge_data *fuelgauge = power_supply_get_drvdata(psy);
 	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property) psp;
-	union power_supply_propval value;
 	struct timespec c_ts = {0, };
 	static struct timespec old_ts = {0, };
-	static int abnormal_current_cnt;
 	u8 data[2] = { 0, 0 };
 
 	switch (psp) {
@@ -1582,40 +1580,7 @@ static int max77705_fg_get_property(struct power_supply *psy,
 		break;
 		/* Current */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		switch (val->intval) {
-		case SEC_BATTERY_CURRENT_UA:
-			val->intval = max77705_fg_read_current(fuelgauge,
-						     SEC_BATTERY_CURRENT_UA);
-			break;
-		case SEC_BATTERY_CURRENT_MA:
-		default:
-			fuelgauge->current_now = val->intval =
-			    max77705_get_fuelgauge_value(fuelgauge, FG_CURRENT);
-			psy_do_property("battery", get,	POWER_SUPPLY_PROP_STATUS, value);
-			/* To save log for abnormal case */
-			if (value.intval == POWER_SUPPLY_STATUS_DISCHARGING &&
-					val->intval > 0) {
-				abnormal_current_cnt++;
-				if (abnormal_current_cnt >= 5) {
-					pr_info("%s: Inow is increasing in not charging status\n",
-						__func__);
-                                        if(!max77705_check_jig_status(fuelgauge)){
-						value.intval = fuelgauge->capacity_old + 15;
-                                                psy_do_property("battery", set,
-							POWER_SUPPLY_PROP_CAPACITY, value);
-                                                abnormal_current_cnt = 0;
-						value.intval = fuelgauge->capacity_old;
-                                                psy_do_property("battery", set,
-							POWER_SUPPLY_PROP_CAPACITY, value);
-                                        }else{
-                                                abnormal_current_cnt = 0;
-                                        }
-				}
-			} else {
-				abnormal_current_cnt = 0;
-			}
-			break;
-		}
+		val->intval = max77705_fg_read_current(fuelgauge, val->intval);
 		break;
 		/* Average Current */
 	case POWER_SUPPLY_PROP_CURRENT_AVG:

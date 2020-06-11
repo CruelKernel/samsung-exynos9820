@@ -3471,6 +3471,7 @@ reset_the_others:
 		break;
 	}
 
+	dual_info->max_fps[device->position] = 0;
 #ifdef ENABLE_DTP
 	if (device->dtp_check) {
 		device->dtp_check = false;

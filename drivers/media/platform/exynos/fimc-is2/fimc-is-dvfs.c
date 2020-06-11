@@ -188,7 +188,7 @@ int fimc_is_dvfs_sel_static(struct fimc_is_device_ischain *device)
 	struct fimc_is_resourcemgr *resourcemgr;
 	struct fimc_is_dual_info *dual_info;
 	int i, scenario_id, scenario_cnt;
-	int position, resol, fps, stream_cnt;
+	int position, resol, fps, stream_cnt, streaming_cnt;
 	unsigned long sensor_map;
 
 	FIMC_BUG(!device);
@@ -224,7 +224,13 @@ int fimc_is_dvfs_sel_static(struct fimc_is_device_ischain *device)
 	resol = fimc_is_get_target_resol(device);
 #endif
 	fps = fimc_is_sensor_g_framerate(device->sensor);
+
+	/*
+	 * stream_cnt : number of open sensors
+	 * streaming_cnt : number of sensors in operation
+	 */
 	stream_cnt = fimc_is_get_start_sensor_cnt(core);
+	streaming_cnt = resourcemgr->streaming_cnt;
 	sensor_map = core->sensor_map;
 	dual_info = &core->dual_info;
 
@@ -235,7 +241,7 @@ int fimc_is_dvfs_sel_static(struct fimc_is_device_ischain *device)
 		}
 
 		if ((scenarios[i].check_func(device, NULL, position, resol, fps,
-			stream_cnt, sensor_map, dual_info)) > 0) {
+			stream_cnt, streaming_cnt, sensor_map, dual_info)) > 0) {
 			scenario_id = scenarios[i].scenario_id;
 			static_ctrl->cur_scenario_id = scenario_id;
 			static_ctrl->cur_scenario_idx = i;
@@ -244,8 +250,8 @@ int fimc_is_dvfs_sel_static(struct fimc_is_device_ischain *device)
 		}
 	}
 
-	warn("couldn't find static dvfs scenario [sensor:(%d/%d)/fps:%d/setfile:%d/resol:(%d)]\n",
-		fimc_is_get_start_sensor_cnt(core),
+	warn("couldn't find static dvfs scenario [sensor:(%d/%d/%d)/fps:%d/setfile:%d/resol:(%d)]\n",
+		fimc_is_get_start_sensor_cnt(core), streaming_cnt,
 		device->sensor->pdev->id,
 		fps, (device->setfile & FIMC_IS_SETFILE_MASK), resol);
 
@@ -327,7 +333,7 @@ int fimc_is_dvfs_sel_dynamic(struct fimc_is_device_ischain *device, struct fimc_
 			continue;
 		}
 
-		ret = scenarios[i].check_func(device, group, position, resol, fps, 0, sensor_map, dual_info);
+		ret = scenarios[i].check_func(device, group, position, resol, fps, 0, 0, sensor_map, dual_info);
 		switch (ret) {
 		case DVFS_MATCHED:
 			scenario_id = scenarios[i].scenario_id;
@@ -358,7 +364,7 @@ int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 	struct fimc_is_resourcemgr *resourcemgr;
 	struct fimc_is_dual_info *dual_info;
 	int i, scenario_id, scenario_cnt;
-	int position, resol, fps, stream_cnt;
+	int position, resol, fps, stream_cnt, streaming_cnt;
 	unsigned long sensor_map;
 
 	FIMC_BUG(!device);
@@ -384,7 +390,13 @@ int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 	position = fimc_is_sensor_g_position(device);
 	resol = fimc_is_sensor_g_width(device) * fimc_is_sensor_g_height(device);
 	fps = fimc_is_sensor_g_framerate(device);
+
+	/*
+	 * stream_cnt : number of open sensors
+	 * streaming_cnt : number of sensors in operation
+	 */
 	stream_cnt = fimc_is_get_start_sensor_cnt(core);
+	streaming_cnt = resourcemgr->streaming_cnt;
 	sensor_map = core->sensor_map;
 	dual_info = &core->dual_info;
 
@@ -395,7 +407,7 @@ int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 		}
 
 		ret = scenarios[i].ext_check_func(device, position, resol, fps,
-				stream_cnt, sensor_map, dual_info);
+				stream_cnt, streaming_cnt, sensor_map, dual_info);
 		switch (ret) {
 		case DVFS_MATCHED:
 			scenario_id = scenarios[i].scenario_id;
@@ -411,8 +423,8 @@ int fimc_is_dvfs_sel_external(struct fimc_is_device_sensor *device)
 		}
 	}
 
-	warn("couldn't find external dvfs scenario [sensor:(%d/%d)/fps:%d/resol:(%d)]\n",
-		stream_cnt, position, fps, resol);
+	warn("couldn't find external dvfs scenario [sensor:(%d/%d/%d)/fps:%d/resol:(%d)]\n",
+		stream_cnt, streaming_cnt, position, fps, resol);
 
 	external_ctrl->cur_scenario_id = FIMC_IS_SN_MAX;
 	external_ctrl->cur_scenario_idx = -1;
@@ -611,6 +623,21 @@ void fimc_is_dual_mode_update(struct fimc_is_device_ischain *device,
 	struct fimc_is_core *core = (struct fimc_is_core *)device->interface->core;
 	struct fimc_is_dual_info *dual_info = &core->dual_info;
 	struct fimc_is_device_sensor *sensor = device->sensor;
+	struct fimc_is_resourcemgr *resourcemgr;
+	int i, streaming_cnt = 0;
+
+	resourcemgr = sensor->resourcemgr;
+
+	if (group->head->device_type != FIMC_IS_DEVICE_SENSOR)
+		return;
+
+	dual_info->max_fps[sensor->position] = frame->shot->ctl.aa.aeTargetFpsRange[1];
+
+	for (i = 0; i < SENSOR_POSITION_MAX; i++) {
+		if (dual_info->max_fps[i] >= 24)
+			streaming_cnt++;
+	}
+	resourcemgr->streaming_cnt = streaming_cnt;
 
 	/* Continue if wide and tele/s-wide complete fimc_is_sensor_s_input(). */
 	if (!(test_bit(SENSOR_POSITION_REAR, &core->sensor_map) &&
@@ -618,8 +645,6 @@ void fimc_is_dual_mode_update(struct fimc_is_device_ischain *device,
 		 test_bit(SENSOR_POSITION_REAR3, &core->sensor_map))))
 		return;
 
-	if (group->head->device_type != FIMC_IS_DEVICE_SENSOR)
-		return;
 
 	/* Update max fps of dual sensor device with reference to shot meta. */
 	switch (sensor->position) {

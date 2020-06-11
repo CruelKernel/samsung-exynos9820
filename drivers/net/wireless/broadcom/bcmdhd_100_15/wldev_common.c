@@ -463,64 +463,28 @@ int wldev_get_mode(
 	return error;
 }
 int wldev_set_country(
-	struct net_device *dev, char *country_code, bool notify, bool user_enforced, int revinfo)
+	struct net_device *dev, char *country_code, bool notify, int revinfo)
 {
 	int error = -1;
 	wl_country_t cspec = {{0}, 0, {0}};
-	scb_val_t scbval;
 	char smbuf[WLC_IOCTL_SMLEN];
-#ifdef WL_CFG80211
-	struct wireless_dev *wdev = ndev_to_wdev(dev);
-	struct wiphy *wiphy = wdev->wiphy;
-	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
-#endif /* WL_CFG80211 */
 
 	if (!country_code)
 		return error;
 
-	bzero(&scbval, sizeof(scb_val_t));
-	error = wldev_iovar_getbuf(dev, "country", NULL, 0, &cspec, sizeof(cspec), NULL);
+	cspec.rev = revinfo;
+	strlcpy(cspec.country_abbrev, country_code, WL_CCODE_LEN + 1);
+	strlcpy(cspec.ccode, country_code, WL_CCODE_LEN + 1);
+	dhd_get_customized_country_code(dev, (char *)&cspec.country_abbrev, &cspec);
+	error = wldev_iovar_setbuf(dev, "country", &cspec, sizeof(cspec),
+			smbuf, sizeof(smbuf), NULL);
 	if (error < 0) {
-		WLDEV_ERROR(("wldev_set_country: get country failed = %d\n", error));
+		WLDEV_ERROR(("wldev_set_country: set country for %s as %s rev %d failed\n",
+			country_code, cspec.ccode, cspec.rev));
 		return error;
 	}
-
-	if ((error < 0) ||
-		dhd_force_country_change(dev) ||
-	    (strncmp(country_code, cspec.ccode, WLC_CNTRY_BUF_SZ) != 0)) {
-
-#ifdef WL_CFG80211
-		if ((user_enforced) && (wl_get_drv_status(cfg, CONNECTED, dev))) {
-#else
-		if (user_enforced) {
-#endif /* WL_CFG80211 */
-			bzero(&scbval, sizeof(scb_val_t));
-			error = wldev_ioctl_set(dev, WLC_DISASSOC,
-			                        &scbval, sizeof(scb_val_t));
-			if (error < 0) {
-				WLDEV_ERROR(("wldev_set_country: set country failed"
-					" due to Disassoc error %d\n",
-					error));
-				return error;
-			}
-		}
-
-		wl_cfg80211_scan_abort(cfg);
-
-		cspec.rev = revinfo;
-		strlcpy(cspec.country_abbrev, country_code, WLC_CNTRY_BUF_SZ);
-		strlcpy(cspec.ccode, country_code, WLC_CNTRY_BUF_SZ);
-		dhd_get_customized_country_code(dev, (char *)&cspec.country_abbrev, &cspec);
-		error = wldev_iovar_setbuf(dev, "country", &cspec, sizeof(cspec),
-			smbuf, sizeof(smbuf), NULL);
-		if (error < 0) {
-			WLDEV_ERROR(("wldev_set_country: set country for %s as %s rev %d failed\n",
-				country_code, cspec.ccode, cspec.rev));
-			return error;
-		}
-		dhd_bus_country_set(dev, &cspec, notify);
-		WLDEV_INFO(("wldev_set_country: set country for %s as %s rev %d\n",
-			country_code, cspec.ccode, cspec.rev));
-	}
+	dhd_bus_country_set(dev, &cspec, notify);
+	WLDEV_INFO(("wldev_set_country: set country for %s as %s rev %d\n",
+		country_code, cspec.ccode, cspec.rev));
 	return 0;
 }

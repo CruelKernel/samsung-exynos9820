@@ -1045,6 +1045,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR3_PREVIEW_FHD)
 			(mask == ISS_SUB_SCENARIO_VIDEO_WDR_AUTO));
 
 	if ((position == SENSOR_POSITION_REAR3) &&
+			(streaming_cnt == 1) &&
 			(fps <= 30) &&
 			(resol <= SIZE_16MP_FHD_BDS) &&
 			(!setfile_flag))
@@ -1063,6 +1064,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR2_PREVIEW_FHD)
 			(mask == ISS_SUB_SCENARIO_VIDEO_WDR_AUTO));
 
 	if ((position == SENSOR_POSITION_REAR2) &&
+			(streaming_cnt == 1) &&
 			(fps <= 30) &&
 			(resol <= SIZE_12MP_FHD_BDS) &&
 			(!setfile_flag))
@@ -1078,7 +1080,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_FULL)
 	u32 scen = (device->setfile & FIMC_IS_SCENARIO_MASK) >> FIMC_IS_SCENARIO_SHIFT;
 	bool scenario_flag = (scen == FIMC_IS_SCENARIO_FULL_SIZE);
 
-	if (IS_REAR_SENSOR(position) && scenario_flag)
+	if (IS_REAR_SENSOR(position) && scenario_flag && streaming_cnt == 1)
 		return 1;
 	else
 		return 0;
@@ -1093,6 +1095,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_FHD)
 			(mask == ISS_SUB_SCENARIO_VIDEO_WDR_AUTO));
 
 	if ((position == SENSOR_POSITION_REAR) &&
+			(streaming_cnt == 1) &&
 			(fps <= 30) &&
 			(resol <= SIZE_12MP_FHD_BDS) &&
 			(!setfile_flag))
@@ -1114,6 +1117,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_WHD)
 			(mask == ISS_SUB_SCENARIO_VIDEO_WDR_AUTO));
 
 	if (IS_REAR_SENSOR(position) &&
+			(streaming_cnt == 1) &&
 			(fps <= 30) &&
 			(resol > SIZE_12MP_FHD_BDS) &&
 			(resol <= SIZE_12MP_QHD_BDS) &&
@@ -1132,6 +1136,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_UHD)
 			(mask == ISS_SUB_SCENARIO_UHD_30FPS_WDR_AUTO));
 
 	if (IS_REAR_SENSOR(position) &&
+			(streaming_cnt == 1) &&
 			(fps <= 30) &&
 			(resol > SIZE_12MP_QHD_BDS) &&
 			(!setfile_flag))
@@ -1149,6 +1154,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_REAR_PREVIEW_UHD_60FPS)
 			(mask == ISS_SUB_SCENARIO_UHD_60FPS_WDR_AUTO));
 
 	if (IS_REAR_SENSOR(position) &&
+			(streaming_cnt == 1) &&
 			(fps > 30) &&
 			(fps <= 60) &&
 			(resol > SIZE_12MP_FHD_BDS) &&
@@ -1217,6 +1223,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_FRONT2_PREVIEW)
 			(mask == ISS_SUB_SCENARIO_VIDEO_WDR_AUTO));
 
 	if ((position == SENSOR_POSITION_FRONT2) &&
+		(streaming_cnt == 1) &&
 		(fps <= 30) &&
 		(resol < SIZE_WHD) &&
 		(!setfile_flag))
@@ -1358,7 +1365,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_FRONT_PREVIEW_FULL)
 	u32 scen = (device->setfile & FIMC_IS_SCENARIO_MASK) >> FIMC_IS_SCENARIO_SHIFT;
 	bool scenario_flag = (scen == FIMC_IS_SCENARIO_FULL_SIZE);
 
-	if (IS_FRONT_SENSOR(position) && scenario_flag)
+	if (IS_FRONT_SENSOR(position) && scenario_flag && streaming_cnt == 1)
 		return 1;
 	else
 		return 0;
@@ -1367,7 +1374,7 @@ DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_FRONT_PREVIEW_FULL)
 /* front preview */
 DECLARE_DVFS_CHK_FUNC(FIMC_IS_SN_FRONT_PREVIEW)
 {
-	if (position == SENSOR_POSITION_FRONT)
+	if (position == SENSOR_POSITION_FRONT && streaming_cnt == 1)
 		return 1;
 	else
 		return 0;

@@ -276,11 +276,12 @@ static int run_seq_show(struct seq_file *file, void *iter)
 static ssize_t run_seq_write(struct file *file, const char __user *buffer, size_t count, loff_t *off)
 {
 	int run;
-	char buf[10];
-	if (copy_from_user(buf, buffer, count) != 0)
+	char bbuf[10];
+	count = (count > 10)? 10 : count;
+	if (copy_from_user(bbuf, buffer, count) != 0)
 		return -EFAULT;
 
-	if (!sscanf(buf, "%1d", &run))
+	if (!sscanf(bbuf, "%1d", &run))
 		return -EINVAL;
 	if (run)
 		cpufreq_log_start();

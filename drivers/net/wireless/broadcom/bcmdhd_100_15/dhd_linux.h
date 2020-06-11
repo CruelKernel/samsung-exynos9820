@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.h 828731 2019-07-04 05:25:31Z $
+ * $Id: dhd_linux.h 864822 2020-02-17 08:48:57Z $
  */
 
 /* wifi platform functions for power, interrupt and pre-alloc, either
@@ -328,14 +328,15 @@ extern uint32 sec_save_softap_info(void);
 extern uint32 report_hang_privcmd_err;
 #endif /* DHD_SEND_HANG_PRIVCMD_ERRORS */
 
-#if defined(ARGOS_CPU_SCHEDULER) && !defined(DHD_LB_IRQSET)
+#if defined(ARGOS_CPU_SCHEDULER) && !defined(DHD_LB_IRQSET) && \
+	!defined(CONFIG_SOC_EXYNOS7870)
 extern int argos_task_affinity_setup_label(struct task_struct *p, const char *label,
 	struct cpumask * affinity_cpu_mask, struct cpumask * default_cpu_mask);
 extern struct cpumask hmp_slow_cpu_mask;
 extern struct cpumask hmp_fast_cpu_mask;
 extern void set_irq_cpucore(unsigned int irq, cpumask_var_t default_cpu_mask,
 	cpumask_var_t affinity_cpu_mask);
-#endif /* ARGOS_CPU_SCHEDULER && !DHD_LB_IRQSET */
+#endif /* ARGOS_CPU_SCHEDULER && !DHD_LB_IRQSET && !CONFIG_SOC_EXYNOS7870 */
 
 #if (defined(ARGOS_CPU_SCHEDULER) && defined(ARGOS_RPS_CPU_CTL)) || \
 	defined(ARGOS_NOTIFY_CB)
@@ -452,4 +453,7 @@ extern void dhd_reset_tcpsync_info_by_dev(struct net_device *dev);
 
 int compat_kernel_read(struct file *file, loff_t offset, char *addr, unsigned long count);
 
+#ifdef DHD_DISABLE_VHTMODE
+void dhd_disable_vhtmode(dhd_pub_t *dhd);
+#endif /* DHD_DISABLE_VHTMODE */
 #endif /* __DHD_LINUX_H__ */

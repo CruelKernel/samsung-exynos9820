@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_debug.h 852609 2019-11-26 05:28:02Z $
+ * $Id: dhd_debug.h 865142 2020-02-19 02:27:53Z $
  */
 
 #ifndef _dhd_debug_h_
@@ -441,6 +441,9 @@ typedef enum {
 
 	/* Dropped by driver for any other reason. */
 	RX_PKT_FATE_DRV_DROP_OTHER,
+
+	/* Indicate RX Host Wake up packet. */
+	RX_PKT_FATE_WAKE_PKT,
 
 	} wifi_rx_packet_fate;
 

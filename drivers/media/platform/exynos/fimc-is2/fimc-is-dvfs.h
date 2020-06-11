@@ -36,11 +36,11 @@
 #define DECLARE_DVFS_CHK_FUNC(__SCENARIO) \
 	int check_ ## __SCENARIO \
 		(struct fimc_is_device_ischain *device, struct fimc_is_group *group, int position, int resol, \
-			int fps, int stream_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...)
+			int fps, int stream_cnt, int streaming_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...)
 #define DECLARE_EXT_DVFS_CHK_FUNC(__SCENARIO) \
 	int check_ ## __SCENARIO \
 		(struct fimc_is_device_sensor *device, int position, int resol, int fps, \
-			int stream_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...)
+			int stream_cnt, int streaming_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...)
 #define GET_KEY_FOR_DVFS_TBL_IDX(__HAL_VER) \
 	(#__HAL_VER "_TBL_IDX")
 
@@ -73,9 +73,9 @@ struct fimc_is_dvfs_scenario {
 
 	/* function pointer to check a scenario */
 	int (*check_func)(struct fimc_is_device_ischain *device, struct fimc_is_group *group, int position, int resol,
-			int fps, int stream_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...);
+			int fps, int stream_cnt, int streaming_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...);
 	int (*ext_check_func)(struct fimc_is_device_sensor *device, int position, int resol,
-			int fps, int stream_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...);
+			int fps, int stream_cnt, int streaming_cnt, unsigned long sensor_map, struct fimc_is_dual_info *dual_info, ...);
 };
 
 struct fimc_is_dvfs_scenario_ctrl {
