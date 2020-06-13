@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "N976B" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -29,8 +29,9 @@ jobs:
         ./build config                   \
                 model=${{ matrix.model}} \
                 name="CRUEL-V3.4"        \
-                +magisk                  \
+                +magisk+canary           \
                 +nohardening             \
+                +io_maple                \
                 +ttl                     \
                 +wireguard               \
                 +cifs                    \
@@ -38,6 +39,7 @@ jobs:
                 +ntfs                    \
                 +morosound               \
                 +boeffla_wl_blocker      \
+                =mass_storage            \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
