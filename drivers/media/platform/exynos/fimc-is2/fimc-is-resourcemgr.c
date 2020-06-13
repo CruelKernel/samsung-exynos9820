@@ -1305,6 +1305,8 @@ int fimc_is_resourcemgr_probe(struct fimc_is_resourcemgr *resourcemgr,
 	resourcemgr->tmu_state = ISP_NORMAL;
 	resourcemgr->limited_fps = 0;
 
+	resourcemgr->streaming_cnt = 0;
+
 	/* bus monitor unit */
 
 #ifdef CONFIG_EXYNOS_BUSMONITOR

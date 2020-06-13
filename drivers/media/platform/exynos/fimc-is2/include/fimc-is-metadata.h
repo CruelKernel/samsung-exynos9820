@@ -1228,7 +1228,8 @@ struct camera2_aa_dm {
 	int32_t				vendor_multiFrameEv;
 	int32_t				vendor_faceToneWeight;
 	float				vendor_noiseIndex;
-	uint32_t			vendor_reserved[7];
+	int32_t				vendor_dynamicShotCaptureDuration;
+	uint32_t			vendor_reserved[6];
 
 	// For dual
 	uint32_t			vendor_wideTeleConvEv;

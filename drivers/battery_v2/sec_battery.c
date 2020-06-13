@@ -1082,6 +1082,35 @@ static void sec_bat_get_charging_current_in_power_list(struct sec_battery_info *
 }
 #endif
 
+void sec_bat_set_decrease_iout(struct sec_battery_info *battery)
+{
+	union power_supply_propval value = {0, };
+	int i = 0, step = 3, input_current[3] = {500, 300, 100};
+
+	mutex_lock(&battery->iolock);
+	for (i = 0 ; i < step ; i++) {
+		if (battery->input_current > input_current[i]) {
+			pr_info("%s: Wireless iout goes to %dmA before switch charging path to cable\n",
+				__func__, input_current[i]);
+			battery->input_current = input_current[i];
+			value.intval = input_current[i];
+			psy_do_property(battery->pdata->charger_name, set,
+				POWER_SUPPLY_EXT_PROP_PAD_VOLT_CTRL, value);
+
+			if (i != step - 1)
+				msleep(300);
+		}
+	}
+
+	value.intval = POWER_SUPPLY_HEALTH_WPC_EN;
+	psy_do_property(battery->pdata->wireless_charger_name, set,
+		POWER_SUPPLY_PROP_HEALTH, value);
+
+	msleep(300);
+
+	mutex_unlock(&battery->iolock);
+}
+
 int sec_bat_set_charging_current(struct sec_battery_info *battery)
 {
 	static int afc_init = false;
@@ -4172,14 +4201,29 @@ static void sec_bat_ext_event_work(struct work_struct *work)
 
 			/* process escape phm */
 			if(battery->wc_rx_phm_mode) {
+				char wpc_en_status[2];
+
+				wpc_en_status[0] = WPC_EN_CHARGING;
+
+				wpc_en_status[1] = true;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
 				pr_info("%s: ESCAPE PHM STEP 1 - WC CONTROL: Enable", __func__);
-				gpio_direction_output(battery->pdata->wpc_en, 0);
 				msleep(100);
+
+				wpc_en_status[1] = false;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
 				pr_info("%s: ESCAPE PHM STEP 2 - WC CONTROL: Disable", __func__);
-				gpio_direction_output(battery->pdata->wpc_en, 1);
 				msleep(510);
+
+				wpc_en_status[1] = true;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
 				pr_info("%s: ESCAPE PHM STEP 3 - WC CONTROL: Enable", __func__);
-				gpio_direction_output(battery->pdata->wpc_en, 0);
 			}
 			battery->wc_rx_phm_mode = false;
 		}
@@ -4414,12 +4458,16 @@ static void sec_bat_monitor_work(
 		pr_info("%s: wc_enable(%d), cnt(%d)\n",
 			__func__, battery->wc_enable, battery->wc_enable_cnt);
 		if (battery->wc_enable_cnt > battery->wc_enable_cnt_value) {
+			char wpc_en_status[2];
+
 			battery->wc_enable = true;
 			battery->wc_enable_cnt = 0;
-			if (battery->pdata->wpc_en) {
-				gpio_direction_output(battery->pdata->wpc_en, 0);
-				pr_info("%s: WC CONTROL: Enable", __func__);
-			}
+			wpc_en_status[0] = WPC_EN_SYSFS;
+			wpc_en_status[1] = true;
+			value.strval= wpc_en_status;
+			psy_do_property(battery->pdata->wireless_charger_name, set,
+				POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+			pr_info("%s: WC CONTROL: Enable", __func__);
 			pr_info("%s: wpc_en(%d)\n",
 				__func__, gpio_get_value(battery->pdata->wpc_en));
 		}
@@ -4570,6 +4618,8 @@ continue_monitor:
 
 skip_current_monitor:
 	psy_do_property(battery->pdata->charger_name, get,
+		POWER_SUPPLY_EXT_PROP_MONITOR_WORK, val);
+	psy_do_property(battery->pdata->wireless_charger_name, get,
 		POWER_SUPPLY_EXT_PROP_MONITOR_WORK, val);
 
 	dev_dbg(battery->dev,
@@ -4999,6 +5049,7 @@ static void sec_bat_cable_work(struct work_struct *work)
 				struct sec_battery_info, cable_work.work);
 	union power_supply_propval val = {0, };
 	int current_cable_type = SEC_BATTERY_CABLE_NONE;
+	int wire_current = 0;
 
 	dev_info(battery->dev, "%s: Start\n", __func__);
 	sec_bat_set_current_event(battery, SEC_BAT_CURRENT_EVENT_SKIP_HEATING_CONTROL,
@@ -5026,8 +5077,41 @@ static void sec_bat_cable_work(struct work_struct *work)
 	}
 #endif
 
-	if (battery->wc_status && battery->wc_enable) {
-		int wireless_current, wire_current;
+	if (!is_nocharge_type(battery->wire_status)) {
+		wire_current = (battery->wire_status == SEC_BATTERY_CABLE_PREPARE_TA ?
+			battery->pdata->charging_current[SEC_BATTERY_CABLE_TA].input_current_limit :
+			battery->pdata->charging_current[battery->wire_status].input_current_limit);
+
+		wire_current = wire_current * (is_hv_wire_type(battery->wire_status) ?
+			(battery->wire_status == SEC_BATTERY_CABLE_12V_TA ? SEC_INPUT_VOLTAGE_12V : SEC_INPUT_VOLTAGE_9V) / 10
+			: SEC_INPUT_VOLTAGE_5V / 10);
+
+		if (wire_current >= 4000) {
+			char wpc_en_status[2];
+
+			if (is_wireless_type(battery->cable_type)) {
+				if (battery->wpc_vout_level != WIRELESS_VOUT_5V) {
+					pr_info("%s: Wireless vout goes to 5V before switch charging path to cable\n",
+						__func__);
+					battery->wpc_vout_level = WIRELESS_VOUT_5V;
+					val.intval = WIRELESS_VOUT_5V;
+					psy_do_property(battery->pdata->wireless_charger_name, set,
+						POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, val);
+				}
+				sec_bat_set_decrease_iout(battery);
+			}
+
+			wpc_en_status[0] = WPC_EN_CHARGING;
+			wpc_en_status[1] = false;
+			val.strval= wpc_en_status;
+			psy_do_property(battery->pdata->wireless_charger_name, set,
+				POWER_SUPPLY_EXT_PROP_WPC_EN, val);
+			pr_info("%s: WC CONTROL: Disable", __func__);
+		}
+	}
+
+	if (battery->wc_status && battery->wc_enable && (wire_current < 4000)) {
+		int wireless_current;
 		int temp_current_type;
 
 		if (battery->wc_status == SEC_WIRELESS_PAD_WPC)
@@ -5075,14 +5159,6 @@ static void sec_bat_cable_work(struct work_struct *work)
 			else
 				wireless_current = (wireless_current * SEC_INPUT_VOLTAGE_10V) / 10;
 
-			wire_current = (battery->wire_status == SEC_BATTERY_CABLE_PREPARE_TA ?
-				battery->pdata->charging_current[SEC_BATTERY_CABLE_TA].input_current_limit :
-				battery->pdata->charging_current[battery->wire_status].input_current_limit);
-
-			wire_current = wire_current * (is_hv_wire_type(battery->wire_status) ?
-				(battery->wire_status == SEC_BATTERY_CABLE_12V_TA ? SEC_INPUT_VOLTAGE_12V : SEC_INPUT_VOLTAGE_9V) / 10
-				: SEC_INPUT_VOLTAGE_5V / 10);
-
 			if (is_pd_wire_type(battery->wire_status)) {
 				pr_info("%s: wl_cur(%d), pd_max_power(%d), wc_cable_type(%d), wire_cable_type(%d)\n",
 					__func__, wireless_current, battery->pd_max_charge_power, current_cable_type, battery->wire_status);
@@ -5128,6 +5204,15 @@ static void sec_bat_cable_work(struct work_struct *work)
 					POWER_SUPPLY_PROP_CHARGE_EMPTY, val);
 			}
 		} else {
+			char wpc_en_status[2];
+
+			wpc_en_status[0] = WPC_EN_CHARGING;
+			wpc_en_status[1] = true;
+			val.strval= wpc_en_status;
+			psy_do_property(battery->pdata->wireless_charger_name, set,
+				POWER_SUPPLY_EXT_PROP_WPC_EN, val);
+			pr_info("%s: WC CONTROL: Enable", __func__);
+
 			/* turn on ldo when ldo was off because of TA, ldo is supposed to turn on automatically except force off by sw.
 			   do not turn on ldo every wireless connection just in case ldo re-toggle by ic */
 			if(battery->wc_need_ldo_on) {
@@ -5209,6 +5294,15 @@ static void sec_bat_cable_work(struct work_struct *work)
 		((battery->pdata->cable_check_type &
 		SEC_BATTERY_CABLE_CHECK_NOINCOMPATIBLECHARGE) &&
 		battery->cable_type == SEC_BATTERY_CABLE_UNKNOWN)) {
+		char wpc_en_status[2];
+
+		wpc_en_status[0] = WPC_EN_CHARGING;
+		wpc_en_status[1] = true;
+		val.strval= wpc_en_status;
+		psy_do_property(battery->pdata->wireless_charger_name, set,
+			POWER_SUPPLY_EXT_PROP_WPC_EN, val);
+		pr_info("%s: WC CONTROL: Enable", __func__);
+
 		/* initialize all status */
 		battery->charging_mode = SEC_BATTERY_CHARGING_NONE;
 		battery->vbus_chg_by_siop = SEC_INPUT_VOLTAGE_NONE;
@@ -5691,15 +5785,25 @@ static int sec_bat_set_property(struct power_supply *psy,
 			pr_info("%s: Recover MFC IC (wc_enable: %d)\n",
 				__func__, battery->wc_enable);
 
-			if (battery->pdata->wpc_en) {
-				mutex_lock(&battery->wclock);
-				if (battery->wc_enable) {
-					gpio_direction_output(battery->pdata->wpc_en, 1);
-					msleep(500);
-					gpio_direction_output(battery->pdata->wpc_en, 0);
-				}
-				mutex_unlock(&battery->wclock);
+			mutex_lock(&battery->wclock);
+			if (battery->wc_enable) {
+				char wpc_en_status[2];
+
+				wpc_en_status[0] = WPC_EN_CHARGING;
+				wpc_en_status[1] = false;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+				pr_info("%s: WC CONTROL: Disable", __func__);
+				msleep(500);
+
+				wpc_en_status[1] = true;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+				pr_info("%s: WC CONTROL: Enable", __func__);
 			}
+			mutex_unlock(&battery->wclock);
 #if defined(CONFIG_BATTERY_CISD)
 			increase_cisd_count(CISD_DATA_DROP_VALUE);
 #endif
@@ -6156,6 +6260,7 @@ static int sec_wireless_get_property(struct power_supply *psy,
 void sec_wireless_set_tx_enable(struct sec_battery_info *battery, bool wc_tx_enable)
 {
 	union power_supply_propval value = {0, };
+	char wpc_en_status[2];
 
 	pr_info("@Tx_Mode %s: TX Power enable ? (%d)\n", __func__, wc_tx_enable);
 
@@ -6164,11 +6269,17 @@ void sec_wireless_set_tx_enable(struct sec_battery_info *battery, bool wc_tx_ena
 	battery->tx_switch_mode = TX_SWITCH_MODE_OFF;
 	battery->tx_switch_start_soc = 0;
 	battery->tx_switch_mode_change = false;
+	wpc_en_status[0] = WPC_EN_TX;
 
 	if (wc_tx_enable) {
 		/* set tx event */
 		sec_bat_set_tx_event(battery, BATT_TX_EVENT_WIRELESS_TX_STATUS,
 			(BATT_TX_EVENT_WIRELESS_TX_STATUS | BATT_TX_EVENT_WIRELESS_TX_RETRY));
+
+		wpc_en_status[1] = true;
+		value.strval= wpc_en_status;
+		psy_do_property(battery->pdata->wireless_charger_name, set,
+			POWER_SUPPLY_EXT_PROP_WPC_EN, value);
 
 #if defined(CONFIG_DIRECT_CHARGING)
 		if (is_pd_apdo_wire_type(battery->wire_status) && battery->pd_list.now_isApdo) {
@@ -6236,6 +6347,11 @@ void sec_wireless_set_tx_enable(struct sec_battery_info *battery, bool wc_tx_ena
 #if defined(CONFIG_WIRELESS_TX_MODE)
 		cancel_delayed_work(&battery->wpc_txpower_calc_work);
 #endif
+		wpc_en_status[1] = false;
+		value.strval= wpc_en_status;
+		psy_do_property(battery->pdata->wireless_charger_name, set,
+			POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+
 		wake_unlock(&battery->wpc_tx_wake_lock);
 	}	
 }

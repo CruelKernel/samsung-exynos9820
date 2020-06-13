@@ -1882,35 +1882,42 @@ ssize_t sec_bat_store_attrs(
 		break;
 	case WC_CONTROL:
 		if (sscanf(buf, "%10d\n", &x) == 1) {
-			if (battery->pdata->wpc_en) {
-				if (x == 0) {
-					mutex_lock(&battery->wclock);
-					battery->wc_enable = false;
-					battery->wc_enable_cnt = 0;
-					value.intval = 0;
-					psy_do_property(battery->pdata->wireless_charger_name, set,
-						POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
-					if (battery->pdata->wpc_en)
-						gpio_direction_output(battery->pdata->wpc_en, 1);
-					pr_info("%s: WC CONTROL: Disable", __func__);
-					mutex_unlock(&battery->wclock);
-				} else if (x == 1) {
-					mutex_lock(&battery->wclock);
-					battery->wc_enable = true;
-					battery->wc_enable_cnt = 0;
-					value.intval = 1;
-					psy_do_property(battery->pdata->wireless_charger_name, set,
-						POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
-					if (battery->pdata->wpc_en)
-						gpio_direction_output(battery->pdata->wpc_en, 0);
-					pr_info("%s: WC CONTROL: Enable", __func__);
-					mutex_unlock(&battery->wclock);
-				} else {
-					dev_info(battery->dev,
-						"%s: WC CONTROL unknown command\n",
-						__func__);
-					return -EINVAL;
-				}
+			char wpc_en_status[2];
+	
+			wpc_en_status[0] = WPC_EN_SYSFS;
+			if (x == 0) {
+				mutex_lock(&battery->wclock);
+				battery->wc_enable = false;
+				battery->wc_enable_cnt = 0;
+				value.intval = 0;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
+	
+				wpc_en_status[1] = false;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+				pr_info("%s: WC CONTROL: Disable", __func__);
+				mutex_unlock(&battery->wclock);
+			} else if (x == 1) {
+				mutex_lock(&battery->wclock);
+				battery->wc_enable = true;
+				battery->wc_enable_cnt = 0;
+				value.intval = 1;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
+	
+				wpc_en_status[1] = true;
+				value.strval= wpc_en_status;
+				psy_do_property(battery->pdata->wireless_charger_name, set,
+					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
+				pr_info("%s: WC CONTROL: Enable", __func__);
+				mutex_unlock(&battery->wclock);
+			} else {
+				dev_info(battery->dev,
+					"%s: WC CONTROL unknown command\n",
+					__func__);
+				return -EINVAL;
 			}
 			ret = count;
 		}

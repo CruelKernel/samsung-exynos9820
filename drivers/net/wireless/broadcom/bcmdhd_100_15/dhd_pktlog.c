@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_pktlog.c 813582 2019-04-05 10:41:35Z $
+ * $Id: dhd_pktlog.c 865142 2020-02-19 02:27:53Z $
  */
 
 #include <typedefs.h>
@@ -320,11 +320,11 @@ dhd_pktlog_ring_deinit(dhd_pub_t *dhdp, dhd_pktlog_ring_t *ring)
 
 /*
  * dhd_pktlog_ring_add_pkts : add filtered packets into pktlog ring
- * direction :  1 - TX / 0 - RX
  * pktid : incase of rx, pktid is not used (pass DHD_INVALID_PKID)
+ * direction :  1 - TX / 0 - RX / 2 - RX Wakeup Packet
  */
 int
-dhd_pktlog_ring_add_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid, bool direction)
+dhd_pktlog_ring_add_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid, uint32 direction)
 {
 	dhd_pktlog_ring_info_t *pkts;
 	uint8 *pktdata = NULL;
@@ -345,33 +345,34 @@ dhd_pktlog_ring_add_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid, bool directio
 
 	pktdata = (uint8 *)PKTDATA(dhdp->osh, pkt);
 	if (direction == PKT_TX) {
-	    pktlog_case = PKTLOG_TXPKT_CASE;
-	} else {
-	    pktlog_case = PKTLOG_RXPKT_CASE;
+		pktlog_case = PKTLOG_TXPKT_CASE;
+	} else if ((direction == PKT_RX) || (direction == PKT_WAKERX)) {
+		pktlog_case = PKTLOG_RXPKT_CASE;
 	}
 
-	if (dhd_pktlog_filter_matched(pktlog_filter, pktdata, pktlog_case)
+	if ((direction != PKT_WAKERX) &&
+		dhd_pktlog_filter_matched(pktlog_filter, pktdata, pktlog_case)
 		== FALSE) {
-	    return BCME_OK;
+		return BCME_OK;
 	}
 
 	if (direction == PKT_TX && pktid == DHD_INVALID_PKTID) {
-	    DHD_ERROR(("%s : Invalid PKTID \n", __FUNCTION__));
-	    return BCME_ERROR;
+		DHD_ERROR(("%s : Invalid PKTID \n", __FUNCTION__));
+		return BCME_ERROR;
 	}
 
 	/* get free ring_info and insert to ring_info_head */
 	spin_lock_irqsave(&pktlog_ring->pktlog_ring_lock, flags);
 	/* if free_list is empty, use the oldest ring_info */
 	if (dll_empty(&pktlog_ring->ring_info_free)) {
-	    pkts = (dhd_pktlog_ring_info_t *)dll_head_p(&pktlog_ring->ring_info_head);
-	    dll_delete((dll_t *)pkts);
-	    /* free the oldest packet */
-	    PKTFREE(pktlog_ring->dhdp->osh, pkts->info.pkt, TRUE);
-	    pktlog_ring->pktcount--;
+		pkts = (dhd_pktlog_ring_info_t *)dll_head_p(&pktlog_ring->ring_info_head);
+		dll_delete((dll_t *)pkts);
+		/* free the oldest packet */
+		PKTFREE(pktlog_ring->dhdp->osh, pkts->info.pkt, TRUE);
+		pktlog_ring->pktcount--;
 	} else {
-	    pkts = (dhd_pktlog_ring_info_t *)dll_tail_p(&pktlog_ring->ring_info_free);
-	    dll_delete((dll_t *)pkts);
+		pkts = (dhd_pktlog_ring_info_t *)dll_tail_p(&pktlog_ring->ring_info_free);
+		dll_delete((dll_t *)pkts);
 	}
 
 	/* Update packet information */
@@ -387,16 +388,19 @@ dhd_pktlog_ring_add_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid, bool directio
 	pkts->info.direction = direction;
 
 	if (direction == PKT_TX) {
-	    pkts->info.pkt_hash =  __dhd_dbg_pkt_hash((uintptr_t)pkt, pktid);
-	    pkts->tx_fate = TX_PKT_FATE_DRV_QUEUED;
-	} else {
-	    pkts->info.pkt_hash = 0U;
-	    pkts->rx_fate = RX_PKT_FATE_SUCCESS;
+		pkts->info.pkt_hash =  __dhd_dbg_pkt_hash((uintptr_t)pkt, pktid);
+		pkts->tx_fate = TX_PKT_FATE_DRV_QUEUED;
+	} else if (direction == PKT_RX) {
+		pkts->info.pkt_hash = 0U;
+		pkts->rx_fate = RX_PKT_FATE_SUCCESS;
+	} else if (direction == PKT_WAKERX) {
+		pkts->info.pkt_hash = 0U;
+		pkts->rx_fate = RX_PKT_FATE_WAKE_PKT;
 	}
 
 	DHD_PKT_LOG(("%s(): pkt hash %d\n", __FUNCTION__, pkts->info.pkt_hash));
 	DHD_PKT_LOG(("%s(): sec %d usec %d\n", __FUNCTION__,
-			pkts->info.driver_ts_sec, pkts->info.driver_ts_usec));
+		pkts->info.driver_ts_sec, pkts->info.driver_ts_usec));
 
 	/* insert tx_pkts to the pktlog_ring->ring_info_head */
 	dll_append(&pktlog_ring->ring_info_head, (dll_t *)pkts);

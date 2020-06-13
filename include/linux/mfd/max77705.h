@@ -79,6 +79,7 @@ struct max77705_platform_data {
 	struct mfd_cell *sub_devices;
 	int num_subdevs;
 	bool support_audio;
+	char *wireless_charger_name;
 };
 
 struct max77705 {

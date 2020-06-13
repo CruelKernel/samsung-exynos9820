@@ -147,6 +147,9 @@
 #define WL_STA_DWDS_CAP		0x01000000	/* DWDS CAP */
 #define WL_STA_DWDS		0x02000000	/* DWDS active */
 #define WL_WDS_LINKUP		WL_STA_WDS_LINKUP	/* deprecated */
+#define WL_STA_IS_2G		0x04000000	/* 2G channels supported */
+#define WL_STA_IS_5G		0x08000000	/* 5G channels supported */
+#define WL_STA_IS_6G		0x10000000	/* 6G channels supported */
 
 /* STA HT cap fields */
 #define WL_STA_CAP_LDPC_CODING		0x0001	/* Support for rx of LDPC coded pkts */
@@ -220,6 +223,7 @@
 
 /* Mask bit for LOW power scan, High accuracy scan, LOW span scan bit defines */
 #define WL_SCANFLAGS_SCAN_MODE_MASK	0x7000u
+#define WL_SCANFLAGS_SCAN_MODE_SHIFT	12u
 
 /* Bitmask for scan_type */
 /* Reserved flag precludes the use of 0xff for scan_type which is
@@ -257,6 +261,9 @@
 #define WL_SCANFLAGS_LISTEN		 0x8000U  /* Listen option in escan
 						 * enable LISTEN along with PASSIVE flag
 						 */
+
+/* BIT MASK for SSID TYPE */
+#define WL_SCAN_SSIDFLAGS_SHORT_SSID		0x01U /* Use as Regular SSID */
 
 /* Value to decide scan type based on scqs */
 #define WL_SC_RETRY_SCAN_MODE_NO_SCAN		0x0u	/* Do not reschedule scan */
@@ -770,7 +777,6 @@
 #define WLC_GET_LAZYWDS				138
 #define WLC_SET_LAZYWDS				139
 #define WLC_GET_BANDLIST			140
-
 #define WLC_GET_BAND				141
 #define WLC_SET_BAND				142
 #define WLC_SCB_DEAUTHENTICATE			143
@@ -1073,6 +1079,8 @@
 #define	WLC_BAND_ALL		3	/* all bands */
 #define	WLC_BAND_6G		4	/* 6 Ghz */
 #define WLC_BAND_INVALID	-1	/* Invalid band */
+
+#define WL_BAND_MAX_CNT         3       /* max number of bands supported */
 
 /* band range returned by band_range iovar */
 #define WL_CHAN_FREQ_RANGE_2G      0
@@ -1523,77 +1531,20 @@
 /* maximum channels returned by the get valid channels iovar */
 #define WL_NUMCHANNELS		64
 
-/* Channels break down for 2G BAND
-* 2G 20MHz = 14
-*
-* 2G 40MHz
-* 9 * 2 = 18
-*
-* 2G tot = 14 + 18 = 32
-*
-* Channels Break down for 5G BAND
-* 5G 20MHz
-* 36-48   4
-* 52-64   4
-* 100-144 12
-* 149-161  4
-* 165      1
-* 5G 20 subtot = 25
-*
-* 5G  40 12 * 2 = 24
-* 5G  80 6 * 4  = 24
-* 5G 160 2 * 8  = 16
-*
-* 5G total = 25 + 24+ 24+ 16 = 89
-*
-* TOTAL 2G and 5G
-* 2G + 5G  = (32 + 89) = 121
-*
-*  Channels Break down for 6G BAND
-* 20MHz        = 59
-* 40MHz 29 * 2 = 58
-* 80MHz 14 * 4 = 56
-* 160MHz 7 * 8  = 56
-* 6G total = 59 + 58 + 56 + 56 = 229
-*
-* Toal WL_NUMCHANSPECS 2G/5G/6G
-*  total = 32 + 89 + 229 = 350
-*
-* IF 5g 80+80 is defined
-* 80MHz cf pairs are:
-* 42 106
-* 42 122
-* 42 138
-* 42 155
-* 58 106
-* 58 122
-* 58 138
-* 58 155
-* 106 138
-* 106 155
-* 122 155
-* 138 155
-*
-*
-* 12 pairs * 8 primary channels = 96
-* TOTAL 2G + 5G + 5G (80 + 80)
-* 32 + 89 + 96 = 217
-*
-*TOTAL 2G + 5G + 5G (80 + 80) +6G (excluding 80 + 80)
-* 32 + 89 + 96 + 229 = 446
-*
-*/
+/* This constant is obsolete, not part of ioctl/iovar interface and should never be used
+ * It is preserved only for compatibility with older branches that use it
+ */
 #ifdef WL_BAND6G
-/* max number of chanspecs (used by the iovar to calc. buf space) */
 #ifdef WL11AC_80P80
 #define WL_NUMCHANSPECS 446
 #else
 #define WL_NUMCHANSPECS 350
 #endif // endif
 #else
-/* max number of chanspecs (used by the iovar to calc. buf space) */
-#ifdef WL11AC_80P80
+#if defined(WL11AC_80P80)
 #define WL_NUMCHANSPECS 206
+#elif defined(WL_BW160MHZ)
+#define WL_NUMCHANSPECS 140
 #else
 #define WL_NUMCHANSPECS 110
 #endif // endif
@@ -2196,14 +2147,6 @@
 #else
 #define MAX_BSSID_BLACKLIST_NUM        32
 #endif /* CUSTOM_BSSID_BLACKLIST_NUM */
-
-#ifndef BESTN_MAX
-#define BESTN_MAX			10
-#endif // endif
-
-#ifndef MSCAN_MAX
-#define MSCAN_MAX			32
-#endif // endif
 
 /* TCP Checksum Offload error injection for testing */
 #define TOE_ERRTEST_TX_CSUM	0x00000001

@@ -34,6 +34,9 @@
 #include <linux/freecess.h>
 #endif
 
+#define MAX_ALLOCATION_SIZE (1024 * 1024)
+#define MAX_ASYNC_ALLOCATION_SIZE (512 * 1024)
+
 struct list_lru binder_alloc_lru;
 
 extern int system_server_pid;
@@ -417,11 +420,25 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	if (is_async &&
 	    alloc->free_async_space < size + sizeof(struct binder_buffer)) {
 		//binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
-		//	     "%d: binder_alloc_buf size %zd failed, no async space left\n",
-		//	      alloc->pid, size);
+		//         "%d: binder_alloc_buf size %zd failed, no async space left\n",
+		//         alloc->pid, size);
 		pr_info("%d: binder_alloc_buf size %zd(%zd) failed, no async space left\n",
-			     alloc->pid, size, alloc->free_async_space);
+		         alloc->pid, size, alloc->free_async_space);
+		return ERR_PTR(-ENOSPC);
+	}
 
+	// If allocation size is more than 1M, throw it away and return ENOSPC err
+	if (MAX_ALLOCATION_SIZE <= size + sizeof(struct binder_buffer)) { //1M
+		pr_info("%d: binder_alloc_buf size %zd failed, too large size\n",
+		         alloc->pid, size);
+		return ERR_PTR(-ENOSPC);
+	}
+
+	// If allocation size for async is more than 512K, throw it away and return ENOPC
+	if (is_async &&
+	    MAX_ASYNC_ALLOCATION_SIZE <= size + sizeof(struct binder_buffer)) { //512K
+		pr_info("%d: binder_alloc_buf size %zd(%zd) failed, too large async size\n",
+		         alloc->pid, size, alloc->free_async_space);
 		return ERR_PTR(-ENOSPC);
 	}
 

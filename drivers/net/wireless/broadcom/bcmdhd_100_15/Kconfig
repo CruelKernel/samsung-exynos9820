@@ -19,6 +19,13 @@ config BCM4343
 	  This module adds support for wireless adapters based on
 	  Broadcom 4343 chipset.
 
+config BCM43436
+	tristate "Broadcom 43436 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 43436 chipset.
+
 config BCM4334
 	tristate "Broadcom 4334 wireless cards support"
 	depends on BROADCOM_WIFI
@@ -96,6 +103,13 @@ config BCM43455
           This module adds support for wireless adapters based on
           Broadcom 43455 chipset.
 
+config BCM43456
+	tristate "Broadcom 43456 wireless cards support"
+	depends on BROADCOM_WIFI
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 43456 chipset.
+
 config BCM4334W
 	tristate "Broadcom 4334W wireless cards support"
 	depends on BROADCOM_WIFI
@@ -133,7 +147,7 @@ config BROADCOM_WIFI_RESERVED_MEM
 
 config WIFI_BROADCOM_COB
         bool "BROADCOM WIFI COB"
-        depends on (BCM43455 || BCM4343 || BCM43454 || BCM43012)
+        depends on (BCM43456 || BCM43455 || BCM4343 || BCM43436 || BCM43454 || BCM43012)
         ---help---
           This is a configuration for Broadcom WIFI COB Type.
 
@@ -212,6 +226,13 @@ config SPLIT_ARGOS_SET
 	depends on BROADCOM_WIFI
 	---help---
 	To support SPLIT_ARGOS_SET
+
+config WLAN_VHTDISABLE
+	bool "WLAN Disable 11ac"
+	depends on BCM43456
+	default n
+	---help---
+	This is a configuration to disable 11ac.
 
 config WLAN_TSQ_MULTIPLIER
 	bool "Enable TCP TSQ_MULTIPLIER"

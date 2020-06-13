@@ -87,8 +87,12 @@ struct uid_entry {
 
 	u64 last_fg_write_bytes;
 	u64 last_bg_write_bytes;
-	u64 daily_fg_write;
-	u64 daily_bg_write;
+	u64 daily_writes;
+
+	u64 last_fg_fsync;
+	u64 last_bg_fsync;
+	u64 daily_fsync;
+
 	struct list_head top_n_list;
 	int is_whitelist;
 };
@@ -126,6 +130,11 @@ static struct bg_iostat_attr bg_iostat_attr_##name = { \
 #define UID_ENTRY_DAILY_BG_WRITE(entry)	\
 	(entry->io[UID_STATE_BACKGROUND].write_bytes - entry->last_bg_write_bytes)
 
+#define UID_ENTRY_DAILY_FG_FSYNC(entry)	\
+	(entry->io[UID_STATE_FOREGROUND].fsync - entry->last_fg_fsync)
+#define UID_ENTRY_DAILY_BG_FSYNC(entry)	\
+	(entry->io[UID_STATE_BACKGROUND].fsync - entry->last_bg_fsync)
+
 #define BtoM(val)	((val) >> 20)
 
 #define NR_ENTRIES_IN_ARR(v)	(sizeof(v) / sizeof(*v))
@@ -138,6 +147,9 @@ void uid_to_packagename(u32 uid, char* output, int buf_size);
 static void inline update_daily_writes(struct uid_entry *entry) {
 	entry->last_fg_write_bytes = entry->io[UID_STATE_FOREGROUND].write_bytes;
 	entry->last_bg_write_bytes = entry->io[UID_STATE_BACKGROUND].write_bytes;
+	entry->last_fg_fsync = entry->io[UID_STATE_FOREGROUND].fsync;
+	entry->last_bg_fsync = entry->io[UID_STATE_BACKGROUND].fsync;
+
 }
 /* END ****** Background IOSTAT ***************/
 
@@ -718,10 +730,12 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 	char package_name_buf[TOP_BG_ENTRY_NAMELEN];
 	int idx;
 	int len = 0;
-	u64 total_fg_bytes=0;
-	u64 total_bg_bytes=0;
+	u64 total_fg_bytes = 0;
+	u64 total_bg_bytes = 0;
 	u64 daily_bg_writes, daily_fg_writes;
-	unsigned int nr_apps=0, nr_apps_bg=0, nr_apps_thr=0;
+	u64 daily_writes = 0;
+	u64 daily_fsync = 0;
+	unsigned int nr_apps = 0, nr_apps_bg = 0, nr_apps_thr = 0;
 
 	rt_mutex_lock(&uid_lock);
 
@@ -734,24 +748,28 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 		daily_fg_writes = UID_ENTRY_DAILY_FG_WRITE(uid_entry);
 		daily_bg_writes = UID_ENTRY_DAILY_BG_WRITE(uid_entry);
+		daily_fsync = UID_ENTRY_DAILY_FG_FSYNC(uid_entry) + \
+			      UID_ENTRY_DAILY_BG_FSYNC(uid_entry);
 
 		if (ATTR_VALUE(auto_reset_daily_stat))
 			update_daily_writes(uid_entry);
 
 		total_fg_bytes += daily_fg_writes;
 		total_bg_bytes += daily_bg_writes;
+		daily_writes = daily_fg_writes + daily_bg_writes;
 
-		if (uid_entry->is_whitelist || daily_bg_writes == 0)
+		if (uid_entry->is_whitelist || daily_writes == 0)
 			continue;
-		
-		nr_apps_bg++;
 
-		if (BtoM(daily_bg_writes) > ATTR_VALUE(write_threshold))
+		if (daily_bg_writes)
+			nr_apps_bg++;
+
+		if (BtoM(daily_writes) > ATTR_VALUE(write_threshold))
 			nr_apps_thr++;
 
-		if (daily_bg_writes > smallest_bg_io) {
+		if (daily_writes > smallest_bg_io) {
 			list_for_each_entry(cur_entry, &top_n_head, top_n_list) {
-				if (cur_entry->daily_bg_write > daily_bg_writes)
+				if (cur_entry->daily_writes > daily_writes)
 					break;
 			}
 
@@ -759,15 +777,15 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 					cur_entry->top_n_list.prev,
 					&cur_entry->top_n_list);
 
-			uid_entry->daily_fg_write = daily_fg_writes;
-			uid_entry->daily_bg_write = daily_bg_writes;
-			
+			uid_entry->daily_writes = daily_writes;
+			uid_entry->daily_fsync = daily_fsync;
+
 			if (nr_entries >= NR_TOP_BG_ENTRIES) {
 				cur_entry = list_first_entry(&top_n_head, struct uid_entry, top_n_list);
 				list_del(&cur_entry->top_n_list);
 
 				cur_entry = list_first_entry(&top_n_head, struct uid_entry, top_n_list);
-				smallest_bg_io = cur_entry->daily_bg_write;
+				smallest_bg_io = cur_entry->daily_writes;
 			} else {
 				nr_entries++;
 			}
@@ -786,12 +804,15 @@ static ssize_t bg_iostat_show(struct kobject *kobj, struct kobj_attribute *attr,
 	idx = 1;
 	list_for_each_entry_reverse(cur_entry, &top_n_head, top_n_list) {
 		memset(package_name_buf, 0x0, TOP_BG_ENTRY_NAMELEN);
-		uid_to_packagename(cur_entry->uid, package_name_buf, TOP_BG_ENTRY_NAMELEN);
+		if (unlikely((cur_entry->uid%10000) == 1000))
+			snprintf(package_name_buf, TOP_BG_ENTRY_NAMELEN, "<uid - 1000>");
+		else
+			uid_to_packagename(cur_entry->uid, package_name_buf, TOP_BG_ENTRY_NAMELEN);
 		len += snprintf(buf+len, PAGE_SIZE,
 			",\"title_%d\":\"%s\",\"fg_val_%d\":\"%llu\",\"bg_val_%d\":\"%llu\"",
 			idx, package_name_buf,
-			idx, BtoM(cur_entry->daily_fg_write),
-			idx, BtoM(cur_entry->daily_bg_write));
+			idx, BtoM(cur_entry->daily_writes),
+			idx, cur_entry->daily_fsync);
 		idx++;
 	}
 

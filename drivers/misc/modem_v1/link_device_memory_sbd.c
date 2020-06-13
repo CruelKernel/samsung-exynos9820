@@ -43,8 +43,8 @@ static void print_sbd_config(struct sbd_link_device *sl)
 #ifdef DEBUG_MODEM_IF
 	int i;
 
-	pr_err("mif: SBD_IPC {shmem_base:0x%lX shmem_size:%d}\n",
-		(unsigned long)sl->shmem, sl->shmem_size);
+	pr_err("mif: SBD_IPC {shmem_base:0x%pK shmem_size:%d}\n",
+		sl->shmem, sl->shmem_size);
 
 	pr_err("mif: SBD_IPC {version:%d num_channels:%d rbps_offset:%d}\n",
 		sl->g_desc->version, sl->g_desc->num_channels,

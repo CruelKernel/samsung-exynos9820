@@ -813,19 +813,9 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		dev->tx_skb_hold_count = 0;
 		spin_unlock_irqrestore(&dev->lock, flags);
 	} else {
-		if (eth_is_fixed) { /* ncm case */
-			req->length = skb->len;
-			req->buf = skb->data;
-			req->context = skb;
-		} else { /* rndis case : multipacket not used */
-			req->length = skb->len;
-			/* copy skb data */
-			memcpy(req->buf, skb->data,
-				skb->len);
-			dev_kfree_skb_any(skb);
-			req->context = NULL;
-		}
-
+		req->length = skb->len;
+		req->buf = skb->data;
+		req->context = skb;
 	}
 
 	if (dev->port_usb) {

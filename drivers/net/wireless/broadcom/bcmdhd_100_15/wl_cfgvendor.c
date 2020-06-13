@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 863133 2020-02-06 10:16:12Z $
+ * $Id: wl_cfgvendor.c 874894 2020-04-24 06:26:39Z $
  */
 
 /*
@@ -410,7 +410,7 @@ wl_cfgvendor_set_country(struct wiphy *wiphy,
 		}
 	}
 	/* country code is unique for dongle..hence using primary interface. */
-	err = wl_cfg80211_set_country_code(primary_ndev, country_code, true, true, -1);
+	err = wl_cfg80211_set_country_code(primary_ndev, country_code, true, true, 0);
 	if (err < 0) {
 		WL_ERR(("Set country failed ret:%d\n", err));
 	}
@@ -3998,6 +3998,13 @@ wl_cfgvendor_nan_parse_discover_args(struct wiphy *wiphy,
 				goto exit;
 			}
 			cmd_data->mac_list.num_mac_addr = nla_get_u16(iter);
+			if (cmd_data->mac_list.num_mac_addr >= NAN_SRF_MAX_MAC) {
+				WL_ERR(("trying to overflow num :%d\n",
+					cmd_data->mac_list.num_mac_addr));
+				cmd_data->mac_list.num_mac_addr = 0;
+				ret = -EINVAL;
+				goto exit;
+			}
 			break;
 		case NAN_ATTRIBUTE_MAC_ADDR_LIST:
 			if ((!cmd_data->mac_list.num_mac_addr) ||
@@ -6537,19 +6544,48 @@ exit:
 
 #ifdef DHD_LOG_DUMP
 static int
-wl_cfgvendor_get_buf_data(const struct nlattr *iter, struct buf_data **buf)
+wl_cfgvendor_get_buf_data(const struct nlattr *iter, struct buf_data *buf)
 {
 	int ret = BCME_OK;
 
-	if (nla_len(iter) != sizeof(struct buf_data)) {
-		WL_ERR(("Invalid len : %d\n", nla_len(iter)));
-		ret = BCME_BADLEN;
+#ifdef CONFIG_COMPAT
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0))
+	if (in_compat_syscall()) {
+#else
+	if (is_compat_task()) {
+#endif /* LINUX_VER >= 4.6 */
+		struct compat_buf_data *compat_buf = (struct compat_buf_data *)nla_data(iter);
+
+		if (nla_len(iter) != sizeof(struct compat_buf_data)) {
+			WL_ERR(("Invalid len : %d\n", nla_len(iter)));
+			ret = BCME_BADLEN;
+		}
+
+		buf->ver = compat_buf->ver;
+		buf->len = compat_buf->len;
+		buf->buf_threshold = compat_buf->buf_threshold;
+		buf->data_buf[0] = (const void *)compat_ptr(compat_buf->data_buf);
 	}
-	(*buf) = (struct buf_data *)nla_data(iter);
-	if (!(*buf) || (((*buf)->len) <= 0) || !((*buf)->data_buf[0])) {
+	else
+#endif /* CONFIG_COMPAT */
+	{
+		if (nla_len(iter) != sizeof(struct buf_data)) {
+			WL_ERR(("Invalid len : %d\n", nla_len(iter)));
+			ret = BCME_BADLEN;
+		}
+
+		ret = memcpy_s(buf, sizeof(struct buf_data), (void *)nla_data(iter), nla_len(iter));
+		if (ret) {
+			WL_ERR(("Can't get buf data\n"));
+			goto exit;
+		}
+	}
+
+	if ((buf->len <= 0) || !buf->data_buf[0]) {
 		WL_ERR(("Invalid buffer\n"));
 		ret = BCME_ERROR;
 	}
+exit:
 	return ret;
 }
 
@@ -6563,6 +6599,7 @@ wl_cfgvendor_dbg_file_dump(struct wiphy *wiphy,
 	struct sk_buff *skb = NULL;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct buf_data *buf;
+	struct buf_data data_from_hal = {0};
 	int pos = 0;
 
 	/* Alloc the SKB for vendor_event */
@@ -6573,9 +6610,10 @@ wl_cfgvendor_dbg_file_dump(struct wiphy *wiphy,
 		goto exit;
 	}
 	WL_ERR(("%s\n", __FUNCTION__));
+	buf = &data_from_hal;
 	nla_for_each_attr(iter, data, len, rem) {
 		type = nla_type(iter);
-		ret = wl_cfgvendor_get_buf_data(iter, &buf);
+		ret = wl_cfgvendor_get_buf_data(iter, buf);
 		if (ret)
 			goto exit;
 		switch (type) {
@@ -7944,13 +7982,15 @@ static int wl_cfgvendor_set_pmk(struct wiphy *wiphy,
 		type = nla_type(iter);
 		switch (type) {
 			case BRCM_ATTR_DRIVER_KEY_PMK:
-				if (nla_len(iter) > sizeof(pmk.key)) {
+				pmk.flags = 0;
+				pmk.key_len = htod16(nla_len(iter));
+				ret = memcpy_s(pmk.key, sizeof(pmk.key),
+					(uint8 *)nla_data(iter), nla_len(iter));
+				if (ret) {
+					WL_ERR(("Failed to copy pmk: %d\n", ret));
 					ret = -EINVAL;
 					goto exit;
 				}
-				pmk.flags = 0;
-				pmk.key_len = htod16(nla_len(iter));
-				bcopy((uint8 *)nla_data(iter), pmk.key, len);
 				break;
 			default:
 				WL_ERR(("Unknown type: %d\n", type));

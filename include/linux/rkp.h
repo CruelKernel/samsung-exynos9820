@@ -54,6 +54,7 @@ enum __RKP_CMD_ID{
 	RKP_KDP_X54 = 0x54,
 	RKP_KDP_X55 = 0x55,
 	RKP_KDP_X56 = 0x56,
+	RKP_KDP_X60 = 0x60,
 #ifdef CONFIG_RKP_TEST
 	CMD_ID_TEST_GET_PAR = 0x81,
 	CMD_ID_TEST_GET_RO = 0x83,
@@ -149,6 +150,10 @@ typedef struct kdp_init_struct {
 	u32 bp_cred_secptr;
 	u32 task_threadinfo;
 	u64 verifiedbootstate;
+	struct {
+		u64 :64;
+		u64 ss_initialized_va;
+	} selinux;
 } kdp_init_t;
 #endif  /* CONFIG_RKP_KDP */
 

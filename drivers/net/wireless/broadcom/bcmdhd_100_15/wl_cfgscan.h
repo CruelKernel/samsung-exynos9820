@@ -99,11 +99,17 @@ extern s32 wl_cfg80211_custom_scan_time(struct net_device *dev,
 
 #if defined(SUPPORT_RANDOM_MAC_SCAN)
 int wl_cfg80211_set_random_mac(struct net_device *dev, bool enable);
-int wl_cfg80211_random_mac_enable(struct net_device *dev);
+int wl_cfg80211_random_mac_enable(struct net_device *dev, struct bcm_cfg80211 *cfg,
+		bool randmac_enable);
 int wl_cfg80211_random_mac_disable(struct net_device *dev);
 int wl_cfg80211_scan_mac_enable(struct net_device *dev, uint8 *rand_mac, uint8 *rand_mask);
 int wl_cfg80211_scan_mac_disable(struct net_device *dev);
 int wl_rand_mac_ctrl(struct net_device *dev, struct bcm_cfg80211 *cfg, bool randmac_enable);
+
+#ifdef DHD_RANDOM_MAC_SCAN
+int wl_cfg80211_dhd_driven_random_mac_disable(struct net_device *dev);
+int wl_cfg80211_dhd_driven_random_mac_enable(struct net_device *dev);
+#endif /* DHD_RANDOM_MAC_SCAN */
 #endif /* SUPPORT_RANDOM_MAC_SCAN */
 
 #ifdef WL_SCHED_SCAN

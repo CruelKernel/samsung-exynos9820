@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.h 863133 2020-02-06 10:16:12Z $
+ * $Id: wl_cfgnan.h 873848 2020-04-17 09:33:49Z $
  */
 
 #ifndef _wl_cfgnan_h_
@@ -781,6 +781,7 @@ bool wl_cfgnan_ranging_allowed(struct bcm_cfg80211 *cfg);
 uint8 wl_cfgnan_cancel_rng_responders(struct net_device *ndev,
 	struct bcm_cfg80211 *cfg);
 extern int wl_cfgnan_get_status(struct net_device *ndev, wl_nan_conf_status_t *nan_status);
+extern int wl_cfgnan_get_stats(struct bcm_cfg80211 *cfg);
 extern void wl_cfgnan_update_dp_info(struct bcm_cfg80211 *cfg, bool add,
 	nan_data_path_id ndp_id);
 nan_status_type_t wl_cfgvendor_brcm_to_nanhal_status(int32 vendor_status);

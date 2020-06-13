@@ -69,6 +69,12 @@
 #include "xfrm.h"
 #include "ebitmap.h"
 #include "audit.h"
+#ifdef CONFIG_UH
+#include <linux/uh.h>
+#ifdef CONFIG_RKP_KDP
+#include <linux/rkp.h>
+#endif
+#endif
 
 /* Policy capability names */
 char *selinux_policycap_names[__POLICYDB_CAPABILITY_MAX] = {
@@ -91,7 +97,11 @@ static DEFINE_RWLOCK(policy_rwlock);
 
 static struct sidtab sidtab;
 struct policydb policydb;
+#if (defined CONFIG_RKP_KDP && defined CONFIG_SAMSUNG_PRODUCT_SHIP)
+int ss_initialized __kdp_ro;
+#else
 int ss_initialized;
+#endif
 
 /*
  * The largest sequence number that has been used when
@@ -2108,7 +2118,11 @@ int security_load_policy(void *data, size_t len)
 		}
 
 		security_load_policycaps();
+#if (defined CONFIG_RKP_KDP && defined CONFIG_SAMSUNG_PRODUCT_SHIP)
+		uh_call(UH_APP_RKP, RKP_KDP_X60, (u64)&ss_initialized, 1, 0, 0);
+#else
 		ss_initialized = 1;
+#endif
 		seqno = ++latest_granting;
 		selinux_complete_init();
 		avc_ss_reset(seqno);

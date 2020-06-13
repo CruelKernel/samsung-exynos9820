@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux_exportfs.c 851174 2019-11-18 12:13:55Z $
+ * $Id: dhd_linux_exportfs.c 864784 2020-02-17 05:51:17Z $
  */
 #include <linux/kobject.h>
 #include <linux/proc_fs.h>
@@ -1151,8 +1151,8 @@ set_proptx(struct dhd_info *dev, const char *buf, size_t count)
 	}
 
 	proptx = onoff;
-	DHD_ERROR(("[WIFI_SEC] %s: FRAMEBURST On/Off from sysfs = %u\n",
-		__FUNCTION__, txbf));
+	DHD_ERROR(("[WIFI_SEC] %s: proptx On/Off from sysfs = %u\n",
+		__FUNCTION__, proptx));
 	return count;
 }
 
@@ -1383,9 +1383,9 @@ static struct attribute *control_file_attrs[] = {
 #endif /* PROP_TXSTATUS */
 #endif /* USE_WFA_CERT_CONF */
 #endif /* DHD_EXPORT_CNTL_FILE */
-#ifdef DHD_ADPS_BAM_EXPORT
+#if defined(DHD_ADPS_BAM_EXPORT) && defined(WL_BAM)
 	&dhd_attr_adps_bam.attr,
-#endif	/* DHD_ADPS_BAM_EXPORT */
+#endif	/* DHD_ADPS_BAM_EXPORT && WL_BAM */
 #ifdef DHD_SEND_HANG_PRIVCMD_ERRORS
 	&dhd_attr_hang_privcmd_err.attr,
 #endif /* DHD_SEND_HANG_PRIVCMD_ERRORS */

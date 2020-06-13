@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgnan.c 863148 2020-02-06 10:48:09Z $
+ * $Id: wl_cfgnan.c 873848 2020-04-17 09:33:49Z $
  */
 
 #ifdef WL_NAN
@@ -2630,8 +2630,7 @@ wl_cfgnan_start_handler(struct net_device *ndev, struct bcm_cfg80211 *cfg,
 			goto fail;
 		}
 	}
-	/* Setting warm up time */
-	cmd_data->warmup_time = 1;
+
 	if (cmd_data->warmup_time) {
 		ret = wl_cfgnan_warmup_time_handler(cmd_data, nan_iov_data);
 		if (unlikely(ret)) {
@@ -7082,6 +7081,7 @@ wl_nan_dp_cmn_event_data(struct bcm_cfg80211 *cfg, void *event_data,
 				wl_cfgnan_data_set_peer_dp_state(cfg, &ev_dp->peer_nmi,
 					NAN_PEER_DP_CONNECTED);
 				wl_cfgnan_update_dp_info(cfg, true, nan_event_data->ndp_id);
+				wl_cfgnan_get_stats(cfg);
 			} else if (ev_dp->status == NAN_NDP_STATUS_REJECT) {
 				nan_event_data->status = NAN_DP_REQUEST_REJECT;
 				/* Remove peer from data ndp peer list */
@@ -8622,6 +8622,140 @@ wl_cfgnan_get_status(struct net_device *ndev, wl_nan_conf_status_t *nan_status)
 		goto fail;
 	}
 
+fail:
+	if (nan_buf) {
+		MFREE(cfg->osh, nan_buf, NAN_IOCTL_BUF_SIZE);
+	}
+	NAN_DBG_EXIT();
+	return ret;
+}
+s32
+wl_nan_print_avail_stats(const uint8 *data)
+{
+	int idx;
+	s32 ret = BCME_OK;
+	int s_chan = 0;
+	char pbuf[NAN_IOCTL_BUF_SIZE_MED];
+	const wl_nan_stats_sched_t *sched = (const wl_nan_stats_sched_t *)data;
+#define SLOT_PRINT_SIZE 4
+
+	char *buf = pbuf;
+	bzero(pbuf, sizeof(pbuf));
+
+	if ((sched->num_slot * SLOT_PRINT_SIZE) > (sizeof(pbuf)-1)) {
+		WL_ERR(("overflowed slot number %d detected\n",
+			sched->num_slot));
+		ret = BCME_BUFTOOSHORT;
+		goto exit;
+	}
+
+	buf += sprintf(buf, "Map ID:%u, %u/%u, Slot#:%u ",
+			sched->map_id, sched->period,
+			sched->slot_dur, sched->num_slot);
+
+	for (idx = 0; idx < sched->num_slot; idx++) {
+		const wl_nan_stats_sched_slot_t *slot;
+		slot = &sched->slot[idx];
+		s_chan = 0;
+
+		if (!wf_chspec_malformed(slot->chanspec)) {
+			s_chan = wf_chspec_ctlchan(slot->chanspec);
+		}
+
+		buf += sprintf(buf, "%03d|", s_chan);
+
+	}
+	WL_INFORM_MEM(("%s\n", pbuf));
+exit:
+	return ret;
+}
+
+static int
+wl_nan_print_stats_tlvs(void *ctx, const uint8 *data, uint16 type, uint16 len)
+{
+	int err = BCME_OK;
+
+	switch (type) {
+		/* Avail stats xtlvs */
+		case WL_NAN_XTLV_GEN_AVAIL_STATS_SCHED:
+			err = wl_nan_print_avail_stats(data);
+			break;
+		default:
+			err = BCME_BADARG;
+			WL_ERR(("Unknown xtlv type received: %x\n", type));
+			break;
+	}
+
+	return err;
+}
+
+int
+wl_cfgnan_get_stats(struct bcm_cfg80211 *cfg)
+{
+	bcm_iov_batch_buf_t *nan_buf = NULL;
+	uint16 subcmd_len;
+	bcm_iov_batch_subcmd_t *sub_cmd = NULL;
+	bcm_iov_batch_subcmd_t *sub_cmd_resp = NULL;
+	uint8 resp_buf[NAN_IOCTL_BUF_SIZE_LARGE];
+	wl_nan_cmn_get_stat_t *get_stat = NULL;
+	wl_nan_cmn_stat_t *stats = NULL;
+	uint32 status;
+	s32 ret = BCME_OK;
+	uint16 nan_buf_size = NAN_IOCTL_BUF_SIZE;
+	NAN_DBG_ENTER();
+
+	nan_buf = MALLOCZ(cfg->osh, NAN_IOCTL_BUF_SIZE);
+	if (!nan_buf) {
+		WL_ERR(("%s: memory allocation failed\n", __func__));
+		ret = BCME_NOMEM;
+		goto fail;
+	}
+
+	nan_buf->version = htol16(WL_NAN_IOV_BATCH_VERSION);
+	nan_buf->count = 0;
+	nan_buf_size -= OFFSETOF(bcm_iov_batch_buf_t, cmds[0]);
+	sub_cmd = (bcm_iov_batch_subcmd_t*)(uint8 *)(&nan_buf->cmds[0]);
+
+	ret = wl_cfg_nan_check_cmd_len(nan_buf_size,
+			sizeof(*get_stat), &subcmd_len);
+	if (unlikely(ret)) {
+		WL_ERR(("nan_sub_cmd check failed\n"));
+		goto fail;
+	}
+
+	get_stat = (wl_nan_cmn_get_stat_t *)sub_cmd->data;
+	/* get only local availabiity stats */
+	get_stat->modules_btmap = (1 << NAN_AVAIL);
+	get_stat->operation = WLA_NAN_STATS_GET;
+
+	sub_cmd->id = htod16(WL_NAN_CMD_GEN_STATS);
+	sub_cmd->len = sizeof(sub_cmd->u.options) + sizeof(*get_stat);
+	sub_cmd->u.options = htol32(BCM_XTLV_OPTION_ALIGN32);
+	nan_buf_size -= subcmd_len;
+	nan_buf->count = 1;
+	nan_buf->is_set = false;
+
+	bzero(resp_buf, sizeof(resp_buf));
+	ret = wl_cfgnan_execute_ioctl(bcmcfg_to_prmry_ndev(cfg),
+			cfg, nan_buf, nan_buf_size, &status,
+			(void*)resp_buf, NAN_IOCTL_BUF_SIZE_LARGE);
+	if (unlikely(ret) || unlikely(status)) {
+		WL_ERR(("get nan stats failed ret %d status %d \n",
+			ret, status));
+		goto fail;
+	}
+
+	sub_cmd_resp = &((bcm_iov_batch_buf_t *)(resp_buf))->cmds[0];
+
+	stats = (wl_nan_cmn_stat_t *)&sub_cmd_resp->data[0];
+
+	if (stats->n_stats) {
+		WL_ERR((" == Aware Local Avail Schedule ==\n"));
+		ret = bcm_unpack_xtlv_buf((void *)&stats->n_stats,
+				(const uint8 *)&stats->stats_tlvs,
+				stats->totlen - 8, BCM_IOV_CMD_OPT_ALIGN32,
+				wl_nan_print_stats_tlvs);
+	}
 fail:
 	if (nan_buf) {
 		MFREE(cfg->osh, nan_buf, NAN_IOCTL_BUF_SIZE);

@@ -154,6 +154,8 @@ struct fimc_is_resourcemgr {
 
 	u32					shot_timeout;
 	int					shot_timeout_tick;
+
+	u32					streaming_cnt;
 };
 
 int fimc_is_resourcemgr_probe(struct fimc_is_resourcemgr *resourcemgr, void *private_data, struct platform_device *pdev);
