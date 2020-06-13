@@ -54,7 +54,7 @@ extern bool wl_blocker_debug;
 // internal functions
 /*****************************************/
 
-static void build_search_string(char *list1, char *list2)
+static void build_search_string(const char *list1, const char *list2)
 {
 	// store wakelock list and search string (with semicolons added at start and end)
 	sprintf(list_wl_search, ";%s;%s;", list1, list2);
@@ -222,7 +222,7 @@ static int boeffla_wl_blocker_init(void)
 	}
 
 	// initialize default list
-	sprintf(list_wl_default, "%s", LIST_WL_DEFAULT);
+	strcpy(list_wl_default, LIST_WL_DEFAULT);
 	build_search_string(list_wl_default, list_wl);
 
 	// Print debug info
