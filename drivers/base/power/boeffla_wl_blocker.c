@@ -141,7 +141,7 @@ static ssize_t debug_show(struct device *dev, struct device_attribute *attr, cha
 static ssize_t debug_store(struct device *dev, struct device_attribute *attr,
 						const char *buf, size_t count)
 {
-	unsigned int ret = -EINVAL;
+	ssize_t ret = -EINVAL;
 	unsigned int val;
 
 	// check data and store if valid
