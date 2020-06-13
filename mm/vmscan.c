@@ -2368,11 +2368,15 @@ static inline bool mem_boost_pgdat_wmark(struct pglist_data *pgdat)
 	return false;
 }
 
+#define MEM_BOOST_THRESHOLD ((600 * 1024 * 1024) / (PAGE_SIZE))
 static inline bool need_memory_boosting(struct pglist_data *pgdat, bool skip)
 {
 	bool ret;
+	unsigned long pgdatfile = node_page_state(pgdat, NR_ACTIVE_FILE) +
+				node_page_state(pgdat, NR_INACTIVE_FILE);
 
-	if (time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME))
+	if (time_after(jiffies, last_mode_change + MEM_BOOST_MAX_TIME) ||
+			pgdatfile < MEM_BOOST_THRESHOLD)
 		mem_boost_mode = NO_BOOST;
 
 	if (!skip && memory_boosting_disabled)
