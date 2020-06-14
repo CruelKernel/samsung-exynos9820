@@ -39,7 +39,7 @@ jobs:
                 +ntfs                    \
                 +morosound               \
                 +boeffla_wl_blocker      \
-                =mass_storage            \
+                +mass_storage            \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
