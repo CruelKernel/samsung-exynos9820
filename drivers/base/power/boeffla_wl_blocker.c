@@ -135,28 +135,6 @@ static ssize_t debug_show(struct device *dev, struct device_attribute *attr, cha
 }
 
 
-// store debug mode on/off (1/0)
-static ssize_t debug_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	unsigned int ret = -EINVAL;
-	unsigned int val;
-
-	// check data and store if valid
-	ret = sscanf(buf, "%d", &val);
-
-	if (ret != 1)
-		return -EINVAL;
-
-	if (val == 1)
-		wl_blocker_debug = true;
-	else
-		wl_blocker_debug = false;
-
-	return count;
-}
-
-
 static ssize_t version_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	// return version information
@@ -172,14 +150,17 @@ static ssize_t version_show(struct device *dev, struct device_attribute *attr, c
 // define objects
 static DEVICE_ATTR_RW(wakelock_blocker);
 static DEVICE_ATTR_RW(wakelock_blocker_default);
-static DEVICE_ATTR_RW(debug);
 static DEVICE_ATTR_RO(version);
+static struct dev_ext_attribute dev_attr_debug = {
+	__ATTR(debug, 0644, debug_show, device_store_bool),
+	&wl_blocker_debug
+};
 
 // define attributes
 static struct attribute *boeffla_wl_blocker_attributes[] = {
 	&dev_attr_wakelock_blocker.attr,
 	&dev_attr_wakelock_blocker_default.attr,
-	&dev_attr_debug.attr,
+	&dev_attr_debug.attr.attr,
 	&dev_attr_version.attr,
 	NULL
 };
