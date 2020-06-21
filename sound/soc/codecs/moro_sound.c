@@ -742,7 +742,7 @@ static struct miscdevice moro_sound_control_device = {
 	.name = "moro_sound",
 };
 
-static int moro_sound_init(void)
+static int __init moro_sound_init(void)
 {
 	misc_register(&moro_sound_control_device);
 
@@ -756,7 +756,7 @@ static int moro_sound_init(void)
 	return 0;
 }
 
-static void moro_sound_exit(void)
+static void __exit moro_sound_exit(void)
 {
 	sysfs_remove_group(&moro_sound_control_device.this_device->kobj,
                            &moro_sound_control_group);
