@@ -761,6 +761,8 @@ static void __exit moro_sound_exit(void)
 {
 	sysfs_remove_group(&moro_sound_control_device.this_device->kobj,
                            &moro_sound_control_group);
+
+	misc_deregister(&moro_sound_control_device);
 }
 
 /* Driver init and exit functions */
