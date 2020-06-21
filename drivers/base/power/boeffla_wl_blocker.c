@@ -198,7 +198,7 @@ static struct miscdevice boeffla_wl_blocker_control_device = {
 // Driver init and exit functions
 /*****************************************/
 
-static int boeffla_wl_blocker_init(void)
+static int __init boeffla_wl_blocker_init(void)
 {
 	// register boeffla wakelock blocker control device
 	misc_register(&boeffla_wl_blocker_control_device);
@@ -219,7 +219,7 @@ static int boeffla_wl_blocker_init(void)
 }
 
 
-static void boeffla_wl_blocker_exit(void)
+static void __exit boeffla_wl_blocker_exit(void)
 {
 	// remove boeffla wakelock blocker control device
 	sysfs_remove_group(&boeffla_wl_blocker_control_device.this_device->kobj,
