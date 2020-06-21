@@ -9,7 +9,7 @@ if [ "x$1" = "x--canary" ]
 then
 	ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 	nver="canary"
-	magisk_link="https://github.com/topjohnwu/magisk_files/raw/${nver}/magisk-release.zip"
+	magisk_link="https://github.com/topjohnwu/magisk_files/raw/${nver}/magisk-debug.zip"
 else
 	ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 	nver="$(curl -s https://github.com/topjohnwu/Magisk/releases/latest | grep -o 'v[[:digit:].]*')"
