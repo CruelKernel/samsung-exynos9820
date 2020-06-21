@@ -29,6 +29,8 @@
  *
  */
 
+#define pr_fmt(fmt) "Boeffla WL blocker: " fmt
+
 #include <linux/module.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
@@ -204,7 +206,7 @@ static int __init boeffla_wl_blocker_init(void)
 	misc_register(&boeffla_wl_blocker_control_device);
 	if (sysfs_create_group(&boeffla_wl_blocker_control_device.this_device->kobj,
 				&boeffla_wl_blocker_control_group) < 0) {
-		printk("Boeffla WL blocker: failed to create sys fs object.\n");
+		pr_err("failed to create sys fs object.\n");
 		return 0;
 	}
 
@@ -213,7 +215,7 @@ static int __init boeffla_wl_blocker_init(void)
 	build_search_string(list_wl_default, list_wl);
 
 	// Print debug info
-	printk("Boeffla WL blocker: driver version %s started\n", BOEFFLA_WL_BLOCKER_VERSION);
+	pr_info("driver version %s started\n", BOEFFLA_WL_BLOCKER_VERSION);
 
 	return 0;
 }
@@ -226,7 +228,7 @@ static void __exit boeffla_wl_blocker_exit(void)
                            &boeffla_wl_blocker_control_group);
 
 	// Print debug info
-	printk("Boeffla WL blocker: driver stopped\n");
+	pr_info("driver stopped\n");
 }
 
 
