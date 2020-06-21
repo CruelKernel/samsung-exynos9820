@@ -676,11 +676,8 @@ EQ b3 gain: %d \
 EQ b4 gain: %d \
 EQ b5 gain: %d \
 ",
-get_headphone_gain_l(),
-get_headphone_gain_r(),
-headphone_gain_l,
-headphone_gain_r,
-first,
+get_headphone_gain_l(), headphone_gain_l,
+get_headphone_gain_r(), headphone_gain_r,
 get_earpiece_gain(),
 out2_ena,
 out2l_mix,
