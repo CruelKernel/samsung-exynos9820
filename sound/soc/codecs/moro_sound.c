@@ -16,6 +16,7 @@
  *
  */
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include "moro_sound.h"
 
