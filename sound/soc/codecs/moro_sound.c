@@ -745,11 +745,20 @@ static struct miscdevice moro_sound_control_device = {
 
 static int __init moro_sound_init(void)
 {
-	misc_register(&moro_sound_control_device);
+	int err = 0;
 
-	if (sysfs_create_group(&moro_sound_control_device.this_device->kobj,
-				&moro_sound_control_group) < 0) {
-		return 0;
+	err = misc_register(&moro_sound_control_device);
+	if (err) {
+		pr_err("failed register the device.\n");
+		return err;
+	}
+
+	err = sysfs_create_group(&moro_sound_control_device.this_device->kobj,
+				 &moro_sound_control_group);
+	if (err) {
+		pr_err("failed to create sys fs object.\n");
+		misc_deregister(&moro_sound_control_device);
+		return err;
 	}
 
 	reset_moro_sound();
