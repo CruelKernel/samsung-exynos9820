@@ -202,12 +202,21 @@ static struct miscdevice boeffla_wl_blocker_control_device = {
 
 static int __init boeffla_wl_blocker_init(void)
 {
+	int err = 0;
+
 	// register boeffla wakelock blocker control device
-	misc_register(&boeffla_wl_blocker_control_device);
-	if (sysfs_create_group(&boeffla_wl_blocker_control_device.this_device->kobj,
-				&boeffla_wl_blocker_control_group) < 0) {
+	err = misc_register(&boeffla_wl_blocker_control_device);
+	if (err) {
+		pr_err("failed register the device.\n");
+		return err;
+	}
+
+	err = sysfs_create_group(&boeffla_wl_blocker_control_device.this_device->kobj,
+				 &boeffla_wl_blocker_control_group);
+	if (err) {
 		pr_err("failed to create sys fs object.\n");
-		return 0;
+		misc_deregister(&boeffla_wl_blocker_control_device);
+		return err;
 	}
 
 	// initialize default list
