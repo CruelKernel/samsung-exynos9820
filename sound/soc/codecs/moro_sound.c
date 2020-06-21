@@ -333,13 +333,6 @@ static void update_audio_hub(void)
 	set_eq();
 }
 
-/* sysfs interface functions */
-static ssize_t moro_sound_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", moro_sound);
-}
-
-
 static ssize_t moro_sound_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
@@ -414,11 +407,6 @@ static ssize_t headphone_limits_show(struct device *dev, struct device_attribute
 
 /* Earpiece Volume */
 
-static ssize_t earpiece_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", earpiece_gain);
-}
-
 static ssize_t earpiece_gain_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
@@ -449,10 +437,6 @@ static ssize_t earpiece_limits_show(struct device *dev, struct device_attribute 
 }
 
 /* EQ */
-static ssize_t eq_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq);
-}
 
 static ssize_t eq_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -503,131 +487,6 @@ static ssize_t eq_gains_store(struct device *dev, struct device_attribute *attr,
 		eq_gains[i] = gains[i];
 	}
 
-	set_eq_gains();
-
-	return count;
-}
-
-static ssize_t eq_b1_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq_gains[0]);
-}
-
-static ssize_t eq_b1_gain_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	int val;
-
-	if (sscanf(buf, "%d", &val) < 1)
-		return -EINVAL;
-
-	if (val < EQ_GAIN_MIN)
-		val = EQ_GAIN_MIN;
-
-	if (val > EQ_GAIN_MAX)
-		val = EQ_GAIN_MAX;
-
-	eq_gains[0] = val;
-	set_eq_gains();
-
-	return count;
-}
-
-static ssize_t eq_b2_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq_gains[1]);
-}
-
-static ssize_t eq_b2_gain_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	int val;
-
-	if (sscanf(buf, "%d", &val) < 1)
-		return -EINVAL;
-
-	if (val < EQ_GAIN_MIN)
-		val = EQ_GAIN_MIN;
-
-	if (val > EQ_GAIN_MAX)
-		val = EQ_GAIN_MAX;
-
-	eq_gains[1] = val;
-	set_eq_gains();
-
-	return count;
-}
-
-static ssize_t eq_b3_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq_gains[2]);
-}
-
-static ssize_t eq_b3_gain_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	int val;
-
-	if (sscanf(buf, "%d", &val) < 1)
-		return -EINVAL;
-
-	if (val < EQ_GAIN_MIN)
-		val = EQ_GAIN_MIN;
-
-	if (val > EQ_GAIN_MAX)
-		val = EQ_GAIN_MAX;
-
-	eq_gains[2] = val;
-	set_eq_gains();
-
-	return count;
-}
-
-static ssize_t eq_b4_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq_gains[3]);
-}
-
-static ssize_t eq_b4_gain_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	int val;
-
-	if (sscanf(buf, "%d", &val) < 1)
-		return -EINVAL;
-
-	if (val < EQ_GAIN_MIN)
-		val = EQ_GAIN_MIN;
-
-	if (val > EQ_GAIN_MAX)
-		val = EQ_GAIN_MAX;
-
-	eq_gains[3] = val;
-	set_eq_gains();
-
-	return count;
-}
-
-static ssize_t eq_b5_gain_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", eq_gains[4]);
-}
-
-static ssize_t eq_b5_gain_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
-{
-	int val;
-
-	if (sscanf(buf, "%d", &val) < 1)
-		return -EINVAL;
-
-	if (val < EQ_GAIN_MIN)
-		val = EQ_GAIN_MIN;
-
-	if (val > EQ_GAIN_MAX)
-		val = EQ_GAIN_MAX;
-
-	eq_gains[4] = val;
 	set_eq_gains();
 
 	return count;
@@ -701,34 +560,66 @@ static ssize_t version_show(struct device *dev, struct device_attribute *attr, c
 
 
 /* Sysfs permissions */
-static DEVICE_ATTR(moro_sound, 0664, moro_sound_show, moro_sound_store);
-static DEVICE_ATTR(headphone_gain, 0664, headphone_gain_show, headphone_gain_store);
-static DEVICE_ATTR(headphone_limits, 0664, headphone_limits_show, NULL);
-static DEVICE_ATTR(earpiece_gain, 0664, earpiece_gain_show, earpiece_gain_store);
-static DEVICE_ATTR(earpiece_limits, 0664, earpiece_limits_show, NULL);
-static DEVICE_ATTR(eq, 0664, eq_show, eq_store);
-static DEVICE_ATTR(eq_gains, 0664, eq_gains_show, eq_gains_store);
-static DEVICE_ATTR(eq_b1_gain, 0664, eq_b1_gain_show, eq_b1_gain_store);
-static DEVICE_ATTR(eq_b2_gain, 0664, eq_b2_gain_show, eq_b2_gain_store);
-static DEVICE_ATTR(eq_b3_gain, 0664, eq_b3_gain_show, eq_b3_gain_store);
-static DEVICE_ATTR(eq_b4_gain, 0664, eq_b4_gain_show, eq_b4_gain_store);
-static DEVICE_ATTR(eq_b5_gain, 0664, eq_b5_gain_show, eq_b5_gain_store);
-static DEVICE_ATTR(version, 0664, version_show, NULL);
-static DEVICE_ATTR(reg_dump, 0664, reg_dump_show, NULL);
+static DEVICE_ATTR_RW(headphone_gain);
+static DEVICE_ATTR_RW(eq_gains);
+static DEVICE_ATTR_RO(earpiece_limits);
+static DEVICE_ATTR_RO(headphone_limits);
+static DEVICE_ATTR_RO(version);
+static DEVICE_ATTR_RO(reg_dump);
+
+static struct dev_ext_attribute dev_attr_moro_sound = {
+        __ATTR(moro_sound, 0644, device_show_bool, moro_sound_store),
+        &moro_sound
+};
+static struct dev_ext_attribute dev_attr_earpiece_gain = {
+        __ATTR(earpiece_gain, 0644, device_show_int, earpiece_gain_store),
+        &earpiece_gain
+};
+static struct dev_ext_attribute dev_attr_eq = {
+        __ATTR(eq, 0644, device_show_bool, eq_store),
+        &eq
+};
+
+
+#define MORO_DEVICE_ATTR_EQ_B_GAIN(num)                                                  \
+static ssize_t eq_b##num##_gain_store(struct device *dev, struct device_attribute *attr, \
+				      const char *buf, size_t count)                     \
+{                                                                                        \
+	int val;                                                                         \
+	if (sscanf(buf, "%d", &val) < 1)                                                 \
+		return -EINVAL;                                                          \
+	if (val < EQ_GAIN_MIN)                                                           \
+		val = EQ_GAIN_MIN;                                                       \
+	if (val > EQ_GAIN_MAX)                                                           \
+		val = EQ_GAIN_MAX;                                                       \
+	eq_gains[num - 1] = val;                                                         \
+	set_eq_gains();                                                                  \
+	return count;                                                                    \
+}                                                                                        \
+struct dev_ext_attribute dev_attr_eq_b##num##_gain = {                                   \
+        __ATTR(eq_b##num##_gain, 0644, device_show_int, eq_b##num##_gain_store),         \
+        &eq_gains[num - 1]                                                               \
+};
+
+MORO_DEVICE_ATTR_EQ_B_GAIN(1);
+MORO_DEVICE_ATTR_EQ_B_GAIN(2);
+MORO_DEVICE_ATTR_EQ_B_GAIN(3);
+MORO_DEVICE_ATTR_EQ_B_GAIN(4);
+MORO_DEVICE_ATTR_EQ_B_GAIN(5);
 
 static struct attribute *moro_sound_attributes[] = {
-	&dev_attr_moro_sound.attr,
+	&dev_attr_moro_sound.attr.attr,
 	&dev_attr_headphone_gain.attr,
 	&dev_attr_headphone_limits.attr,
-	&dev_attr_earpiece_gain.attr,
+	&dev_attr_earpiece_gain.attr.attr,
 	&dev_attr_earpiece_limits.attr,
-	&dev_attr_eq.attr,
+	&dev_attr_eq.attr.attr,
 	&dev_attr_eq_gains.attr,
-	&dev_attr_eq_b1_gain.attr,
-	&dev_attr_eq_b2_gain.attr,
-	&dev_attr_eq_b3_gain.attr,
-	&dev_attr_eq_b4_gain.attr,
-	&dev_attr_eq_b5_gain.attr,
+	&dev_attr_eq_b1_gain.attr.attr,
+	&dev_attr_eq_b2_gain.attr.attr,
+	&dev_attr_eq_b3_gain.attr.attr,
+	&dev_attr_eq_b4_gain.attr.attr,
+	&dev_attr_eq_b5_gain.attr.attr,
 	&dev_attr_version.attr,
 	&dev_attr_reg_dump.attr,
 	NULL
