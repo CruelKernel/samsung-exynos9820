@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "CTF1_062020_185" ]
+        version : [ "CTF1_186_06" ]
 
     steps:
     - uses: actions/checkout@v1

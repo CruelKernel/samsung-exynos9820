@@ -6274,7 +6274,6 @@ static int ufshcd_bkops_ctrl(struct ufs_hba *hba,
 	}
 	else
 		err = ufshcd_disable_auto_bkops(hba);
-	hba->urgent_bkops_lvl = curr_status;
 out:
 	return err;
 }
