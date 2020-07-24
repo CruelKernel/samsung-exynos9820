@@ -657,29 +657,13 @@ static int __maybe_unused xhci_plat_suspend(struct device *dev)
 
 static int __maybe_unused xhci_plat_resume(struct device *dev)
 {
-	/*
-	 *struct usb_hcd	*hcd = dev_get_drvdata(dev);
-	 *struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
-	 *int ret;
-	 */
+	 struct usb_hcd	*hcd = dev_get_drvdata(dev);
+	 struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
+	 int ret;
 
 	pr_info("[%s] \n",__func__);
 
-	/*
-	 *if (!device_may_wakeup(dev) && !IS_ERR(xhci->clk))
-	 *	clk_prepare_enable(xhci->clk);
-	 *
-	 *ret = xhci_priv_resume_quirk(hcd);
-	 *if (ret)
-	 *	return ret;
-	 *
-	 *return xhci_resume(xhci, 0);
-	 */
-	 pm_runtime_disable(dev);
-	 pm_runtime_set_active(dev);
-	 pm_runtime_enable(dev);
-
-	 return 0;
+	return xhci_resume(xhci, 0);
 }
 
 static int __maybe_unused xhci_plat_runtime_suspend(struct device *dev)
