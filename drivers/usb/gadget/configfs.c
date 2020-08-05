@@ -2007,7 +2007,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		cdev->next_string_id = 0;
 #endif
 		if (!gadget) {
-			pr_info("usb: %s: Gadget is NULL: %p\n", __func__, gadget);
+			pr_info("usb: %s: Gadget is NULL\n", __func__);
 			mutex_unlock(&dev->lock);
 			return -ENODEV;
 		}

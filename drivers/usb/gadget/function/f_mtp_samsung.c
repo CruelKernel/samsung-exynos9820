@@ -1426,7 +1426,7 @@ mtpg_function_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	while ((req = mtpg_req_get(dev, &dev->intr_idle)))
 		mtpg_request_free(req, dev->int_in);
-	pr_info("[UDBG] %s %d guid_info=%p\n", __func__, __LINE__, guid_info); // temp
+	pr_info("[UDBG] %s %d guid_info=%pK\n", __func__, __LINE__, guid_info); // temp
 	memset(guid_info, 0, sizeof (guid_info));
 	//printk(KERN_DEBUG "mtp: %s guid after reset = %s\n", __func__, guid_info);
 }

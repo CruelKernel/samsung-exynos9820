@@ -1078,8 +1078,8 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g,
 		free_netdev(net);
 		dev = ERR_PTR(status);
 	} else {
-		INFO(dev, "MAC %pM\n", net->dev_addr);
-		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
+		DBG(dev, "MAC %pM\n", net->dev_addr);
+		DBG(dev, "HOST MAC %pM\n", dev->host_mac);
 
 		/*
 		 * two kinds of host-initiated state changes:
