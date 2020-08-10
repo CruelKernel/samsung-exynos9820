@@ -146,7 +146,7 @@ For example:
   schedulers and want cfq to be default one, for example: +maple +fiops will make fiops
   default scheduler and give you the ability to switch to maple at runtime. Thus: +maple
   +fiops +zen +cfq will add to the kernel maple, fiops, zen and make cfq scheduler default.
-* sdfat - use sdfat for exFAT and VFAT filesystems.
+* +sdfat - use sdfat for exFAT and VFAT filesystems.
 * ntfs - enable ntfs filesystem support (read only).
 * cifs - adds CIFS fs support.
 * tcp_cubic - enable CUBIC TCP congestion control.
