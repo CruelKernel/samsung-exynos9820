@@ -131,7 +131,7 @@ For example:
 * 1000hz - increase interrupt clock freq from 250hz to 1000hz. Don't use it if you
   play games. You could benefit from this setting only if you use light/middle-weight
   apps. Look here for more info: https://source.android.com/devices/tech/debug/jank_jitter
-* noatime - mount fs with noatime by default.
+* +noatime - mount fs with noatime by default.
 * io_bfq - enable BFQ MQ I/O scheduler in the kernel. BFQ is multi-queue scheduler, enabling
   it requires switching SCSI subsystem to MQ mode. This means you will loose the ability
   to use cfq and other single-queue schedulers after enabling +bfq.
