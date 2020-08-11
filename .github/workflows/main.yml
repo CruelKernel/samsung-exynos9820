@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G970F" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -28,11 +28,31 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name="CRUEL-V3.4"        \
+                name="CRUEL-V3.4ds"      \
                 +magisk                  \
                 +nohardening             \
                 +ttl                     \
                 +wireguard               \
+                +1000hz                  \
+                +noatime                 \
+                +io_maple                \
+                +io_fiops                \
+                +io_zen                  \
+                +io_anxiety              \
+                +tcp_westwood            \
+                +tcp_cubic               \
+                +tcp_htcp                \
+                +tcp_bbr                 \
+                +sched_ondemand          \
+                +sched_conservative      \
+                +sched_powersave         \
+                +sched_userspace         \
+                +sched_performance       \
+                +ttl                     \
+                +mass_storage            \
+                +size                    \
+                +nodebug                 \
+                +nozram                  \
                 +cifs                    \
                 +sdfat                   \
                 +ntfs                    \
