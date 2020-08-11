@@ -99,6 +99,10 @@ config PROC_CHILDREN
 	  Say Y if you are running any user-space software which takes benefit from
 	  this interface. For example, rkt is such a piece of software.
 
+config PROC_MAGISK_HIDE_MOUNT
+	bool "Hide magisk mounts for IsolatedService"
+	default n
+
 config PROC_UID
 	bool "Include /proc/uid/ files"
 	default y
