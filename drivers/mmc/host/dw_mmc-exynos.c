@@ -398,6 +398,8 @@ static void dw_mci_exynos_adjust_clock(struct dw_mci *host, unsigned int wanted)
 #define MHZ (1000 * 1000)
 #endif
 
+#define KHZ (1000)
+
 static void dw_mci_exynos_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 {
 	struct dw_mci_exynos_priv_data *priv = host->priv;
@@ -462,6 +464,9 @@ static void dw_mci_exynos_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 		else if (ios->clock)
 			dw_mci_exynos_ssclk_control(host, 1);
 	}
+
+	if ((ios->clock > 0) && (ios->clock <= 400 * KHZ))
+		sample_path_sel_dis(host, AXI_BURST_LEN);
 
 	host->cclk_in = wanted;
 

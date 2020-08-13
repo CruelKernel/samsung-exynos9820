@@ -71,6 +71,8 @@ int update_encryption_context_with_dd_policy(
 				dd_error("failed to alloc dd info:%ld\n", inode->i_ino);
 				ret = -ENOMEM;
 				ci->ci_dd_info = NULL;
+			} else {
+				fscrypt_dd_inc_count();
 			}
 		}
 	}
@@ -100,6 +102,42 @@ int fscrypt_dd_encrypted_inode(const struct inode *inode)
 
 	return 0;
 }
+EXPORT_SYMBOL(fscrypt_dd_encrypted_inode);
+
+#ifdef CONFIG_SDP_KEY_DUMP
+int fscrypt_dd_is_traced_inode(const struct inode *inode)
+{
+	struct fscrypt_info *ci = NULL;
+	if (!inode)
+		return 0;
+
+	ci = inode->i_crypt_info;
+	if (!S_ISREG(inode->i_mode))
+		return 0;
+
+	if (ci && ci->ci_dd_info) {
+		if (dd_policy_trace_file(ci->ci_dd_info->policy.flags))
+			return 1;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_dd_is_traced_inode);
+
+void fscrypt_dd_trace_inode(const struct inode *inode)
+{
+	struct fscrypt_info *ci = NULL;
+	if (!inode)
+		return;
+
+	ci = inode->i_crypt_info;
+	if (ci && ci->ci_dd_info) {
+		dd_info("update dd trace policy ino:%ld\n", inode->i_ino);
+		ci->ci_dd_info->policy.flags |= DD_POLICY_TRACE_FILE;
+	}
+}
+EXPORT_SYMBOL(fscrypt_dd_trace_inode);
+#endif
 
 struct inode *fscrypt_bio_get_inode(const struct bio *bio)
 {
@@ -177,6 +215,31 @@ int fscrypt_dd_decrypt_page(struct inode *inode, struct page *page)
 	return dd_page_crypto(inode->i_crypt_info->ci_dd_info, DD_DECRYPT, page, page);
 }
 
+void fscrypt_dd_set_count(long count)
+{
+	set_ddar_count(count);
+}
+
+long fscrypt_dd_get_count(void)
+{
+	return get_ddar_count();
+}
+
+void fscrypt_dd_inc_count(void)
+{
+	inc_ddar_count();
+}
+
+void fscrypt_dd_dec_count(void)
+{
+	dec_ddar_count();
+}
+
+int fscrypt_dd_is_locked(void)
+{
+	return dd_is_user_deamon_locked();
+}
+
 long fscrypt_dd_ioctl(unsigned int cmd, unsigned long *arg, struct inode *inode)
 {
 	switch (cmd) {
@@ -204,6 +267,14 @@ long fscrypt_dd_ioctl(unsigned int cmd, unsigned long *arg, struct inode *inode)
 		}
 
 		return update_encryption_context_with_dd_policy(inode, &policy);
+	}
+	case FS_IOC_GET_DD_INODE_COUNT: {
+		long ret = fscrypt_dd_get_count();
+		dd_info("FS_IOC_GET_DD_INODE_COUNT - dd_count : %ld", ret);
+
+		if (copy_to_user((void __user *) (*arg), &ret, sizeof(long)))
+			return -EFAULT;
+		return 0;
 	}
 	}
 	return 0;

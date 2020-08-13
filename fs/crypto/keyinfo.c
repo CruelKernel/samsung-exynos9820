@@ -456,8 +456,15 @@ int fscrypt_get_encryption_info(struct inode *inode)
 #ifdef CONFIG_FSCRYPT_SDP
 	sdp_fs_command_t *cmd = NULL;
 #endif
-	if (inode->i_crypt_info)
+	if (inode->i_crypt_info) {
+#ifdef CONFIG_DDAR
+		if (fscrypt_dd_encrypted_inode(inode) && fscrypt_dd_is_locked()) {
+			dd_error("Failed to open a DDAR-protected file in lock state (ino:%ld)\n", inode->i_ino);
+			return -ENOKEY;
+		}
+#endif
 		return 0;
+	}
 
 	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
 	if (res)
@@ -630,6 +637,13 @@ attach_ci:
 	if (crypt_info == NULL) //Call only when i_crypt_info is loaded initially
 		fscrypt_sdp_finalize_tasks(inode, raw_key, mode->keysize);
 #endif
+#ifdef CONFIG_DDAR
+	if (crypt_info == NULL) {
+		if (inode->i_crypt_info && inode->i_crypt_info->ci_dd_info) {
+			fscrypt_dd_inc_count();
+		}
+	}
+#endif
 out:
 	if (res == -ENOKEY)
 		res = 0;
@@ -641,6 +655,12 @@ EXPORT_SYMBOL(fscrypt_get_encryption_info);
 
 void fscrypt_put_encryption_info(struct inode *inode)
 {
+#ifdef CONFIG_DDAR
+	if (inode->i_crypt_info && inode->i_crypt_info->ci_dd_info) {
+		fscrypt_dd_dec_count();
+	}
+#endif
+
 #ifdef CONFIG_FSCRYPT_SDP
 	fscrypt_sdp_cache_remove_inode_num(inode);
 #endif

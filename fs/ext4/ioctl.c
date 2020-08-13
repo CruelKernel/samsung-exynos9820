@@ -1080,6 +1080,7 @@ out:
 #ifdef CONFIG_DDAR
 	case EXT4_IOC_GET_DD_POLICY:
 	case EXT4_IOC_SET_DD_POLICY:
+	case FS_IOC_GET_DD_INODE_COUNT:
 		return fscrypt_dd_ioctl(cmd, &arg, inode);
 #endif
 #ifdef CONFIG_FSCRYPT_SDP

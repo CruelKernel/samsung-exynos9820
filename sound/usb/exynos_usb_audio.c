@@ -605,6 +605,8 @@ int exynos_usb_audio_conn(int is_conn)
 	if (!is_conn) {
 		if (usb_audio->is_audio) {
 			usb_audio->is_audio = 0;
+			usb_audio->usb_audio_state = USB_AUDIO_REMOVING;
+			reinit_completion(&usb_audio->discon_done);
 			ret = abox_start_ipc_transaction(dev, msg.ipcid, &msg, sizeof(msg), 0, 0);
 			if (ret) {
 				pr_err("erap usb dis_conn control failed\n");
@@ -625,7 +627,7 @@ int exynos_usb_audio_conn(int is_conn)
 			pr_err("erap usb conn control failed\n");
 			return -1;
 		}
-
+		usb_audio->usb_audio_state = USB_AUDIO_CONNECT;
 	}
 
 	return 0;
@@ -705,7 +707,16 @@ void exynos_usb_audio_work(struct work_struct *w)
 {
 	pr_info("%s\n", __func__);
 
+	/* Don't unmap in USB_AUDIO_TIMEOUT_PROBE state */
+	if (usb_audio->usb_audio_state !=
+			USB_AUDIO_REMOVING) {
+		pr_info("%s, not removing state\n", __func__);
+		return;
+	}
+
 	exynos_usb_audio_unmap_all();
+	usb_audio->usb_audio_state = USB_AUDIO_DISCONNECT;
+	complete(&usb_audio->discon_done);
 }
 
 irqreturn_t exynos_usb_audio_irq_handler(int irq, void *dev_id, ABOX_IPC_MSG *msg)
@@ -725,7 +736,11 @@ irqreturn_t exynos_usb_audio_irq_handler(int irq, void *dev_id, ABOX_IPC_MSG *ms
 					pr_info("irq : %d /* param1 : 1 , IN EP task done */\n", irq);
 				} else {
 					pr_info("irq : %d /* param0 : 0 , OUT EP task done */\n", irq);
-					schedule_work(&usb_audio->usb_work);
+					/* Don't schedule in TIMEOUT_PROBE */
+					if (usb_audio->usb_audio_state ==
+							USB_AUDIO_REMOVING)
+						schedule_work(&usb_audio
+							->usb_work);
 				}
 				break;
 			case IPC_USB_STOP_DONE:
@@ -777,11 +792,13 @@ int exynos_usb_audio_init(struct device *dev, struct platform_device *pdev)
 	mutex_init(&usb_audio->lock);
 	init_completion(&usb_audio->in_conn_stop);
 	init_completion(&usb_audio->out_conn_stop);
+	init_completion(&usb_audio->discon_done);
 	usb_audio->abox = pdev_abox;
 	usb_audio->hcd_pdev = pdev;
 	usb_audio->udev = NULL;
 	usb_audio->is_audio = 0;
 	usb_audio->is_first_probe = 1;
+	usb_audio->usb_audio_state = USB_AUDIO_DISCONNECT;
 
 	abox_register_ipc_handler(&pdev_abox->dev, IPC_ERAP,
 				exynos_usb_audio_irq_handler, &usb_audio);

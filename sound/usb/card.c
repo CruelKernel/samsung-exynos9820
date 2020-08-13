@@ -552,6 +552,7 @@ static int usb_audio_probe(struct usb_interface *intf,
 	u32 id;
 #ifdef CONFIG_SND_EXYNOS_USB_AUDIO
 	struct usb_interface_descriptor *altsd;
+	int timeout = 0;
 #endif
 	
 	dev_info(&dev->dev, "usb_host : %s \n", __func__);
@@ -577,7 +578,28 @@ static int usb_audio_probe(struct usb_interface *intf,
 			pr_info("USB_AUDIO_IPC : %s - MIDI device detected!\n", __func__);
 	} else {
 		pr_info("USB_AUDIO_IPC : %s - No MIDI device detected!\n", __func__);
-		if (!usb_audio->is_audio) {
+
+		if (usb_audio->usb_audio_state == USB_AUDIO_REMOVING) {
+			timeout =
+				wait_for_completion_timeout(&usb_audio
+					->discon_done,
+					msecs_to_jiffies(DISCONNECT_TIMEOUT));
+			pr_info("%s: wait disconnect %dmsec",
+						__func__, timeout);
+
+			if (!timeout && (usb_audio->usb_audio_state ==
+					USB_AUDIO_REMOVING)) {
+				usb_audio->usb_audio_state =
+						USB_AUDIO_TIMEOUT_PROBE;
+				pr_err("%s: timeout for disconnect\n",
+					__func__);
+			}
+		}
+
+		if ((usb_audio->usb_audio_state ==
+				USB_AUDIO_DISCONNECT) ||
+				(usb_audio->usb_audio_state ==
+				USB_AUDIO_TIMEOUT_PROBE)) {
 			pr_info("USB_AUDIO_IPC : %s - USB Audio set!\n", __func__);
 			exynos_usb_audio_set_device(dev);
 			exynos_usb_audio_conn(1);

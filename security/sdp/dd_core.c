@@ -1737,6 +1737,38 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		return 0;
 	}
+	case DD_IOCTL_TRACE_DDAR_FILE: {
+#ifdef CONFIG_SDP_KEY_DUMP
+		struct fd f = { NULL, 0 };
+		struct inode *inode;
+		struct dd_crypt_context crypt_context;
+
+		dd_info("DD_IOCTL_TRACE_DDAR_FILE");
+
+		f = fdget(ioc.u.dump_key.fileDescriptor);
+		if (unlikely(f.file == NULL)) {
+			dd_error("invalid fd : %d\n", ioc.u.dump_key.fileDescriptor);
+			return -EINVAL;
+		}
+		inode = f.file->f_path.dentry->d_inode;
+		if (!inode) {
+			dd_error("invalid inode address\n");
+			return -EBADF;
+		}
+		if (dd_read_crypt_context(inode, &crypt_context) != sizeof(struct dd_crypt_context)) {
+			dd_error("failed to read dd crypt context - ino:%ld\n", inode->i_ino);
+			return -EINVAL;
+		}
+		crypt_context.policy.flags |= DD_POLICY_TRACE_FILE;
+		if (dd_write_crypt_context(inode, &crypt_context, NULL)) {
+			dd_error("failed to write dd crypt context - ino:%ld\n", inode->i_ino);
+		}
+		fscrypt_dd_trace_inode(inode);
+		dd_info("updated policy - ino:%ld\n", inode->i_ino);
+#endif
+
+		return 0;
+	}
 	case DD_IOCTL_DUMP_REQ_LIST:
 	{
 		dd_info("DD_IOCTL_DUMP_REQ_LIST");
@@ -2135,11 +2167,36 @@ void dd_init_context(const char *name) {
 	}
 }
 
+atomic64_t dd_count;
+
+void set_ddar_count(long count)
+{
+	atomic64_set(&dd_count, count);
+}
+
+long get_ddar_count(void)
+{
+	long count = atomic64_read(&dd_count);
+	return count;
+}
+
+void inc_ddar_count(void)
+{
+	atomic64_inc(&dd_count);
+}
+
+void dec_ddar_count(void)
+{
+	atomic64_dec(&dd_count);
+}
+
 static int __init dd_init(void)
 {
 	int err = -ENOMEM;
 
 	BUG_ON(sizeof(struct metadata_hdr) != METADATA_HEADER_LEN);
+
+	set_ddar_count(0);
 
 	dd_free_req_workqueue = alloc_workqueue("dd_free_req_workqueue", WQ_HIGHPRI, 0);
 	if (!dd_free_req_workqueue)

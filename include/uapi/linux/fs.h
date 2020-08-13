@@ -261,6 +261,7 @@ struct fsxattr {
 #ifdef CONFIG_DDAR
 #define FS_IOC_GET_DD_POLICY			_IO('P', 0x00)
 #define FS_IOC_SET_DD_POLICY			_IO('P', 0x01)
+#define FS_IOC_GET_DD_INODE_COUNT		_IOR('P', 0x02, long)
 #endif
 
 /*

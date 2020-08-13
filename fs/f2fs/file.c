@@ -3056,6 +3056,7 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef CONFIG_DDAR
 	case F2FS_IOC_GET_DD_POLICY:
 	case F2FS_IOC_SET_DD_POLICY:
+	case FS_IOC_GET_DD_INODE_COUNT:
 		return fscrypt_dd_ioctl(cmd, &arg, file_inode(filp));
 #endif
 	default:
@@ -3177,6 +3178,7 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #ifdef CONFIG_DDAR
 	case F2FS_IOC_GET_DD_POLICY:
 	case F2FS_IOC_SET_DD_POLICY:
+	case FS_IOC_GET_DD_INODE_COUNT:
 #endif
 		break;
 	default:
