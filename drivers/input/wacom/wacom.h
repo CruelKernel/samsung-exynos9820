@@ -304,7 +304,6 @@ struct wacom_i2c {
 	struct mutex update_lock;
 	struct mutex irq_lock;
 	struct mutex mode_lock;
-	struct mutex ble_charge_mode_lock;
 	struct wake_lock fw_wakelock;
 	struct delayed_work nb_reg_work;
 	struct notifier_block kbd_nb;

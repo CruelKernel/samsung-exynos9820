@@ -2625,9 +2625,8 @@ int set_wacom_ble_charge_mode(bool mode)
 
 	input_info(true, &wac_i2c->client->dev, "%s start(%d)\n", __func__, mode);
 
-	mutex_lock(&wac_i2c->ble_charge_mode_lock);
 	if (!mode) {
-		ret = wacom_ble_charge_mode(wac_i2c, EPEN_BLE_C_DIABLE);
+		ret = wacom_ble_charge_mode(wac_i2c, EPEN_BLE_C_KEEP_OFF);
 		if (!ret)
 			wac_i2c->ble_block_flag = true;
 	} else {
@@ -2636,7 +2635,6 @@ int set_wacom_ble_charge_mode(bool mode)
 		ret = wacom_ble_charge_mode(wac_i2c, EPEN_BLE_C_ENABLE);
 #endif
 	}
-	mutex_unlock(&wac_i2c->ble_charge_mode_lock);
 
 	input_info(true, &wac_i2c->client->dev, "%s done(%d)\n", __func__, mode);
 
