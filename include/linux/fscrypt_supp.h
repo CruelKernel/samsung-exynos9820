@@ -220,6 +220,8 @@ extern const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
 extern int fscrypt_dd_decrypt_page(struct inode *inode, struct page *page);
 extern int fscrypt_dd_encrypted(struct bio *bio);
 extern int fscrypt_dd_encrypted_inode(const struct inode *inode);
+extern int fscrypt_dd_is_traced_inode(const struct inode *inode);
+extern void fscrypt_dd_trace_inode(const struct inode *inode);
 extern long fscrypt_dd_get_ino(struct bio *bio);
 extern long fscrypt_dd_ioctl(unsigned int cmd, unsigned long *arg, struct inode *inode);
 extern int fscrypt_dd_submit_bio(struct inode *inode, struct bio *bio);

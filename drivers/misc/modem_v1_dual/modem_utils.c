@@ -97,7 +97,7 @@ static const char *hex = "0123456789abcdef";
 
 static struct raw_notifier_head cp_crash_notifier;
 
-struct mif_buff_mng *g_mif_buff_mng;
+struct mif_buff_mng *g_mif_buff_mng = NULL;
 
 static inline void ts2utc(struct timespec *ts, struct utc_time *utc)
 {

@@ -520,8 +520,10 @@ exit:
 	if (state == STATE_CRASH_RESET
 	    || state == STATE_CRASH_EXIT
 	    || state == STATE_NV_REBUILDING
-	    || state == STATE_CRASH_WATCHDOG)
-		wake_up(&iod->wq);
+	    || state == STATE_CRASH_WATCHDOG) {
+		if (atomic_read(&iod->opened) > 0)
+			wake_up(&iod->wq);
+	}
 }
 
 static void io_dev_sim_state_changed(struct io_device *iod, bool sim_online)

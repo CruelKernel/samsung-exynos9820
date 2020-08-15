@@ -81,10 +81,8 @@ static irqreturn_t cp_wdt_handler(int irq, void *arg)
 
 	mif_err("new_state = %s\n", cp_state_str(new_state));
 
-	list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-		if (iod && atomic_read(&iod->opened) > 0)
-			iod->modem_state_changed(iod, new_state);
-	}
+	list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+		iod->modem_state_changed(iod, new_state);
 
 	return IRQ_HANDLED;
 }
@@ -107,10 +105,8 @@ static irqreturn_t cp_fail_handler(int irq, void *arg)
 
 	mif_err("new_state = %s\n", cp_state_str(new_state));
 
-	list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-		if (iod && atomic_read(&iod->opened) > 0)
-			iod->modem_state_changed(iod, new_state);
-	}
+	list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+		iod->modem_state_changed(iod, new_state);
 
 	return IRQ_HANDLED;
 }
@@ -147,10 +143,8 @@ static void cp_active_handler(void *arg)
 		if (old_state == STATE_ONLINE)
 			modem_notify_event(MODEM_EVENT_RESET);
 
-		list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-			if (iod && atomic_read(&iod->opened) > 0)
-				iod->modem_state_changed(iod, new_state);
-		}
+		list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+			iod->modem_state_changed(iod, new_state);
 	}
 }
 
@@ -421,10 +415,8 @@ static int ss310ap_shutdown(struct modem_ctl *mc)
 	if (remain == 0) {
 		mif_err("T-I-M-E-O-U-T\n");
 		mc->phone_state = STATE_OFFLINE;
-		list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-			if (iod && atomic_read(&iod->opened) > 0)
-				iod->modem_state_changed(iod, STATE_OFFLINE);
-		}
+		list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+			iod->modem_state_changed(iod, STATE_OFFLINE);
 	}
 
 exit:
@@ -497,10 +489,8 @@ static int ss310ap_boot_on(struct modem_ctl *mc)
 	if (ld->boot_on)
 		ld->boot_on(ld, mc->bootd);
 
-	list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-		if (iod && atomic_read(&iod->opened) > 0)
-			iod->modem_state_changed(iod, STATE_BOOTING);
-	}
+	list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+		iod->modem_state_changed(iod, STATE_BOOTING);
 
 	while (mbox_extract_value(MCU_CP, mc->mbx_cp_status,
 				mc->sbi_cp_status_mask, mc->sbi_cp_status_pos) == 0) {
@@ -541,10 +531,8 @@ static int ss310ap_boot_off(struct modem_ctl *mc)
 
 	mif_enable_irq(&mc->irq_cp_wdt);
 
-	list_for_each_entry(iod, &mc->modem_state_notify_list, list) {
-		if (iod && atomic_read(&iod->opened) > 0)
-			iod->modem_state_changed(iod, STATE_ONLINE);
-	}
+	list_for_each_entry(iod, &mc->modem_state_notify_list, list)
+		iod->modem_state_changed(iod, STATE_ONLINE);
 
 	mif_info("---\n");
 

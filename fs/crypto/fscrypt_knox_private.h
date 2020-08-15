@@ -62,4 +62,10 @@ int update_encryption_context_with_dd_policy(
 
 void *dd_get_info(const struct inode *inode);
 
+void fscrypt_dd_set_count(long count);
+long fscrypt_dd_get_count(void);
+void fscrypt_dd_inc_count(void);
+void fscrypt_dd_dec_count(void);
+int fscrypt_dd_is_locked(void);
+
 #endif /* FS_CRYPTO_FSCRYPT_KNOX_PRIVATE_H_ */

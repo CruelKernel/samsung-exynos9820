@@ -78,4 +78,10 @@ struct crypto_skcipher *dd_alloc_ctfm(struct dd_crypt_context *crypt_context, vo
 
 int dd_page_crypto(struct dd_info *info, dd_crypto_direction_t dir,
 		struct page *src_page, struct page *dst_page);
+
+void set_ddar_count(long count);
+long get_ddar_count(void);
+void inc_ddar_count(void);
+void dec_ddar_count(void);
+
 #endif /* SECURITY_SDP_DD_H_ */
