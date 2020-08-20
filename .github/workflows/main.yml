@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G977B" ]
 
     steps:
     - uses: actions/checkout@v1
@@ -28,8 +28,14 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name="CRUEL-V3.5"        \
-                +magisk                  \
+                name="Kernel-Of-VaLueS"  \
+                +magisk+canary           \
+                +io_maple                \
+                +tcp_bbr                 \
+                +tcp_cubic               \
+                +tcp_westwood            \
+                +1000hz                  \
+                +sched_performance       \
                 +nohardening             \
                 +ttl                     \
                 +wireguard               \
@@ -38,6 +44,7 @@ jobs:
                 +ntfs                    \
                 +morosound               \
                 +boeffla_wl_blocker      \
+                +nodebug                 \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
