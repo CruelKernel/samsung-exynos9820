@@ -28,7 +28,7 @@ jobs:
       run: |
         ./build config                   \
                 model=${{ matrix.model}} \
-                name="CRUEL-V3.5"        \
+                name="[-VN-KERNEL-V3.5-G973X-]"        \
                 +magisk                  \
                 +nohardening             \
                 +ttl                     \
