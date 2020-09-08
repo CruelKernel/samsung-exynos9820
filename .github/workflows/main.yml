@@ -2,6 +2,9 @@ name: Build
 
 on: [push]
 
+env:
+  TOOLCHAIN: default
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,14 +25,14 @@ jobs:
         wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/android10-dev.tar.gz -O - | tar xzf - avbtool
         chmod +x avbtool
         sudo mv avbtool /usr/local/bin/avbtool
-    - name: Clone Submodules
-      run: git submodule update --init --depth 1 -j $(nproc) --single-branch
+    - name: Deploy Toolchain
+      run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
     - name: Kernel Configure
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
                 name="CRUEL-V3.6"         \
-                toolchain=default         \
+                toolchain=$TOOLCHAIN      \
                 +magisk                   \
                 +nohardening              \
                 +ttl                      \
