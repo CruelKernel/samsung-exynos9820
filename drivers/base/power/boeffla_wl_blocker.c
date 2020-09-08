@@ -44,8 +44,8 @@
 // Variables
 /*****************************************/
 
-char list_wl[LENGTH_LIST_WL] = {0};
-char list_wl_default[LENGTH_LIST_WL_DEFAULT] = {0};
+char list_wl[LENGTH_LIST_WL];
+char list_wl_default[LENGTH_LIST_WL_DEFAULT];
 
 extern char list_wl_search[LENGTH_LIST_WL_SEARCH];
 extern bool wl_blocker_active;
