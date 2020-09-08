@@ -308,8 +308,7 @@ def update_magisk(version):
         print('Magisk Version: ' + fh.readline())
 
 def switch_toolchain(compiler):
-    branch = 'master' if compiler == 'default' else compiler
-    run(['git', 'submodule', 'foreach', 'git', 'checkout', branch], check=True)
+    run(['git', 'submodule', 'foreach', 'git', 'checkout', compiler], check=True)
 
 def build(**env):
     run(['make',
