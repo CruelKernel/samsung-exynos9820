@@ -3,7 +3,7 @@ if [[ ${CC} = *"clang" ]]; then
 CC_DIR=$(dirname "${CC}")
 export PATH=$PATH:${CC_DIR}
 rm -rf lib/libdss.c
-python lib/make_libdss.py &> lib/libdss.c
+python2 lib/make_libdss.py &> lib/libdss.c
 ${CC} \
   --target=aarch64-linux-gnu \
   -Ilib/libdss-include \
