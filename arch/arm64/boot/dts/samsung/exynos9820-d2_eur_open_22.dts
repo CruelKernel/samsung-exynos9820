@@ -857,6 +857,7 @@
 				charger,direct_charger = "pca9468-charger";
 				charger,dchg_min_current = <0x7d0>;
 				charger,dchg_temp_low_threshold = <0xb4>;
+				charger,dchg_temp_low_threshold_overwrite = <0xdc>;
 				charger,dchg_temp_high_threshold = <0x19a>;
 				charger,ta_alert_wa;
 			};
@@ -1005,9 +1006,19 @@
 				battery,swelling_low_temp_3rd_ctrl;
 				battery,swelling_low_temp_block_3rd = <0xb4>;
 				battery,swelling_low_temp_recov_3rd = <0xc8>;
+				battery,swelling_low_temp_recov_3rd_overwrite = <0xbe>;
+				battery,swelling_low_temp_4th_ctrl;
+				battery,swelling_low_temp_block_4th = <0xdc>;
+				battery,swelling_low_temp_recov_4th = <0xe6>;
+				battery,swelling_low_temp_5th_ctrl;
+				battery,swelling_low_temp_block_5th = <0xfa>;
+				battery,swelling_low_temp_recov_5th = <0x104>;
 				battery,swelling_low_temp_current = <0x3e8>;
 				battery,swelling_low_temp_current_2nd = <0x190>;
 				battery,swelling_low_temp_current_3rd = <0xbb8>;
+				battery,swelling_low_temp_current_3rd_overwrite = <0x7d0>;
+				battery,swelling_low_temp_current_4th = <0xbb8>;
+				battery,swelling_low_temp_current_5th = <0x1004>;
 				battery,swelling_low_temp_topoff = <0xfa>;
 				battery,swelling_high_temp_current = <0x5dc>;
 				battery,swelling_high_temp_topoff = <0xfa>;
@@ -1015,6 +1026,7 @@
 				battery,swelling_wc_low_temp_current = <0x3e8>;
 				battery,swelling_wc_low_temp_current_2nd = <0x190>;
 				battery,swelling_wc_low_temp_current_3rd = <0xbb8>;
+				battery,swelling_wc_low_temp_current_3rd_overwrite = <0x7d0>;
 				battery,swelling_drop_float_voltage = <0x1036>;
 				battery,swelling_high_rechg_voltage = <0xfa0>;
 				battery,swelling_low_rechg_voltage = <0xfa0>;
@@ -1049,18 +1061,23 @@
 				battery,max_charging_charge_power = <0xafc8>;
 				battery,battery_full_capacity = <0x10cc>;
 				battery,age_data = <0x0 0x10fe 0x10b8 0x109a 0x5d 0x2d 0x12c 0x10ea 0x10a4 0x1086 0x5c 0x2d 0x190 0x10d6 0x1090 0x1072 0x5b 0x2d 0x2bc 0x10c2 0x107c 0x105e 0x5a 0x2d 0x3e8 0x1090 0x104a 0x102c 0x59 0x2d>;
+				battery,age_data_overwrite = <0x0 0x10fe 0x10b8 0x109a 0x5d 0x2d 0x32 0x10fe 0x10b8 0x109a 0x5d 0x2d 0x64 0x10f4 0x10ae 0x1090 0x5c 0x2d 0x96 0x10f4 0x10ae 0x1090 0x5c 0x2d 0xc8 0x10ea 0x10a4 0x1086 0x5c 0x2d 0x12c 0x10ea 0x10a4 0x1086 0x5c 0x2d 0x190 0x10d6 0x1090 0x1072 0x5b 0x2d 0x2bc 0x10c2 0x107c 0x105e 0x5a 0x2d 0x3e8 0x1090 0x104a 0x102c 0x59 0x2d>;
 				battery,health_condition = <0x384 0x4b 0x4b0 0x41 0x5dc 0x37>;
 				battery,step_charging_type = <0x0>;
 				battery,dc_step_chg_type = <0x6b>;
+				battery,dc_step_chg_type_overwrite = <0xe9>;
 				battery,dc_step_chg_charge_power = <0x55f0>;
 				battery,dc_step_chg_step = <0x3>;
 				battery,dc_step_chg_step_2nd = <0x0>;
 				battery,dc_step_chg_cond_vol = <0x1022 0x10d6 0x10fe>;
 				battery,dc_step_chg_cond_iin = <0xabe 0x79e 0x0>;
+				battery,dc_step_chg_cond_iin_overwrite = <0xa8c 0x76c 0x0>;
 				battery,dc_step_chg_iin_check_cnt = <0x3>;
 				battery,dc_step_chg_cond_soc = <0x1e 0x41 0x64>;
 				battery,dc_step_chg_val_vfloat = <0x1022 0x10d6 0x10fe>;
 				battery,dc_step_chg_val_iout = <0x1d4c 0x157c 0xf3c>;
+				battery,dc_step_chg_val_vfloat_overwrite = <0x1022 0x10d6 0x10fe 0x1018 0x10c2 0x10fe 0x100e 0x10ae 0x10f4 0x1004 0x109a 0x10f4 0xffa 0x1086 0x10ea 0xff0 0x1086 0x10ea 0xfe6 0x1086 0x10d6 0xfdc 0x1086 0x10c2 0xfd2 0x1086 0x1090>;
+				battery,dc_step_chg_val_iout_overwrite = <0x1ce8 0x1518 0xed8 0x1c20 0x14b4 0xe74 0x1b58 0x1450 0xe10 0x1a90 0x13ec 0xdac 0x1a90 0x1388 0xd48 0x1a90 0x1324 0xce4 0x1a90 0x12c0 0xc80 0x1a2c 0x125c 0xc1c 0x19c8 0x11f8 0xbb8>;
 				battery,pre_afc_input_current = <0x1f4>;
 				battery,prepare_ta_delay = <0x0>;
 				battery,max_input_voltage = <0x2328>;
@@ -1073,7 +1090,7 @@
 				battery,recharging_expired_time = <0x1518>;
 				battery,cisd_max_voltage_thr = <0x1130>;
 				battery,cisd_alg_index = <0x8>;
-				battery,ignore_cisd_index = <0x0 0x280>;
+				battery,ignore_cisd_index = <0x0 0x0>;
 				battery,ignore_cisd_index_d = <0x0 0x50>;
 				battery,tx_stop_capacity = <0x1e>;
 				battery,tx_minduty_default = <0x14>;
@@ -4315,7 +4332,7 @@
 					input_booster,kfc_freqs = <0x0>;
 					input_booster,mif_freqs = <0x0>;
 					input_booster,int_freqs = <0x0>;
-					input_booster,dma_latency = <0x0>;
+					input_booster,ucc_requested_val = <0x1>;
 					input_booster,head_times = <0x1f4>;
 					input_booster,tail_times = <0x1f4>;
 					input_booster,phase_times = <0x0>;
@@ -4331,7 +4348,7 @@
 					input_booster,kfc_freqs = <0x0>;
 					input_booster,mif_freqs = <0x0>;
 					input_booster,int_freqs = <0x0>;
-					input_booster,dma_latency = <0x0>;
+					input_booster,ucc_requested_val = <0x1>;
 					input_booster,head_times = <0x0>;
 					input_booster,tail_times = <0xc8>;
 					input_booster,phase_times = <0x0>;
@@ -4347,7 +4364,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70 0xc4c70>;
 					input_booster,mif_freqs = <0xf78f0 0xf78f0 0xf78f0>;
 					input_booster,int_freqs = <0x0 0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1 0x1>;
 					input_booster,head_times = <0x82 0x82 0x0>;
 					input_booster,tail_times = <0x0 0x0 0x1f4>;
 					input_booster,phase_times = <0x0 0x0 0x0>;
@@ -4363,7 +4380,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
 					input_booster,mif_freqs = <0xf78f0 0xf78f0>;
 					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0x3e8 0x0>;
 					input_booster,tail_times = <0x0 0x1f4>;
 					input_booster,phase_times = <0x0 0x0>;
@@ -4379,7 +4396,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
 					input_booster,mif_freqs = <0x0 0x0>;
 					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0x82 0x82>;
 					input_booster,tail_times = <0x0 0x0>;
 					input_booster,phase_times = <0x0 0x0>;
@@ -4395,7 +4412,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
 					input_booster,mif_freqs = <0x0 0x0>;
 					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0x82 0x0>;
 					input_booster,tail_times = <0x0 0x1f4>;
 					input_booster,phase_times = <0x0 0x0>;
@@ -4411,7 +4428,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0x0>;
 					input_booster,mif_freqs = <0x0 0x0>;
 					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0x82 0x0>;
 					input_booster,tail_times = <0x0 0x0>;
 					input_booster,phase_times = <0x0 0x0>;
@@ -4427,7 +4444,7 @@
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
 					input_booster,mif_freqs = <0x0 0x0>;
 					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0x82 0x0>;
 					input_booster,tail_times = <0x0 0x1f4>;
 					input_booster,phase_times = <0x0 0x0>;
@@ -4442,7 +4459,7 @@
 					input_booster,hmp_boost = <0x1 0x1>;
 					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
 					input_booster,bimc_freqs = <0x0 0x0>;
-					input_booster,dma_latency = <0x0 0x0>;
+					input_booster,ucc_requested_val = <0x1 0x1>;
 					input_booster,head_times = <0xc8 0x0>;
 					input_booster,tail_times = <0x0 0x258>;
 				};
@@ -4457,7 +4474,7 @@
 					input_booster,kfc_freqs = <0x101148>;
 					input_booster,mif_freqs = <0x0>;
 					input_booster,int_freqs = <0x0>;
-					input_booster,dma_latency = <0x0>;
+					input_booster,ucc_requested_val = <0x1>;
 					input_booster,head_times = <0x2bc>;
 					input_booster,tail_times = <0x2bc>;
 					input_booster,phase_times = <0x0>;
