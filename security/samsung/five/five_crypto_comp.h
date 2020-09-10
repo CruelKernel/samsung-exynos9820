@@ -41,6 +41,23 @@ static inline int five_verify_signature(struct key *key,
 
 	return ret;
 }
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+static inline int five_verify_signature(struct key *key,
+			  struct public_key_signature *pks,
+			  struct five_cert *cert,
+			  struct five_cert_header *header)
+{
+	int ret = -ENOMEM;
+
+	pks->pkey_algo = "rsa";
+	pks->hash_algo = hash_algo_name[header->hash_algo];
+	pks->s = cert->signature->value;
+	pks->s_size = cert->signature->length;
+
+	ret = verify_signature(key, pks);
+
+	return ret;
+}
 #else
 static inline int five_verify_signature(struct key *key,
 			  struct public_key_signature *pks,
@@ -50,6 +67,7 @@ static inline int five_verify_signature(struct key *key,
 	int ret = -ENOMEM;
 
 	pks->pkey_algo = "rsa";
+	pks->encoding = "pkcs1";
 	pks->hash_algo = hash_algo_name[header->hash_algo];
 	pks->s = cert->signature->value;
 	pks->s_size = cert->signature->length;
@@ -76,6 +94,11 @@ static inline struct key *five_keyring_alloc(const char *description,
 	return keyring_alloc(description, uid, gid, cred,
 				perm, flags, NULL, NULL);
 }
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
+#define keyring_search(keyring, type, desc, recurse) \
+		keyring_search(keyring, type, desc)
 #endif
 
 #endif /* __LINUX_FIVE_CRYPTO_COMP_H */

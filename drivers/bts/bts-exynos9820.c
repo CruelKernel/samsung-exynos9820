@@ -178,7 +178,7 @@ static struct bts_info exynos_bts[] = {
 		.type = BT_TREX,
 		.enable = true,
 		.table[BS_DEFAULT].stat.scen_en = true,
-		.table[BS_DEFAULT].stat.priority = 0x6,
+		.table[BS_DEFAULT].stat.priority = 0xA,
 	},
 	[BTS_IDX_DPU0] = {
 		.name = "dpu0",

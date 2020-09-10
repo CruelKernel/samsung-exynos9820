@@ -278,12 +278,8 @@ struct dirty_seglist_info {
 	int nr_dirty[NR_DIRTY_TYPE];		/* # of dirty segments */
 	unsigned long *victim_secmap;		/* background GC victims */
 
-	/* W/A for FG_GC failure due to Atomic Write File */    
+	/* W/A for FG_GC failure due to Atomic Write File and Pinned File */
 	unsigned long *blacklist_victim_secmap; /* GC Failed Bitmap */ 
-#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-	/* W/A for GC failure due to Pinned File */
-	unsigned long *pblacklist_victim_secmap; /* GC Failed Bitmap (pinned)*/
-#endif
 };
 
 /* victim selection function for cleaning and SSR */

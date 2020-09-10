@@ -30,6 +30,7 @@
 #include <linux/relay.h>
 #include <linux/slab.h>
 #include <linux/cpuset.h>
+#include <linux/sec_debug.h>
 
 #include <soc/samsung/exynos-emc.h>
 
@@ -229,7 +230,9 @@ err:
 static inline void wait_for_ap_thread(struct cpuhp_cpu_state *st, bool bringup)
 {
 	struct completion *done = bringup ? &st->done_up : &st->done_down;
+	sec_debug_wtsk_set_data(DTYPE_CPUHP, (void *)st->thread);
 	wait_for_completion(done);
+	sec_debug_wtsk_clear_data();
 }
 
 static inline void complete_ap_thread(struct cpuhp_cpu_state *st, bool bringup)

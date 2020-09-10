@@ -50,6 +50,6 @@ obj-$(CONFIG_FIVE)			+= samsung/five/
 subdir-$(CONFIG_PROCA)		+= proca
 obj-$(CONFIG_PROCA)		+= proca/
 
-# Kbuild should always enter proca/gaf because gaf should be always built
-subdir-y += proca/gaf
-obj-y    += proca/gaf/
+# GAF module for PROCA, Secure Storage 1
+subdir-$(CONFIG_GAF) += proca/gaf
+obj-$(CONFIG_GAF)    += proca/gaf/

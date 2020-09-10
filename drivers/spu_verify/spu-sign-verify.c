@@ -25,7 +25,7 @@
 #include <linux/spu-verify.h>
 #include "spu-sign-verify.h"
 
-#define FW_DIGEST_MISSMATCH 999
+#define FW_DIGEST_MISMATCH 999
 
 const char *spu_tag_name[] = { TSP_TAG, MFC_TAG, WACOM_TAG, PDIC_TAG, SENSORHUB_TAG };
 
@@ -129,7 +129,7 @@ long spu_firmware_signature_verify(const char* fw_name, const u8* fw_data, const
 	fw_offset -= TAG_LEN;
 	if(TAG_LEN <= 0 || strncmp(fw_name, fw_data + fw_offset, TAG_LEN) != 0) {
 		pr_info("Firmware mismatch...\n");
-		ret = -FW_DIGEST_MISSMATCH;
+		ret = -FW_DIGEST_MISMATCH;
 		goto fail_mismatch;
 	}
 
@@ -142,7 +142,7 @@ long spu_firmware_signature_verify(const char* fw_name, const u8* fw_data, const
 
 	if(memcmp(read_digest, calc_digest, DIGEST_LEN) !=0) {
 		pr_err("digset matching FAILED...\n");
-		ret = -FW_DIGEST_MISSMATCH;
+		ret = -FW_DIGEST_MISMATCH;
 		goto fail_mismatch;
 	}
 

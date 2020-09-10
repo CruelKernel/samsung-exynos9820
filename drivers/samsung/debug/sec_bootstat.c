@@ -89,6 +89,18 @@ static struct boot_event boot_events[] = {
     {"!@Boot_DEBUG: Launcher - FinishFirstBind",},
 };
 
+#define MAX_LENGTH_OF_BOOTING_LOG 90
+#define DELAY_TIME_EBS 10000
+#define MAX_EVENTS_EBS 100
+
+struct enhanced_boot_time {
+	struct list_head next;
+	char buf[MAX_LENGTH_OF_BOOTING_LOG];
+	unsigned int time;
+	int freq[3];
+	int online;
+};
+
 #define MAX_LENGTH_OF_SYSTEMSERVER_LOG 90
 struct systemserver_init_time_entry {
 	struct list_head next;
@@ -96,9 +108,13 @@ struct systemserver_init_time_entry {
 };
 
 static bool bootcompleted = false;
+static bool ebs_finished = false;
+unsigned long long boot_complete_time = 0;
+static int events_ebs = 0;
 
 LIST_HEAD(device_init_time_list);
 LIST_HEAD(systemserver_init_time_list);
+LIST_HEAD(enhanced_boot_time_list);
 
 void sec_bootstat_mct_start(u64 rate)
 {
@@ -120,11 +136,47 @@ void sec_bootstat_add_initcall(const char *s)
 	}
 }
 
+void sec_enhanced_boot_stat_record(const char *buf)
+{
+	unsigned long long t = 0;
+	struct enhanced_boot_time *entry;
+	entry = kmalloc(sizeof(*entry), GFP_KERNEL);
+	if (!entry)
+		return;
+	strncpy(entry->buf, buf, MAX_LENGTH_OF_BOOTING_LOG);
+	entry->buf[MAX_LENGTH_OF_BOOTING_LOG-1] = '\0';
+	t = local_clock();
+	do_div(t, 1000000);
+	entry->time = (unsigned int)t;
+	sec_bootstat_get_cpuinfo(entry->freq, &entry->online);
+	list_add(&entry->next, &enhanced_boot_time_list);
+	events_ebs++;
+}
+
 static int prev;
 void sec_bootstat_add(const char *c)
 {
 	size_t i = 0;
 	unsigned long long t = 0;
+
+	if (bootcompleted && !ebs_finished) {
+		t = local_clock();
+		do_div(t, 1000000);
+		if ((t - boot_complete_time) >= DELAY_TIME_EBS)
+			ebs_finished = true;
+	}
+
+	// Collect Boot_EBS from java side
+	if (!ebs_finished && events_ebs < MAX_EVENTS_EBS){
+		if (!strncmp(c, "!@Boot_EBS: ", 12)) {
+			sec_enhanced_boot_stat_record(c + 12);
+			return;
+		}
+		else if (!strncmp(c, "!@Boot_EBS_", 11)) {
+			sec_enhanced_boot_stat_record(c);
+			return;
+		}
+	}
 
 	if(!bootcompleted && !strncmp(c, "!@Boot_SystemServer: ", 21)){
 		struct systemserver_init_time_entry *entry;
@@ -150,7 +202,11 @@ void sec_bootstat_add(const char *c)
 				sec_bootstat_get_thermal(boot_events[i].temp);
 			}
 			// careful check bootcomplete message index 9
-			if(i == 9) bootcompleted = true;
+			if(i == 9) {
+				bootcompleted = true;
+				boot_complete_time = local_clock();
+				do_div(boot_complete_time, 1000000);
+			}
 			break;
 		}
 	}
@@ -231,9 +287,49 @@ static int sec_boot_stat_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static int sec_enhanced_boot_stat_proc_show(struct seq_file *m, void *v)
+{
+	size_t i = 0;
+	unsigned int last_time = 0;
+	struct enhanced_boot_time *entry;
+
+	seq_printf(m, "%-90s %6s %6s %6s %4s %4s %4s\n", "Boot Events", "time", "ktime", "delta", "f_c0", "f_c1", "f_c2");
+	seq_puts(m, "-----------------------------------------------------------------------------------------------------------------------\n");
+	seq_puts(m, "BOOTLOADER - KERNEL\n");
+	seq_puts(m, "-----------------------------------------------------------------------------------------------------------------------\n");
+	seq_printf(m, "%-90s %6u %6u %6u\n", "MCT is initialized in bl2", 0, 0, 0);
+	seq_printf(m, "%-90s %6u %6u %6u\n", "start kernel timer", mct_start, 0, mct_start);
+
+	for (i = 0; i < ARRAY_SIZE(boot_initcall); i++) {
+		seq_printf(m, "%-90s %6u %6u %6u %4d %4d %4d\n", boot_initcall[i].string, boot_initcall[i].time + mct_start, boot_initcall[i].time,
+				boot_initcall[i].time - last_time, boot_initcall[i].freq[0] / 1000, boot_initcall[i].freq[1] / 1000, boot_initcall[i].freq[2] / 1000);
+		last_time = boot_initcall[i].time;
+	}
+
+	seq_puts(m, "-----------------------------------------------------------------------------------------------------------------------\n");
+	seq_puts(m, "FRAMEWORK\n");
+	seq_puts(m, "-----------------------------------------------------------------------------------------------------------------------\n");
+	list_for_each_entry_reverse (entry, &enhanced_boot_time_list, next){
+		if (entry->buf[0] == '!') {
+			seq_printf(m, "%-90s %6u %6u %6u %4d %4d %4d\n", entry->buf, entry->time + mct_start, entry->time, entry->time - last_time,
+			entry->freq[0] / 1000, entry->freq[1] / 1000, entry->freq[2] / 1000);
+			last_time = entry->time;
+		}
+		else {
+			seq_printf(m, "%-90s %6u %6u %11d %4d %4d\n", entry->buf, entry->time + mct_start, entry->time, entry->freq[0] / 1000, entry->freq[1] / 1000, entry->freq[2] / 1000);
+		}
+	}
+	return 0;
+}
+
 static int sec_boot_stat_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, sec_boot_stat_proc_show, NULL);
+}
+
+static int sec_enhanced_boot_stat_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sec_enhanced_boot_stat_proc_show, NULL);
 }
 
 static const struct file_operations sec_boot_stat_proc_fops = {
@@ -243,10 +339,29 @@ static const struct file_operations sec_boot_stat_proc_fops = {
 	.release = single_release,
 };
 
+static const struct file_operations sec_enhanced_boot_stat_proc_fops = {
+	.open    = sec_enhanced_boot_stat_proc_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
 static ssize_t store_boot_stat(struct device *dev, struct device_attribute *attr,
 			const char *buf, size_t count)
 {
 	unsigned long long t = 0;
+
+	// Collect Boot_EBS from native side
+	if (!ebs_finished && events_ebs < MAX_EVENTS_EBS) {
+		if (!strncmp(buf, "!@Boot_EBS: ", 12)) {
+			sec_enhanced_boot_stat_record(buf + 12);
+			return count;
+		}
+		else if (!strncmp(buf, "!@Boot_EBS_", 11)) {
+			sec_enhanced_boot_stat_record(buf);
+			return count;
+		}
+	}
 
 	if (!strncmp(buf, "!@Boot: start init process", 26)) {
 		t = local_clock();
@@ -264,6 +379,7 @@ static DEVICE_ATTR(boot_stat, 0220, NULL, store_boot_stat);
 static int __init sec_bootstat_init(void)
 {
 	struct proc_dir_entry *entry;
+	struct proc_dir_entry *enhanced_entry;
 	struct device *dev;
 
 	u32 arch_timer_rate;
@@ -277,6 +393,9 @@ static int __init sec_bootstat_init(void)
 	// proc
 	entry = proc_create("boot_stat", S_IRUGO, NULL, &sec_boot_stat_proc_fops);
 	if (!entry)
+		return -ENOMEM;
+	enhanced_entry = proc_create("enhanced_boot_stat", S_IRUGO, NULL, &sec_enhanced_boot_stat_proc_fops);
+	if (!enhanced_entry)
 		return -ENOMEM;
 
 	// sysfs

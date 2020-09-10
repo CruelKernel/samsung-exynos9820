@@ -1,5 +1,0 @@
-#
-# FIVE drivers configuration
-#
-
-source "drivers/five/five_tee_driver/Kconfig"

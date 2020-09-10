@@ -235,7 +235,7 @@ source "drivers/motor/Kconfig"
 
 source "drivers/fingerprint/Kconfig"
 
-source "drivers/five/Kconfig"
+source "drivers/security/samsung/five_tee_driver/Kconfig"
 
 #source "drivers/gator/Kconfig"
 
@@ -245,4 +245,7 @@ source "drivers/samsung/Kconfig"
 
 source "drivers/kperfmon/Kconfig"
 
+source "drivers/security/samsung/tzic/Kconfig"
+
+source "drivers/spu_verify/Kconfig"
 endmenu

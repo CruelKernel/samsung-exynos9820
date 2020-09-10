@@ -851,7 +851,7 @@ static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q, char *p
 	tw.up_threshold_bytes = q->tw->up_threshold_bytes;
 	spin_unlock_irq(q->queue_lock);
 
-	ret = sprintf(page, "%d\n", tw.up_threshold_bytes);
+	ret = sprintf(page, "%lld\n", tw.up_threshold_bytes);
 
 	return ret;
 }
@@ -884,6 +884,53 @@ static struct queue_sysfs_entry queue_tw_up_threshold_bytes_entry = {
 	.store = queue_tw_up_threshold_bytes_store,
 };
 
+static ssize_t queue_tw_up_threshold_rqs_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write tw;
+	ssize_t ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	tw.up_threshold_rqs = q->tw->up_threshold_rqs;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", tw.up_threshold_rqs);
+
+	return ret;
+}
+
+static ssize_t queue_tw_up_threshold_rqs_store(struct request_queue *q, const char *page, size_t count)
+{
+	unsigned long val;
+	ssize_t ret;
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	if (val >= q->tw->down_threshold_rqs)
+		q->tw->up_threshold_rqs = val;
+	spin_unlock_irq(q->queue_lock);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_up_threshold_rqs_entry = {
+	.attr = {.name = "tw_up_threshold_rqs", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_up_threshold_rqs_show,
+	.store = queue_tw_up_threshold_rqs_store,
+};
+
 static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
@@ -898,7 +945,7 @@ static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q, char 
 	tw.down_threshold_bytes = q->tw->down_threshold_bytes;
 	spin_unlock_irq(q->queue_lock);
 
-	ret = sprintf(page, "%d\n", tw.down_threshold_bytes);
+	ret = sprintf(page, "%lld\n", tw.down_threshold_bytes);
 
 	return ret;
 }
@@ -931,6 +978,145 @@ static struct queue_sysfs_entry queue_tw_down_threshold_bytes_entry = {
 	.store = queue_tw_down_threshold_bytes_store,
 };
 
+static ssize_t queue_tw_down_threshold_rqs_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write tw;
+	ssize_t ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	tw.down_threshold_rqs = q->tw->down_threshold_rqs;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", tw.down_threshold_rqs);
+
+	return ret;
+}
+
+static ssize_t queue_tw_down_threshold_rqs_store(struct request_queue *q, const char *page, size_t count)
+{
+	unsigned long val;
+	ssize_t ret;
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	if (val <= q->tw->up_threshold_rqs)
+		q->tw->down_threshold_rqs = val;
+	spin_unlock_irq(q->queue_lock);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_down_threshold_rqs_entry = {
+	.attr = {.name = "tw_down_threshold_rqs", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_down_threshold_rqs_show,
+	.store = queue_tw_down_threshold_rqs_store,
+};
+
+static ssize_t queue_tw_on_delay_ms_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write tw;
+	ssize_t ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	tw.on_delay = q->tw->on_delay;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", jiffies_to_msecs(tw.on_delay));
+
+	return ret;
+}
+
+static ssize_t queue_tw_on_delay_ms_store(struct request_queue *q, const char *page, size_t count)
+{
+	unsigned long val;
+	ssize_t ret;
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	q->tw->on_delay = msecs_to_jiffies(val);
+	spin_unlock_irq(q->queue_lock);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_on_delay_ms_entry = {
+	.attr = {.name = "tw_on_delay_ms", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_on_delay_ms_show,
+	.store = queue_tw_on_delay_ms_store,
+};
+
+static ssize_t queue_tw_on_interval_ms_show(struct request_queue *q, char *page)
+{
+	struct blk_turbo_write tw;
+	ssize_t ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	tw.on_interval = q->tw->on_interval;
+	spin_unlock_irq(q->queue_lock);
+
+	ret = sprintf(page, "%d\n", jiffies_to_msecs(tw.on_interval));
+
+	return ret;
+}
+
+static ssize_t queue_tw_on_interval_ms_store(struct request_queue *q, const char *page, size_t count)
+{
+	unsigned long val;
+	ssize_t ret;
+
+	ret = queue_var_store(&val, page, count);
+	if (ret < 0)
+		return ret;
+
+	spin_lock_irq(q->queue_lock);
+	if (!q->tw) {
+		spin_unlock_irq(q->queue_lock);
+		return -ENODEV;
+	}
+
+	q->tw->on_interval = msecs_to_jiffies(val);
+	spin_unlock_irq(q->queue_lock);
+
+	return ret;
+}
+
+static struct queue_sysfs_entry queue_tw_on_interval_ms_entry = {
+	.attr = {.name = "tw_on_interval_ms", .mode = S_IRUGO | S_IWUSR },
+	.show = queue_tw_on_interval_ms_show,
+	.store = queue_tw_on_interval_ms_store,
+};
+
 static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
@@ -942,10 +1128,10 @@ static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q, char *page)
 		return -ENODEV;
 	}
 
-	tw.off_delay_ms = q->tw->off_delay_ms;
+	tw.off_delay = q->tw->off_delay;
 	spin_unlock_irq(q->queue_lock);
 
-	ret = sprintf(page, "%d\n", tw.off_delay_ms);
+	ret = sprintf(page, "%d\n", jiffies_to_msecs(tw.off_delay));
 
 	return ret;
 }
@@ -965,7 +1151,7 @@ static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q, const char *
 		return -ENODEV;
 	}
 
-	q->tw->off_delay_ms = val;
+	q->tw->off_delay = msecs_to_jiffies(val);
 	spin_unlock_irq(q->queue_lock);
 
 	return ret;
@@ -1022,7 +1208,11 @@ static struct attribute *default_attrs[] = {
 	&queue_tw_stats_entry.attr,
 	&queue_tw_state_entry.attr,
 	&queue_tw_up_threshold_bytes_entry.attr,
+	&queue_tw_up_threshold_rqs_entry.attr,
 	&queue_tw_down_threshold_bytes_entry.attr,
+	&queue_tw_down_threshold_rqs_entry.attr,
+	&queue_tw_on_delay_ms_entry.attr,
+	&queue_tw_on_interval_ms_entry.attr,
 	&queue_tw_off_delay_ms_entry.attr,
 #endif
 	NULL,

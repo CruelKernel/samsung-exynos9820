@@ -284,6 +284,7 @@ int max77705_select_pps(int num, int ppsVol, int ppsCur)
 
 	init_usbc_cmd_data(&value);
 
+	pusbpd->pn_flag = false;
 	value.opcode = OPCODE_APDO_SRCCAP_REQUEST;
 	value.write_data[0] = (num & 0xFF); /* APDO Position */
 	value.write_data[1] = (ppsVol / 20) & 0xFF; /* Output Voltage(Low) */
@@ -367,6 +368,7 @@ void max77705_pd_retry_work(struct work_struct *work)
 	init_usbc_cmd_data(&value);
 	num = pd_noti.sink_status.selected_pdo_num;
 	pr_info("%s : latest selected_pdo_num(%d)\n", __func__, num);
+	pusbpd->pn_flag = false;
 
 #if defined(CONFIG_PDIC_PD30)
 	if (pd_noti.sink_status.power_list[num].apdo) {
@@ -379,7 +381,6 @@ void max77705_pd_retry_work(struct work_struct *work)
 		value.read_length = 1; /* Result */
 		max77705_usbc_opcode_write(pusbpd, &value);
 	} else {
-		pusbpd->pn_flag = false;
 		value.opcode = OPCODE_SRCCAP_REQUEST;
 		value.write_data[0] = num;
 		value.write_length = 1;
@@ -387,7 +388,6 @@ void max77705_pd_retry_work(struct work_struct *work)
 		max77705_usbc_opcode_write(pusbpd, &value);
 	}
 #else
-	pusbpd->pn_flag = false;
 	value.opcode = OPCODE_SRCCAP_REQUEST;
 	value.write_data[0] = num;
 	value.write_length = 1;
@@ -1224,11 +1224,37 @@ static irqreturn_t max77705_psrdy_irq(int irq, void *data)
 		usbc_data->pd_data->psrdy_received = true;
 	}
 
-	if (psrdy_received && usbc_data->pd_data->cc_status != CC_NO_CONN)
+	if (psrdy_received && usbc_data->pd_data->cc_status != CC_NO_CONN) {
 		usbc_data->pn_flag = true;
+		complete(&usbc_data->psrdy_wait);
+	}
 
 	msg_maxim("OUT");
 	return IRQ_HANDLED;
+}
+
+bool max77705_sec_pps_control(int en)
+{
+#if defined(CONFIG_PDIC_PD30)
+	struct max77705_usbc_platform_data *pusbpd = pd_noti.pusbpd;
+	union power_supply_propval val = {0,};
+
+	msg_maxim(": %d", en);
+
+	val.intval = en; /* 0: stop pps, 1: start pps */
+	psy_do_property("battery", set,
+		POWER_SUPPLY_EXT_PROP_DIRECT_SEND_UVDM, val);
+	if (!en && !pusbpd->pn_flag) {
+		reinit_completion(&pusbpd->psrdy_wait);
+		if (!wait_for_completion_timeout(&pusbpd->psrdy_wait, msecs_to_jiffies(1000))) {
+			msg_maxim("PSRDY COMPLETION TIMEOUT");
+			return false;
+		}
+	}
+	return true;
+#else
+	return true;
+#endif
 }
 
 static void max77705_datarole_irq_handler(void *data, int irq)

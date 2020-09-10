@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_spi.h
- *
- * Samsung Panel SPI Driver.
- *
- * Copyright (c) 2019 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Kimyung Lee <kernel.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify

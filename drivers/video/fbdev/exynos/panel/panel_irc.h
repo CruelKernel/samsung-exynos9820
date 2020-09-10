@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_irc.h
- *
- * Samsung Common LCD Driver.
- *
- * Copyright (c) 2017 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Jihoon Kim <jihoonn.kim@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,11 +34,11 @@ struct panel_irc_info {
 	u32 dynamic_len;
 	u32 total_len;
 	u32 hbm_coef;
-	u8* buffer;
-	u8* ref_tbl;
+	u8 *buffer;
+	u8 *ref_tbl;
 };
 
-int generate_irc(struct brightness_table *brt_tbl, struct panel_irc_info* info, int brightness);
+int generate_irc(struct brightness_table *brt_tbl, struct panel_irc_info *info, int brightness);
 
 
 #endif /* __PANEL_IRC_H__ */

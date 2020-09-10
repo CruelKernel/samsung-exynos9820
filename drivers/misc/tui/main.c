@@ -41,7 +41,7 @@ static void stui_wq_func(struct work_struct *param)
 	struct delayed_work *wq = container_of(param, struct delayed_work, work);
 	long ret;
 	mutex_lock(&stui_mode_mutex);
-	ret = stui_process_cmd(NULL, STUI_HW_IOCTL_FINISH_TUI, 0);
+	ret = stui_process_cmd(stui_device, NULL, STUI_HW_IOCTL_FINISH_TUI, 0);
 	if (ret != STUI_RET_OK)
 		pr_err("[STUI] STUI_HW_IOCTL_FINISH_TUI in wq fail: %ld\n", ret);
 	kfree(wq);
@@ -83,7 +83,7 @@ static long stui_handler_ioctl(struct file *f, unsigned int cmd, unsigned long a
 {
 	long ret;
 	mutex_lock(&stui_mode_mutex);
-	ret = stui_process_cmd(f, cmd, arg);
+	ret = stui_process_cmd(stui_device, f, cmd, arg);
 	if (stui_get_mode() & STUI_MODE_ALL) {
 		f->private_data = (void *)1UL;
 	} else {
@@ -108,7 +108,7 @@ static int stui_handler_init(void)
 	int err = 0;
 	dev_t devno;
 
-	pr_debug("[STUI] stui_handler_init\n");
+	pr_info("[STUI] stui_handler_init +\n");
 	err = alloc_chrdev_region(&devno, 0, 1, STUI_DEV_NAME);
 	if (err) {
 		pr_err("[STUI] Unable to allocate TUI device number(%d)\n", err);

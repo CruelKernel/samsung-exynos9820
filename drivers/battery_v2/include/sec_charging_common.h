@@ -122,6 +122,8 @@ enum power_supply_ext_property {
 	POWER_SUPPLY_EXT_PROP_DIRECT_HAS_APDO,
 	POWER_SUPPLY_EXT_PROP_DIRECT_TA_ALERT,
 	POWER_SUPPLY_EXT_PROP_DIRECT_CLEAR_ERR,
+	POWER_SUPPLY_EXT_PROP_CHANGE_CHARGING_SOURCE,
+	POWER_SUPPLY_EXT_PROP_DIRECT_SEND_UVDM,
 #endif
 	POWER_SUPPLY_EXT_PROP_SRCCAP,
 	POWER_SUPPLY_EXT_PROP_CHARGE_BOOST,
@@ -147,7 +149,6 @@ enum power_supply_ext_health {
 	POWER_SUPPLY_HEALTH_VSYS_OVP = POWER_SUPPLY_HEALTH_MAX,
 	POWER_SUPPLY_HEALTH_VBAT_OVP,
 	POWER_SUPPLY_HEALTH_DC_ERR,
-	POWER_SUPPLY_HEALTH_WPC_EN,
 };
 
 enum sec_battery_cable {
@@ -456,6 +457,7 @@ enum sec_battery_wpc_en_ctrl {
 	WPC_EN_CHARGING = 0x4,
 	WPC_EN_TX = 0x8,
 	WPC_EN_MST = 0x10,
+	WPC_EN_FW = 0x20,
 };
 
 /* tx_event */
@@ -900,9 +902,15 @@ struct sec_battery_platform_data {
 	int swelling_low_temp_recov_2nd;
 	int swelling_low_temp_block_3rd;
 	int swelling_low_temp_recov_3rd;
+	int swelling_low_temp_block_4th;
+	int swelling_low_temp_recov_4th;
+	int swelling_low_temp_block_5th;
+	int swelling_low_temp_recov_5th;
 	unsigned int swelling_low_temp_current;
 	unsigned int swelling_low_temp_current_2nd;
 	unsigned int swelling_low_temp_current_3rd;
+	unsigned int swelling_low_temp_current_4th;
+	unsigned int swelling_low_temp_current_5th;
 	unsigned int swelling_low_temp_topoff;
 	unsigned int swelling_high_temp_current;
 	unsigned int swelling_high_temp_topoff;
@@ -936,12 +944,12 @@ struct sec_battery_platform_data {
 	unsigned int *step_charging_float_voltage;
 #if defined(CONFIG_DIRECT_CHARGING)
 	unsigned int *dc_step_chg_cond_vol;
-	unsigned int *dc_step_chg_cond_soc;
+	unsigned int **dc_step_chg_cond_soc;
 	unsigned int *dc_step_chg_cond_iin;
 	int dc_step_chg_iin_check_cnt;
 
-	unsigned int *dc_step_chg_val_iout;
-	unsigned int *dc_step_chg_val_vfloat;
+	unsigned int **dc_step_chg_val_iout;
+	unsigned int **dc_step_chg_val_vfloat;
 #endif
 #endif
 
@@ -1455,17 +1463,12 @@ static inline struct power_supply *get_power_supply_by_name(char *name)
 #define is_slate_mode(battery) ((battery->current_event & SEC_BAT_CURRENT_EVENT_SLATE) \
 		== SEC_BAT_CURRENT_EVENT_SLATE)
 
-#if defined(CONFIG_PDIC_PD30)
 #define is_pd_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC || \
 	cable_type == SEC_BATTERY_CABLE_PDIC_APDO)
 
 #define is_pd_apdo_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC_APDO)
-#else
-#define is_pd_wire_type(cable_type) ( \
-	cable_type == SEC_BATTERY_CABLE_PDIC)
-#endif
 #define is_pd_fpdo_wire_type(cable_type) ( \
 	cable_type == SEC_BATTERY_CABLE_PDIC)
 #endif /* __SEC_CHARGING_COMMON_H */

@@ -53,7 +53,7 @@ exit:
 
 	return rc;
 }
-EXPORT_SYMBOL(register_five_tee_driver);
+EXPORT_SYMBOL_GPL(register_five_tee_driver);
 
 void unregister_five_tee_driver(void)
 {
@@ -65,7 +65,7 @@ void unregister_five_tee_driver(void)
 	}
 	up_write(&usage_lock);
 }
-EXPORT_SYMBOL(unregister_five_tee_driver);
+EXPORT_SYMBOL_GPL(unregister_five_tee_driver);
 
 int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,

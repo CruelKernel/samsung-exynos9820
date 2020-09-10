@@ -47,6 +47,7 @@
 #define IPC_MSG_ID_CBGE_REQUIRED 29
 #define IPC_MSG_ID_FINGER_ON_SENSOR 55
 #define IPC_MSG_ID_FINGER_OFF_SENSOR 56
+#define QBT2000_WAKELOCK_HOLD_TIME 500
 
 #define MINOR_NUM_FD 0
 #define MINOR_NUM_IPC 1
@@ -57,10 +58,24 @@
 #define FINGER_DOWN_GPIO_STATE 1
 #define FINGER_LEAVE_GPIO_STATE 0
 
-#ifdef CONFIG_EPEN_WACOM_W9020
+#if defined(CONFIG_EPEN_WACOM_W9020) || defined(CONFIG_EPEN_WACOM_W9021)
 #define QBT2000_AVOID_NOISE
-#define QBT2000_NOISE_OFF_DELAY 40
-#define QBT2000_NOISE_RECOVER_WACOM_DELAY 30000
+#define QBT2000_NOISE_BLOCK_DELAY 40
+
+enum qbt2000_noise_status {
+	QBT2000_NOISE_NO_CHARGING = 0,
+	QBT2000_NOISE_CHARGING = 1,
+	QBT2000_NOISE_MODE_CHANGED = 2,
+	QBT2000_NOISE_I2C_FAILED = 3,
+};
+
+enum qbt2000_noise_onoff {
+	QBT2000_NOISE_BLOCK = 0,
+	QBT2000_NOISE_UNBLOCK = 1,
+};
+
+extern int get_wacom_scan_info(bool mode);
+extern int set_wacom_ble_charge_mode(bool mode);
 #endif
 
 enum qbt2000_commands {
@@ -91,19 +106,6 @@ enum qbt2000_commands {
 #define QBT2000_SENSORTEST_SNR 			0x0004 // begin the snr
 #define QBT2000_SENSORTEST_CAPTURE 		0x0008 // begin the image capture. it also needs liveness capture.
 
-enum qbt2000_noise_status {
-	QBT2000_NOISE_NO_CHARGING = 0,
-	QBT2000_NOISE_CHARGING = 1,
-	QBT2000_NOISE_MODE_CHANGED = 2,
-	QBT2000_NOISE_I2C_FAILED = 3,
-};
-
-enum qbt2000_noise_onof {
-	QBT2000_NOISE_OFF = 0,
-	QBT2000_NOISE_ON = 1,
-};
-	
-
 /*
  * enum qbt2000_fw_event -
  *      enumeration of firmware events
@@ -117,10 +119,6 @@ enum qbt2000_fw_event {
 	FW_EVENT_CBGE_REQUIRED = 3,
 };
 
-struct qbt2000_wuhb_connected_status {
-	uint8_t is_wuhb_connected;
-};
-
 struct finger_detect_gpio {
 	int gpio;
 	int active_low;
@@ -131,7 +129,6 @@ struct finger_detect_gpio {
 	struct delayed_work delayed_noise_down_work;
 #endif
 	int last_gpio_state;
-	int event_reported;
 };
 
 struct fw_event_desc {
@@ -161,7 +158,6 @@ struct qbt2000_drvdata {
 	DECLARE_KFIFO(ipc_events, struct fw_event_desc, MAX_FW_EVENTS);
 	wait_queue_head_t read_wait_queue_fd;
 	wait_queue_head_t read_wait_queue_ipc;
-	uint8_t is_wuhb_connected;
 
 	int ldogpio;
 	int spi_speed;
@@ -182,12 +178,11 @@ struct qbt2000_drvdata {
 	int noise_status;
 	int noise_onoff_flag;
 	int ignored_cbge_count;
-	int delayed_work_on_flag;
 	int noise_i2c_result;
 	int i2c_error_set;
 	int i2c_error_get;
 	int i2c_charging;
-	struct mutex	fod_event_mutex;
+	struct mutex fod_event_mutex;
 	struct work_struct work_ipc_noise_status;
 	struct work_struct work_noise_control;
 	struct delayed_work delayed_work_noiseon;
@@ -207,15 +202,10 @@ struct qbt2000_drvdata {
 	unsigned int min_cpufreq_limit;
 };
 
-int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff);
-int fps_qbt2000_set_cpu_speedup(struct qbt2000_drvdata *drvdata, int onoff);
-int fps_qbt2000_register_platform_variable(struct qbt2000_drvdata *drvdata);
-int fps_qbt2000_unregister_platform_variable(struct qbt2000_drvdata *drvdata);
-
-#ifdef QBT2000_AVOID_NOISE
-extern int get_wacom_scan_info(bool mode);
-extern int set_wacom_ble_charge_mode(bool mode);
-#endif
+int qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff);
+int qbt2000_set_cpu_speedup(struct qbt2000_drvdata *drvdata, int onoff);
+int qbt2000_register_platform_variable(struct qbt2000_drvdata *drvdata);
+int qbt2000_unregister_platform_variable(struct qbt2000_drvdata *drvdata);
 
 #ifdef CONFIG_BATTERY_SAMSUNG
 extern unsigned int lpcharge;

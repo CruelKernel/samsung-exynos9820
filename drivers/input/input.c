@@ -822,6 +822,7 @@ void input_booster_init(void)
 		INIT_SYSFS_DEVICE(hover)
 		INIT_SYSFS_DEVICE(key_two)
 	}
+	is_exynos_initialized();
 }
 #endif  // Input Booster -
 
@@ -2969,15 +2970,21 @@ static int __init input_init(void)
 		pr_err("unable to register char major %d", INPUT_MAJOR);
 		goto fail2;
 	}
-#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
-	input_booster_init();
-#endif  // Input Booster -
 
 	return 0;
 
  fail2:	input_proc_exit();
  fail1:	class_unregister(&input_class);
 	return err;
+}
+
+static int __init late_input_booster_init(void)
+{
+#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
+	input_booster_init();
+#endif  // Input Booster -
+
+	return 0;
 }
 
 static void __exit input_exit(void)
@@ -2989,4 +2996,5 @@ static void __exit input_exit(void)
 }
 
 subsys_initcall(input_init);
+late_initcall(late_input_booster_init);
 module_exit(input_exit);

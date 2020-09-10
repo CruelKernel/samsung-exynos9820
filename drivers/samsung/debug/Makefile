@@ -13,6 +13,7 @@ obj-				:=
 # Samsung TN Debugging Features
 obj-$(CONFIG_SEC_DEBUG)              += sec_debug.o
 obj-$(CONFIG_SEC_DEBUG)              += sec_debug_test.o
+obj-$(CONFIG_SEC_DEBUG)              += sec_debug_memtab.o
 obj-$(CONFIG_SEC_DEBUG_INIT_LOG) 	+= sec_debug_init_log.o
 obj-$(CONFIG_SEC_DEBUG_HIST_LOG) 	+= sec_debug_hist.o
 obj-$(CONFIG_SEC_DEBUG_RESET_REASON) += sec_debug_reset_reason.o

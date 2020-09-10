@@ -281,6 +281,61 @@ static int exynos_pcie_set_l1ss(int enable, struct pcie_port *pp, int id)
 	return 0;
 }
 
+int exynos_pcie_l1_exit(int ch_num)
+{
+	struct exynos_pcie *exynos_pcie = &g_pcie[ch_num];
+	u32 count = 0, ret = 0, val = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&exynos_pcie->pcie_l1_exit_lock, flags);
+
+	if (exynos_pcie->l1ss_ctrl_id_state == 0) {
+		/* Set s/w L1 exit mode */
+		exynos_elbi_write(exynos_pcie, 0x1, PCIE_APP_REQ_EXIT_L1);
+		val = exynos_elbi_read(exynos_pcie, PCIE_APP_REQ_EXIT_L1_MODE);
+		val &= ~APP_REQ_EXIT_L1_MODE;
+		exynos_elbi_write(exynos_pcie, val, PCIE_APP_REQ_EXIT_L1_MODE);
+
+		/* Max timeout = 3ms (300 * 10us) */
+		while (count < MAX_L1_EXIT_TIMEOUT) {
+			val = exynos_elbi_read(exynos_pcie,
+					PCIE_ELBI_RDLH_LINKUP) & 0x1f;
+			if (val == 0x11)
+				break;
+
+			count++;
+
+			udelay(10);
+		}
+
+		if (count >= MAX_L1_EXIT_TIMEOUT) {
+			pr_err("%s: cannot change to L0(LTSSM = 0x%x, cnt = %d)\n",
+					__func__, val, count);
+			ret = -EPIPE;
+		} else {
+			/* remove too much print */
+			/* pr_err("%s: L0 state(LTSSM = 0x%x, cnt = %d)\n",
+			   __func__, val, count); */
+		}
+
+		/* Set h/w L1 exit mode */
+		val = exynos_elbi_read(exynos_pcie, PCIE_APP_REQ_EXIT_L1_MODE);
+		val |= APP_REQ_EXIT_L1_MODE;
+		exynos_elbi_write(exynos_pcie, val, PCIE_APP_REQ_EXIT_L1_MODE);
+		exynos_elbi_write(exynos_pcie, 0x0, PCIE_APP_REQ_EXIT_L1);
+	} else {
+		/* remove too much print */
+		/* pr_err("%s: skip!!! l1.2 is already diabled(id = 0x%x)\n",
+		   __func__, exynos_pcie->l1ss_ctrl_id_state); */
+	}
+
+	spin_unlock_irqrestore(&exynos_pcie->pcie_l1_exit_lock, flags);
+
+	return ret;
+
+}
+EXPORT_SYMBOL(exynos_pcie_l1_exit);
+
 int exynos_pcie_l1ss_ctrl(int enable, int id)
 {
 	struct pcie_port *pp = NULL;
@@ -1791,6 +1846,7 @@ static int __init add_pcie_port(struct pcie_port *pp,
 	pp->root_bus_nr = 0;
 	pp->ops = &exynos_pcie_host_ops;
 
+	spin_lock_init(&exynos_pcie->pcie_l1_exit_lock);
 	spin_lock_init(&exynos_pcie->reg_lock);
 	exynos_pcie_setup_rc(pp);
 	spin_lock_init(&exynos_pcie->conf_lock);

@@ -17,9 +17,11 @@
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/syscalls.h>
 #include <linux/sysfs.h>
+#include <linux/time.h>
 #include <linux/version.h>
 #include "include/defex_debug.h"
 #include "include/defex_internal.h"
@@ -51,9 +53,16 @@
 #endif
 #if (DEFEX_RULES_ARRAY_SIZE < 8)
 #undef DEFEX_RULES_ARRAY_SIZE
-#define DEFEX_RULES_ARRAY_SIZE sizeof(struct rule_item_struct)
+#define DEFEX_RULES_ARRAY_SIZE	sizeof(struct rule_item_struct)
 #endif
+#ifdef DEFEX_KERNEL_ONLY
+#undef DEFEX_RULES_ARRAY_SIZE
+#define DEFEX_RULES_ARRAY_SIZE	(256 * 1024)
+static unsigned char defex_packed_rules[DEFEX_RULES_ARRAY_SIZE] = {0};
+int load_rules_late(void);
+#else
 static unsigned char defex_packed_rules[DEFEX_RULES_ARRAY_SIZE] __ro_after_init = {0};
+#endif /* DEFEX_KERNEL_ONLY */
 #endif /* DEFEX_RAMDISK_ENABLE */
 
 #endif /* DEFEX_USE_PACKED_RULES */
@@ -71,28 +80,7 @@ static unsigned char defex_packed_rules[DEFEX_RULES_ARRAY_SIZE] __ro_after_init 
 static struct kset *defex_kset;
 static int is_recovery = 0;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
-#include <linux/uaccess.h>
-
-static inline ssize_t __vfs_read(struct file *file, char __user *buf,
-				 size_t count, loff_t *pos)
-{
-	ssize_t ret;
-
-	if (file->f_op->read)
-		ret = file->f_op->read(file, buf, count, pos);
-	else if (file->f_op->aio_read)
-		ret = do_sync_read(file, buf, count, pos);
-	else if (file->f_op->read_iter)
-		ret = new_sync_read(file, buf, count, pos);
-	else
-		ret = -EINVAL;
-
-	return ret;
-}
-#endif
-
-static int __init bootmode_setup(char *str)
+__visible_for_testing int __init bootmode_setup(char *str)
 {
 	if (str && *str == '2') {
 		is_recovery = 1;
@@ -102,35 +90,13 @@ static int __init bootmode_setup(char *str)
 }
 __setup("bootmode=", bootmode_setup);
 
-static struct file *local_fopen(const char *fname, int flags, umode_t mode)
+int check_rules_ready(void)
 {
-	struct file *f;
-	mm_segment_t old_fs;
-
-	old_fs = get_fs();
-	set_fs(get_ds());
-	f = filp_open(fname, flags, mode);
-	set_fs(old_fs);
-	return f;
+	struct rule_item_struct *base = (struct rule_item_struct *)defex_packed_rules;
+	return (!base || !base->data_size)?0:1;
 }
 
-static int local_fread(struct file *f, loff_t offset, void *ptr, unsigned long bytes)
-{
-	mm_segment_t old_fs;
-	char __user *buf = (char __user *)ptr;
-	ssize_t ret;
-
-	if (!(f->f_mode & FMODE_READ))
-		return -EBADF;
-
-	old_fs = get_fs();
-	set_fs(get_ds());
-	ret = __vfs_read(f, buf, bytes, &offset);
-	set_fs(old_fs);
-	return (int)ret;
-}
-
-static int check_system_mount(void)
+__visible_for_testing int check_system_mount(void)
 {
 	static int mount_system_root = -1;
 	struct file *fp;
@@ -161,7 +127,7 @@ static int check_system_mount(void)
 	return (mount_system_root > 0);
 }
 
-static void parse_static_rules(const struct static_rule *rules, size_t max_len, int rules_number)
+__visible_for_testing void parse_static_rules(const struct static_rule *rules, size_t max_len, int rules_number)
 {
 	int i;
 	size_t count;
@@ -204,7 +170,7 @@ static void parse_static_rules(const struct static_rule *rules, size_t max_len, 
 
 
 #ifdef DEFEX_INTEGRITY_ENABLE
-static int defex_check_integrity(struct file *f, unsigned char *hash)
+__visible_for_testing int defex_check_integrity(struct file *f, unsigned char *hash)
 {
 	struct crypto_shash *handle = NULL;
 	struct shash_desc* shash = NULL;
@@ -278,7 +244,7 @@ static int defex_check_integrity(struct file *f, unsigned char *hash)
 
 }
 
-static int defex_integrity_default(const char *file_path)
+__visible_for_testing int defex_integrity_default(const char *file_path)
 {
 	static const char integrity_default[] = "/system/bin/install-recovery.sh";
 	return strncmp(integrity_default, file_path, sizeof(integrity_default));
@@ -287,7 +253,7 @@ static int defex_integrity_default(const char *file_path)
 #endif /* DEFEX_INTEGRITY_ENABLE */
 
 #ifdef DEFEX_USE_PACKED_RULES
-static struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const char *name, int l, int for_recovery)
+__visible_for_testing struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const char *name, int l, int for_recovery)
 {
 	struct rule_item_struct *item = NULL;
 	unsigned int offset;
@@ -306,7 +272,7 @@ static struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const 
 	return NULL;
 }
 
-static int lookup_tree(const char *file_path, int attribute, struct file *f)
+__visible_for_testing int lookup_tree(const char *file_path, int attribute, struct file *f)
 {
 	const char *ptr, *next_separator;
 	struct rule_item_struct *base, *cur_item = NULL;
@@ -315,11 +281,17 @@ static int lookup_tree(const char *file_path, int attribute, struct file *f)
 	if (!file_path || *file_path != '/')
 		return 0;
 
+#ifdef DEFEX_KERNEL_ONLY
+try_to_load:
+#endif
 	base = (struct rule_item_struct *)defex_packed_rules;
 	if (!base || !base->data_size) {
 #ifdef DEFEX_KERNEL_ONLY
 		/* allow all requests if rules were not loaded for Recovery mode */
-		if (is_recovery)
+		l = load_rules_late();
+		if (l > 0)
+			goto try_to_load;
+		if (!l || is_recovery)
 			return (attribute == feature_ped_exception || attribute == feature_safeplace_path)?1:0;
 #endif /* DEFEX_KERNEL_ONLY */
 		/* block all requests if rules were not loaded instead */
@@ -409,7 +381,7 @@ int rules_lookup(const struct path *dpath, int attribute, struct file *f)
 	int ret = 0;
 	char *target_file, *buff;
 
-	buff = kzalloc(PATH_MAX, GFP_ATOMIC);
+	buff = kmalloc(PATH_MAX, GFP_KERNEL);
 	if (!buff)
 		return ret;
 	target_file = d_path(dpath, buff, PATH_MAX);
@@ -478,7 +450,71 @@ immutable_error:
 
 #if defined(DEFEX_RAMDISK_ENABLE)
 
-static int __init do_load_rules(void)
+#ifdef DEFEX_KERNEL_ONLY
+int load_rules_late(void)
+{
+	struct file *f;
+	int rc, data_size, rules_size, res = 0;
+	unsigned char *data_buff;
+	static unsigned long start_time = 0;
+	static unsigned long last_time = 0;
+	unsigned long cur_time = get_seconds();
+	static DEFINE_SPINLOCK(load_lock);
+	static atomic_t in_progress = ATOMIC_INIT(0);
+
+	if (!spin_trylock(&load_lock))
+		return res;
+
+	if (atomic_read(&in_progress) != 0) {
+		spin_unlock(&load_lock);
+		return res;
+	}
+
+	atomic_set(&in_progress, 1);
+	spin_unlock(&load_lock);
+
+	/* The first try to load, initialize time values */
+	if (!start_time)
+		start_time = get_seconds();
+	/* Skip this try, wait for next second */
+	if (cur_time == last_time)
+		goto do_exit;
+	/* Load has been attempted for 30 seconds, give up. */
+	if ((cur_time - start_time) > 30) {
+		res = -1;
+		goto do_exit;
+	}
+	last_time = cur_time;
+
+	f = local_fopen(DEFEX_RULES_FILE, O_RDONLY, 0);
+	if (IS_ERR(f)) {
+		rc = PTR_ERR(f);
+		pr_err("[DEFEX] Failed to open rules file (%d)\n", rc);
+		goto do_exit;
+	}
+
+	data_size = i_size_read(file_inode(f));
+	if (data_size <= 0)
+		goto do_exit;
+	data_buff = kmalloc(data_size, GFP_KERNEL);
+	if (!data_buff)
+		goto do_exit;
+
+	rules_size = local_fread(f, 0, data_buff, data_size);
+	printk(KERN_INFO "[DEFEX] Late load rules file: %s.\n", DEFEX_RULES_FILE);
+	printk(KERN_INFO "[DEFEX] Read %d bytes.\n", rules_size);
+	filp_close(f, NULL);
+
+	memcpy(defex_packed_rules, data_buff, rules_size);
+	kfree(data_buff);
+	res = (rules_size > 0);
+do_exit:
+	atomic_set(&in_progress, 0);
+	return res;
+}
+#endif /* DEFEX_KERNEL_ONLY */
+
+__visible_for_testing int __init do_load_rules(void)
 {
 	struct file *f;
 	int res = -1, rc, data_size, rules_size;
@@ -500,12 +536,12 @@ static int __init do_load_rules(void)
 	data_size = i_size_read(file_inode(f));
 	if (data_size <= 0)
 		return res;
-	data_buff = kzalloc(data_size, GFP_KERNEL);
+	data_buff = kmalloc(data_size, GFP_KERNEL);
 	if (!data_buff)
 		return res;
 
 	rules_size = local_fread(f, 0, data_buff, data_size);
-	printk(KERN_INFO "[DEFEX] Readed %d bytes.\n", rules_size);
+	printk(KERN_INFO "[DEFEX] Read %d bytes.\n", rules_size);
 	filp_close(f, NULL);
 
 #ifdef DEFEX_SIGN_ENABLE
@@ -513,10 +549,10 @@ static int __init do_load_rules(void)
 	if (!res && rules_size > sizeof(defex_packed_rules))
 		res = -1;
 
-	if (!res) {
+	if (!res)
 		printk("[DEFEX] Rules signature verified successfully.\n");
-	} else
-		pr_err("[DEFEX] Rules signature verified error!!!\n");
+	else
+		pr_err("[DEFEX] Rules signature incorrect!!!\n");
 #else
 	res = 0;
 #endif
@@ -541,7 +577,7 @@ void __init defex_load_rules(void)
 {
 #if defined(DEFEX_RAMDISK_ENABLE)
 	if ( !boot_state_unlocked && do_load_rules() != 0) {
-#if !defined(DEFEX_DEBUG_ENABLE)
+#if !(defined(DEFEX_DEBUG_ENABLE) || defined(DEFEX_KERNEL_ONLY))
 		panic("[DEFEX] Signature mismatch.\n");
 #endif
 	}

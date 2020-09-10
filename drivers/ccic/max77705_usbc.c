@@ -2550,11 +2550,18 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 	case SYSERROR_BOOT_WDT:
 		usbc_data->watchdog_count++;
 		msg_maxim("SYSERROR_BOOT_WDT: %d", usbc_data->watchdog_count);
+		/*Turn off Vbus*/
+		if (usbc_data->cc_data->current_pr == SRC)
+			max77705_vbus_turn_on_ctrl(usbc_data, OFF, false);
 		max77705_usbc_mask_irq(usbc_data);
+		/*Reset USBC Block*/
+		max77705_reset_ic(usbc_data);
 		max77705_write_reg(usbc_data->muic, REG_UIC_INT_M, REG_UIC_INT_M_INIT);
 		max77705_write_reg(usbc_data->muic, REG_CC_INT_M, REG_CC_INT_M_INIT);
 		max77705_write_reg(usbc_data->muic, REG_PD_INT_M, REG_PD_INT_M_INIT);
 		max77705_write_reg(usbc_data->muic, REG_VDM_INT_M, REG_VDM_INT_M_INIT);
+		/* clear UIC_INT to prevent infinite sysmsg irq*/
+		max77705_read_reg(usbc_data->muic, MAX77705_USBC_REG_UIC_INT, &interrupt);
 		max77705_usbc_clear_queue(usbc_data);
 		usbc_data->is_first_booting = 1;
 		max77705_init_opcode(usbc_data, 1);
@@ -2738,7 +2745,7 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 				msg_maxim("SYSMSG PWR NEGO ERR : VDM request retry");
 			}
 		} else { /* unstructured vdm */
-			usbc_data->uvdm_error = 1;
+			usbc_data->uvdm_error = -EACCES;
 			msg_maxim("SYSMSG PWR NEGO ERR : UVDM request error - dir : %d",
 				usbc_data->is_in_sec_uvdm_out);
 			if (usbc_data->is_in_sec_uvdm_out == DIR_OUT)
@@ -3502,6 +3509,7 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 #endif
 	init_completion(&usbc_data->op_completion);
 	init_completion(&usbc_data->ccic_sysfs_completion);
+	init_completion(&usbc_data->psrdy_wait);
 	usbc_data->op_wait_queue = create_singlethread_workqueue("op_wait");
 	if (usbc_data->op_wait_queue == NULL)
 		return -ENOMEM;
@@ -3555,6 +3563,7 @@ static int max77705_usbc_probe(struct platform_device *pdev)
 	pccic_data->misc_dev->uvdm_write = max77705_sec_uvdm_out_request_message;
 	pccic_data->misc_dev->uvdm_ready = max77705_sec_uvdm_ready;
 	pccic_data->misc_dev->uvdm_close = max77705_sec_uvdm_close;
+	pccic_data->misc_dev->pps_control = max77705_sec_pps_control;
 #endif
 	/* Register ccic handler to ccic notifier block list */
 	ret = usb_external_notify_register(&usbc_data->usb_external_notifier_nb,

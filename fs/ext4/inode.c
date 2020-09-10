@@ -1643,9 +1643,7 @@ static int ext4_da_reserve_space(struct inode *inode)
 		return ret;
 
 	spin_lock(&ei->i_block_reservation_lock);
-	if (ext4_claim_free_clusters(sbi, 1,
-			ext4_test_inode_flag(inode, EXT4_INODE_CORE_FILE) ?
-			EXT4_MB_USE_EXTRA_ROOT_BLOCKS : 0)) {
+	if (ext4_claim_free_clusters(sbi, 1, 0)) {
 		spin_unlock(&ei->i_block_reservation_lock);
 		dquot_release_reservation_block(inode, EXT4_C2B(sbi, 1));
 		return -ENOSPC;
@@ -4951,6 +4949,9 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
 	if (ext4_has_feature_64bit(sb))
 		ei->i_file_acl |=
 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+	if (ei->i_file_acl)
+		ext4_set_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK);
+
 	inode->i_size = ext4_isize(sb, raw_inode);
 	if ((size = i_size_read(inode)) < 0) {
 		print_iloc_info(sb, iloc);
@@ -5247,6 +5248,11 @@ static int ext4_do_update_inode(handle_t *handle,
 	 * initialise them to zero for new inodes. */
 	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
 		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
+
+	spin_lock(&ei->i_file_acl_debug_lock);
+	BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_HAS_EXTENDED_EA_BLOCK) &&
+			ei->i_file_acl == 0);
+	spin_unlock(&ei->i_file_acl_debug_lock);
 
 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
 	i_uid = i_uid_read(inode);

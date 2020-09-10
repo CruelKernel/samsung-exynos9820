@@ -20,6 +20,8 @@
  * Authors: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
  */
 
+#include <linux/sec_debug.h>
+
 /*
  * Record the start of an expedited grace period.
  */
@@ -607,6 +609,7 @@ static void _synchronize_rcu_expedited(struct rcu_state *rsp,
 		rew.rew_s = s;
 		INIT_WORK_ONSTACK(&rew.rew_work, wait_rcu_exp_gp);
 		schedule_work(&rew.rew_work);
+		sec_debug_wtsk_set_data(DTYPE_WORK, &rew.rew_work);
 	}
 
 	/* Wait for expedited grace period to complete. */
@@ -615,6 +618,8 @@ static void _synchronize_rcu_expedited(struct rcu_state *rsp,
 	wait_event(rnp->exp_wq[rcu_seq_ctr(s) & 0x3],
 		   sync_exp_work_done(rsp, &rdp->exp_workdone0, s));
 	smp_mb(); /* Workqueue actions happen before return. */
+
+	sec_debug_wtsk_clear_data();
 
 	/* Let the next expedited grace period start. */
 	mutex_unlock(&rsp->exp_mutex);

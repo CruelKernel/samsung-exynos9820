@@ -61,6 +61,8 @@ static bool oom_skip_task(struct task_struct *p, int selected_adj)
 		return true;
 	if (in_vfork(p))
 		return true;
+	if (p->state & TASK_UNINTERRUPTIBLE)
+		return true;
 	return false;
 }
 

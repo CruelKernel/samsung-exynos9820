@@ -1,6 +1,6 @@
 header_version=1
 os_version=10.0.0
-os_patch_level=2020-08
+os_patch_level=2020-09
 board=SRPSC14B001KU
 pagesize=2048
 cmdline=androidboot.selinux=permissive androidboot.selinux=permissive

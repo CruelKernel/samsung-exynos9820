@@ -164,7 +164,7 @@ int mfc_get_new_ctx(struct mfc_dev *dev)
 		mfc_debug(2, "preempt_ctx is : %d\n", new_ctx_index);
 	} else {
 		for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
-			if (dev->ctx[i] && dev->ctx[i]->otf_handle) {
+			if (test_bit(i, &dev->otf_inst_bits)) {
 				if (test_bit(i, &dev->work_bits.bits)) {
 					spin_unlock_irqrestore(&dev->work_bits.lock, wflags);
 					return i;

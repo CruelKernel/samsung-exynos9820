@@ -536,6 +536,11 @@ config WIRELESS_FIRMWARE_UPDATE
 	  Say Y here to enable support for the wireless charger firmware update
 	  wireless charger IC firmware update.
 
+config BATTERY_LOW_TEMP_PROTECT
+	bool "prevent battery swelling"
+	help
+	  Say Y to include support for prevent battery swelling
+
 config AFC_CHARGER_MODE
 	bool "afc charging support in sec battery driver"
 	default n

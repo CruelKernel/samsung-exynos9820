@@ -90,10 +90,6 @@
 
 /* kind of interrupt */
 #define mfc_get_int_err()		MFC_READL(MFC_REG_ERROR_CODE)
-#define mfc_get_err(x)		(((x) >> MFC_REG_ERR_STATUS_SHIFT)		\
-						& MFC_REG_ERR_STATUS_MASK)
-#define mfc_get_warn(x)		(((x) >> MFC_REG_WARN_STATUS_SHIFT)		\
-						& MFC_REG_WARN_STATUS_MASK)
 
 
 /* additional information */

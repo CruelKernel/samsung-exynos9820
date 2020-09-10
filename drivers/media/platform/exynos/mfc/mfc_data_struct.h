@@ -818,7 +818,8 @@ struct mfc_dev {
 	struct mfc_debug	*logging_data;
 
 	int num_inst;
-	int num_otf_inst;
+
+	unsigned long otf_inst_bits;
 
 	struct mutex mfc_mutex;
 

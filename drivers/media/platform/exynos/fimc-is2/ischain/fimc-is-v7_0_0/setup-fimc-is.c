@@ -235,15 +235,21 @@ int fimc_is_set_parent_dt(struct device *dev,
 
 	c = clk_get(dev, child);
 	if (IS_ERR_OR_NULL(c)) {
+		clk_put(p);
 		pr_err("%s: could not lookup clock : %s\n", __func__, child);
 		return -EINVAL;
 	}
 
 	ret = clk_set_parent(c, p);
 	if (ret) {
+		clk_put(c);
+		clk_put(p);
 		pr_err("%s: clk_set_parent is fail(%s -> %s)(ret: %d)\n", __func__, child, parent, ret);
 		return ret;
 	}
+
+	clk_put(c);
+	clk_put(p);
 
 	return 0;
 }
@@ -269,6 +275,8 @@ int fimc_is_set_rate_dt(struct device *dev,
 
 	/* fimc_is_get_rate_dt(dev, conid); */
 
+	clk_put(target);
+
 	return 0;
 }
 
@@ -286,6 +294,9 @@ ulong fimc_is_get_rate_dt(struct device *dev,
 	}
 
 	rate_target = clk_get_rate(target);
+
+	clk_put(target);
+
 	pr_info("[@] %s: %ldMhz\n", conid, rate_target/1000000);
 
 	return rate_target;
@@ -316,6 +327,8 @@ int fimc_is_enable_dt(struct device *dev,
 		return ret;
 	}
 
+	clk_put(target);
+
 	return 0;
 }
 
@@ -333,6 +346,7 @@ int fimc_is_disable_dt(struct device *dev,
 
 	clk_disable(target);
 	clk_unprepare(target);
+	clk_put(target);
 
 	return 0;
 }

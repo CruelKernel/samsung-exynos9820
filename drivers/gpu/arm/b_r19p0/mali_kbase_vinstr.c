@@ -582,23 +582,13 @@ int kbase_vinstr_hwcnt_reader_setup(
 	struct kbase_vinstr_client *vcli = NULL;
 
 	if (!vctx || !setup ||
-	    (setup->buffer_count == 0) ||
-	    (setup->buffer_count > MAX_BUFFER_COUNT))
+			(setup->buffer_count == 0) ||
+			(setup->buffer_count > MAX_BUFFER_COUNT))
 		return -EINVAL;
 
 	errcode = kbasep_vinstr_client_create(vctx, setup, &vcli);
 	if (errcode)
 		goto error;
-
-	errcode = anon_inode_getfd(
-		"[mali_vinstr_desc]",
-		&vinstr_client_fops,
-		vcli,
-		O_RDONLY | O_CLOEXEC);
-	if (errcode < 0)
-		goto error;
-
-	fd = errcode;
 
 	/* Add the new client. No need to reschedule worker, as not periodic */
 	mutex_lock(&vctx->lock);
@@ -608,7 +598,26 @@ int kbase_vinstr_hwcnt_reader_setup(
 
 	mutex_unlock(&vctx->lock);
 
+	/* Expose to user-space */
+	errcode = anon_inode_getfd(
+			"[mali_vinstr_desc]",
+			&vinstr_client_fops,
+			vcli,
+			O_RDONLY | O_CLOEXEC);
+	if (errcode < 0)
+		goto client_installed_error;
+
+	fd = errcode;
+
 	return fd;
+
+client_installed_error:
+	mutex_lock(&vctx->lock);
+
+	vctx->client_count--;
+	list_del(&vcli->node);
+
+	mutex_unlock(&vctx->lock);
 error:
 	kbasep_vinstr_client_destroy(vcli);
 	return errcode;

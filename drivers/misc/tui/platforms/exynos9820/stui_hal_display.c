@@ -109,10 +109,9 @@ void stui_free_video_space(void)
 	}
 }
 
-int stui_alloc_video_space(struct tui_hw_buffer *buffer)
+int stui_alloc_video_space(struct device *dev, struct tui_hw_buffer *buffer)
 {
 	dma_addr_t phys_addr = 0;
-	struct device null_dev;
 	size_t framebuf_size;
 	size_t workbuf_size;
 	struct decon_lcd *lcd_info = decon_drvdata[0]->lcd_info;
@@ -130,7 +129,7 @@ int stui_alloc_video_space(struct tui_hw_buffer *buffer)
 		goto err_alloc;
 	}
 
-	g_attachment = dma_buf_attach(g_dma_buf, &null_dev);
+	g_attachment = dma_buf_attach(g_dma_buf, dev);
 	if (IS_ERR_OR_NULL(g_attachment)) {
 		pr_err("[STUI] fail to dma buf attachment\n");
 		goto err_attach;

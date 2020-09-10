@@ -41,7 +41,7 @@ static void stui_write_signature(void)
 }
 #endif
 
-long stui_process_cmd(struct file *f, unsigned int cmd, unsigned long arg)
+long stui_process_cmd(struct device *dev, struct file *f, unsigned int cmd, unsigned long arg)
 {
 	uint32_t ret = STUI_RET_OK;
 	/* Handle command */
@@ -60,7 +60,7 @@ long stui_process_cmd(struct file *f, unsigned int cmd, unsigned long arg)
 		/* allocate TUI frame buffer */
 		pr_debug("[STUI] Allocating Framebuffer\n");
 		memset(&buffer, 0, sizeof(struct tui_hw_buffer));
-		if (stui_alloc_video_space(&buffer)) {
+		if (stui_alloc_video_space(dev, &buffer)) {
 			ret = STUI_RET_ERR_INTERNAL_ERROR;
 			break;
 		}

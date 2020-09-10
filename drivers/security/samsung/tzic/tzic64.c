@@ -34,7 +34,11 @@
 #include <linux/ioctl.h>
 #include <linux/moduleparam.h>
 #include <linux/miscdevice.h>
+#if defined(CONFIG_TEEGRIS_VERSION) && (CONFIG_TEEGRIS_VERSION >= 4)
+#include "extensions/irs.h"
+#else
 #include "tzirs.h"
+#endif
 #endif /* CONFIG_TZDEV */
 
 #define TZIC_DEV "tzic"
@@ -157,7 +161,7 @@ static long tzic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
 	switch (cmd) {
-		
+
 #ifdef CONFIG_TZDEV
 	case IOCTL_IRS_CMD:
 		/* get flag id */
@@ -172,7 +176,7 @@ static long tzic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		} else {
 			ret = tzic_flags_get(param.name);
 		}
-		
+
 	break;
 #endif /* CONFIG_TZDEV */
 

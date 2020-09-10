@@ -18,7 +18,7 @@ int stui_i2c_protect(bool is_protect);
 int stui_prepare_tui(void);
 void stui_finish_tui(void);
 void stui_free_video_space(void);
-int stui_alloc_video_space(struct tui_hw_buffer *buffer);
+int stui_alloc_video_space(struct device *dev, struct tui_hw_buffer *buffer);
 int stui_get_resolution(struct tui_hw_buffer *buffer);
 
 #endif /* __STUI_HAL_H_ */

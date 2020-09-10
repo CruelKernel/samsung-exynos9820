@@ -13,12 +13,12 @@
 #define __STUI_IOCTL_H_
 
 /* Commands and Structures for TUI */
-#define STUI_HW_IOCTL_START_TUI		0x10
-#define STUI_HW_IOCTL_FINISH_TUI	0x11
+#define STUI_HW_IOCTL_START_TUI         0x10
+#define STUI_HW_IOCTL_FINISH_TUI        0x11
 #ifdef SAMSUNG_TUI_TEST
-#define STUI_HW_IOCTL_GET_PHYS_ADDR	0x12
+#define STUI_HW_IOCTL_GET_PHYS_ADDR     0x12
 #endif //SAMSUNG_TUI_TEST
-#define STUI_HW_IOCTL_GET_RESOLUTION	0x13
+#define STUI_HW_IOCTL_GET_RESOLUTION    0x13
 
 struct tui_hw_buffer {
 	uint32_t width;

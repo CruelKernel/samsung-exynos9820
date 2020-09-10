@@ -230,7 +230,7 @@ TEEC_Result TEEC_AllocateSharedMemory(TEEC_Context *context,
 		goto exit;
 	}
 
-	sharedMem->buffer = kmalloc(sharedMem->size, GFP_KERNEL);
+	sharedMem->buffer = kzalloc(sharedMem->size, GFP_KERNEL);
 	if (!sharedMem->buffer)
 		goto exit;
 
@@ -254,8 +254,7 @@ void TEEC_ReleaseSharedMemory(TEEC_SharedMemory *sharedMem)
 		if (ctx_shmem_index >= 0) {
 			((TeecContext *)(sharedMem->imp.context->imp))->
 					allocated_shmem[ctx_shmem_index] = NULL;
-			kfree(sharedMem->buffer);
+			kzfree(sharedMem->buffer);
 		}
 	}
 }
-

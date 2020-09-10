@@ -232,6 +232,7 @@ extern int five_fcntl_verify_async(struct file *file);
 extern int five_fcntl_verify_sync(struct file *file);
 extern int five_fcntl_edit(struct file *file);
 extern int five_fcntl_close(struct file *file);
+extern int five_fcntl_debug(struct file *file, void __user *arg);
 extern int five_fork(struct task_struct *task, struct task_struct *child_task);
 extern int five_ptrace(struct task_struct *task, long request);
 extern int five_process_vm_rw(struct task_struct *task, int write);
@@ -363,6 +364,11 @@ static inline int five_fcntl_edit(struct file *file)
 }
 
 static inline int five_fcntl_close(struct file *file)
+{
+	return 0;
+}
+
+static inline int five_fcntl_debug(struct file *file, void __user *arg)
 {
 	return 0;
 }

@@ -22,9 +22,9 @@
 #endif /* USE_TEE_CLIENT_API */
 #include "stui_inf.h"
 
-#define TUI_REE_EXTERNAL_EVENT		42
-#define SESSION_CANCEL_DELAY		150
-#define MAX_WAIT_CNT		10
+#define TUI_REE_EXTERNAL_EVENT      42
+#define SESSION_CANCEL_DELAY        150
+#define MAX_WAIT_CNT                10
 
 static int tui_mode = STUI_MODE_OFF;
 static int tui_blank_cnt;
@@ -283,7 +283,7 @@ static int stui_is_decon_in_state_tui(const struct fb_info *const info)
 		return 0;
 	}
 
-	pr_info("[STUI] %s: decon=%d, state=%d\n", __func__, decon->id, decon->state);
+	pr_debug("[STUI] %s: decon=%d, state=%d\n", __func__, decon->id, decon->state);
 	return (decon->state == DECON_STATE_TUI);
 }
 
@@ -291,7 +291,7 @@ static int stui_notifier_callback(struct notifier_block *self, unsigned long eve
 {
 	(void) data;
 
-	pr_info("[STUI] %s (start): event=%lu\n", __func__, event);
+	pr_debug("[STUI] %s (start): event=%lu\n", __func__, event);
 
 	if (!(self == &stui_fb_notif && event == FB_EARLY_EVENT_BLANK)
 		&& self != &stui_reboot_nb) {
@@ -309,14 +309,14 @@ static int stui_notifier_callback(struct notifier_block *self, unsigned long eve
 	}
 
 	stui_cancel_session();
-	pr_info("[STUI] %s (finish)\n", __func__);
+	pr_debug("[STUI] %s (finish)\n", __func__);
 	return NOTIFY_OK;
 }
 
 int stui_register_on_events(void)
 {
 	int ret = -1;
-	pr_info("[STUI] %s (start)\n", __func__);
+	pr_debug("[STUI] %s (start)\n", __func__);
 	ret = fb_register_client(&stui_fb_notif);
 	if (ret != 0) {
 		pr_err("[STUI] Unable to register fb notifier (%d)\n", ret);
@@ -330,14 +330,14 @@ int stui_register_on_events(void)
 		return ret;
 	}
 
-	pr_info("[STUI] %s (finish)\n", __func__);
+	pr_debug("[STUI] %s (finish)\n", __func__);
 	return ret;
 }
 
 void stui_unregister_from_events(void)
 {
-	pr_info("[STUI] %s (start)\n", __func__);
+	pr_debug("[STUI] %s (start)\n", __func__);
 	fb_unregister_client(&stui_fb_notif);
 	unregister_reboot_notifier(&stui_reboot_nb);
-	pr_info("[STUI] %s (finish)\n", __func__);
+	pr_debug("[STUI] %s (finish)\n", __func__);
 }

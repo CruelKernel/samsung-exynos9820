@@ -11,15 +11,17 @@
  * General Public License for more details.
  */
 
+#include "fingerprint.h"
 #include "qbt2000_common.h"
 
 #if defined(CONFIG_TZDEV_BOOST) && defined(ENABLE_SENSORS_FPRINT_SECURE)
 #include <../drivers/misc/tzdev/tz_boost.h>
 #endif
 
-int fps_qbt2000_sec_spi_prepare(int speed)
+int qbt2000_sec_spi_prepare(int speed)
 {
 	struct clk *fp_spi_pclk, *fp_spi_sclk;
+	int ret;
 
 	fp_spi_pclk = clk_get(NULL, "fp-spi-pclk");
 
@@ -37,19 +39,27 @@ int fps_qbt2000_sec_spi_prepare(int speed)
 
 	clk_prepare_enable(fp_spi_pclk);
 	clk_prepare_enable(fp_spi_sclk);
-#if defined(CONFIG_SOC_EXYNOS9820)
-	/* There is a quarter-multiplier before the SPI */
-	clk_set_rate(fp_spi_sclk, speed * 4);
-#else
-	clk_set_rate(fp_spi_sclk, speed * 2);
-#endif
+
+	if (clk_get_rate(fp_spi_sclk) != (speed * 4)) {
+
+		ret = clk_set_rate(fp_spi_sclk, speed * 4);
+		if (ret < 0)
+			pr_err("%s, SPI clk set failed: %d\n", __func__, ret);
+
+		else
+			pr_debug("%s, Set SPI clock rate: %u(%lu)\n",
+				__func__, speed, clk_get_rate(fp_spi_sclk) / 4);
+	} else
+		pr_debug("%s, Set SPI clock rate: %u(%lu)\n",
+			__func__, speed, clk_get_rate(fp_spi_sclk) / 4);
+
 	clk_put(fp_spi_pclk);
 	clk_put(fp_spi_sclk);
 
 	return 0;
 }
 
-int fps_qbt2000_sec_spi_unprepare(void)
+int qbt2000_sec_spi_unprepare(void)
 {
 	struct clk *fp_spi_pclk, *fp_spi_sclk;
 
@@ -75,7 +85,7 @@ int fps_qbt2000_sec_spi_unprepare(void)
 	return 0;
 }
 
-int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff)
+int qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff)
 {
 	int rc = 0;
 
@@ -85,7 +95,7 @@ int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff)
 	}
 
 	if (onoff) {
-		rc = fps_qbt2000_sec_spi_prepare(drvdata->spi_speed);
+		rc = qbt2000_sec_spi_prepare(drvdata->spi_speed);
 		if (rc < 0) {
 			pr_err("%s: couldn't enable spi clk: %d\n", __func__, rc);
 			return rc;
@@ -93,7 +103,7 @@ int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff)
 		wake_lock(&drvdata->fp_spi_lock);
 		drvdata->enabled_clk = true;
 	} else {
-		rc = fps_qbt2000_sec_spi_unprepare();
+		rc = qbt2000_sec_spi_unprepare();
 		if (rc < 0) {
 			pr_err("%s: couldn't disable spi clk: %d\n", __func__, rc);
 			return rc;
@@ -104,17 +114,17 @@ int fps_qbt2000_set_clk(struct qbt2000_drvdata *drvdata, bool onoff)
 	return rc;
 }
 
-int fps_qbt2000_register_platform_variable(struct qbt2000_drvdata *drvdata)
+int qbt2000_register_platform_variable(struct qbt2000_drvdata *drvdata)
 {
 	return 0;
 }
 
-int fps_qbt2000_unregister_platform_variable(struct qbt2000_drvdata *drvdata)
+int qbt2000_unregister_platform_variable(struct qbt2000_drvdata *drvdata)
 {
 	return 0;
 }
 
-int fps_qbt2000_set_cpu_speedup(struct qbt2000_drvdata *drvdata, int onoff)
+int qbt2000_set_cpu_speedup(struct qbt2000_drvdata *drvdata, int onoff)
 {
 	int rc = 0;
 #if defined(CONFIG_TZDEV_BOOST) && defined(ENABLE_SENSORS_FPRINT_SECURE)

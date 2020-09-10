@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/mdnie.c
- *
- * Samsung Common LCD mDNIe Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -167,15 +164,15 @@ int mdnie_current_state(struct mdnie_info *mdnie)
 		mdnie_mode = MDNIE_OFF_MODE;
 
 	if (panel->state.cur_state == PANEL_STATE_ALPM &&
-            ((mdnie_mode == MDNIE_ACCESSIBILITY_MODE &&
-             (mdnie->props.accessibility == NEGATIVE ||
-             mdnie->props.accessibility == GRAYSCALE_NEGATIVE)) ||
-             (mdnie_mode == MDNIE_SCENARIO_MODE && !IS_LDU_MODE(mdnie)) ||
-             mdnie_mode == MDNIE_COLOR_LENS_MODE ||
-             mdnie_mode == MDNIE_DMB_MODE ||
-             mdnie_mode == MDNIE_HDR_MODE ||
-             mdnie_mode == MDNIE_LIGHT_NOTIFICATION_MODE ||
-             mdnie_mode == MDNIE_HMD_MODE)) {
+	((mdnie_mode == MDNIE_ACCESSIBILITY_MODE &&
+	(mdnie->props.accessibility == NEGATIVE ||
+	mdnie->props.accessibility == GRAYSCALE_NEGATIVE)) ||
+	(mdnie_mode == MDNIE_SCENARIO_MODE && !IS_LDU_MODE(mdnie)) ||
+	mdnie_mode == MDNIE_COLOR_LENS_MODE ||
+	mdnie_mode == MDNIE_DMB_MODE ||
+	mdnie_mode == MDNIE_HDR_MODE ||
+	mdnie_mode == MDNIE_LIGHT_NOTIFICATION_MODE ||
+	mdnie_mode == MDNIE_HMD_MODE)) {
 		pr_debug("%s block mdnie (%s->%s) in doze mode\n",
 				__func__, mdnie_mode_name[mdnie_mode],
 				mdnie_mode_name[MDNIE_BYPASS_MODE]);
@@ -394,7 +391,7 @@ static void mdnie_coordinate_tune_rgb(struct mdnie_info *mdnie, int x, int y, u8
 				  ((res[c][RGB_01] * (1024 - tune_x) + (res[c][RGB_11] * tune_x)) * tune_y)) + (1L << 19)) >> 20;
 		}
 	}
-	panel_info("coord (x:%4d y:%4d Q%d compV:%8lld compH:%8lld) "
+	panel_info("coord (x:%4d y:%4d Q%d compV:%8lld compH:%8lld)\t"
 			"tune_coord (%4d %4d) tune_rgb[ADT] (%3d %3d %3d) tune_rgb[D65] (%3d %3d %3d)\n",
 			x, y, area + 1, result[H_LINE], result[V_LINE], tune_x, tune_y,
 			tune_rgb[WCRD_TYPE_ADAPTIVE][0], tune_rgb[WCRD_TYPE_ADAPTIVE][1],
@@ -943,20 +940,20 @@ static ssize_t whiteRGB_store(struct device *dev,
 	if (!IS_VALID_WRGB_OFS(wr_offset) ||
 			!IS_VALID_WRGB_OFS(wg_offset) ||
 			!IS_VALID_WRGB_OFS(wb_offset)) {
-		 dev_err(dev, "%s: invalid offset %d %d %d\n",
-				 __func__, wr_offset, wg_offset, wb_offset);
-		 return -EINVAL;
-	 }
+		dev_err(dev, "%s: invalid offset %d %d %d\n",
+				__func__, wr_offset, wg_offset, wb_offset);
+		return -EINVAL;
+	}
 
-	 dev_info(dev, "%s: wr_offset %d, wg_offset %d, wb_offset %d\n",
-			 __func__, wr_offset, wg_offset, wb_offset);
+	dev_info(dev, "%s: wr_offset %d, wg_offset %d, wb_offset %d\n",
+		 __func__, wr_offset, wg_offset, wb_offset);
 
-	 mutex_lock(&mdnie->lock);
-	 mdnie->props.def_wrgb_ofs[0] = wr_offset;
-	 mdnie->props.def_wrgb_ofs[1] = wg_offset;
-	 mdnie->props.def_wrgb_ofs[2] = wb_offset;
-	 mutex_unlock(&mdnie->lock);
-	 mdnie_update(mdnie);
+	mutex_lock(&mdnie->lock);
+	mdnie->props.def_wrgb_ofs[0] = wr_offset;
+	mdnie->props.def_wrgb_ofs[1] = wg_offset;
+	mdnie->props.def_wrgb_ofs[2] = wb_offset;
+	mutex_unlock(&mdnie->lock);
+	mdnie_update(mdnie);
 
 	return count;
 }

@@ -1,8 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2016 Samsung Electronics Co., Ltd.
- *	      http://www.samsung.com/
- *
- * Samsung's Panel Driver
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Author: Minwoo Kim <minwoo7945.kim@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -112,16 +110,16 @@ enum panel_gpio_lists {
 	PANEL_GPIO_MAX,
 };
 
-#define PANEL_GPIO_NAME_RESET 		 ("disp-reset")
-#define PANEL_GPIO_NAME_DISP_DET 	 ("disp-det")
-#define PANEL_GPIO_NAME_PCD			 ("pcd")
-#define PANEL_GPIO_NAME_ERR_FG		 ("err-fg")
-#define PANEL_GPIO_NAME_CONN_DET 	 ("conn-det")
+#define PANEL_GPIO_NAME_RESET ("disp-reset")
+#define PANEL_GPIO_NAME_DISP_DET ("disp-det")
+#define PANEL_GPIO_NAME_PCD ("pcd")
+#define PANEL_GPIO_NAME_ERR_FG ("err-fg")
+#define PANEL_GPIO_NAME_CONN_DET ("conn-det")
 
 #define PANEL_REGULATOR_NAME_DDI_3P0 ("ddi-3p0")
 #define PANEL_REGULATOR_NAME_DDI_1P8 ("ddi-1p8")
 #define PANEL_REGULATOR_NAME_DDR_1P6 ("ddr-1p6")
-#define PANEL_REGULATOR_NAME_SSD 	 ("short-detect")
+#define PANEL_REGULATOR_NAME_SSD ("short-detect")
 
 struct panel_gpio {
 	const char *name;
@@ -151,13 +149,13 @@ struct mipi_drv_ops {
 	int (*read)(u32 id, u8 addr, u8 ofs, u8 *buf, int size, u32 option);
 	int (*write)(u32 id, u8 cmd_id, const u8 *cmd, u8 ofs, int size, u32 option, bool wakeup);
 	enum dsim_state(*get_state)(u32 id);
-	void (*parse_dt)(struct device_node *, struct decon_lcd *);
+	void (*parse_dt)(struct device_node *node, struct decon_lcd *lcd_info);
 };
 
-#define PANEL_INIT_KERNEL 		0
-#define PANEL_INIT_BOOT 		1
+#define PANEL_INIT_KERNEL		0
+#define PANEL_INIT_BOOT			1
 
-#define PANEL_DISP_DET_HIGH 	1
+#define PANEL_DISP_DET_HIGH		1
 #define PANEL_DISP_DET_LOW		0
 
 enum {
@@ -248,8 +246,8 @@ enum {
 	STATE_MAX
 };
 
-#define STR_NO_CHECK 			("no state")
-#define STR_NOMARL_ON 			("after normal disp on")
+#define STR_NO_CHECK			("no state")
+#define STR_NOMARL_ON			("after normal disp on")
 #define STR_NOMARL_100FRAME		("check normal in 100frames")
 #define STR_AOD_ON				("after aod disp on")
 
@@ -299,17 +297,6 @@ struct panel_work {
 #define MAX_DYNAMIC_FREQ	5
 #define DF_CONTEXT_RIL		1
 
-#if 0
-struct df_status_info {
-	bool enabled;
-
-	u32 request_df;
-	u32 target_df;
-	u32 current_df;
-	u32 ffc_df;
-	u32 context;
-};
-#endif
 #endif
 
 
@@ -461,7 +448,7 @@ bool ub_con_disconnected(struct panel_device *panel);
 int panel_wake_lock(struct panel_device *panel);
 void panel_wake_unlock(struct panel_device *panel);
 bool panel_gpio_valid(struct panel_gpio *gpio);
-void panel_send_ubconn_uevent(struct panel_device* panel);
+void panel_send_ubconn_uevent(struct panel_device *panel);
 
 #define PANEL_DRV_NAME "panel-drv"
 
@@ -505,7 +492,7 @@ void panel_send_ubconn_uevent(struct panel_device* panel);
 #endif
 
 #ifdef CONFIG_DYNAMIC_FREQ
-#define MAGIC_DF_UPDATED 				0x0A55AA55
+#define MAGIC_DF_UPDATED				(0x0A55AA55)
 
 #define PANEL_IOC_GET_DF_STATUS			_IOR(PANEL_IOC_BASE, 85, int *)
 #define PANEL_IOC_DYN_FREQ_FFC			_IOR(PANEL_IOC_BASE, 82, int *)

@@ -2450,6 +2450,11 @@ static int sc_open(struct file *file)
 	ctx->sc_dev = sc;
 
 	v4l2_fh_init(&ctx->fh, sc->m2m.vfd);
+
+	INIT_DELAYED_WORK(&ctx->qos_work, sc_timeout_qos_work);
+	ctx->pm_qos_lv = -1;
+	mutex_init(&ctx->pm_qos_lock);
+
 	ret = sc_add_ctrls(ctx);
 	if (ret)
 		goto err_fh;
@@ -2486,10 +2491,6 @@ static int sc_open(struct file *file)
 		ret = -EINVAL;
 		goto err_ctx;
 	}
-
-	INIT_DELAYED_WORK(&ctx->qos_work, sc_timeout_qos_work);
-	ctx->pm_qos_lv = -1;
-	mutex_init(&ctx->pm_qos_lock);
 
 	return 0;
 

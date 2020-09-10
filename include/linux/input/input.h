@@ -137,13 +137,17 @@ int ucc_boost_value = INIT_ZERO;
 	if (uccvalue == INPUT_BOOSTER_NULL) { \
 		uccvalue = 0; \
 	} \
-	set_hmp(value); \
-	set_ucc(uccvalue); \
-	set_qos(&_this->cpu2_qos, PM_QOS_CLUSTER2_FREQ_MIN/*PM_QOS_CPU_FREQ_MIN*/, _this->param[_this->index].cpu2_freq);  \
-	set_qos(&_this->cpu1_qos, PM_QOS_CLUSTER1_FREQ_MIN/*PM_QOS_CPU_FREQ_MIN*/, _this->param[_this->index].cpu1_freq);  \
-	set_qos(&_this->kfc_qos, PM_QOS_CLUSTER0_FREQ_MIN/*PM_QOS_KFC_FREQ_MIN*/, _this->param[_this->index].kfc_freq);  \
-	set_qos(&_this->mif_qos, PM_QOS_BUS_THROUGHPUT, _this->param[_this->index].mif_freq);  \
-	set_qos(&_this->int_qos, PM_QOS_DEVICE_THROUGHPUT, _this->param[_this->index].int_freq);  \
+	if (exynos_init_flag) { \
+		set_hmp(value); \
+		set_ucc(uccvalue); \
+		set_qos(&_this->cpu2_qos, PM_QOS_CLUSTER2_FREQ_MIN/*PM_QOS_CPU_FREQ_MIN*/, _this->param[_this->index].cpu2_freq);  \
+		set_qos(&_this->cpu1_qos, PM_QOS_CLUSTER1_FREQ_MIN/*PM_QOS_CPU_FREQ_MIN*/, _this->param[_this->index].cpu1_freq);  \
+		set_qos(&_this->kfc_qos, PM_QOS_CLUSTER0_FREQ_MIN/*PM_QOS_KFC_FREQ_MIN*/, _this->param[_this->index].kfc_freq);  \
+		set_qos(&_this->mif_qos, PM_QOS_BUS_THROUGHPUT, _this->param[_this->index].mif_freq);  \
+		set_qos(&_this->int_qos, PM_QOS_DEVICE_THROUGHPUT, _this->param[_this->index].int_freq);  \
+	} else { \
+		is_exynos_initialized(); \
+	} \
 }
 #define REMOVE_BOOSTER  { \
 	int value = INPUT_BOOSTER_NULL; \
@@ -157,13 +161,17 @@ int ucc_boost_value = INIT_ZERO;
 	if (uccvalue == INPUT_BOOSTER_NULL) { \
 		uccvalue = 0; \
 	} \
-	set_hmp(value); \
-	set_ucc(uccvalue); \
-	remove_qos(&_this->cpu2_qos);  \
-	remove_qos(&_this->cpu1_qos);  \
-	remove_qos(&_this->kfc_qos);  \
-	remove_qos(&_this->mif_qos);  \
-	remove_qos(&_this->int_qos);  \
+	if (exynos_init_flag) { \
+		set_hmp(value); \
+		set_ucc(uccvalue); \
+		remove_qos(&_this->cpu2_qos);  \
+		remove_qos(&_this->cpu1_qos);  \
+		remove_qos(&_this->kfc_qos);  \
+		remove_qos(&_this->mif_qos);  \
+		remove_qos(&_this->int_qos);  \
+	} else { \
+		is_exynos_initialized(); \
+	} \
 }
 #define PROPERTY_BOOSTER(_device_param_, _dt_param_, _time_)  { \
 	_device_param_.cpu2_freq = _dt_param_.cpu2_freq; \
@@ -672,6 +680,10 @@ char *glGage = HEADGAGE;
 bool current_hmp_boost = INIT_ZERO;
 bool current_ucc_boost = INIT_ZERO;
 
+bool exynos_init_flag;
+extern bool ib_ucc_initialized;
+extern bool ib_ems_initialized;
+
 struct t_input_booster	touch_booster;
 struct t_input_booster	multitouch_booster;
 struct t_input_booster	key_booster;
@@ -716,6 +728,11 @@ struct t_input_booster *t_input_boosters[] = {
 	} \
 
 int input_count = 0, key_back = 0, key_home = 0, key_recent = 0;
+
+void is_exynos_initialized(void)
+{
+	exynos_init_flag  = (ib_ems_initialized && ib_ucc_initialized);
+}
 
 void input_booster_idle_state(void *__this, int input_booster_event);
 void input_booster_press_state(void *__this, int input_booster_event);

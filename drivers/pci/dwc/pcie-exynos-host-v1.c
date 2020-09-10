@@ -2272,12 +2272,15 @@ int exynos_pcie_host_v1_lanechange(int ch_num, int lane)
 	struct pcie_port *pp = &pci->pp;
 	struct pci_bus *ep_pci_bus;
 	int i;
-	u32 val, lane_num;
+	u32 val, val1, lane_num;
 
 	if (exynos_pcie->state != STATE_LINK_UP) {
 		dev_err(pci->dev, "Link is not up\n");
 		return 1;
 	}
+
+	dev_err(pci->dev, "%s: force l1ss disable\n", __func__);
+	exynos_pcie_host_v1_l1ss_ctrl(0, PCIE_L1SS_CTRL_TEST);
 
 	if (lane > 2 || lane < 1) {
 		dev_err(pci->dev, "Unable to change to %d lane\n", lane);
@@ -2307,16 +2310,6 @@ int exynos_pcie_host_v1_lanechange(int ch_num, int lane)
 	val = val | DIRECT_LINK_WIDTH_CHANGE_MASK;
 	exynos_pcie_wr_own_conf(pp, MULTI_LANE_CONTROL_OFF, 4, val);
 
-
-	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
-		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & 0x3f;
-
-		if (val == 0x11)
-			break;
-		udelay(10);
-	}
-
-
 	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
 		exynos_pcie_rd_own_conf(pp, PCIE_LINK_CTRL_STAT, 4, &lane_num);
 		lane_num = lane_num >> 20;
@@ -2327,12 +2320,24 @@ int exynos_pcie_host_v1_lanechange(int ch_num, int lane)
 		udelay(10);
 	}
 
+	for (i = 0; i < MAX_TIMEOUT_LANECHANGE; i++) {
+		val = exynos_elbi_read(exynos_pcie, PCIE_ELBI_RDLH_LINKUP) & 0x3f;
+		val1 = exynos_phy_pcs_read(exynos_pcie, 0x188);
+
+		if ((val == 0x11) || ((val == 0x14) && (val1 == 0x6)))
+			break;
+		udelay(10);
+	}
+
 	if (lane_num != lane) {
 		dev_err(pci->dev, "Unable to change to %d lane\n", lane);
 		return 1;
 	}
 
 	dev_info(pci->dev, "Changed lane_num(0x80) : to %d lane\n", lane_num);
+
+	dev_err(pci->dev, "%s: force l1ss enable\n", __func__);
+	exynos_pcie_host_v1_l1ss_ctrl(1, PCIE_L1SS_CTRL_TEST);
 
 	return 0;
 }

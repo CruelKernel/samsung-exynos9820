@@ -1055,8 +1055,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
 		dpolicy->min_interval = DEF_MIN_DISCARD_ISSUE_TIME;
 		dpolicy->mid_interval = DEF_MID_DISCARD_ISSUE_TIME;
 		dpolicy->max_interval = DEF_MAX_DISCARD_ISSUE_TIME;
-		// P190708-00895
-		dpolicy->io_aware = false;
+		dpolicy->io_aware = true;
 		dpolicy->sync = false;
 		dpolicy->ordered = true;
 		if (utilization(sbi) > DEF_DISCARD_URGENT_UTIL) {
@@ -1468,12 +1467,20 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
 		list_for_each_entry_safe(dc, tmp, pend_list, list) {
 			f2fs_bug_on(sbi, dc->state != D_PREP);
 
+			if (dpolicy->timeout != 0 &&
+				f2fs_time_over(sbi, dpolicy->timeout))
+				break;
+
+#if 0
+			// P191203-01534
+			// Always issuing dpolicy->max_reuqsts (8)
+			// Check I/O Idle on discard thread
 			if (dpolicy->io_aware && i < dpolicy->io_aware_gran &&
 						!is_idle(sbi, DISCARD_TIME)) {
 				io_interrupted = true;
 				break;
 			}
-
+#endif
 			__submit_discard_cmd(sbi, dpolicy, dc, &issued);
 
 			if (issued >= dpolicy->max_requests)
@@ -1672,6 +1679,7 @@ static int issue_discard_thread(void *data)
 
 		wait_event_interruptible_timeout(*q,
 				kthread_should_stop() || freezing(current) ||
+				!wait_ms ||
 				dcc->discard_wake,
 				msecs_to_jiffies(wait_ms));
 
@@ -1698,6 +1706,8 @@ static int issue_discard_thread(void *data)
 		if (issued > 0) {
 			__wait_all_discard_cmd(sbi, &dpolicy);
 			wait_ms = dpolicy.min_interval;
+			if (dpolicy.io_aware && is_idle(sbi, DISCARD_TIME))
+				wait_ms = 0;
 		} else if (issued == -1){
 			wait_ms = f2fs_time_to_wait(sbi, DISCARD_TIME);
 			if (!wait_ms)
@@ -4203,18 +4213,12 @@ static int init_victim_secmap(struct f2fs_sb_info *sbi)
 	if (!dirty_i->victim_secmap)
 		return -ENOMEM;
 
-	/* W/A for FG_GC failure due to Atomic Write File */    
+	/* W/A for FG_GC failure due to Atomic Write File and Pinned File */
 	dirty_i->blacklist_victim_secmap = f2fs_kvzalloc(sbi, bitmap_size, 
 								GFP_KERNEL);
 	if (!dirty_i->blacklist_victim_secmap)
 		return -ENOMEM;
-#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-	/* W/A for GC failure due to Pinned File */
-	dirty_i->pblacklist_victim_secmap = f2fs_kvzalloc(sbi, bitmap_size,
-								GFP_KERNEL);
-	if (!dirty_i->pblacklist_victim_secmap)
-		return -ENOMEM;
-#endif
+
 	return 0;
 }
 
@@ -4399,12 +4403,8 @@ static void destroy_victim_secmap(struct f2fs_sb_info *sbi)
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	kvfree(dirty_i->victim_secmap);
 
-	/* W/A for FG_GC failure due to Atomic Write File */    
+	/* W/A for FG_GC failure due to Atomic Write File and Pinned File */
 	kvfree(dirty_i->blacklist_victim_secmap);
-#if defined(CONFIG_SAMSUNG_USER_TRIAL) || !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-	/* W/A for GC failure due to Pinned File */
-	kvfree(dirty_i->pblacklist_victim_secmap);
-#endif
 }
 
 static void destroy_dirty_segmap(struct f2fs_sb_info *sbi)

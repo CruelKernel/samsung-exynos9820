@@ -26,6 +26,7 @@
 #include <soc/samsung/exynos-pmu.h>
 #include <soc/samsung/acpm_ipc_ctrl.h>
 #include <soc/samsung/exynos-sci.h>
+#include <linux/sec_debug.h>
 
 #if defined(CONFIG_SEC_ABC)
 #include <linux/sti/abc_common.h>
@@ -129,6 +130,8 @@ static void sec_power_off(void)
 	pr_info("[%s] AC[%d], USB[%d], WPC[%d], WATER[%d]\n",
 			__func__, ac_val.intval, usb_val.intval, wpc_val.intval, water_val.intval);
 
+	sec_debug_clear_magic_rambase();
+
 	flush_cache_all();
 	llc_flush();
 
@@ -139,6 +142,7 @@ static void sec_power_off(void)
 #else
 		if ((ac_val.intval || water_val.intval || usb_val.intval || wpc_val.intval || (poweroff_try >= 5))) {
 #endif
+			exynos_pmu_write(SEC_DEBUG_PANIC_INFORM, SEC_RESET_REASON_UNKNOWN);
 			pr_emerg("%s: charger connected or power off failed(%d), reboot!\n", __func__, poweroff_try);
 			/* To enter LP charging */
 
@@ -174,6 +178,8 @@ static void sec_reboot(enum reboot_mode reboot_mode, const char *cmd)
 	local_irq_disable();
 
 	pr_emerg("%s (%d, %s)\n", __func__, reboot_mode, cmd ? cmd : "(null)");
+
+	sec_debug_clear_magic_rambase();
 
 	/* LPM mode prevention */
 	sec_set_reboot_magic(SEC_REBOOT_NORMAL, SEC_REBOOT_END_OFFSET, 0xFF);

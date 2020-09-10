@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/dynamic_freq.h
- *
- * Copyright (c) 2018 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -46,7 +45,7 @@ static int search_dynamic_freq_idx(struct panel_device *panel, int band_idx, int
 		for (i = 0; i < array_idx; i++) {
 			array = &df_tbl->array[i];
 			panel_info("min : %d, max : %d\n", array->min, array->max);
-			
+
 			min = (int)freq - array->min;
 			max = (int)freq - array->max;
 
@@ -92,7 +91,7 @@ int set_dynamic_freq_ffc(struct panel_device *panel)
 
 		ret = panel_do_seqtbl_by_index_nolock(panel, PANEL_DYNAMIC_FFC_SEQ);
 		if (unlikely(ret < 0)) {
-			panel_err("[DYN_FREQ]:ERR:%s:failed to set PANEL_FFC_SEQ \n", __func__);
+			panel_err("[DYN_FREQ]:ERR:%s:failed to set PANEL_FFC_SEQ\n", __func__);
 			goto exit_changed;
 		}
 	}
@@ -154,7 +153,7 @@ static int df_notifier(struct notifier_block *self, unsigned long size, void *bu
 		goto exit_notifier;
 	}
 
-	if (msg->dev_id == IPC_SYSTEM_CP_CHANNEL_INFO && 
+	if (msg->dev_id == IPC_SYSTEM_CP_CHANNEL_INFO &&
 		msg->data_len == sizeof(struct ril_noti_info)) {
 
 		ch_info = (struct ril_noti_info *)msg->data;
@@ -235,7 +234,7 @@ static int parse_dynamic_freq(struct panel_device *panel)
 
 	if (cnt > MAX_DYNAMIC_FREQ) {
 		panel_info("[DYN_FREQ]:ERR:%s:freq cnt exceed max freq num (%d:%d)\n",
-			__func__,cnt , MAX_DYNAMIC_FREQ);
+			__func__, cnt, MAX_DYNAMIC_FREQ);
 		cnt = MAX_DYNAMIC_FREQ;
 	}
 	df->df_cnt = cnt;
@@ -278,7 +277,7 @@ int dynamic_freq_probe(struct panel_device *panel, struct df_freq_tbl_info *freq
 	int ret = 0;
 
 	if (freq_tbl == NULL) {
-		panel_err("[DYN_FREQ]:ERR:%s:frequence set is null", __func__);
+		panel_err("[DYN_FREQ]:ERR:%s:frequence set is null", __func__);
 		panel_err("[DYN_FREQ]:ERR:%s:can't support DF\n", __func__);
 		goto exit_probe;
 	}

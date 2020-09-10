@@ -11,6 +11,7 @@
  * General Public License for more details.
  */
 
+#include "fingerprint.h"
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/ioctl.h>
@@ -51,7 +52,7 @@ static DECLARE_BITMAP(minors, N_SPI_MINORS);
 				| SPI_NO_CS | SPI_READY | SPI_TX_DUAL \
 				| SPI_TX_QUAD | SPI_RX_DUAL | SPI_RX_QUAD)
 
-struct fps_qbtspi_data {
+struct qbtspi_data {
 	dev_t			devt;
 	spinlock_t		spi_lock;
 	struct spi_device	*spi;
@@ -75,7 +76,7 @@ MODULE_PARM_DESC(bufsiz, "data bytes in biggest supported SPI message");
 /*-------------------------------------------------------------------------*/
 
 static ssize_t
-fps_qbtspi_sync(struct fps_qbtspi_data *spidev, struct spi_message *message)
+qbtspi_sync(struct qbtspi_data *spidev, struct spi_message *message)
 {
 	int status;
 	struct spi_device *spi;
@@ -96,7 +97,7 @@ fps_qbtspi_sync(struct fps_qbtspi_data *spidev, struct spi_message *message)
 }
 
 static inline ssize_t
-fps_qbtspi_sync_write(struct fps_qbtspi_data *spidev, size_t len)
+qbtspi_sync_write(struct qbtspi_data *spidev, size_t len)
 {
 	struct spi_transfer	t = {
 			.tx_buf		= spidev->tx_buffer,
@@ -107,11 +108,11 @@ fps_qbtspi_sync_write(struct fps_qbtspi_data *spidev, size_t len)
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
-	return fps_qbtspi_sync(spidev, &m);
+	return qbtspi_sync(spidev, &m);
 }
 
 static inline ssize_t
-fps_qbtspi_sync_read(struct fps_qbtspi_data *spidev, size_t len)
+qbtspi_sync_read(struct qbtspi_data *spidev, size_t len)
 {
 	struct spi_transfer	t = {
 			.rx_buf		= spidev->rx_buffer,
@@ -122,16 +123,16 @@ fps_qbtspi_sync_read(struct fps_qbtspi_data *spidev, size_t len)
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
-	return fps_qbtspi_sync(spidev, &m);
+	return qbtspi_sync(spidev, &m);
 }
 
 /*-------------------------------------------------------------------------*/
 
 /* Read-only message with current device setup */
 static ssize_t
-fps_qbtspi_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+qbtspi_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 	ssize_t			status = 0;
 
 	/* chipselect only toggles at start or end of operation */
@@ -141,7 +142,7 @@ fps_qbtspi_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos
 	spidev = filp->private_data;
 
 	mutex_lock(&spidev->buf_lock);
-	status = fps_qbtspi_sync_read(spidev, count);
+	status = qbtspi_sync_read(spidev, count);
 	if (status > 0) {
 		unsigned long	missing;
 
@@ -158,10 +159,10 @@ fps_qbtspi_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos
 
 /* Write-only message with current device setup */
 static ssize_t
-fps_qbtspi_write(struct file *filp, const char __user *buf,
+qbtspi_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *f_pos)
 {
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 	ssize_t			status = 0;
 	unsigned long		missing;
 
@@ -174,7 +175,7 @@ fps_qbtspi_write(struct file *filp, const char __user *buf,
 	mutex_lock(&spidev->buf_lock);
 	missing = copy_from_user(spidev->tx_buffer, buf, count);
 	if (missing == 0)
-		status = fps_qbtspi_sync_write(spidev, count);
+		status = qbtspi_sync_write(spidev, count);
 	else
 		status = -EFAULT;
 	mutex_unlock(&spidev->buf_lock);
@@ -182,7 +183,7 @@ fps_qbtspi_write(struct file *filp, const char __user *buf,
 	return status;
 }
 
-static int fps_qbtspi_message(struct fps_qbtspi_data *spidev,
+static int qbtspi_message(struct qbtspi_data *spidev,
 		struct spi_ioc_transfer *u_xfers, unsigned n_xfers)
 {
 	struct spi_message	msg;
@@ -259,7 +260,7 @@ static int fps_qbtspi_message(struct fps_qbtspi_data *spidev,
 		spi_message_add_tail(k_tmp, &msg);
 	}
 
-	status = fps_qbtspi_sync(spidev, &msg);
+	status = qbtspi_sync(spidev, &msg);
 	if (status < 0)
 		goto done;
 
@@ -284,7 +285,7 @@ done:
 }
 
 static struct spi_ioc_transfer *
-fps_qbtspi_get_ioc_message(unsigned int cmd, struct spi_ioc_transfer __user *u_ioc,
+qbtspi_get_ioc_message(unsigned int cmd, struct spi_ioc_transfer __user *u_ioc,
 		unsigned *n_ioc)
 {
 	u32	tmp;
@@ -307,10 +308,10 @@ fps_qbtspi_get_ioc_message(unsigned int cmd, struct spi_ioc_transfer __user *u_i
 }
 
 static long
-fps_qbtspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+qbtspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int			retval = 0;
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 	struct spi_device	*spi;
 	u32			tmp;
 	unsigned		n_ioc;
@@ -413,7 +414,7 @@ fps_qbtspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	default:
 		/* segmented and/or full-duplex I/O request */
 		/* Check message and copy into scratch area */
-		ioc = fps_qbtspi_get_ioc_message(cmd,
+		ioc = qbtspi_get_ioc_message(cmd,
 				(struct spi_ioc_transfer __user *)arg, &n_ioc);
 		if (IS_ERR(ioc)) {
 			retval = PTR_ERR(ioc);
@@ -423,7 +424,7 @@ fps_qbtspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;	/* n_ioc is also 0 */
 
 		/* translate to spi_message, execute */
-		retval = fps_qbtspi_message(spidev, ioc, n_ioc);
+		retval = qbtspi_message(spidev, ioc, n_ioc);
 		kfree(ioc);
 		break;
 	}
@@ -435,12 +436,12 @@ fps_qbtspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 #ifdef CONFIG_COMPAT
 static long
-fps_qbtspi_compat_ioc_message(struct file *filp, unsigned int cmd,
+qbtspi_compat_ioc_message(struct file *filp, unsigned int cmd,
 		unsigned long arg)
 {
 	struct spi_ioc_transfer __user	*u_ioc;
 	int				retval = 0;
-	struct fps_qbtspi_data		*spidev;
+	struct qbtspi_data		*spidev;
 	struct spi_device		*spi;
 	unsigned			n_ioc, n;
 	struct spi_ioc_transfer		*ioc;
@@ -462,7 +463,7 @@ fps_qbtspi_compat_ioc_message(struct file *filp, unsigned int cmd,
 	mutex_lock(&spidev->buf_lock);
 
 	/* Check message and copy into scratch area */
-	ioc = fps_qbtspi_get_ioc_message(cmd, u_ioc, &n_ioc);
+	ioc = qbtspi_get_ioc_message(cmd, u_ioc, &n_ioc);
 	if (IS_ERR(ioc)) {
 		retval = PTR_ERR(ioc);
 		goto done;
@@ -477,7 +478,7 @@ fps_qbtspi_compat_ioc_message(struct file *filp, unsigned int cmd,
 	}
 
 	/* translate to spi_message, execute */
-	retval = fps_qbtspi_message(spidev, ioc, n_ioc);
+	retval = qbtspi_message(spidev, ioc, n_ioc);
 	kfree(ioc);
 
 done:
@@ -487,22 +488,22 @@ done:
 }
 
 static long
-fps_qbtspi_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+qbtspi_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	if (_IOC_TYPE(cmd) == SPI_IOC_MAGIC
 			&& _IOC_NR(cmd) == _IOC_NR(SPI_IOC_MESSAGE(0))
 			&& _IOC_DIR(cmd) == _IOC_WRITE)
-		return fps_qbtspi_compat_ioc_message(filp, cmd, arg);
+		return qbtspi_compat_ioc_message(filp, cmd, arg);
 
-	return fps_qbtspi_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
+	return qbtspi_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
 }
 #else
-#define fps_qbtspi_compat_ioctl NULL
+#define qbtspi_compat_ioctl NULL
 #endif /* CONFIG_COMPAT */
 
-static int fps_qbtspi_open(struct inode *inode, struct file *filp)
+static int qbtspi_open(struct inode *inode, struct file *filp)
 {
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 	int			status = -ENXIO;
 
 	mutex_lock(&device_list_lock);
@@ -552,9 +553,9 @@ err_find_dev:
 	return status;
 }
 
-static int fps_qbtspi_release(struct inode *inode, struct file *filp)
+static int qbtspi_release(struct inode *inode, struct file *filp)
 {
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 
 	mutex_lock(&device_list_lock);
 	spidev = filp->private_data;
@@ -587,18 +588,18 @@ static int fps_qbtspi_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static const struct file_operations fps_qbtspi_fops = {
+static const struct file_operations qbtspi_fops = {
 	.owner =	THIS_MODULE,
 	/* REVISIT switch to aio primitives, so that userspace
 	 * gets more complete API coverage.  It'll simplify things
 	 * too, except for the locking.
 	 */
-	.write =	fps_qbtspi_write,
-	.read =		fps_qbtspi_read,
-	.unlocked_ioctl = fps_qbtspi_ioctl,
-	.compat_ioctl = fps_qbtspi_compat_ioctl,
-	.open =		fps_qbtspi_open,
-	.release =	fps_qbtspi_release,
+	.write =	qbtspi_write,
+	.read =		qbtspi_read,
+	.unlocked_ioctl = qbtspi_ioctl,
+	.compat_ioctl = qbtspi_compat_ioctl,
+	.open =		qbtspi_open,
+	.release =	qbtspi_release,
 	.llseek =	no_llseek,
 };
 
@@ -609,20 +610,20 @@ static const struct file_operations fps_qbtspi_fops = {
  * It also simplifies memory management.
  */
 
-static struct class *fps_qbtspi_class;
+static struct class *qbtspi_class;
 
-static const struct of_device_id fps_qbtspi_dt_ids[] = {
+static const struct of_device_id qbtspi_dt_ids[] = {
 #if !defined(ENABLE_SENSORS_FPRINT_SECURE)
-	{ .compatible = "qbtspi" },
+	{ .compatible = "qcom,qbtspi" },
 #endif
 	{},
 };
 
 /*-------------------------------------------------------------------------*/
 
-static int fps_qbtspi_probe(struct spi_device *spi)
+static int qbtspi_probe(struct spi_device *spi)
 {
-	struct fps_qbtspi_data	*spidev;
+	struct qbtspi_data	*spidev;
 	int			status;
 	unsigned long		minor;
 
@@ -648,7 +649,7 @@ static int fps_qbtspi_probe(struct spi_device *spi)
 		struct device *dev;
 
 		spidev->devt = MKDEV(QBTSPI_MAJOR, minor);
-		dev = device_create(fps_qbtspi_class, &spi->dev, spidev->devt,
+		dev = device_create(qbtspi_class, &spi->dev, spidev->devt,
 				    spidev, QBTSPI_DEV);
 		status = PTR_ERR_OR_ZERO(dev);
 	} else {
@@ -671,9 +672,9 @@ static int fps_qbtspi_probe(struct spi_device *spi)
 	return status;
 }
 
-static int fps_qbtspi_remove(struct spi_device *spi)
+static int qbtspi_remove(struct spi_device *spi)
 {
-	struct fps_qbtspi_data	*spidev = spi_get_drvdata(spi);
+	struct qbtspi_data	*spidev = spi_get_drvdata(spi);
 
 	/* make sure ops on existing fds can abort cleanly */
 	spin_lock_irq(&spidev->spi_lock);
@@ -683,7 +684,7 @@ static int fps_qbtspi_remove(struct spi_device *spi)
 	/* prevent new opens */
 	mutex_lock(&device_list_lock);
 	list_del(&spidev->device_entry);
-	device_destroy(fps_qbtspi_class, spidev->devt);
+	device_destroy(qbtspi_class, spidev->devt);
 	clear_bit(MINOR(spidev->devt), minors);
 	if (spidev->users == 0)
 		kfree(spidev);
@@ -692,14 +693,14 @@ static int fps_qbtspi_remove(struct spi_device *spi)
 	return 0;
 }
 
-static struct spi_driver fps_qbtspi_spi_driver = {
+static struct spi_driver qbtspi_spi_driver = {
 	.driver = {
 		.name =		QBTSPI_DEV,
 		.owner = THIS_MODULE,
-		.of_match_table = fps_qbtspi_dt_ids,
+		.of_match_table = qbtspi_dt_ids,
 	},
-	.probe =	fps_qbtspi_probe,
-	.remove =	fps_qbtspi_remove,
+	.probe =	qbtspi_probe,
+	.remove =	qbtspi_remove,
 
 	/* NOTE:  suspend/resume methods are not necessary here.
 	 * We don't do anything except pass the requests to/from
@@ -710,7 +711,7 @@ static struct spi_driver fps_qbtspi_spi_driver = {
 
 /*-------------------------------------------------------------------------*/
 
-static int __init fps_qbtspi_init(void)
+static int __init qbtspi_init(void)
 {
 	int status = 0;
 #if !defined(ENABLE_SENSORS_FPRINT_SECURE)
@@ -720,38 +721,38 @@ static int __init fps_qbtspi_init(void)
 	 * the driver which manages those device numbers.
 	 */
 	BUILD_BUG_ON(N_SPI_MINORS > 256);
-	status = register_chrdev(QBTSPI_MAJOR, QBTSPI_DEV, &fps_qbtspi_fops);
+	status = register_chrdev(QBTSPI_MAJOR, QBTSPI_DEV, &qbtspi_fops);
 	if (status < 0) {
 		pr_err("%s: register_chrdev failed %d\n", __func__, status);
 		return status;
 	}
 
-	fps_qbtspi_class = class_create(THIS_MODULE, QBTSPI_DEV);
-	if (IS_ERR(fps_qbtspi_class)) {
+	qbtspi_class = class_create(THIS_MODULE, QBTSPI_DEV);
+	if (IS_ERR(qbtspi_class)) {
 		unregister_chrdev(QBTSPI_MAJOR, QBTSPI_DEV);
 		pr_err("%s: class_create failed\n", __func__);
-		return PTR_ERR(fps_qbtspi_class);
+		return PTR_ERR(qbtspi_class);
 	}
 
-	status = spi_register_driver(&fps_qbtspi_spi_driver);
+	status = spi_register_driver(&qbtspi_spi_driver);
 	if (status < 0) {
-		class_destroy(fps_qbtspi_class);
-		unregister_chrdev(QBTSPI_MAJOR, fps_qbtspi_spi_driver.driver.name);
+		class_destroy(qbtspi_class);
+		unregister_chrdev(QBTSPI_MAJOR, qbtspi_spi_driver.driver.name);
 		pr_err("%s: spi_register_driver failed\n", __func__);
 	}
 	pr_info("%s: finish %d\n", __func__, status);
 #endif
 	return status;
 }
-module_init(fps_qbtspi_init);
+module_init(qbtspi_init);
 
-static void __exit fps_qbtspi_exit(void)
+static void __exit qbtspi_exit(void)
 {
-	spi_unregister_driver(&fps_qbtspi_spi_driver);
-	class_destroy(fps_qbtspi_class);
-	unregister_chrdev(QBTSPI_MAJOR, fps_qbtspi_spi_driver.driver.name);
+	spi_unregister_driver(&qbtspi_spi_driver);
+	class_destroy(qbtspi_class);
+	unregister_chrdev(QBTSPI_MAJOR, qbtspi_spi_driver.driver.name);
 }
-module_exit(fps_qbtspi_exit);
+module_exit(qbtspi_exit);
 
 MODULE_AUTHOR("Kangwook.Her");
 MODULE_DESCRIPTION("Samsung Electronics Inc. QBT2000 spi driver");

@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 Vendor Extension Code
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 1999-2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfgvendor.c 831648 2019-07-24 10:31:17Z $
+ * $Id: wl_cfgvendor.c 871736 2020-04-03 07:58:52Z $
  */
 
 /*
@@ -6657,13 +6657,15 @@ static int wl_cfgvendor_set_pmk(struct wiphy *wiphy,
 		type = nla_type(iter);
 		switch (type) {
 			case BRCM_ATTR_DRIVER_KEY_PMK:
+				pmk.flags = 0;
 				pmk.key_len = htod16(nla_len(iter));
-				if (pmk.key_len > sizeof(pmk.key)) {
+				ret = memcpy_s(pmk.key, sizeof(pmk.key),
+					(uint8 *)nla_data(iter), nla_len(iter));
+				if (ret) {
+					WL_ERR(("Failed to copy pmk: %d\n", ret));
 					ret = -EINVAL;
 					goto exit;
 				}
-				pmk.flags = 0;
-				bcopy((uint8 *)nla_data(iter), pmk.key, len);
 				break;
 			default:
 				WL_ERR(("Unknown type: %d\n", type));

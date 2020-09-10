@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_poc.c
- *
- * Samsung Common LCD Driver.
- *
- * Copyright (c) 2017 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -136,16 +133,16 @@ static int poc_get_poc_chksum(struct panel_device *panel)
 		return -EINVAL;
 	}
 /*
-	mutex_lock(&panel->op_lock);
-	panel_set_key(panel, 3, true);
-	ret = panel_resource_update_by_name(panel, "poc_chksum");
-	panel_set_key(panel, 3, false);
-	mutex_unlock(&panel->op_lock);
-	if (unlikely(ret < 0)) {
-		pr_err("%s failed to update resource(poc_chksum)\n", __func__);
-		return ret;
-	}
-*/
+ *	mutex_lock(&panel->op_lock);
+ *	panel_set_key(panel, 3, true);
+ *	ret = panel_resource_update_by_name(panel, "poc_chksum");
+ *	panel_set_key(panel, 3, false);
+ *	mutex_unlock(&panel->op_lock);
+ *	if (unlikely(ret < 0)) {
+ *		pr_err("%s failed to update resource(poc_chksum)\n", __func__);
+ *		return ret;
+ *	}
+ */
 	ret = resource_copy_by_name(panel_data, poc_info->poc_chksum, "poc_chksum");
 	if (unlikely(ret < 0)) {
 		pr_err("%s failed to copy resource(poc_chksum)\n", __func__);
@@ -161,19 +158,22 @@ static int poc_get_poc_chksum(struct panel_device *panel)
 }
 
 #ifdef CONFIG_SUPPORT_POC_SPI
-bool _spi_poc_status_is_busy(struct panel_poc_info *poc_info, int status) {
+bool _spi_poc_status_is_busy(struct panel_poc_info *poc_info, int status)
+{
 	if (status & poc_info->busy_mask)
 		return true;
 	return false;
 }
 
-bool _spi_poc_status_is_init(struct panel_poc_info *poc_info, int status) {
+bool _spi_poc_status_is_init(struct panel_poc_info *poc_info, int status)
+{
 	if ((status & poc_info->state_mask) == poc_info->state_init)
 		return true;
 	return false;
 }
-	
-bool _spi_poc_status_is_uninit(struct panel_poc_info *poc_info, int status) {
+
+bool _spi_poc_status_is_uninit(struct panel_poc_info *poc_info, int status)
+{
 	if ((status & poc_info->state_mask) == poc_info->state_uninit)
 		return true;
 	return false;
@@ -256,17 +256,16 @@ int _spi_poc_erase(struct panel_device *panel, int addr, int len)
 			pr_err("%s, failed to poc-erase-seq 0x%x\n", __func__, addr + erased_size);
 			goto out_poc_erase;
 		}
-		
+
 		status_retry = 0;
 		while (status_retry < POC_SPI_WAIT_ERASE_CNT) {
 			ret = _spi_poc_get_status(panel);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret < 0))
 				goto out_poc_erase;
-			}
 
 			if (!_spi_poc_status_is_busy(poc_info, ret))
 				break;
-			
+
 			ret = panel_do_poc_seqtbl_by_index_nolock(poc_dev, POC_SPI_WAIT_ERASE_SEQ);
 			if (unlikely(ret < 0)) {
 				pr_err("%s, failed to poc-spi-wait-erase-seq 0x%x\n", __func__, addr + erased_size);
@@ -276,7 +275,7 @@ int _spi_poc_erase(struct panel_device *panel, int addr, int len)
 		}
 
 		if (status_retry >= POC_SPI_WAIT_ERASE_CNT) {
-			pr_info("%s spi cmd wait timeout cnt: %d \n", __func__, status_retry);
+			pr_info("%s spi cmd wait timeout cnt: %d\n", __func__, status_retry);
 			ret = -EIO;
 			goto out_poc_erase;
 		}
@@ -374,6 +373,7 @@ int poc_erase(struct panel_device *panel, int addr, int len)
 #ifdef CONFIG_SUPPORT_POC_SPI
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
+
 	if (poc_info->conn_src == POC_CONN_SRC_SPI)
 		return _spi_poc_erase(panel, addr, len);
 #endif
@@ -529,6 +529,7 @@ int poc_read_data(struct panel_device *panel, u8 *buf, u32 addr, u32 len)
 #ifdef CONFIG_SUPPORT_POC_SPI
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
+
 	if (poc_info->conn_src == POC_CONN_SRC_SPI)
 		return _spi_poc_read_data(panel, buf, addr, len);
 #endif
@@ -581,13 +582,12 @@ static int _spi_poc_write_data(struct panel_device *panel, u8 *data, u32 addr, u
 		status_retry = 0;
 		while (status_retry < POC_SPI_WAIT_WRITE_CNT) {
 			ret = _spi_poc_get_status(panel);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret < 0))
 				goto out_poc_write;
-			}
 
 			if (!_spi_poc_status_is_busy(poc_info, ret))
 				break;
-			
+
 			ret = panel_do_poc_seqtbl_by_index_nolock(poc_dev, POC_SPI_WAIT_WRITE_SEQ);
 			if (unlikely(ret < 0)) {
 				pr_err("%s, failed to write poc-spi-wait-write seq\n", __func__);
@@ -718,6 +718,7 @@ int poc_write_data(struct panel_device *panel, u8 *data, u32 addr, u32 size)
 #ifdef CONFIG_SUPPORT_POC_SPI
 	struct panel_poc_device *poc_dev = &panel->poc_dev;
 	struct panel_poc_info *poc_info = &poc_dev->poc_info;
+
 	if (poc_info->conn_src == POC_CONN_SRC_SPI)
 		return _spi_poc_write_data(panel, data, addr, size);
 #endif
@@ -734,13 +735,13 @@ int poc_memory_initialize(struct panel_device *panel)
 
 	if (poc_info->conn_src != POC_CONN_SRC_SPI)
 		return ret;
-	
-	if(!panel_poc_seq_exist(poc_dev, POC_SPI_INIT_SEQ)) {
+
+	if (!panel_poc_seq_exist(poc_dev, POC_SPI_INIT_SEQ)) {
 		pr_err("%s, failed to find poc-spi-init-seq\n", __func__);
 		return 0;
-	}	
+	}
 
-	for(; retry > 0; retry--) {
+	for (; retry > 0; retry--) {
 		ret = panel_do_poc_seqtbl_by_index_nolock(poc_dev, POC_SPI_INIT_SEQ);
 		if (unlikely(ret < 0)) {
 			pr_err("%s, failed to set poc-spi-init-seq\n", __func__);
@@ -776,12 +777,12 @@ int poc_memory_uninitialize(struct panel_device *panel)
 	if (poc_info->conn_src != POC_CONN_SRC_SPI)
 		return ret;
 
-	if(!panel_poc_seq_exist(poc_dev, POC_SPI_EXIT_SEQ)) {
+	if (!panel_poc_seq_exist(poc_dev, POC_SPI_EXIT_SEQ)) {
 		pr_err("%s, failed to find poc-spi-exit-seq\n", __func__);
 		return 0;
 	}
 
-	for(; retry > 0; retry--) {
+	for (; retry > 0; retry--) {
 		ret = panel_do_poc_seqtbl_by_index_nolock(poc_dev, POC_SPI_EXIT_SEQ);
 		if (unlikely(ret < 0)) {
 			pr_err("%s, failed to set poc-spi-exit-seq %d\n", __func__, ret);
@@ -800,7 +801,7 @@ int poc_memory_uninitialize(struct panel_device *panel)
 	}
 	pr_err("%s, failed to check initialized status 0x%04X\n", __func__, ret);
 	ret = -EIO;
-	
+
 out_poc_mem_unlock:
 
 #endif
@@ -1223,7 +1224,7 @@ int set_panel_poc(struct panel_poc_device *poc_dev, u32 cmd, const char *cmd_ext
 			return ret;
 		}
 		panel_info("%s spi_status_reg 0x%04X\n", __func__, ret);
-		break;		
+		break;
 #endif
 	case POC_OP_INITIALIZE:
 		ret = poc_memory_initialize(panel);
@@ -1232,7 +1233,7 @@ int set_panel_poc(struct panel_poc_device *poc_dev, u32 cmd, const char *cmd_ext
 			return ret;
 		}
 		break;
-	case POC_OP_UNINITIALIZE:		
+	case POC_OP_UNINITIALIZE:
 		ret = poc_memory_uninitialize(panel);
 		if (unlikely(ret < 0)) {
 			pr_err("%s, failed to uninitialize memory\n", __func__);
@@ -1269,7 +1270,7 @@ static long panel_poc_ioctl(struct file *file, unsigned int cmd,
 		panel_err("POC:ERR:%s: poc device not opened\n", __func__);
 		return -EIO;
 	}
-	
+
 
 	panel_wake_lock(panel);
 	if (!IS_PANEL_ACTIVE(panel)) {
@@ -1372,7 +1373,7 @@ static int panel_poc_open(struct inode *inode, struct file *file)
 
 	mutex_lock(&panel->io_lock);
 	mutex_lock(&panel->op_lock);
-	
+
 	ret = set_panel_poc(poc_dev, POC_OP_INITIALIZE, NULL);
 	if (ret < 0)
 		goto err_open;
@@ -1418,7 +1419,7 @@ static int panel_poc_release(struct inode *inode, struct file *file)
 
 	mutex_lock(&panel->io_lock);
 	mutex_lock(&panel->op_lock);
-	
+
 	poc_info->state = 0;
 	memset(poc_info->poc_chksum, 0, sizeof(poc_info->poc_chksum));
 	memset(poc_info->poc_ctrl, 0, sizeof(poc_info->poc_ctrl));
@@ -1433,7 +1434,7 @@ static int panel_poc_release(struct inode *inode, struct file *file)
 
 	poc_dev->opened = 0;
 	atomic_set(&poc_dev->cancel, 0);
-	
+
 	ret = set_panel_poc(poc_dev, POC_OP_UNINITIALIZE, NULL);
 	if (ret < 0)
 		panel_err("POC:ERR:%s: failed to uninitialize %d\n", __func__, ret);
@@ -1479,7 +1480,7 @@ static ssize_t panel_poc_read(struct file *file, char __user *buf, size_t count,
 		poc_info->read_failcount++;
 		return -EINVAL;
 	}
-	
+
 	panel_wake_lock(panel);
 
 	if (!IS_PANEL_ACTIVE(panel)) {
@@ -1981,7 +1982,7 @@ int panel_poc_probe(struct panel_device *panel, struct panel_poc_data *poc_data)
 #ifdef CONFIG_SUPPORT_POC_SPI
 	poc_info->spi_wdata_len = poc_data->spi_wdata_len;
 	poc_info->conn_src = poc_data->conn_src;
-	poc_info->state_mask = 	poc_data->state_mask;
+	poc_info->state_mask = poc_data->state_mask;
 	poc_info->state_init = poc_data->state_init;
 	poc_info->state_uninit = poc_data->state_uninit;
 	poc_info->busy_mask = poc_data->busy_mask;

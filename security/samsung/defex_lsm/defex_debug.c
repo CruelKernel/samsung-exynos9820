@@ -19,7 +19,7 @@
 
 static int last_cmd;
 
-static int set_user(struct cred *new_cred)
+__visible_for_testing int set_user(struct cred *new_cred)
 {
 	struct user_struct *new_user;
 
@@ -35,7 +35,7 @@ static int set_user(struct cred *new_cred)
 /*
  * target_id = (0 - set all uids, 1 - set fsuid, 2 - set all gids)
  */
-static int set_cred(int target_id, int new_val)
+__visible_for_testing int set_cred(int target_id, int new_val)
 {
 	struct user_namespace *ns = current_user_ns();
 	const struct cred *old_cred;
@@ -86,7 +86,7 @@ do_abort:
 	return -EPERM;
 }
 
-static ssize_t debug_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+__visible_for_testing ssize_t debug_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	struct task_struct *p = current;
 	int i, l, new_val = -1;
@@ -124,7 +124,7 @@ static ssize_t debug_store(struct kobject *kobj, struct kobj_attribute *attr, co
 	return (!ret)?count:ret;
 }
 
-static ssize_t debug_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+__visible_for_testing ssize_t debug_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
 	struct task_struct *p = current;
 	int res = 0;
@@ -146,7 +146,7 @@ static ssize_t debug_show(struct kobject *kobj, struct kobj_attribute *attr, cha
 	return res;
 }
 
-static struct kobj_attribute debug_attribute = __ATTR(debug, 0660, debug_show, debug_store);
+__visible_for_testing struct kobj_attribute debug_attribute = __ATTR(debug, 0660, debug_show, debug_store);
 
 int defex_create_debug(struct kset *defex_kset)
 {

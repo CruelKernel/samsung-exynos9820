@@ -16,8 +16,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/printk.h>
 #include <linux/types.h>
-#include <linux/task_integrity.h>
 #include <soc/qcom/scm.h>
 #include "tzic.h"
 
@@ -32,7 +32,7 @@ static int set_tamper_fuse_qsee(uint32_t index)
 {
 	struct scm_desc desc = {0};
 	uint32_t fuse_id;
-	
+
 	desc.args[0] = fuse_id = index;
 	desc.arginfo = SCM_ARGS(1);
 

@@ -37,6 +37,9 @@
 #endif
 #define F_FIVE_EDIT		(F_LINUX_SPECIFIC_BASE + 104)
 #define F_FIVE_CLOSE		(F_LINUX_SPECIFIC_BASE + 105)
+#ifdef CONFIG_FIVE_DEBUG
+#define F_FIVE_DEBUG		(F_LINUX_SPECIFIC_BASE + 106)
+#endif
 #endif
 
 /*
