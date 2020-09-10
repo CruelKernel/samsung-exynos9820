@@ -73,7 +73,6 @@ EXPORT_SYMBOL(fp_lockscreen_mode);
 #endif
 
 extern int fpsensor_goto_suspend;
-EXPORT_SYMBOL(fpsensor_goto_suspend);
 #endif
 
 #endif
