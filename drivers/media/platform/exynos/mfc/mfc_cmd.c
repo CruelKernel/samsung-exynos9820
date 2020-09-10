@@ -333,6 +333,7 @@ int mfc_cmd_enc_init_buffers(struct mfc_ctx *ctx)
 		ret = mfc_alloc_codec_buffers(ctx);
 		if (ret) {
 			mfc_err_ctx("Failed to allocate encoding buffers\n");
+			mfc_change_state(ctx, MFCINST_ERROR);
 			return ret;
 		}
 	}

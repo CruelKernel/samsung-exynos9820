@@ -55,7 +55,7 @@ ssize_t task_defex_immutable_attr_store(struct kobject *kobj,
 	return attribute->store(immutable, attribute, buf, len);
 }
 
-static void task_defex_immutable_release(struct kobject *kobj)
+__visible_for_testing void task_defex_immutable_release(struct kobject *kobj)
 {
 	struct defex_immutable *immutable_obj;
 

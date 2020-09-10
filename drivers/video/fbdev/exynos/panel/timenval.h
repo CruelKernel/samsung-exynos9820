@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/timenval.h
- *
- * Header file for Samsung Common LCD Driver.
- *
- * Copyright (c) 2017 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify

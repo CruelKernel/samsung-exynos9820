@@ -518,6 +518,12 @@ static void sec_debug_dump_cpu_stat(void)
 	pr_info("-------------------------------------------------------------------------------------------------------------\n");
 }
 
+void sec_debug_clear_magic_rambase(void)
+{
+	/* Clear magic code in normal reboot */
+	sec_debug_set_upload_magic(UPLOAD_MAGIC_INIT, NULL);
+}
+
 void sec_debug_reboot_handler(void *p)
 {
 	pr_emerg("sec_debug: %s\n", __func__);
@@ -1005,7 +1011,15 @@ static void sec_debug_set_kconstants(void)
 
 static void __init sec_debug_init_sdn(struct sec_debug_next *d)
 {
-	memset(&d->kernd, 0x0, sizeof(d->kernd));
+#define clear_sdn_field(__p, __m)	memset(&(__p)->__m, 0x0, sizeof((__p)->__m));
+
+	clear_sdn_field(d, memtab);
+	clear_sdn_field(d, ksyms);
+	clear_sdn_field(d, kcnst);
+	clear_sdn_field(d, task);
+	clear_sdn_field(d, ss_info);
+	clear_sdn_field(d, rlock);
+	clear_sdn_field(d, kernd);
 }
 
 static int __init sec_debug_next_init(void)
@@ -1022,6 +1036,9 @@ static int __init sec_debug_next_init(void)
 
 	sdn->version[1] = SEC_DEBUG_KERNEL_UPPER_VERSION << 16;
 	sdn->version[1] += SEC_DEBUG_KERNEL_LOWER_VERSION;
+
+	/* set member table */
+	secdbg_base_set_memtab_info(&sdn->memtab);
 
 	/* set kernel symbols */
 	sec_debug_set_kallsyms_info(&(sdn->ksyms), SEC_DEBUG_MAGIC1);

@@ -261,7 +261,9 @@ TEEC_Result TbaseLoadTA(void *ta_session, const TEEC_UUID *uuid)
 	}
 
 	mc_res = mc_open_trustlet(&(session->ta_session),
+#if MCDRVMODULEAPI_VERSION_MAJOR < 8
 				MC_SPID_SYSTEM,
+#endif
 				(u8 *)fw->data,
 				fw->size,
 				(u8 *)session->tci_buffer,

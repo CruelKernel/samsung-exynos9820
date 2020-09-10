@@ -17,6 +17,10 @@
 enum {
 	DTYPE_NONE,
 	DTYPE_MUTEX,
+	DTYPE_RWSEM,
+	DTYPE_WORK,
+	DTYPE_CPUHP,
+	DTYPE_KTHREAD,
 };
 
 struct sec_debug_wait {

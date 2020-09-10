@@ -13,7 +13,8 @@ choice
     depends on TZIC
     default TZIC_USE_QSEECOM if QSEECOM
     default TZIC_USE_TZDEV if TZDEV
-    default TZIC_USE_TRUSTONIC
+    default TZIC_USE_TRUSTONIC if TRUSTONIC_TEE
+    default TZIC_DEFAULT
     ---help---
       Select Secure OS for TZIC
 
@@ -34,4 +35,8 @@ choice
         depends on QSEECOM
         ---help---
           Use Qualcomm as base Trusted Execution Environment
+    config TZIC_DEFAULT
+        bool "TZIC Disabled"
+        ---help---
+          TZIC disabled
 endchoice

@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/spi.c
- *
- * Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  *
  * JiHoon Kim <jihoonn.kim@samsung.com>
  * Gwanghui Lee <gwanghui.lee@samsung.com>
@@ -12,13 +9,14 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 
-#if defined (CONFIG_OF)
+#if defined(CONFIG_OF)
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #endif /* CONFIG_OF */

@@ -22,6 +22,9 @@ struct plist_head kpp_list[STUNE_GROUP_COUNT];
 
 static bool kpp_en;
 
+bool ib_ems_initialized;
+EXPORT_SYMBOL(ib_ems_initialized);
+
 int kpp_status(int grp_idx)
 {
 	if (unlikely(!kpp_en))
@@ -506,6 +509,7 @@ static int __init init_service(void)
 		return ret;
 	}
 
+	ib_ems_initialized = true;
 	return 0;
 }
 late_initcall(init_service);

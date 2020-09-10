@@ -121,7 +121,7 @@ void uh_fault_handler(void)
 	memcpy(&regs, &uh_handler_data->regs, sizeof(uh_handler_data->regs));
 
 	do_mem_abort(uh_handler_data->far_el2, (u32)uh_handler_data->esr_el2.bits, &regs);
-	panic("%s",exception_class_string[exception_class]);
+	panic("uH Fault handler : %s",exception_class_string[exception_class]);
 }
 
 u64 uh_get_fault_handler(void)

@@ -9,6 +9,9 @@
 #ifndef _DSMS_ACCESS_CONTROL_H
 #define _DSMS_ACCESS_CONTROL_H
 
+#ifdef CONFIG_KUNIT
+#include <kunit/mock.h>
+#endif
 #include <linux/types.h>
 
 #define CALLER_FRAME (0)
@@ -32,7 +35,12 @@ struct dsms_policy_entry {
 extern struct dsms_policy_entry dsms_policy[];
 
 extern size_t dsms_policy_size(void);
-
 extern int dsms_verify_access(const void *address);
+
+#ifdef CONFIG_KUNIT
+extern int compare_policy_entries(const char *function_name,
+				  const struct dsms_policy_entry *entry);
+extern struct dsms_policy_entry *find_policy_entry(const char *function_name);
+#endif
 
 #endif /* _DSMS_ACCESS_CONTROL_H */

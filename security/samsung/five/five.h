@@ -95,7 +95,8 @@ int five_appraise_measurement(struct task_struct *task, int func,
 
 int five_read_xattr(struct dentry *dentry, char **xattr_value);
 int five_check_params(struct task_struct *task, struct file *file);
-const char *five_d_path(const struct path *path, char **pathbuf);
+const char *five_d_path(const struct path *path, char **pathbuf,
+			char *namebuf);
 
 int five_digsig_verify(struct five_cert *cert,
 			    const char *digest, int digestlen);

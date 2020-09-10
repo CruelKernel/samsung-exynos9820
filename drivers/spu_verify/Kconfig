@@ -1,0 +1,9 @@
+config SPU_VERIFY
+	bool "SPU Sign Verify Driver"
+	default n
+	help
+	  This option enables SPU sign verify driver.
+	  When SPU fireware update, image signature verify.
+	  Each firmware is checked by calling a function before updating.
+	  If disable config, maybe Signature checking cause problems.
+

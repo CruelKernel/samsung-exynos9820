@@ -224,7 +224,7 @@ static struct smtc_reg_data setup_reg[] = {
     /* 0x02~0x03, Interrupt */ 
     {
         .reg = SX9360_IRQ_ENABLE_REG,
-        .val = 0x0C,
+        .val = 0x00,
     },
     {
         .reg = SX9360_IRQCFG_REG,

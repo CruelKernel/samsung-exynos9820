@@ -624,12 +624,24 @@ static int config_usb_cfg_link(
 					if (strcmp(cn->configuration, "adb") == 0) {				
 						list_for_each_entry_safe(f, tmp, &gi->linked_func, list) {
 							if (strcmp(f->name , "adb") == 0) {
+								gi->gsi_boot=1;
 								printk("usb: %s: GSI adb works(%s)\n",__func__, f->name);
 								list_move_tail(&f->list, &cfg->func_list);
 							}
 						}
 					}
-					gi->gsi_boot=1;
+					if (!gi->gsi_boot) {
+						printk("usb: %s: Recovery ADB\n",__func__);
+						f = usb_get_function(fi);
+						if (IS_ERR(f)) {
+							ret = PTR_ERR(f);
+							goto out;
+						}
+
+						/* stash the function until we bind it to the gadget */
+						list_add_tail(&f->list, &cfg->func_list);
+						gi->gsi_boot=1;
+					}
 					ret = 0;
 					goto out;
 				} else {

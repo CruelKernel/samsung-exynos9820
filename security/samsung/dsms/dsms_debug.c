@@ -14,7 +14,7 @@
 
 #include "dsms_debug.h"
 
-#define LOG_LINE_MAX 1024
+#define LOG_LINE_MAX 1008 /* to not exceed the frame size, 1024 */
 
 void dsms_log_write(int loglevel, const char* format, ...)
 {

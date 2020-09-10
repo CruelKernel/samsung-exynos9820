@@ -1,15 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/sysfs.c
- *
- * Samsung MIPI-DSI Panel SYSFS driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * JiHoon Kim <jihoonn.kim@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
-*/
+ */
 
 #include <linux/ctype.h>
 #include <linux/lcd.h>
@@ -77,7 +74,7 @@ static ssize_t isc_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -101,12 +98,11 @@ static ssize_t isc_store(struct device *dev,
 
 int print_stm_info(u8 *stm_field, char *buf)
 {
-#if 1
-	snprintf(buf, PAGE_SIZE, "CTRL EN=%d, MAX_OPT=%d, DEFAULT_OPT=%d, DIM_STEP=%d, FRAME_PERIOD=%d, MIN_SECT=%d, PIXEL_PERIOD=%d, LINE_PERIOD=%d, MIN_MOVE=%d, M_THRES=%d, V_THRES=%d \n",
+	snprintf(buf, PAGE_SIZE, "CTRL EN=%d, MAX_OPT=%d, DEFAULT_OPT=%d, DIM_STEP=%d, FRAME_PERIOD=%d, MIN_SECT=%d, PIXEL_PERIOD=%d, LINE_PERIOD=%d, MIN_MOVE=%d, M_THRES=%d, V_THRES=%d\n",
 	stm_field[STM_CTRL_EN], stm_field[STM_MAX_OPT], stm_field[STM_DEFAULT_OPT],
 	stm_field[STM_DIM_STEP], stm_field[STM_FRAME_PERIOD], stm_field[STM_MIN_SECT], stm_field[STM_PIXEL_PERIOD],
 	stm_field[STM_LINE_PERIOD], stm_field[STM_MIN_MOVE], stm_field[STM_M_THRES], stm_field[STM_V_THRES]);
-#endif
+
 	return strlen(buf);
 }
 static ssize_t stm_show(struct device *dev,
@@ -124,13 +120,14 @@ static ssize_t stm_show(struct device *dev,
 	return print_stm_info(panel_data->props.stm_field_info, buf);
 }
 
-int set_stm_info(char* user_set, u8 *stm_field)
+int set_stm_info(char *user_set, u8 *stm_field)
 {
 	int i;
-	int val = 0;
+	int val = 0, ret;
+
 	for (i = STM_CTRL_EN; i < STM_FIELD_MAX; i++) {
 		if (strncmp(user_set, str_stm_fied[i], strlen(str_stm_fied[i])) == 0) {
-			sscanf(user_set + strlen(str_stm_fied[i]), "%d", &val);
+			ret = sscanf(user_set + strlen(str_stm_fied[i]), "%d", &val);
 			stm_field[i] = val;
 			return 0;
 		}
@@ -144,15 +141,15 @@ static ssize_t stm_store(struct device *dev,
 	int ret;
 	struct panel_info *panel_data;
 	struct panel_device *panel = dev_get_drvdata(dev);
-	char* recv_buf;
-	char* ptr = NULL;
+	char *recv_buf;
+	char *ptr = NULL;
 
 	if (panel == NULL) {
 		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
 		return -EINVAL;
 	}
 	panel_data = &panel->panel_data;
-	recv_buf = (char*)buf;
+	recv_buf = (char *)buf;
 	while ((ptr = strsep(&recv_buf, " \t")) != NULL) {
 		if (*ptr) {
 			ret = set_stm_info(ptr, panel_data->props.stm_field_info);
@@ -238,7 +235,7 @@ static ssize_t read_mtp_store(struct device *dev,
 	pr_info("READ_Reg addr: %02x, pos : %d len : %d\n",
 			readreg, readpos, readlen);
 	for (i = 0; i < readlen; i++)
-		pr_info("READ_Reg %dth : %02x \n", i + 1, readbuf[i]);
+		pr_info("READ_Reg %dth : %02x\n", i + 1, readbuf[i]);
 	mutex_unlock(&sysfs_lock);
 
 	return size;
@@ -292,7 +289,8 @@ static ssize_t write_mtp_store(struct device *dev,
 	pr_info("%s len: %d\n", __func__, send_len);
 
 	for (i = 0; i < send_len; i++) {
-		if ((ptr = strsep(&recv_buf, " \t")) == NULL) {
+		ptr = strsep(&recv_buf, " \t");
+		if (ptr == NULL) {
 			//adjust send_len by filled buffer
 			send_len = i;
 			break;
@@ -343,7 +341,7 @@ static ssize_t gamma_interpolation_test_show(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 	if (panel_data->props.gamma_control_buf != NULL) {
-		snprintf(buf, PAGE_SIZE, "%x %x %x %x %x %x \n",
+		snprintf(buf, PAGE_SIZE, "%x %x %x %x %x %x\n",
 			panel_data->props.gamma_control_buf[0], panel_data->props.gamma_control_buf[1],
 			panel_data->props.gamma_control_buf[2], panel_data->props.gamma_control_buf[3],
 			panel_data->props.gamma_control_buf[4], panel_data->props.gamma_control_buf[5]);
@@ -373,19 +371,17 @@ static ssize_t gamma_interpolation_test_store(struct device *dev,
 		return -EINVAL;
 	}
 	panel_data = &panel->panel_data;
-	if (panel_data->props.gamma_control_buf) {
-		kfree(panel_data->props.gamma_control_buf);
-	}
+
+	kfree(panel_data->props.gamma_control_buf);
 
 	panel_data->props.gamma_control_buf = kzalloc(sizeof(write_buf), GFP_KERNEL);
 	mutex_lock(&panel->op_lock);
 	memcpy(panel_data->props.gamma_control_buf, write_buf, sizeof(write_buf));
 	mutex_unlock(&panel->op_lock);
-	for(i = 0; i < 6; i++) {
+	for (i = 0; i < 6; i++)
 		pr_info("%s %x %x\n", __func__, write_buf[i], panel_data->props.gamma_control_buf[i]);
-	}
 
-	ret = panel_do_seqtbl_by_index(panel,PANEL_GAMMA_INTER_CONTROL_SEQ);
+	ret = panel_do_seqtbl_by_index(panel, PANEL_GAMMA_INTER_CONTROL_SEQ);
 	if (unlikely(ret < 0)) {
 		pr_err("%s, failed to write gamma interpolation control seq\n", __func__);
 		return ret;
@@ -412,7 +408,7 @@ static ssize_t fingerprint_store(struct device *dev,
 {
 	int rc;
 
-	rc = kstrtouint(buf, (unsigned int)0, &fingerprint_value);
+	rc = kstrtouint(buf, 0, &fingerprint_value);
 	if (rc < 0)
 		return rc;
 
@@ -505,7 +501,7 @@ static ssize_t cell_id_show(struct device *dev,
 	resource_copy_by_name(panel_data, coordinate, "coordinate");
 
 	snprintf(buf, PAGE_SIZE, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n",
-		date[0] , date[1], date[2], date[3], date[4], date[5], date[6],
+		date[0], date[1], date[2], date[3], date[4], date[5], date[6],
 		coordinate[0], coordinate[1], coordinate[2], coordinate[3]);
 
 	return strlen(buf);
@@ -626,6 +622,7 @@ static ssize_t brightness_table_show(struct device *dev,
 	char recv_buf[50] = {0, };
 	int recv_buf_len = ARRAY_SIZE(recv_buf);
 	int max_brightness = 0;
+
 	if (panel == NULL) {
 		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
 		return -EINVAL;
@@ -652,7 +649,7 @@ static ssize_t brightness_table_show(struct device *dev,
 		}
 		prev_actual_brightness = actual_brightness;
 		prev_br = br;
-		if (PAGE_SIZE <= len) {
+		if (len >= PAGE_SIZE) {
 			pr_info("%s print buffer overflow %d\n", __func__, len);
 			len = PAGE_SIZE - 1;
 			goto exit;
@@ -699,7 +696,7 @@ static ssize_t adaptive_control_store(struct device *dev,
 	panel_data = &panel->panel_data;
 	panel_bl = &panel->panel_bl;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -754,7 +751,7 @@ static ssize_t siop_enable_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -838,7 +835,7 @@ static ssize_t mcd_mode_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -872,7 +869,7 @@ static void print_mcd_resistance(u8 *mcd_nok, int size)
 		if (!(code % 0x10))
 			len += snprintf(buf + len, sizeof(buf) - len, "[%02X] ", code);
 		len += snprintf(buf + len, sizeof(buf) - len, "%02X%s",
-			   	mcd_nok[code], (!((code + 1) % 0x10)) ? "\n" : " ");
+				mcd_nok[code], (!((code + 1) % 0x10)) ? "\n" : " ");
 	}
 	pr_info("%s\n", buf);
 }
@@ -997,7 +994,7 @@ static ssize_t mcd_resistance_store(struct device *dev,
 		return -EINVAL;
 	}
 	panel_data = &panel->panel_data;
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1222,7 +1219,7 @@ static ssize_t self_mask_check_show(struct device *dev,
 	struct aod_dev_info *aod;
 	struct panel_info *panel_data;
 	u8 success_check = 1;
-	u8* recv_checksum = NULL;
+	u8 *recv_checksum = NULL;
 	int ret = 0, i = 0;
 	int len = 0;
 
@@ -1234,7 +1231,7 @@ static ssize_t self_mask_check_show(struct device *dev,
 	panel_data = &panel->panel_data;
 
 	if (aod->props.self_mask_checksum_len) {
-		recv_checksum = kmalloc(sizeof(u8) * aod->props.self_mask_checksum_len, GFP_KERNEL);
+		recv_checksum = kmalloc_array(aod->props.self_mask_checksum_len, sizeof(u8), GFP_KERNEL);
 		if (!recv_checksum) {
 			panel_err("PANEL:ERR:%s:failed to mem alloc\n", __func__);
 			return -ENOMEM;
@@ -1244,16 +1241,14 @@ static ssize_t self_mask_check_show(struct device *dev,
 		ret = panel_do_aod_seqtbl_by_index(aod, SELF_MASK_CHECKSUM_SEQ);
 		if (unlikely(ret < 0)) {
 			panel_err("PANEL:ERR:%s:failed to send cmd selfmask checksum\n", __func__);
-			if (recv_checksum)
-				kfree(recv_checksum);
+			kfree(recv_checksum);
 			return ret;
 		}
 
 		ret = resource_copy_n_clear_by_name(panel_data,	recv_checksum, "self_mask_checksum");
 		if (unlikely(ret < 0)) {
 			panel_err("PANEL:ERR:%s:failed to get selfmask checksum\n", __func__);
-			if (recv_checksum)
-				kfree(recv_checksum);
+			kfree(recv_checksum);
 			return ret;
 		}
 		clear_self_mask_check(panel);
@@ -1265,12 +1260,10 @@ static ssize_t self_mask_check_show(struct device *dev,
 			}
 		}
 		len = snprintf(buf, PAGE_SIZE, "%d", success_check);
-		for (i = 0; i < aod->props.self_mask_checksum_len; i++) {
+		for (i = 0; i < aod->props.self_mask_checksum_len; i++)
 			len += snprintf(buf + len, PAGE_SIZE - len, " %02x", recv_checksum[i]);
-		}
 		len += snprintf(buf + len, PAGE_SIZE - len, "\n", recv_checksum[i]);
-		if (recv_checksum)
-			kfree(recv_checksum);
+		kfree(recv_checksum);
 	} else {
 		snprintf(buf, PAGE_SIZE, "-1\n");
 	}
@@ -1310,7 +1303,7 @@ static ssize_t mst_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1340,10 +1333,9 @@ u8 checksum[4] = { 0x12, 0x34, 0x56, 0x78 };
 static bool gct_chksum_is_valid(struct panel_device *panel)
 {
 	int i;
-	struct panel_info *panel_data;
-	panel_data = &panel->panel_data;
+	struct panel_info *panel_data = &panel->panel_data;
 
-	for(i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++)
 		if (checksum[i] != panel_data->props.gct_valid_chksum)
 			return false;
 	return true;
@@ -1421,7 +1413,7 @@ static ssize_t gct_store(struct device *dev,
 
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1583,7 +1575,7 @@ static ssize_t xtalk_mode_store(struct device *dev,
 	panel_data = &panel->panel_data;
 	panel_bl = &panel->panel_bl;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1761,9 +1753,8 @@ static ssize_t poc_mca_show(struct device *dev,
 
 	len = get_resource_size_by_name(&panel->panel_data, "poc_mca_chksum");
 	buf[0] = '\0';
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len; i++)
 		snprintf(buf, PAGE_SIZE, "%s%02X ", buf, chksum_data[i]);
-	}
 
 	dev_info(dev, "%s poc_mca_checksum: %s\n", __func__, buf);
 
@@ -1837,9 +1828,8 @@ static ssize_t gamma_flash_show(struct device *dev,
 	else
 		ret = panel->work[PANEL_WORK_DIM_FLASH].ret;
 
-	pr_info("%s result %d, dim chksum(calc:%04X read:%04X), "
-			"mtp chksum(reg:%04X, calc:%04X, read:%04X)\n", __func__,
-			ret, result->dim_chksum_by_calc, result->dim_chksum_by_read,
+	pr_info("%s result %d, dim chksum(calc:%04X read:%04X), mtp chksum(reg:%04X, calc:%04X, read:%04X)\n",
+			__func__, ret, result->dim_chksum_by_calc, result->dim_chksum_by_read,
 			calc_checksum_16bit(result->mtp_reg, sizeof(result->mtp_reg)),
 			result->mtp_chksum_by_calc, result->mtp_chksum_by_read);
 
@@ -1859,7 +1849,7 @@ static ssize_t gamma_flash_store(struct device *dev,
 	if (!IS_PANEL_ACTIVE(panel))
 		return -ENODEV;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1912,7 +1902,7 @@ static ssize_t grayspot_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1976,7 +1966,7 @@ static ssize_t hmt_bright_store(struct device *dev,
 	}
 	panel_bl = &panel->panel_bl;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -1986,9 +1976,8 @@ static ssize_t hmt_bright_store(struct device *dev,
 	mutex_lock(&panel_bl->lock);
 	mutex_lock(&panel->op_lock);
 
-	if (panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_HMD].brightness != BRT(value)) {
+	if (panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_HMD].brightness != BRT(value))
 		panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_HMD].brightness = BRT(value);
-	}
 
 	if (panel->state.hmd_on != PANEL_HMD_ON) {
 		panel_info("PANEL:WARN:%s: hmd off\n", __func__);
@@ -2748,8 +2737,8 @@ static void show_aid_log(struct panel_info *panel_data, int id)
 		if (elvss_tbl) {
 			len += snprintf(buf + len, sizeof(buf) - len, "| ");
 			for_each_layer(elvss_tbl, layer)
-			for_each_col(elvss_tbl, col)
-				len += snprintf(buf + len, sizeof(buf) - len, "%02X ",
+				for_each_col(elvss_tbl, col)
+					len += snprintf(buf + len, sizeof(buf) - len, "%02X ",
 						elvss_tbl->arr[maptbl_index(elvss_tbl, layer, i, col)]);
 		}
 
@@ -2881,7 +2870,8 @@ static ssize_t copr_store(struct device *dev,
 
 	mutex_lock(&copr->lock);
 	while ((p = strsep(&arg, " \t")) != NULL) {
-		if (!*p) continue;
+		if (!*p)
+			continue;
 		index = find_copr_reg_by_name(copr->props.version, p);
 		if (index < 0) {
 			pr_err("%s arg(%s) not found\n", __func__, p);
@@ -3052,7 +3042,7 @@ static ssize_t copr_roi_show(struct device *dev,
 		for (c = 0; c < 3; c++) {
 			len += snprintf(buf + len, PAGE_SIZE - len,
 					"%d%s", out[i * 3 + c],
-					((i == copr->props.nr_roi -1) && c == 2) ? "\n" : " ");
+					((i == copr->props.nr_roi - 1) && c == 2) ? "\n" : " ");
 		}
 	}
 
@@ -3410,9 +3400,8 @@ static ssize_t isc_defect_store(struct device *dev,
 
 	if (value) {
 		ret = panel_do_seqtbl_by_index_nolock(panel, PANEL_CHECK_ISC_DEFECT_SEQ);
-		if (unlikely(ret < 0)) {
+		if (unlikely(ret < 0))
 			panel_err("PANEL:ERR:%s:failed to write ics defect seq\n", __func__);
-		}
 	}
 
 	mutex_unlock(&panel->op_lock);
@@ -3521,7 +3510,7 @@ static ssize_t dynamic_hlpm_store(struct device *dev,
 	}
 	panel_data = &panel->panel_data;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 	if ((panel_data->props.alpm_mode != HLPM_HIGH_BR) && (panel_data->props.alpm_mode != HLPM_LOW_BR)) {
@@ -3576,12 +3565,12 @@ static ssize_t dynamic_freq_store(struct device *dev,
 		panel_err("PANEL:ERR:%s:panel is null\n", __func__);
 		return -EINVAL;
 	}
-	
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
-	if (value < 0 ) {
+	if (value < 0) {
 		panel_err("PANEL:ERR:%s:value is negative : %d\n", __func__, value);
 		return -EINVAL;
 	}
@@ -3631,7 +3620,7 @@ static ssize_t adap_freq_store(struct device *dev,
 	adap_info = &panel->lcd_info.adaptive_info;
 	adap_idx = &panel->adap_idx;
 
-	rc = kstrtouint(buf, (unsigned int)0, &value);
+	rc = kstrtouint(buf, 0, &value);
 	if (rc < 0)
 		return rc;
 
@@ -3712,9 +3701,8 @@ static ssize_t spi_flash_ctrl_store(struct device *dev,
 	cmd_scanned = parse;
 	while (cmd_scanned < size && spi_flash_writelen < SPI_BUF_LEN) {
 		ret = sscanf(buf + cmd_scanned, " %i%n", &cmd_input, &parse);
-		if (ret < 1 || parse <= 0) {
+		if (ret < 1 || parse <= 0)
 			break;
-		}
 
 		spi_flash_writebuf[spi_flash_writelen++] = cmd_input & 0xFF;
 		cmd_scanned += parse;
@@ -3813,12 +3801,6 @@ struct device_attribute panel_attrs[] = {
 	__PANEL_ATTR_RW(lpm_opr, 0664),
 	__PANEL_ATTR_RW(fingerprint, 0644),
 	__PANEL_ATTR_RW(conn_det, 0664),
-#if 0
-#ifdef CONFIG_ACTIVE_CLOCK
-	__PANEL_ATTR_RW(active_clock, 0644),
-	__PANEL_ATTR_RW(active_blink, 0644),
-#endif
-#endif
 #ifdef CONFIG_SUPPORT_HMD
 	__PANEL_ATTR_RW(hmt_bright, 0664),
 	__PANEL_ATTR_RW(hmt_on, 0664),
@@ -3892,16 +3874,16 @@ int panel_sysfs_probe(struct panel_device *panel)
 		else
 			pr_err("success to create /sys/devices/svc svc : 0x%pK\n", svc);
 	} else {
-		svc = (struct kobject*)svc_sd->priv;
+		svc = (struct kobject *)svc_sd->priv;
 		pr_info("success to find svc_sd : 0x%pK  svc : 0x%pK\n", svc_sd, svc);
 	}
 
 	if (!IS_ERR_OR_NULL(svc)) {
 		ret = sysfs_create_link(svc, &lcd->dev.kobj, "OCTA");
 		if (ret)
-			pr_err("failed to create svc/OCTA/ \n");
+			pr_err("failed to create svc/OCTA/\n");
 		else
-			pr_info("success to create svc/OCTA/ \n");
+			pr_info("success to create svc/OCTA/\n");
 	} else {
 		pr_err("failed to find svc kobject\n");
 	}

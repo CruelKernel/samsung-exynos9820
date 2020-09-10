@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_notify.c
- *
- * Samsung Common Panel Notifier Driver.
- *
- * Copyright (c) 2018 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

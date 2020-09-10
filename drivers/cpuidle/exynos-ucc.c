@@ -15,6 +15,9 @@
 
 static int ucc_initialized = false;
 
+bool ib_ucc_initialized;
+EXPORT_SYMBOL(ib_ucc_initialized);
+
 /*
  * struct ucc_config
  *
@@ -195,4 +198,5 @@ void __init init_exynos_ucc(void)
 
 	cpumask_setall(&cur_cstate);
 	ucc_initialized = true;
+	ib_ucc_initialized = true;
 }

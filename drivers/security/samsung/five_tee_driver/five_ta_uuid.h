@@ -17,21 +17,42 @@
 #ifndef __FIVE_TEE_UUID_H__
 #define __FIVE_TEE_UUID_H__
 
-#ifdef CONFIG_TRUSTONIC
+#if defined(CONFIG_FIVE_USE_TZDEV)
+static const TEEC_UUID five_ta_uuid = {
+	.timeLow = 0x00000000,
+	.timeMid = 0x0000,
+	.timeHiAndVersion = 0x0000,
+	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x46, 0x49, 0x56, 0x45},
+};
+#elif defined(CONFIG_FIVE_USE_QSEE)
+#ifdef CONFIG_ARCH_MSM8917
+static const TEEC_UUID five_ta_uuid = {
+	.timeLow = 0x6d736d38,
+	.timeMid = 0x3931,
+	.timeHiAndVersion = 0x372f,
+	.clockSeqAndNode = {0x66, 0x69, 0x76, 0x65, 0x00, 0x00, 0x00, 0x00},
+};
+#else
+static const TEEC_UUID five_ta_uuid = {
+	.timeLow = 0x66697665,
+	.timeMid = 0x0000,
+	.timeHiAndVersion = 0x0000,
+	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+};
+#endif // CONFIG_ARCH_MSM8917
+#elif defined(CONFIG_FIVE_USE_TRUSTONIC)
 static const TEEC_UUID five_ta_uuid = {
 	.timeLow = 0xffffffff,
 	.timeMid = 0x0000,
 	.timeHiAndVersion = 0x0000,
 	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x72},
 };
-#endif
-
-#ifdef CONFIG_TEEGRIS
+#elif defined(CONFIG_FIVE_USE_EMULATOR)
 static const TEEC_UUID five_ta_uuid = {
 	.timeLow = 0x00000000,
 	.timeMid = 0x0000,
 	.timeHiAndVersion = 0x0000,
-	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x46, 0x49, 0x56, 0x45},
+	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x46, 0x49, 0x56, 0xff},
 };
 #endif
 

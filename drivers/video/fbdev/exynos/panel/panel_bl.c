@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_bl.c
- *
- * Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,9 +34,7 @@ static void print_tbl(int *tbl, int sz)
 	}
 }
 #else
-static void print_tbl(int *tbl, int sz) {
-	return;
-}
+static void print_tbl(int *tbl, int sz) {}
 #endif
 
 static int max_brt_tbl(struct brightness_table *brt_tbl)
@@ -544,7 +539,7 @@ int aor_interpolation(unsigned int *brt_tbl, unsigned int *lum_tbl,
 	u64 upper_lum, lower_lum;
 	u64 upper_brt, lower_brt;
 	u64 upper_aor, lower_aor, aor;
-	u64 upper_aor_ratio, lower_aor_ratio, aor_ratio;
+	u64 upper_aor_ratio, lower_aor_ratio, aor_ratio = 0;
 	u64 intrp_brt = 0, vbase_lum = 0;
 	enum DIMTYPE dimtype;
 
@@ -638,7 +633,7 @@ int panel_bl_set_brightness(struct panel_bl_device *panel_bl, int id, int force)
 	int ret = 0, ilum = 0, luminance = 0, brightness, index = PANEL_SET_BL_SEQ, step;
 	struct panel_bl_sub_dev *subdev;
 	struct panel_device *panel;
-	int luminance_interp;
+	int luminance_interp = 0;
 
 	if (panel_bl == NULL) {
 		panel_err("PANEL:ERR:%s:panel is null\n", __func__);

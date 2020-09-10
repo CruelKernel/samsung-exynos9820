@@ -1875,7 +1875,8 @@ static int rkp_restrict_fork(struct filename *path)
 {
 	struct cred *shellcred;
 
-	if(!strcmp(path->name,"/system/bin/patchoat")){
+	if(!strcmp(path->name,"/system/bin/patchoat") ||
+		!strcmp(path->name, "/system/bin/idmap2")) {
 		return 0 ;
 	}
         /* If the Process is from Linux on Dex, 

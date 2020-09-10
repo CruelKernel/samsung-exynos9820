@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/copr.h
- *
- * Header file for Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -61,7 +58,7 @@ enum COPR_VER {
 
 struct copr_options {
 	u8 thread_on;			/* copr_thread 0: off, 1: on */
-	u8 check_avg; 			/* check_avg when lcd on/off  0: not update avg, 1 : updateavg */
+	u8 check_avg;			/* check_avg when lcd on/off  0: not update avg, 1 : updateavg */
 };
 
 struct copr_reg_info {
@@ -316,7 +313,7 @@ static inline void SET_COPR_REG_ROI(struct copr_info *copr, struct copr_roi *roi
 			memset(props->reg.v3.roi, 0, sizeof(props->reg.v3.roi));
 		} else {
 			props->reg.v3.roi_on = 0;
-			for (i = 0; i < min((int)ARRAY_SIZE(props->reg.v3.roi), nr_roi); i++) {
+			for (i = 0; i < min_t(int, ARRAY_SIZE(props->reg.v3.roi), nr_roi); i++) {
 				props->reg.v3.roi[i].roi_xs = roi[i].roi_xs;
 				props->reg.v3.roi[i].roi_ys = roi[i].roi_ys;
 				props->reg.v3.roi[i].roi_xe = roi[i].roi_xe;
@@ -347,17 +344,17 @@ static inline int get_copr_reg_copr_en(struct copr_info *copr)
 }
 
 #ifdef CONFIG_EXYNOS_DECON_LCD_COPR
-bool copr_is_enabled(struct copr_info *);
-int copr_enable(struct copr_info *);
-int copr_disable(struct copr_info *);
-int copr_update_start(struct copr_info *, int);
+bool copr_is_enabled(struct copr_info *copr);
+int copr_enable(struct copr_info *copr);
+int copr_disable(struct copr_info *copr);
+int copr_update_start(struct copr_info *copr, int count);
 int copr_update_average(struct copr_info *copr);
-int copr_get_value(struct copr_info *);
-int copr_get_average(struct copr_info *, int *, int *);
+int copr_get_value(struct copr_info *copr);
+//int copr_get_average(struct copr_info *, int *, int *);
 int copr_get_average_and_clear(struct copr_info *copr);
 int copr_roi_set_value(struct copr_info *copr, struct copr_roi *roi, int size);
 int copr_roi_get_value(struct copr_info *copr, struct copr_roi *roi, int size, u32 *out);
-int copr_probe(struct panel_device *, struct panel_copr_data *);
+int copr_probe(struct panel_device *panel, struct panel_copr_data *copr_data);
 int copr_res_update(struct copr_info *copr, int index, int cur_value, struct timespec cur_ts);
 int get_copr_reg_size(int version);
 const char *get_copr_reg_name(int version, int index);

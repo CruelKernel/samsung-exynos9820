@@ -473,6 +473,8 @@
 		*(__ksymtab_strings)					\
 	}								\
 									\
+	SECDBG_MEMBERS							\
+									\
 	/* __*init sections */						\
 	__init_rodata : AT(ADDR(__init_rodata) - LOAD_OFFSET) {		\
 		*(.ref.rodata)						\
@@ -774,6 +776,19 @@
 	}
 #else
 #define ORC_UNWIND_TABLE
+#endif
+
+#ifdef CONFIG_SEC_DEBUG
+#define SECDBG_MEMBERS							\
+	/* Secdbg member table: offsets */				\
+	. = ALIGN(8);							\
+	__secdbg_member_table : AT(ADDR(__secdbg_member_table) - LOAD_OFFSET) { \
+		__start__secdbg_member_table = .;			\
+		KEEP(*(SORT(.secdbg_mbtab.*))) 				\
+		__stop__secdbg_member_table = .;			\
+	}
+#else
+#define SECDBG_MEMBERS
 #endif
 
 #ifdef CONFIG_PM_TRACE

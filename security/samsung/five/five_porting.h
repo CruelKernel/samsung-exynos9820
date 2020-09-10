@@ -43,6 +43,18 @@
 #define inode_unlock(inode)	mutex_unlock(&(inode)->i_mutex)
 #endif
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 115)
+/* It is added for initialization purposes.
+ * For developing LSM, please, use DEFINE_LSM
+ */
+#define security_initcall(fn) late_initcall(fn)
+#endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 20, 17)
+/* This file was added in v5.0.0 */
+#include <uapi/linux/mount.h>
+#endif
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 20)
 /* kmemcheck is gone.
  * Since Kernel 4.14.21 SLAB_NOTRACK isn't present in Kernel.
@@ -82,6 +94,16 @@ static inline ssize_t __vfs_getxattr(struct dentry *dentry, struct inode *inode,
 
 	return inode->i_op->getxattr(dentry, name, value, size);
 }
+#endif
+
+#if defined(CONFIG_ANDROID) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+/*
+ * __vfs_getxattr was changed in Android Kernel v5.4
+ * https://android.googlesource.com/kernel/common/+/3484eba91d6b529cc606486a2db79513f3db6c67
+ */
+#define XATTR_NOSECURITY 0x4	/* get value, do not involve security check */
+#define __vfs_getxattr(dentry, inode, name, value, size, flags) \
+		__vfs_getxattr(dentry, inode, name, value, size)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)

@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel.c
- *
- * Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -179,10 +176,10 @@ void print_panel_lut(struct panel_lut_info *lut_info)
 	int i;
 
 	for (i = 0; i < lut_info->nr_panel; i++)
-		  panel_dbg("PANEL:DBG:panel_lut names[%d] %s\n", i, lut_info->names[i]);
+		panel_dbg("PANEL:DBG:panel_lut names[%d] %s\n", i, lut_info->names[i]);
 
 	for (i = 0; i < lut_info->nr_lut; i++)
-		  panel_dbg("PANEL:DBG:panel_lut[%d] id:0x%08X mask:0x%08X index:%d(%s)\n",
+		panel_dbg("PANEL:DBG:panel_lut[%d] id:0x%08X mask:0x%08X index:%d(%s)\n",
 				i, lut_info->lut[i].id, lut_info->lut[i].mask,
 				lut_info->lut[i].index, lut_info->names[lut_info->lut[i].index]);
 }
@@ -472,6 +469,7 @@ int maptbl_getidx(struct maptbl *tbl)
 u8 *maptbl_getptr(struct maptbl *tbl)
 {
 	int index = maptbl_getidx(tbl);
+
 	if (unlikely(index < 0)) {
 		pr_err("%s, failed to get index\n", __func__);
 		return NULL;
@@ -498,8 +496,8 @@ void maptbl_memcpy(struct maptbl *dst, struct maptbl *src)
 	if (!dst || !src || dst->nlayer != src->nlayer ||
 		dst->nrow != src->nrow || dst->ncol != src->ncol) {
 		pr_err("%s failed to copy from:%s to:%s size:%d\n",
-				__func__, (!src || !src->name ) ? "" : src->name,
-				(!dst || !dst->name ) ? "" : dst->name,
+				__func__, (!src || !src->name) ? "" : src->name,
+				(!dst || !dst->name) ? "" : dst->name,
 				(!dst) ? 0 : sizeof_maptbl(dst));
 		return;
 	}
@@ -663,6 +661,7 @@ static int panel_spi_read_data(struct panel_device *panel,
 			u8 cmd_id, u8 *buf, int size)
 {
 	struct panel_spi_dev *spi_dev;
+
 	if (!panel)
 		return -EINVAL;
 
@@ -866,11 +865,10 @@ int panel_verify_tx_packet(struct panel_device *panel, u8 *src, u8 ofs, u8 len)
 		return -EINVAL;
 	}
 
-	if (!IS_PANEL_ACTIVE(panel)) {
+	if (!IS_PANEL_ACTIVE(panel))
 		return 0;
-	}
 
-	buf = kzalloc(sizeof(u8) * len, GFP_KERNEL);
+	buf = kcalloc(len, sizeof(u8), GFP_KERNEL);
 	if (!buf) {
 		pr_err("%s, failed to alloc memory\n", __func__);
 		return -ENOMEM;
@@ -1013,22 +1011,22 @@ static int panel_spi_packet(struct panel_device *panel, struct pktinfo *info)
 
 	type = info->type;
 	switch (type) {
-		case SPI_PKT_TYPE_WR:
-			if (!spi_dev->ops->cmd) {
-				ret = -ENOSYS;
-				break;
-			}
-			ret = spi_dev->ops->cmd(spi_dev, info->data, info->dlen, NULL, 0);
+	case SPI_PKT_TYPE_WR:
+		if (!spi_dev->ops->cmd) {
+			ret = -ENOTSUPP;
 			break;
-		case SPI_PKT_TYPE_SETPARAM:
-			if (!spi_dev->ops->setparam) {
-				ret = -ENOSYS;
-				break;
-			}
-			ret = spi_dev->ops->setparam(spi_dev, info->data, info->dlen);
+		}
+		ret = spi_dev->ops->cmd(spi_dev, info->data, info->dlen, NULL, 0);
+		break;
+	case SPI_PKT_TYPE_SETPARAM:
+		if (!spi_dev->ops->setparam) {
+			ret = -ENOTSUPP;
 			break;
-		default:
-			break;
+		}
+		ret = spi_dev->ops->setparam(spi_dev, info->data, info->dlen);
+		break;
+	default:
+		break;
 	}
 
 	if (ret < 0) {
@@ -1356,6 +1354,7 @@ struct resinfo *find_panel_resource(struct panel_info *panel_data, char *name)
 bool panel_resource_initialized(struct panel_info *panel_data, char *name)
 {
 	struct resinfo *res = find_panel_resource(panel_data, name);
+
 	if (unlikely(!res)) {
 		panel_err("%s, %s not found in resource\n",
 				__func__, name);
@@ -1552,9 +1551,9 @@ int panel_rx_nbytes(struct panel_device *panel,
 #ifdef CONFIG_SUPPORT_POC_SPI
 	if (type == SPI_PKT_TYPE_RD) {
 		ret = panel_spi_read_data(panel, addr, buf, len);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
+
 		return len;
 	}
 #endif
@@ -1572,6 +1571,7 @@ int panel_rx_nbytes(struct panel_device *panel,
 				 * SO TEMPORARY DISABLE GPRAR FOR READ FUNCTION
 				 */
 				char *temp_buf = kmalloc(gpara[1] + read_len, GFP_KERNEL);
+
 				if (!temp_buf)
 					return -EINVAL;
 
@@ -1654,9 +1654,8 @@ int read_panel_id(struct panel_device *panel, u8 *buf)
 		return -EINVAL;
 	}
 
-	if (!IS_PANEL_ACTIVE(panel)) {
+	if (!IS_PANEL_ACTIVE(panel))
 		return -ENODEV;
-	}
 
 	mutex_lock(&panel->op_lock);
 	panel_set_key(panel, 3, true);
@@ -1693,9 +1692,8 @@ int panel_rdinfo_update(struct panel_device *panel, struct rdinfo *rdi)
 		return -EINVAL;
 	}
 
-	if (rdi->data)
-		kfree(rdi->data);
-	rdi->data = kzalloc(sizeof(u8) * rdi->len, GFP_KERNEL);
+	kfree(rdi->data);
+	rdi->data = kcalloc(rdi->len, sizeof(u8), GFP_KERNEL);
 
 #ifdef CONFIG_SUPPORT_DDI_FLASH
 	if (rdi->type == DSI_PKT_TYPE_RD_POC)

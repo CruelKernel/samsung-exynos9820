@@ -1019,7 +1019,7 @@ static int max77854_chg_set_property(struct power_supply *psy,
 				value.intval = WIRELESS_VOUT_5V;
 				psy_do_property(charger->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, value);
-				mdelay(200);
+				msleep(200);
 			}
 			max77854_read_reg(charger->i2c, MAX77854_CHG_REG_INT_MASK,
 				&chg_int_state);
@@ -1045,7 +1045,7 @@ static int max77854_chg_set_property(struct power_supply *psy,
 			/* Update CHG_CNFG_11 to 0x00(3V) */
 			max77854_write_reg(charger->i2c,
 				MAX77854_CHG_REG_CNFG_11, 0x00);
-			mdelay(50);
+			msleep(50);
 
 			/* enable charger interrupt */
 			max77854_write_reg(charger->i2c,
@@ -1096,7 +1096,7 @@ static int max77854_chg_set_property(struct power_supply *psy,
 			/* Update CHG_CNFG_11 to 0x00(3V) */
 			max77854_write_reg(charger->i2c,
 				MAX77854_CHG_REG_CNFG_11, 0x00);
-			mdelay(50);
+			msleep(50);
 
 			/* enable charger interrupt */
 			max77854_write_reg(charger->i2c,
@@ -1162,7 +1162,7 @@ static int max77854_otg_set_property(struct power_supply *psy,
 				value.intval = WIRELESS_VOUT_5V;
 				psy_do_property(charger->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, value);
-				mdelay(200);
+				msleep(200);
 			}
 			max77854_read_reg(charger->i2c, MAX77854_CHG_REG_INT_MASK,
 				&chg_int_state);
@@ -1188,7 +1188,7 @@ static int max77854_otg_set_property(struct power_supply *psy,
 			/* Update CHG_CNFG_11 to 0x00(3V) */
 			max77854_write_reg(charger->i2c,
 				MAX77854_CHG_REG_CNFG_11, 0x00);
-			mdelay(50);
+			msleep(50);
 
 			/* enable charger interrupt */
 			max77854_write_reg(charger->i2c,
@@ -1362,7 +1362,7 @@ static void wpc_detect_work(struct work_struct *work)
 				psy_do_property(charger->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_PROP_STATUS, value);
 			}
-			mdelay(50);
+			msleep(50);
 		} while (!wcin_state && !wcin_dtls && wcin_cnt < 2);
 	} 
 
@@ -1481,7 +1481,7 @@ static void max77854_aicl_isr_work(struct work_struct *work)
 			reduce_input_current(charger, REDUCE_CURRENT_STEP);
 			aicl_cnt = 0;
 		}
-		mdelay(50);
+		msleep(50);
 		max77854_read_reg(charger->i2c, MAX77854_CHG_REG_INT_OK, &aicl_state);
 		if (max77854_get_input_current(charger) <= MINIMUM_INPUT_CURRENT)
 			break;

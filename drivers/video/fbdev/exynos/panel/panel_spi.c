@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_spi.c
- *
- * Samsung Panel SPI Driver.
- *
- * Copyright (c) 2019 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Kimyung Lee <kernel.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -31,7 +28,8 @@ static const struct file_operations panel_spi_drv_fops = {
 
 #define PANEL_SPI_DEV_NAME	"panel_spi"
 
-static int panel_spi_reset(struct spi_device *spi) {
+static int panel_spi_reset(struct spi_device *spi)
+{
 	int status, i;
 	u8 reset_enable = 0x66;
 	u8 reset_device = 0x99;
@@ -69,16 +67,17 @@ static int panel_spi_reset(struct spi_device *spi) {
 static int panel_spi_ctrl(struct spi_device *spi, int ctrl_msg)
 {
 	int ret = 0;
-	switch(ctrl_msg) {
-		case PANEL_SPI_CTRL_RESET:
-			ret = panel_spi_reset(spi);
-			break;
-		case PANEL_SPI_STATUS_1:
-			break;
-		case PANEL_SPI_STATUS_2:
-			break;
-		default:
-			break;
+
+	switch (ctrl_msg) {
+	case PANEL_SPI_CTRL_RESET:
+		ret = panel_spi_reset(spi);
+		break;
+	case PANEL_SPI_STATUS_1:
+		break;
+	case PANEL_SPI_STATUS_2:
+		break;
+	default:
+		break;
 	}
 
 	return ret;
@@ -86,9 +85,9 @@ static int panel_spi_ctrl(struct spi_device *spi, int ctrl_msg)
 
 static int panel_spi_cmd_setparam(struct panel_spi_dev *spi_dev, const u8 *wbuf, int wsize)
 {
-	if(wsize < 1 || !wbuf) {
+	if (wsize < 1 || !wbuf)
 		return -EINVAL;
-	}
+
 	memcpy(spi_dev->setparam_buffer, wbuf, wsize);
 	spi_dev->setparam_buffer_size = wsize;
 	return wsize;
@@ -114,9 +113,8 @@ static int panel_spi_command(struct panel_spi_dev *spi_dev, const u8 *wbuf, int 
 		spi->max_speed_hz = spi_dev->speed_hz;
 
 	spi_message_init(&msg);
-	if(wsize < 1 || !wbuf) {
+	if (wsize < 1 || !wbuf)
 		return -EINVAL;
-	}
 
 	speed_hz = spi_dev->speed_hz;
 	if (speed_hz <= 0)
@@ -129,7 +127,7 @@ static int panel_spi_command(struct panel_spi_dev *spi_dev, const u8 *wbuf, int 
 	x_write.speed_hz = speed_hz;
 	spi_message_add_tail(&x_write, &msg);
 
-	if(rsize) {
+	if (rsize) {
 		memset(spi_dev->read_buf_data, 0, PANEL_SPI_RX_BUF_SIZE);
 		x_read.len = rsize;
 		x_read.rx_buf = spi_dev->read_buf_data;
@@ -159,9 +157,8 @@ static int panel_spi_read(struct panel_spi_dev *spi_dev, const u8 rcmd, u8 *rbuf
 	int wsize;
 
 	//check setparam cmd for read operation
-	if (!spi_dev->setparam_buffer) {
+	if (!spi_dev->setparam_buffer)
 		return -EINVAL;
-	}
 
 	wbuf = &rcmd;
 	wsize = 1;
@@ -197,7 +194,7 @@ static int panel_spi_read_id(struct panel_spi_dev *spi_dev, u32 *id)
 
 	if (ret < 0)
 		return ret;
-	
+
 	if (!ret)
 		return -EIO;
 
@@ -318,7 +315,7 @@ int panel_spi_drv_probe(struct panel_device *panel, struct spi_data *spi_data)
 	spi_dev->ops = &panel_spi_drv_ops;
 	spi_dev->speed_hz = spi_data->speed_hz;
 	spi_dev->setparam_buffer = (u8 *)devm_kzalloc(panel->dev, PANEL_SPI_MAX_CMD_SIZE * sizeof(u8), GFP_KERNEL);
-	spi_dev->read_buf_data= (u8 *)devm_kzalloc(panel->dev, PANEL_SPI_RX_BUF_SIZE * sizeof(u8), GFP_KERNEL);
+	spi_dev->read_buf_data = (u8 *)devm_kzalloc(panel->dev, PANEL_SPI_RX_BUF_SIZE * sizeof(u8), GFP_KERNEL);
 	spi_dev->dev.minor = MISC_DYNAMIC_MINOR;
 	spi_dev->dev.fops = &panel_spi_drv_fops;
 	spi_dev->dev.name = DRIVER_NAME;

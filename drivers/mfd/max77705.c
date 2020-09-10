@@ -552,16 +552,16 @@ static void max77705_wc_control(struct max77705_dev *max77705, bool enable)
 		value.strval= wpc_en_status;
 		if ((psy->desc->set_property != NULL) &&
 			(psy->desc->set_property(psy, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_WPC_EN, &value) >= 0))
-			pr_info("%s: WC CONTROL: %s", __func__, wpc_en_status[1] ? "Enable" : "Disable");
+			pr_info("%s: WC CONTROL: %s\n", __func__, wpc_en_status[1] ? "Enable" : "Disable");
 		power_supply_put(psy);
 	} else {
 		if (max77705->pdata->wpc_en) {
 			if (enable) {
 				gpio_direction_output(max77705->pdata->wpc_en, 0);
-				pr_info("%s: WC CONTROL: ENABLE", __func__);
+				pr_info("%s: WC CONTROL: ENABLE\n", __func__);
 			} else {
 				gpio_direction_output(max77705->pdata->wpc_en, 1);
-				pr_info("%s: WC CONTROL: DISABLE", __func__);
+				pr_info("%s: WC CONTROL: DISABLE\n", __func__);
 			}
 		} else {
 			pr_info("%s : no wpc_en\n", __func__);

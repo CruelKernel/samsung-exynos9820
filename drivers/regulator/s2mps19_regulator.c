@@ -1175,6 +1175,11 @@ static int s2mps19_pmic_probe(struct platform_device *pdev)
 
 	s2mps19->num_regulators = pdata->num_regulators;
 
+#ifdef CONFIG_SEC_PM_BIGDATA
+	INIT_DELAYED_WORK(&s2mps19->hqm_pmtp_work, send_hqm_pmtp_work);
+	INIT_DELAYED_WORK(&s2mps19->hqm_bocp_work, send_hqm_bocp_work);
+#endif /* CONFIG_SEC_PM_BIGDATA */
+
 	for (i = 0; i < 12; i++) {
 		s2mps19->buck_ocp_irq[i] = irq_base + S2MPS19_PMIC_IRQ_OCP_B1M_INT4 + i;
 
@@ -1331,11 +1336,6 @@ static int s2mps19_pmic_probe(struct platform_device *pdev)
 
 	if (iodev->adc_mode > 0)
 		s2mps19_powermeter_init(iodev);
-
-#ifdef CONFIG_SEC_PM_BIGDATA
-	INIT_DELAYED_WORK(&s2mps19->hqm_pmtp_work, send_hqm_pmtp_work);
-	INIT_DELAYED_WORK(&s2mps19->hqm_bocp_work, send_hqm_bocp_work);
-#endif /* CONFIG_SEC_PM_BIGDATA */
 
 	return 0;
 err:

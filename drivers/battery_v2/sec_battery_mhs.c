@@ -974,10 +974,6 @@ int sec_bat_set_charge(struct sec_battery_info *battery,
 #if defined(CONFIG_BATTERY_CISD)
 		battery->usb_overheat_check = false;
 		battery->cisd.ab_vbat_check_count = 0;
-		if (chg_mode == SEC_BAT_CHG_MODE_BUCK_OFF) {
-			battery->cisd.data[CISD_DATA_BUCK_OFF]++;
-			battery->cisd.data[CISD_DATA_BUCK_OFF_PER_DAY]++;
-		}
 #endif
 	}
 
@@ -4182,9 +4178,6 @@ static int sec_bat_set_property(struct power_supply *psy,
 				}
 				mutex_unlock(&battery->wclock);
 			}
-#if defined(CONFIG_BATTERY_CISD)
-			increase_cisd_count(CISD_DATA_DROP_VALUE);
-#endif
 			break;
 		default:
 			return -EINVAL;

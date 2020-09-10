@@ -24,13 +24,13 @@
 #include <linux/alarmtimer.h>
 #include "../sec_charging_common.h"
 
-#define MFC_FW_BIN_VERSION			0x138
-#define MFC_FW_BIN_FULL_VERSION		0x01380000
+#define MFC_FW_BIN_VERSION			0x142
+#define MFC_FW_BIN_FULL_VERSION		0x01420000
 #define MFC_FW_BIN_VERSION_ADDR		0x0084 //fw rev85 address
 #define MTP_MAX_PROGRAM_SIZE 0x4000
 #define MTP_VERIFY_ADDR			0x0000
 #define MTP_VERIFY_SIZE			0x4680
-#define MTP_VERIFY_CHKSUM		0x02D26
+#define MTP_VERIFY_CHKSUM		0xC068
 
 #define MFC_FLASH_FW_HEX_PATH		"mfc/mfc_fw_flash.bin"
 #define MFC_FW_SDCARD_BIN_PATH		"/sdcard/mfc_fw_flash.bin"

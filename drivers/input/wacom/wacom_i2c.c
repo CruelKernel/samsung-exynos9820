@@ -1090,6 +1090,10 @@ static void wacom_i2c_noti_handler(struct wacom_i2c *wac_i2c, char *data)
 
 	switch (pack_sub_id) {
 	case ERROR_PACKET:
+		if (data[4] == 0x10 && data[5] == 0x11) {
+			wac_i2c->ble_disable_flag = true;
+			input_err(true, &wac_i2c->client->dev, "%s: ble mode is disabled!\n", __func__);
+		}
 	case TABLE_SWAP_PACKET:
 	case EM_NOISE_PACKET:
 		break;
@@ -1794,11 +1798,12 @@ void wacom_print_info(struct wacom_i2c *wac_i2c)
 		wac_i2c->scan_info_fail_cnt = 1000;
 
 	input_info(true, &wac_i2c->client->dev,
-		"%s: garage %s, ps %s, pen %s, chg %s, ble_mode(0x%x), epen %s, cover %s, count(%u,%u,%u), mode(%d), block_cnt(%d), check(%d), ver[0x%x] #%d\n",
+		"%s: garage %s, ps %s, pen %s, chg %s, ble_mode(0x%x%s), epen %s, cover %s, count(%u,%u,%u), mode(%d), block_cnt(%d), check(%d), ver[0x%x] #%d\n",
 		__func__, wac_i2c->pdata->use_garage ? "used" : "unused",
 		wac_i2c->battery_saving_mode ?  "on" : "off",
 		(wac_i2c->function_result & EPEN_EVENT_PEN_OUT) ? "out" : "in",
 		wac_i2c->is_mode_change ? "true" : "false", wac_i2c->ble_mode,
+		wac_i2c->ble_disable_flag ? ":disabled" : "",
 		wac_i2c->epen_blocked ? "blocked" : "unblocked",
 		wac_i2c->keyboard_cover_mode ? "on" : "off",
 		wac_i2c->i2c_fail_count, wac_i2c->abnormal_reset_count, wac_i2c->scan_info_fail_cnt,
@@ -1822,6 +1827,16 @@ static void wacom_i2c_resume_work(struct work_struct *work)
 	u8 irq_state = 0;
 	int retry = 1;
 	int ret = 0;
+
+	if (!wac_i2c->reset_flag && wac_i2c->ble_disable_flag) {
+		input_info(true, &client->dev,
+			   "%s: ble is diabled & send enable cmd!\n", __func__);
+
+		mutex_lock(&wac_i2c->ble_charge_mode_lock);
+		wacom_ble_charge_mode(wac_i2c, EPEN_BLE_C_ENABLE);
+		wac_i2c->ble_disable_flag = false;
+		mutex_unlock(&wac_i2c->ble_charge_mode_lock);
+	}
 
 reset:
 	if (wac_i2c->reset_flag) {

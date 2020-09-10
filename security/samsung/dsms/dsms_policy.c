@@ -17,6 +17,7 @@
 struct dsms_policy_entry dsms_policy[] = {
 { "security/samsung/defex_lsm/defex_procs.c", "defex_report_violation" },
 { "security/samsung/five/five_audit.c", "five_audit_sign_err" },
+{ "security/samsung/five/five_dsms.c", "five_dsms_msg" },
 }; // dsms_policy
 // ^^^^^ DO NOT CHANGE THESE LINES! ^^^^^
 

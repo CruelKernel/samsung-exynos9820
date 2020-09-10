@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/panel_bl.h
- *
- * Header file for Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -111,11 +108,6 @@ struct brightness_table {
 	u32 vtotal;
 };
 
-struct panel_bl_ops {
-    int (*set_brightness)(void *, int level);
-	int (*get_brightness)(void *);
-};
-
 enum panel_bl_hw_type {
 	PANEL_BL_HW_TYPE_TFT,
 	PANEL_BL_HW_TYPE_OCTA,
@@ -167,7 +159,6 @@ struct panel_bl_device {
 	struct backlight_device *bd;
 	void *bd_data;
 	struct mutex ops_lock;
-	const struct panel_bl_ops *ops;
 	struct mutex lock;
 	struct panel_bl_properties props;
 	struct panel_bl_sub_dev subdev[MAX_PANEL_BL_SUBDEV];
@@ -180,20 +171,20 @@ struct panel_bl_device {
 };
 
 int panel_bl_probe(struct panel_device *panel);
-int panel_bl_set_brightness(struct panel_bl_device *, int, int);
+int panel_bl_set_brightness(struct panel_bl_device *panel_bl, int id, int force);
 int panel_update_brightness(struct panel_device *panel);
-int get_max_brightness(struct panel_bl_device *);
-int get_brightness_pac_step(struct panel_bl_device *, int);
+int get_max_brightness(struct panel_bl_device *panel_bl);
+int get_brightness_pac_step(struct panel_bl_device *panel_bl, int brightness);
 int get_brightness_of_brt_to_step(struct panel_bl_device *panel_bl, int id, int brightness);
-int get_actual_brightness(struct panel_bl_device *, int);
-int get_subdev_actual_brightness(struct panel_bl_device *, int, int);
-int get_actual_brightness_index(struct panel_bl_device *, int);
+int get_actual_brightness(struct panel_bl_device *panel_bl, int brightness);
+int get_subdev_actual_brightness(struct panel_bl_device *panel_bl, int id, int brightness);
+int get_actual_brightness_index(struct panel_bl_device *panel_bl, int brightness);
 int get_subdev_actual_brightness_index(struct panel_bl_device *panel_bl,
 		int id, int brightness);
-int get_actual_brightness_interpolation(struct panel_bl_device *, int);
-int get_subdev_actual_brightness_interpolation(struct panel_bl_device *, int, int);
-int panel_bl_get_acl_pwrsave(struct panel_bl_device *);
-int panel_bl_get_acl_opr(struct panel_bl_device *);
+int get_actual_brightness_interpolation(struct panel_bl_device *panel_bl, int brightness);
+int get_subdev_actual_brightness_interpolation(struct panel_bl_device *panel_bl, int id, int brightness);
+int panel_bl_get_acl_pwrsave(struct panel_bl_device *panel_bl);
+int panel_bl_get_acl_opr(struct panel_bl_device *panel_bl);
 bool is_hbm_brightness(struct panel_bl_device *panel_bl, int brightness);
 bool is_ext_hbm_brightness(struct panel_bl_device *panel_bl, int brightness);
 int panel_bl_set_subdev(struct panel_bl_device *panel_bl, int id);
@@ -202,9 +193,9 @@ int panel_bl_update_average(struct panel_bl_device *panel_bl, size_t index);
 int panel_bl_clear_average(struct panel_bl_device *panel_bl, size_t index);
 int panel_bl_get_average_and_clear(struct panel_bl_device *panel_bl, size_t index);
 int aor_interpolation(unsigned int *brt_tbl, unsigned int *lum_tbl,
-		u8(*aor_tbl)[2], int size, int size_ui_lum, u32 vtotal, int brightness);
+		u8 (*aor_tbl)[2], int size, int size_ui_lum, u32 vtotal, int brightness);
 int panel_bl_aor_interpolation(struct panel_bl_device *panel_bl,
-		int id, u8(*aor_tbl)[2]);
+		int id, u8 (*aor_tbl)[2]);
 int panel_bl_irc_interpolation(struct panel_bl_device *panel_bl, int id,
 	struct panel_irc_info *irc_info);
 int search_tbl(int *tbl, int sz, enum SEARCH_TYPE type, int value);

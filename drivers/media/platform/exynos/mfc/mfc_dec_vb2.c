@@ -275,7 +275,7 @@ static void __mfc_dec_src_stop_streaming(struct mfc_ctx *ctx)
 	struct mfc_dev *dev = ctx->dev;
 	struct mfc_dec *dec = ctx->dec_priv;
 	struct mfc_buf *src_mb;
-	int index, csd, condition = 0;
+	int index = 0, csd, condition = 0, prev_state = 0;
 	int ret = 0;
 
 	while (1) {
@@ -284,10 +284,12 @@ static void __mfc_dec_src_stop_streaming(struct mfc_ctx *ctx)
 		if (csd == 1) {
 			mfc_clean_ctx_int_flags(ctx);
 			if (need_to_special_parsing(ctx)) {
+				prev_state = ctx->state;
 				mfc_change_state(ctx, MFCINST_SPECIAL_PARSING);
 				condition = MFC_REG_R2H_CMD_SEQ_DONE_RET;
 				mfc_info_ctx("try to special parsing! (before NAL_START)\n");
 			} else if (need_to_special_parsing_nal(ctx)) {
+				prev_state = ctx->state;
 				mfc_change_state(ctx, MFCINST_SPECIAL_PARSING_NAL);
 				condition = MFC_REG_R2H_CMD_FRAME_DONE_RET;
 				mfc_info_ctx("try to special parsing! (after NAL_START)\n");
@@ -301,6 +303,7 @@ static void __mfc_dec_src_stop_streaming(struct mfc_ctx *ctx)
 				ret = mfc_just_run(dev, ctx->num);
 				if (ret) {
 					mfc_err_ctx("Failed to run MFC\n");
+					mfc_change_state(ctx, prev_state);
 				} else {
 					if (mfc_wait_for_done_ctx(ctx, condition))
 						mfc_err_ctx("special parsing time out\n");

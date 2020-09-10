@@ -21,6 +21,7 @@
 #include "dsms_debug.h"
 #include "dsms_init.h"
 #include "dsms_rate_limit.h"
+#include "dsms_kernel_api.h"
 
 #define MAX_ALLOWED_DETAIL_LENGTH (1024)
 #define VALUE_STRLEN (22)
@@ -49,7 +50,7 @@ static const char *dsms_environ[] = {
 
 static atomic_t message_counter = ATOMIC_INIT(0);
 
-static char *dsms_alloc_user_string(const char *string)
+__visible_for_testing char *dsms_alloc_user_string(const char *string)
 {
 	size_t size;
 	char *string_cpy;
@@ -67,7 +68,7 @@ static char *dsms_alloc_user_string(const char *string)
 	return string_cpy;
 }
 
-static char *dsms_alloc_user_value(int64_t value)
+__visible_for_testing char *dsms_alloc_user_value(int64_t value)
 {
 	char *string = (char *) kmalloc(VALUE_STRLEN, GFP_USER);
 	if (string) {
@@ -77,14 +78,14 @@ static char *dsms_alloc_user_value(int64_t value)
 	return string;
 }
 
-static void dsms_free_user_string(const char *string)
+__visible_for_testing void dsms_free_user_string(const char *string)
 {
 	if (string == NULL || *string == 0)
 		return;
 	kfree(string);
 }
 
-static void dsms_message_cleanup(struct subprocess_info *info)
+__visible_for_testing void dsms_message_cleanup(struct subprocess_info *info)
 {
 	if (info && info->argv) {
 		dsms_free_user_string(info->argv[FEATURE_INDEX]);
@@ -95,24 +96,7 @@ static void dsms_message_cleanup(struct subprocess_info *info)
 	atomic_dec(&message_counter);
 }
 
-static int check_recovery_mode(void)
-{
-	static int recovery = -1;
-	struct file *fp;
-
-	if (recovery < 0) {
-		fp = filp_open("/sbin/recovery", O_RDONLY, 0);
-		if (IS_ERR(fp)) {
-			recovery = 0;
-		} else {
-			filp_close(fp, NULL);
-			recovery = 1;
-		}
-	}
-	return (recovery > 0);
-}
-
-static inline int dsms_send_allowed_message(const char *feature_code,
+__visible_for_testing inline int dsms_send_allowed_message(const char *feature_code,
 		const char *detail,
 		int64_t value)
 {
@@ -180,12 +164,6 @@ int noinline dsms_send_message(const char *feature_code,
 	void *address;
 	int ret = DSMS_DENY;
 	size_t len;
-
-	// DSMS doesn't work in recovery mode
-	if (check_recovery_mode()) {
-		dsms_log_write(LOG_ERROR, "Recovery mode, DSMS is disabled.");
-		goto exit_send;
-	}
 
 	len = strnlen(detail, MAX_ALLOWED_DETAIL_LENGTH);
 	dsms_log_write(LOG_DEBUG, "{'%s', '%s' (%zu bytes), %lld}",

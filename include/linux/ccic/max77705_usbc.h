@@ -172,6 +172,7 @@ struct max77705_usbc_platform_data {
 	int send_enter_mode_req;
 	u8 sbu[2];
 	struct completion ccic_sysfs_completion;
+	struct completion psrdy_wait;
 //	u8 selftest;
 //	struct completion is_selftest_done;
 
@@ -235,7 +236,7 @@ struct max77705_usbc_platform_data {
 	int is_in_first_sec_uvdm_req;
 	int is_in_sec_uvdm_out;
 	bool pn_flag;
-	u8 uvdm_error;
+	int uvdm_error;
 
 #if defined(CONFIG_SEC_FACTORY)
 	struct AP_REQ_GET_STATUS_Type factory_mode;

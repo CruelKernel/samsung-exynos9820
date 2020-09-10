@@ -211,7 +211,7 @@ struct dd_ioc {
 			unsigned long ino;
 			char name[MAX_XATTR_NAME_LEN];
 			char value[MAX_XATTR_LEN];
-			int size;
+			unsigned int size;
 		}xattr;
 		struct {
 			int state;

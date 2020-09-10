@@ -132,7 +132,7 @@ static struct err_variant arm64_err_type_TCR[] = {
 //	ERR_VAR("IRGN0", 9, 8),
 //	ERR_VAR("EPD0", 7, 7),
 //	ERR_VAR("T1SZ", 5, 0),
-//	ERR_VAR("END", 64, 64),
+	ERR_VAR("END", 64, 64),
 };
 
 static struct err_variant arm64_err_type_VBAR[] = {

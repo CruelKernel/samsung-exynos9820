@@ -4577,9 +4577,6 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
 	if (ext4_is_quota_file(ar->inode))
 		ar->flags |= EXT4_MB_USE_ROOT_BLOCKS;
 
-	if (ext4_test_inode_flag(ar->inode, EXT4_INODE_CORE_FILE))
-		ar->flags |= EXT4_MB_USE_EXTRA_ROOT_BLOCKS;
-
 	if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0) {
 		/* Without delayed allocation we need to verify
 		 * there is enough free blocks to do block allocation

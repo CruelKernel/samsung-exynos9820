@@ -20,6 +20,7 @@ const struct feature_match_entry feature_match[] = {
 	{"feature_immutable_path_open", feature_immutable_path_open},
 	{"feature_immutable_path_write", feature_immutable_path_write},
 	{"feature_immutable_src_exception", feature_immutable_src_exception},
+	{"feature_umhbin_path", feature_umhbin_path},
 };
 
 const int feature_match_size = sizeof(feature_match) / sizeof(feature_match[0]);
@@ -412,7 +413,7 @@ int load_file_list(const char *name)
 				!strncmp(str, "/system/", 8) ||
 				!strncmp(str, "/tmp/", 5) ||
 				!strncmp(str, "/vendor/", 8) ||
-#if defined(CONFIG_SEC_FACTORY)
+#if defined(DEFEX_FACTORY_ENABLE)
 				!strncmp(str, "/data/", 6) ||
 #endif
 				!strncmp(str, "/apex/", 6))) {

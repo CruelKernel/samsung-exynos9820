@@ -20,6 +20,8 @@
 
 #define MAX77705_PD_NAME	"MAX77705_PD"
 
+bool max77705_sec_pps_control(int en);
+
 enum {
 	CC_SNK = 0,
 	CC_SRC,

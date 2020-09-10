@@ -50,17 +50,16 @@ asmlinkage int defex_syscall_enter(long int syscallno, struct pt_regs *regs)
 }
 
 //INIT/////////////////////////////////////////////////////////////////////////
-static int __init defex_lsm_init(void)
+__visible_for_testing int __init defex_lsm_init(void)
 {
 	int ret;
 
 #ifdef DEFEX_CACHES_ENABLE
 	defex_file_cache_init();
 #endif /* DEFEX_CACHES_ENABLE */
-	creds_fast_hash_init();
 
 #ifdef DEFEX_PED_ENABLE
-	hash_init(creds_hash);
+	creds_fast_hash_init();
 #endif /* DEFEX_PED_ENABLE */
 
 	ret = defex_init_sysfs();

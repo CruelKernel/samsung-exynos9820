@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * linux/drivers/video/fbdev/exynos/panel/mdnie.h
- *
- * Header file for Samsung Common LCD Driver.
- *
- * Copyright (c) 2016 Samsung Electronics
+ * Copyright (c) Samsung Electronics Co., Ltd.
  * Gwanghui Lee <gwanghui.lee@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -523,7 +520,7 @@ static inline int mdnie_disable(struct mdnie_info *mdnie) { return 0; }
 static inline int panel_mdnie_update(struct panel_device *panel) { return 0; }
 #endif
 extern struct maptbl *mdnie_find_maptbl(struct mdnie_info *);
-extern struct maptbl *mdnie_find_etc_maptbl(struct mdnie_info *, int);
-extern int mdnie_get_maptbl_index(struct mdnie_info *);
-extern ssize_t attr_store_for_each(struct class *, const char *, const char *, size_t);
+extern struct maptbl *mdnie_find_etc_maptbl(struct mdnie_info *mdnie, int index);
+extern int mdnie_get_maptbl_index(struct mdnie_info *mdnie);
+extern ssize_t attr_store_for_each(struct class *cls, const char *name, const char *buf, size_t size);
 #endif /* __MDNIE_H__ */

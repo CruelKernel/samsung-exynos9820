@@ -49,6 +49,7 @@ struct sec_direct_charger_platform_data {
 	char *battery_name;
 	char *main_charger_name;
 	char *direct_charger_name;
+	char *direct_sub_charger_name;
 
 	int dchg_min_current;
 	int dchg_temp_low_threshold;
@@ -91,6 +92,7 @@ struct sec_direct_charger_info {
 	int fpdo_pos;
 	int dc_input_current;
 	int dc_charging_current;
+	int test_mode_source;
 };
 
 void sec_direct_chg_init(struct sec_battery_info *battery, struct device *dev);

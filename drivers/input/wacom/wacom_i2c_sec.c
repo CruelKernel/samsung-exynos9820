@@ -1091,7 +1091,9 @@ static ssize_t epen_ble_charging_mode_store(struct device *dev,
 		return count;
 	}
 
+	mutex_lock(&wac_i2c->ble_charge_mode_lock);
 	wacom_ble_charge_mode(wac_i2c, retval);
+	mutex_unlock(&wac_i2c->ble_charge_mode_lock);
 
 	return count;
 }

@@ -1353,8 +1353,9 @@ static int vnet_xmit(struct sk_buff *skb, struct net_device *ndev)
 					"(tx_bytes:%d len:%d)\n",
 					iod->name, mc->name, ld->name, ret,
 					tx_bytes, count);
+			goto drop;
 		}
-		goto drop;
+		goto retry;
 	}
 
 	if (ret != tx_bytes) {

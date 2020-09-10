@@ -28,6 +28,10 @@
 
 #include <trace/events/module.h>
 
+#ifdef CONFIG_SECURITY_DEFEX
+#include <linux/defex.h>
+#endif
+
 #define CAP_BSET	(void *)1
 #define CAP_PI		(void *)2
 
@@ -427,6 +431,12 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
 	 */
 	if (strlen(sub_info->path) == 0)
 		goto out;
+
+#if defined(CONFIG_SECURITY_DEFEX) && ANDROID_VERSION >= 100000 /* Over Q in case of Exynos */
+	if (task_defex_user_exec(sub_info->path)) {
+		goto out;
+	}
+#endif
 
 	/*
 	 * Set the completion pointer only if there is a waiter.

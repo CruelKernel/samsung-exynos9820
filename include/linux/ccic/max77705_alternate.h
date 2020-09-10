@@ -444,25 +444,18 @@ enum VDM_MSG_IRQ_State {
 
 #define SAMSUNGUVDM_MAX_LONGPACKET_SIZE	(236)
 #define SAMSUNGUVDM_MAX_SHORTPACKET_SIZE (1)
-#define SASMSUNGUVDM_WAIT_MS (2000)
+#define SAMSUNGUVDM_WAIT_MS (2000)
 #define SAMSUNGUVDM_ALIGN		(4)
 #define SAMSUNGUVDM_MAXDATA_FIRST_UVDMSET	(12)
 #define SAMSUNGUVDM_MAXDATA_NORMAL_UVDMSET	(16)
 #define SAMSUNGUVDM_CHECKSUM_DATA_COUNT		(20)
 
-
-#if 0
-/* Samsung UVDM Header */
-enum uvdm_data_typ_type {
-	TYPE_SHORT = 0,
-	TYPE_LONG,
+enum uvdm_rx_type {
+	RX_ACK = 0,
+	RX_NAK,
+	RX_BUSY,
 };
 
-enum uvdm_direction_type {
-	DIR_OUT = 0,
-	DIR_IN,
-};
-#endif
 typedef union sec_uvdm_header {
 	uint32_t		data;
 	struct {

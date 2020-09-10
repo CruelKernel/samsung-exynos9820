@@ -2991,7 +2991,7 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->dir_level = DEF_DIR_LEVEL;
 	sbi->interval_time[CP_TIME] = DEF_CP_INTERVAL;
 	sbi->interval_time[REQ_TIME] = DEF_IDLE_INTERVAL;
-	sbi->interval_time[DISCARD_TIME] = DEF_IDLE_INTERVAL;
+	sbi->interval_time[DISCARD_TIME] = DEF_DISCARD_IDLE_INTERVAL;
 	sbi->interval_time[GC_TIME] = DEF_IDLE_INTERVAL;
 	sbi->interval_time[DISABLE_TIME] = DEF_DISABLE_INTERVAL;
 	sbi->interval_time[UMOUNT_DISCARD_TIMEOUT] =

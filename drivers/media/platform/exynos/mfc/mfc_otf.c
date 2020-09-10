@@ -263,7 +263,7 @@ int mfc_otf_create(struct mfc_ctx *ctx)
 	int i;
 
 	for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
-		if (dev->ctx[i] && dev->ctx[i]->otf_handle) {
+		if (test_bit(i, &dev->otf_inst_bits)) {
 			mfc_err_dev("[OTF] otf_handle is already created, ctx: %d\n", i);
 			return -EINVAL;
 		}
@@ -282,7 +282,7 @@ int mfc_otf_create(struct mfc_ctx *ctx)
 		}
 	}
 
-	dev->num_otf_inst++;
+	set_bit(ctx->num, &dev->otf_inst_bits);
 	mfc_debug(2, "[OTF] otf_create is completed\n");
 
 	mfc_debug_leave();
@@ -305,7 +305,7 @@ void mfc_otf_destroy(struct mfc_ctx *ctx)
 	mfc_otf_release_stream_buf(ctx);
 	__mfc_otf_destroy_handle(ctx);
 
-	dev->num_otf_inst--;
+	clear_bit(ctx->num, &dev->otf_inst_bits);
 	mfc_debug(2, "[OTF] otf_destroy is completed\n");
 
 	mfc_debug_leave();
@@ -702,7 +702,7 @@ int mfc_hwfc_encode(int buf_index, int job_id, struct encoding_param *param)
 #endif
 
 	for (i = 0; i < MFC_NUM_CONTEXTS; i++) {
-		if (dev->ctx[i] && dev->ctx[i]->otf_handle) {
+		if (test_bit(i, &dev->otf_inst_bits)) {
 			ctx = dev->ctx[i];
 			break;
 		}
@@ -728,7 +728,13 @@ int mfc_hwfc_encode(int buf_index, int job_id, struct encoding_param *param)
 	}
 #endif
 
-	handle = ctx->otf_handle;
+	if (ctx->otf_handle) {
+		handle = ctx->otf_handle;
+	} else {
+		mfc_err_dev("[OTF] there is no otf_handle\n");
+		return -HWFC_ERR_MFC_NOT_PREPARED;
+	}
+
 	handle->otf_work_bit = 1;
 	handle->otf_buf_index = buf_index;
 	handle->otf_job_id = job_id;

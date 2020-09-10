@@ -24,7 +24,7 @@ typedef int (*cmp_fn_t)(const void *key, const void *element);
  *
  * Returns lexicographic order of the two compared function names
  */
-static int compare_policy_entries(const char *function_name,
+__visible_for_testing int compare_policy_entries(const char *function_name,
 				  const struct dsms_policy_entry *entry)
 {
 	return strncmp(function_name, entry->function_name, KSYM_NAME_LEN);
@@ -37,7 +37,7 @@ static int compare_policy_entries(const char *function_name,
  * Returns a pointer to the policy entry for the given function,
  * or NULL if not found.
  */
-static struct dsms_policy_entry *find_policy_entry(const char *function_name)
+__visible_for_testing struct dsms_policy_entry *find_policy_entry(const char *function_name)
 {
 	void *entry;
 

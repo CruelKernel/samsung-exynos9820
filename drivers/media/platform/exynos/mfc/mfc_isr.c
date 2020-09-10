@@ -1144,8 +1144,7 @@ static int __mfc_handle_seq_dec(struct mfc_ctx *ctx)
 	dec->mv_count = mfc_get_mv_count();
 	if (CODEC_10BIT(ctx) && dev->pdata->support_10bit) {
 		if (mfc_get_luma_bit_depth_minus8() ||
-			mfc_get_chroma_bit_depth_minus8() ||
-			mfc_get_profile() == MFC_REG_D_PROFILE_HEVC_MAIN_10) {
+			mfc_get_chroma_bit_depth_minus8()) {
 			ctx->is_10bit = 1;
 			mfc_info_ctx("[STREAM][10BIT] 10bit contents, profile: %d, depth: %d/%d\n",
 					mfc_get_profile(),
@@ -1267,10 +1266,8 @@ static int __mfc_handle_seq_enc(struct mfc_ctx *ctx)
 		mfc_release_codec_buffers(ctx);
 	}
 	ret = mfc_alloc_codec_buffers(ctx);
-	if (ret) {
+	if (ret)
 		mfc_err_ctx("Failed to allocate encoding buffers\n");
-		return ret;
-	}
 
 	mfc_change_state(ctx, MFCINST_HEAD_PARSED);
 

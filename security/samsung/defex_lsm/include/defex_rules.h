@@ -27,7 +27,8 @@ enum feature_types {
 	feature_immutable_path_open = 128,
 	feature_immutable_path_write = 256,
 	feature_immutable_src_exception = 512,
-	feature_immutable_status = 1024
+	feature_immutable_status = 1024,
+	feature_umhbin_path = 2048
 };
 
 struct feature_match_entry {
@@ -58,5 +59,7 @@ struct rule_item_struct {
 
 extern const struct static_rule defex_static_rules[];
 extern const int static_rule_count;
+
+int check_rules_ready(void);
 
 #endif /* __DEFEX_RULES_H */

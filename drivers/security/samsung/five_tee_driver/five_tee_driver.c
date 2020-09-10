@@ -23,6 +23,7 @@
 #include "tee_client_api.h"
 #include "five_ta_uuid.h"
 #include "five_audit.h"
+#include "teec_operation.h"
 
 #ifdef CONFIG_TEE_DRIVER_DEBUG
 #include <linux/uaccess.h>
@@ -37,6 +38,13 @@ static LIST_HEAD(tee_msg_queue);
 struct task_struct *tee_msg_task;
 
 #define MAX_HASH_LEN 64
+/* Maximum length of data integrity label.
+ * This limit is applied because:
+ * 1. TEEgris doesn't support signing data longer than 480 bytes;
+ * 2. The label's length is limited to 3965 byte according to the data
+ * transmission protocol between five_tee_driver and TA.
+ */
+#define FIVE_LABEL_MAX_LEN 256
 
 struct tci_msg {
 	uint8_t hash_algo;
@@ -146,13 +154,14 @@ static int send_cmd(unsigned int cmd,
 	struct tci_msg *msg = NULL;
 	size_t msg_len;
 	size_t sig_len;
+	const bool inout_direction = cmd == CMD_SIGN ? true : false;
 
 	if (!hash || !hash_len ||
 			!signature || !signature_len || !(*signature_len))
 		return -EINVAL;
 
 	msg_len = sizeof(*msg) + label_len;
-	if (label_len > PAGE_SIZE || msg_len > PAGE_SIZE)
+	if (label_len > FIVE_LABEL_MAX_LEN || msg_len > PAGE_SIZE)
 		return -EINVAL;
 
 	switch (algo) {
@@ -186,7 +195,7 @@ static int send_cmd(unsigned int cmd,
 		pr_info("FIVE: Initialize trusted app, ret: %d\n", rc);
 		if (rc) {
 			mutex_unlock(&itee_driver_lock);
-			rc = -EIO;
+			rc = -ESRCH;
 			goto out;
 		}
 	}
@@ -194,7 +203,7 @@ static int send_cmd(unsigned int cmd,
 	shmem.buffer = NULL;
 	shmem.size = msg_len;
 	shmem.flags = TEEC_MEM_INPUT;
-	if (cmd != CMD_VERIFY)
+	if (inout_direction)
 		shmem.flags |= TEEC_MEM_OUTPUT;
 
 	rc = TEEC_AllocateSharedMemory(context, &shmem);
@@ -202,7 +211,7 @@ static int send_cmd(unsigned int cmd,
 		mutex_unlock(&itee_driver_lock);
 		five_audit_tee_msg("send_cmd",
 			"TEEC_AllocateSharedMemory is failed", rc, 0);
-		rc = -EFAULT;
+		rc = -ENOMEM;
 		goto out;
 	}
 
@@ -217,10 +226,7 @@ static int send_cmd(unsigned int cmd,
 	if (cmd == CMD_VERIFY)
 		memcpy(msg->signature, signature, sig_len);
 
-	operation.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_WHOLE, TEEC_NONE,
-						TEEC_NONE, TEEC_NONE);
-
-	operation.params[0].memref.parent = &shmem;
+	FillOperationSharedMem(&shmem, &operation, inout_direction);
 
 	rc = TEEC_InvokeCommand(session, cmd, &operation, &origin);
 

@@ -536,7 +536,7 @@ static void __mfc_dump_info(struct mfc_dev *dev)
 	__mfc_dump_buffer_info(dev);
 	__mfc_dump_regs(dev);
 
-	if (dev->num_otf_inst) {
+	if (dev->otf_inst_bits) {
 		pr_err("-----------dumping TS-MUX info-----------\n");
 #ifdef CONFIG_VIDEO_EXYNOS_TSMUX
 		tsmux_sfr_dump();

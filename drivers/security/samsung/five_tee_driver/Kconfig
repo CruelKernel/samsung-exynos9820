@@ -1,0 +1,94 @@
+#
+# TEE Driver configuration
+#
+
+config FIVE_TEE_DRIVER
+    bool "Integrity TEE Driver"
+    depends on FIVE
+    default y
+    ---help---
+      Enable Integrity Trusted Execution Environment support
+
+choice
+    prompt "FIVE Secure OS"
+    depends on FIVE_TEE_DRIVER
+    default FIVE_USE_TZDEV if TZDEV
+    default FIVE_USE_QSEE if QSEECOM
+    default FIVE_USE_TRUSTONIC if TRUSTONIC_TEE || TRUSTONIC_TEE_SUPPORT
+    default FIVE_USE_EMULATOR
+    ---help---
+      Select Secure OS for FIVE TEE Driver
+
+    config FIVE_USE_EMULATOR
+        bool "Integrity TEE Driver for TA emualtor"
+        ---help---
+          Use Integrity TEE Driver which interacts with TA emulator over network
+
+    config FIVE_USE_TRUSTONIC
+        bool "Integrity TEE Driver based on Trustonic Secure OS"
+        depends on TRUSTONIC_TEE || TRUSTONIC_TEE_SUPPORT
+        ---help---
+          Use Trustonic as base Trusted Execution Environment
+
+    config FIVE_USE_TZDEV
+        bool "Integrity TEE Driver based on TEEgris Secure OS"
+        depends on TZDEV
+        ---help---
+          Use TEEgris as base Trusted Execution Environment
+
+    config FIVE_USE_QSEE
+        bool "Integrity TEE Driver based on QSEE Secure OS"
+        depends on QSEECOM
+        ---help---
+          Use QSEE as base Trusted Execution Environment
+
+endchoice
+
+config TEE_DRIVER_DEBUG
+    bool "Integrity TEE Driver Debug mode"
+    depends on FIVE_TEE_DRIVER
+    default n
+    ---help---
+      Enable Debug mode in TEE Driver
+
+config FIVE_EMULATOR_IP
+    string "IP address of FIVE TA Emulator"
+    depends on FIVE_TEE_DRIVER && FIVE_USE_EMULATOR
+    default "10.0.2.2" if FIVE_USE_EMULATOR
+    ---help---
+      The driver will connect to FIVE TA at this address
+
+config FIVE_TRUSTLET_PATH
+    string "FIVE trustlet"
+    depends on FIVE_TEE_DRIVER && FIVE_USE_TRUSTONIC && FIRMWARE_IN_KERNEL
+    default "five/ffffffff000000000000000000000072.tlbin"
+    ---help---
+      This option defines FIVE trustlet path which will be built-in kernel
+
+config FIVE_EARLY_LOAD_TRUSTED_APP
+    bool "Load trusted application in early boot"
+    depends on FIVE_TEE_DRIVER
+    default y if FIVE_USE_QSEE
+    default n
+    help
+      Enable the load of trusted application on during initialization of driver
+
+config FIVE_SIGN_TA
+    bool "Sign FIVE TA during build"
+    depends on FIVE_TEE_DRIVER && FIVE_USE_QSEE
+    default n
+    help
+      FIVE TA will be signed during build. Otherwise pre-signed TA will be used.
+
+config FIVE_SIGNCLIENT_PATH
+    string "Path to signclient.jar"
+    depends on FIVE_SIGN_TA
+    help
+      Path to signclient.jar for signing FIVE TA
+
+config FIVE_PILSPLITTER_PATH
+    string "Path to pil_splitter.py"
+    depends on FIVE_SIGN_TA
+    help
+      Path to pil_splitter.py for preparaing TA to signing
+

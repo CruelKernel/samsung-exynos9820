@@ -90,7 +90,7 @@ static ssize_t abox_dump_auto_read(struct file *file, char __user *data,
 		size_t count, loff_t *ppos, bool enable)
 {
 	struct abox_dump_buffer_info *info;
-	char buffer[SZ_256] = {0,}, *buffer_p = buffer;
+	char buffer[SZ_512] = {0,}, *buffer_p = buffer;
 
 	dev_dbg(abox_dump_dev_abox, "%s(%zu, %lld, %d)\n", __func__, count,
 			*ppos, enable);
@@ -111,7 +111,7 @@ static ssize_t abox_dump_auto_read(struct file *file, char __user *data,
 static ssize_t abox_dump_auto_write(struct file *file, const char __user *data,
 		size_t count, loff_t *ppos, bool enable)
 {
-	char buffer[SZ_256] = {0,}, name[NAME_LENGTH];
+	char buffer[SZ_512] = {0,}, name[NAME_LENGTH];
 	char *p_buffer = buffer, *token = NULL;
 	unsigned int id;
 	struct abox_dump_buffer_info *info;

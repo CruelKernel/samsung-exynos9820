@@ -33,10 +33,11 @@
 #include <linux/string_helpers.h>
 #endif
 
-static void icd_hook_integrity_reset(struct task_struct *task);
+static void icd_hook_integrity_reset(struct task_struct *task,
+					struct file *file, unsigned cause);
 
 static struct five_hook_list five_ops[] = {
-	FIVE_HOOK_INIT(integrity_reset, icd_hook_integrity_reset),
+	FIVE_HOOK_INIT(integrity_reset2, icd_hook_integrity_reset),
 };
 
 static bool contains_str(const char * const array[], const char *str)
@@ -156,7 +157,30 @@ static const char *get_exec_path(struct task_struct *task, char **pathbuf)
 	return pathname ?: (const char *)exe_path->dentry->d_name.name;
 }
 
-static void icd_hook_integrity_reset(struct task_struct *task)
+static const char *icd_d_path(const struct path *path, char **pathbuf, char *namebuf)
+{
+	char *pathname = NULL;
+
+	*pathbuf = __getname();
+	if (*pathbuf) {
+		pathname = d_absolute_path(path, *pathbuf, PATH_MAX);
+		if (IS_ERR(pathname)) {
+			__putname(*pathbuf);
+			*pathbuf = NULL;
+			pathname = NULL;
+		}
+	}
+
+	if (!pathname) {
+		strlcpy(namebuf, path->dentry->d_name.name, NAME_MAX);
+		pathname = namebuf;
+	}
+
+	return pathname;
+}
+
+static void icd_hook_integrity_reset(struct task_struct *task,
+					struct file *file, unsigned cause)
 {
 	const char *execpath = NULL;
 	char *pathbuf = NULL;
@@ -177,8 +201,18 @@ static void icd_hook_integrity_reset(struct task_struct *task)
 
 	if (oemid != OEMFLAG_NONE) {
 		int ret;
+		const char *pathname = NULL;
+		char *pathbuf = NULL;
+		char filename[NAME_MAX];
 
 		pr_info("ICD: %s: %u\n", execpath, oemid);
+		if (file) {
+			pathname = icd_d_path(&file->f_path, &pathbuf, filename);
+			pr_info("ICD: file=%s cause=%u\n", pathname, cause);
+			if (pathbuf)
+				__putname(pathbuf);
+		}
+
 		ret = oem_flags_set(oemid);
 		if (ret)
 			pr_err("oem_flags_set err: %d\n", ret);

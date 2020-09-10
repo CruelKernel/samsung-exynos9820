@@ -8749,9 +8749,10 @@
 	uart@10840000 {
 		compatible = "samsung,exynos-uart";
 		samsung,separate-uart-clk;
+		samsung,rts-gpio-control;
+		samsung,rts-trig-level = <0x1>;
 		reg = <0x0 0x10840000 0x100>;
 		samsung,fifo-size = <0x100>;
-		samsung,rts-gpio-control;
 		interrupts = <0x0 0x198 0x0>;
 		pinctrl-names = "default", "rts", "tx_dat";
 		pinctrl-0 = <0xcb 0xcc>;

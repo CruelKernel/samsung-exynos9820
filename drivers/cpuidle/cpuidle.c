@@ -705,7 +705,6 @@ static int __init cpuidle_init(void)
 		return ret;
 
 	latency_notifier_init(&cpuidle_latency_notifier);
-	init_exynos_ucc();
 
 	return 0;
 }

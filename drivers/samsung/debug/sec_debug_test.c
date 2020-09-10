@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/preempt.h>
+#include <linux/rwsem.h>
 #include <linux/moduleparam.h>
 
 //#include <soc/samsung/exynos-pmu.h>
@@ -83,6 +84,8 @@ static void simulate_CORRUPT_DELAYED_WORK(char *arg);
 static void simulate_MUTEX_AA(char *arg);
 static void simulate_MUTEX_ABBA(char *arg);
 static void simulate_WQ_LOCKUP(char *arg);
+static void simulate_RWSEM_R(char *arg);
+static void simulate_RWSEM_W(char *arg);
 
 enum {
 	FORCE_KERNEL_PANIC = 0,		/* KP */
@@ -130,6 +133,8 @@ enum {
 	FORCE_MUTEX_AA,			/* MUTEX AA */
 	FORCE_MUTEX_ABBA,		/* MUTEX ABBA */
 	FORCE_WQ_LOCKUP,		/* WORKQUEUE LOCKUP */
+	FORCE_RWSEM_R,			/* RWSEM READER */
+	FORCE_RWSEM_W,			/* RWSEM WRITER */
 	NR_FORCE_ERROR,
 };
 
@@ -189,6 +194,8 @@ struct force_error force_error_vector = {
 		{"mutexaa",	&simulate_MUTEX_AA},
 		{"mutexabba",	&simulate_MUTEX_ABBA},
 		{"wqlockup",	&simulate_WQ_LOCKUP},
+		{"rwsem-r",	&simulate_RWSEM_R},
+		{"rwsem-w",	&simulate_RWSEM_W},
 	}
 };
 
@@ -1055,6 +1062,103 @@ static void simulate_WQ_LOCKUP(char *arg)
 			schedule_work_on(cpu, &lockup_work);
 		}
 	}
+}
+
+struct test_resem {
+	struct work_struct work;
+	struct completion a_ready;
+	struct completion b_ready;
+};
+
+static DECLARE_RWSEM(secdbg_test_rwsem);
+static DEFINE_MUTEX(secdbg_test_mutex_for_rwsem);
+
+static void test_rwsem_read_work(struct work_struct *work)
+{
+	struct test_resem *t = container_of(work, typeof(*t), work);
+
+	pr_crit("%s: trying read\n", __func__);
+	down_read(&secdbg_test_rwsem);
+
+	complete(&t->b_ready);
+	wait_for_completion(&t->a_ready);
+
+	mutex_lock(&secdbg_test_mutex_for_rwsem);
+
+	pr_crit("%s: error\n", __func__);
+
+	mutex_unlock(&secdbg_test_mutex_for_rwsem);
+	up_read(&secdbg_test_rwsem);
+}
+
+static void simulate_RWSEM_R(char *arg)
+{
+	struct test_resem twork;
+
+	pr_crit("%s()\n", __func__);
+
+	INIT_WORK_ONSTACK(&twork.work, test_rwsem_read_work);
+	init_completion(&twork.a_ready);
+	init_completion(&twork.b_ready);
+
+	schedule_work(&twork.work);
+
+	mutex_lock(&secdbg_test_mutex_for_rwsem);
+
+	complete(&twork.a_ready);
+	wait_for_completion(&twork.b_ready);
+
+	pr_crit("%s: trying write\n", __func__);
+	down_write(&secdbg_test_rwsem);
+
+	pr_crit("%s: error\n", __func__);
+
+	up_write(&secdbg_test_rwsem);
+	mutex_unlock(&secdbg_test_mutex_for_rwsem);
+}
+
+static void test_rwsem_write_work(struct work_struct *work)
+{
+	struct test_resem *t = container_of(work, typeof(*t), work);
+
+	pr_crit("%s: trying write\n", __func__);
+	down_write(&secdbg_test_rwsem);
+
+	complete(&t->b_ready);
+	wait_for_completion(&t->a_ready);
+
+	mutex_lock(&secdbg_test_mutex_for_rwsem);
+
+	pr_crit("%s: error\n", __func__);
+
+	mutex_unlock(&secdbg_test_mutex_for_rwsem);
+	up_write(&secdbg_test_rwsem);
+}
+
+static void simulate_RWSEM_W(char *arg)
+{
+	struct test_resem twork;
+
+	pr_crit("%s()\n", __func__);
+
+	INIT_WORK_ONSTACK(&twork.work, test_rwsem_write_work);
+	init_completion(&twork.a_ready);
+	init_completion(&twork.b_ready);
+
+	schedule_work(&twork.work);
+
+	mutex_lock(&secdbg_test_mutex_for_rwsem);
+
+	complete(&twork.a_ready);
+	wait_for_completion(&twork.b_ready);
+
+	pr_crit("%s: trying read\n", __func__);
+	down_read(&secdbg_test_rwsem);
+
+	pr_crit("%s: error\n", __func__);
+
+	up_read(&secdbg_test_rwsem);
+	mutex_unlock(&secdbg_test_mutex_for_rwsem);
 }
 
 static int sec_debug_get_force_error(char *buffer, const struct kernel_param *kp)

@@ -23,8 +23,8 @@ const char *cisd_data_str[] = {
 	"BATT_THM_MIN", "CHG_THM_MAX", "CHG_THM_MIN", "WPC_THM_MAX", "WPC_THM_MIN", "USB_THM_MAX", "USB_THM_MIN",
 	"CHG_BATT_THM_MAX", "CHG_BATT_THM_MIN", "CHG_CHG_THM_MAX", "CHG_CHG_THM_MIN", "CHG_WPC_THM_MAX",
 	"CHG_WPC_THM_MIN", "CHG_USB_THM_MAX", "CHG_USB_THM_MIN", "USB_OVERHEAT_CHARGING", "UNSAFETY_VOLT",
-	"UNSAFETY_TEMP", "SAFETY_TIMER", "VSYS_OVP", "VBAT_OVP", "USB_OVERHEAT_RAPID_CHANGE", "BUCK_OFF",
-	"USB_OVERHEAT_ALONE", "DROP_SENSOR"
+	"UNSAFETY_TEMP", "SAFETY_TIMER", "VSYS_OVP", "VBAT_OVP", "USB_OVERHEAT_RAPID_CHANGE", "ASOC",
+	"USB_OVERHEAT_ALONE", "CAP_NOM"
 };
 const char *cisd_data_str_d[] = {
 	"FULL_CNT_D", "CAP_MAX_D", "CAP_MIN_D", "RECHARGING_CNT_D", "VALERT_CNT_D", "WIRE_CNT_D", "WIRELESS_CNT_D",
@@ -156,6 +156,16 @@ bool sec_bat_cisd_check(struct sec_battery_info *battery)
 			pcisd->data[CISD_DATA_CAP_MAX_PER_DAY] = capcurr_val.intval;
 		if (capcurr_val.intval < pcisd->data[CISD_DATA_CAP_MIN_PER_DAY])
 			pcisd->data[CISD_DATA_CAP_MIN_PER_DAY] = capcurr_val.intval;
+
+		capcurr_val.intval = SEC_BATTERY_CAPACITY_AGEDCELL;
+		psy_do_property(battery->pdata->fuelgauge_name, get,
+			POWER_SUPPLY_PROP_ENERGY_NOW, capcurr_val);
+		if (capcurr_val.intval == -1) {
+			dev_info(battery->dev, "%s: [CISD] FG I2C fail. skip cisd check \n", __func__);
+			return ret;
+		}
+		pcisd->data[CISD_DATA_CAP_NOM] = capcurr_val.intval;
+		dev_info(battery->dev, "%s: [CISD] CAP_NOM %dmAh\n", __func__, pcisd->data[CISD_DATA_CAP_NOM]);
 	}
 
 	if (battery->temperature > pcisd->data[CISD_DATA_BATT_TEMP_MAX])

@@ -17,6 +17,7 @@
 #define ID_MASK			0xffff
 #define TPUT_THRESHOLD		150
 #define MAX_RC_NUM		2
+#define MAX_L1_EXIT_TIMEOUT    300
 
 #if defined(CONFIG_SOC_EXYNOS8890)
 #define PCI_DEVICE_ID_EXYNOS	0xa544
@@ -92,6 +93,7 @@ struct exynos_pcie {
 	bool			use_ia;
 	spinlock_t		conf_lock;
 	spinlock_t              reg_lock;
+	spinlock_t              pcie_l1_exit_lock;
 	struct workqueue_struct	*pcie_wq;
 	struct exynos_pcie_clks	clks;
 	struct pci_dev		*pci_dev;

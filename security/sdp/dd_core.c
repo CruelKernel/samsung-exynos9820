@@ -1831,7 +1831,7 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		req = find_req(proc, DD_REQ_PROCESSING, ioc.u.xattr.ino);
 		if (!req) {
-			dd_error("request not found for ino:%ld! unique:%d\n", req->ino, req->unique);
+			dd_error("request not found for ino:%ld!\n", ioc.u.xattr.ino);
 			return -EBADF;
 		}
 		inode = req->info->inode;
@@ -1872,7 +1872,7 @@ static long dd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		req = find_req(proc, DD_REQ_PROCESSING, ioc.u.xattr.ino);
 		if (!req) {
-			dd_error("request not found for ino:%ld! unique:%d\n", req->ino, req->unique);
+			dd_error("request not found for ino:%ld!\n", ioc.u.xattr.ino);
 			kfree(ioc_work);
 			return -EBADF;
 		}

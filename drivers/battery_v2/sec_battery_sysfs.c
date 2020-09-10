@@ -11,6 +11,7 @@
  */
 #include "include/sec_battery.h"
 #include "include/sec_battery_sysfs.h"
+#include "include/sec_charging_common.h"
 
 #include <linux/sec_ext.h>
 #include <linux/sec_debug.h>
@@ -228,6 +229,7 @@ static struct device_attribute sec_battery_attrs[] = {
 #if defined(CONFIG_DIRECT_CHARGING)
 	SEC_BATTERY_ATTR(direct_charging_step),
 	SEC_BATTERY_ATTR(direct_charging_iin),
+	SEC_BATTERY_ATTR(switch_charging_source),
 #endif
 	SEC_BATTERY_ATTR(charging_type),
 #if defined(CONFIG_SEC_FACTORY)
@@ -727,7 +729,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			psy_do_property(battery->pdata->fgsrc_switch_name, set,
 					POWER_SUPPLY_PROP_ENERGY_NOW, value);
 			for (j = 0; j < 10; j++) {
-				mdelay(175);
+				msleep(175);
 				psy_do_property(battery->pdata->fuelgauge_name, get,
 						POWER_SUPPLY_PROP_VOLTAGE_NOW, value);
 				ocv_data[j] = value.intval;
@@ -1632,6 +1634,12 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 					0);
 		}
 		break;
+	case SWITCH_CHARGING_SOURCE:
+		psy_do_property(battery->pdata->charger_name, get,
+				POWER_SUPPLY_EXT_PROP_CHANGE_CHARGING_SOURCE, value);
+		pr_info("%s Test Charging Source(%d) ",__func__, value.intval);
+		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", value.intval);
+		break;
 #else
 	case DIRECT_CHARGING_STATUS:
 		ret = -1; /* DC not supported model returns -1 */
@@ -1843,6 +1851,9 @@ ssize_t sec_bat_store_attrs(
 		if (sscanf(buf, "%d\n", &x) == 1) {
 			if (x >= 0 && x <= 100) {
 				battery->batt_asoc = x;
+#if defined(CONFIG_BATTERY_CISD)
+				battery->cisd.data[CISD_DATA_ASOC] = x;
+#endif
 				sec_bat_check_battery_health(battery);
 			}
 			ret = count;
@@ -1892,12 +1903,12 @@ ssize_t sec_bat_store_attrs(
 				value.intval = 0;
 				psy_do_property(battery->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
-	
+
 				wpc_en_status[1] = false;
 				value.strval= wpc_en_status;
 				psy_do_property(battery->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
-				pr_info("%s: WC CONTROL: Disable", __func__);
+				pr_info("%s: WC CONTROL: Disable\n", __func__);
 				mutex_unlock(&battery->wclock);
 			} else if (x == 1) {
 				mutex_lock(&battery->wclock);
@@ -1906,12 +1917,12 @@ ssize_t sec_bat_store_attrs(
 				value.intval = 1;
 				psy_do_property(battery->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_EXT_PROP_WC_CONTROL, value);
-	
+
 				wpc_en_status[1] = true;
 				value.strval= wpc_en_status;
 				psy_do_property(battery->pdata->wireless_charger_name, set,
 					POWER_SUPPLY_EXT_PROP_WPC_EN, value);
-				pr_info("%s: WC CONTROL: Enable", __func__);
+				pr_info("%s: WC CONTROL: Enable\n", __func__);
 				mutex_unlock(&battery->wclock);
 			} else {
 				dev_info(battery->dev,
@@ -3249,6 +3260,18 @@ ssize_t sec_bat_store_attrs(
 	case DIRECT_CHARGING_STEP:
 		break;
 	case DIRECT_CHARGING_IIN:
+		break;
+	case SWITCH_CHARGING_SOURCE:
+		if (sscanf(buf, "%10d\n", &x) == 1) {
+			if (is_pd_apdo_wire_type(battery->cable_type)) {
+				dev_info(battery->dev, "%s: Request Change Charging Source : %s \n",
+					__func__, x == 0 ? "Switch Charger" : "Direct Charger" );
+
+				value.intval = (x == 0) ? SEC_DIRECT_CHG_CHARGING_SOURCE_SWITCHING : SEC_DIRECT_CHG_CHARGING_SOURCE_DIRECT;
+				psy_do_property(battery->pdata->charger_name, set,
+					POWER_SUPPLY_EXT_PROP_CHANGE_CHARGING_SOURCE, value);
+			}
+		}
 		break;
 #endif
 	case CHARGING_TYPE:
