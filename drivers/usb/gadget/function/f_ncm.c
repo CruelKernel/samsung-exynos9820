@@ -449,6 +449,7 @@ struct ndp_parser_opts {
 	u32		ndp_sign;
 	unsigned	nth_size;
 	unsigned	ndp_size;
+	unsigned	dpe_size;
 	unsigned	ndplen_align;
 	/* sizes in u16 units */
 	unsigned	dgram_item_len; /* index or length */
@@ -464,6 +465,7 @@ struct ndp_parser_opts {
 		.ndp_sign = USB_CDC_NCM_NDP16_NOCRC_SIGN,	\
 		.nth_size = sizeof(struct usb_cdc_ncm_nth16),	\
 		.ndp_size = sizeof(struct usb_cdc_ncm_ndp16),	\
+		.dpe_size = sizeof(struct usb_cdc_ncm_dpe16),	\
 		.ndplen_align = 4,				\
 		.dgram_item_len = 1,				\
 		.block_length = 1,				\
@@ -479,6 +481,7 @@ struct ndp_parser_opts {
 		.ndp_sign = USB_CDC_NCM_NDP32_NOCRC_SIGN,	\
 		.nth_size = sizeof(struct usb_cdc_ncm_nth32),	\
 		.ndp_size = sizeof(struct usb_cdc_ncm_ndp32),	\
+		.dpe_size = sizeof(struct usb_cdc_ncm_dpe32),	\
 		.ndplen_align = 8,				\
 		.dgram_item_len = 2,				\
 		.block_length = 2,				\
@@ -1248,15 +1251,15 @@ static int ncm_unwrap_ntb(struct gether *port,
 		 * NCM 3.2
 		 * dwNdpIndex
 		 */
-		if (((ndp_index % 4) != 0) ||
-				(ndp_index < opts->nth_size) ||
-				(ndp_index > (block_len -
+		if (((index % 4) != 0) ||
+				(index < opts->nth_size) ||
+				(index > (block_len -
 					      opts->ndp_size))) {
 		INFO(port->func.config->cdev, "Bad index: %x\n",
 			index);
 		goto err;
 	}
-		if (ndp_index == opts->nth_size)
+		if (index == opts->nth_size)
 			ndp_after_header = true;
 
 		/*
