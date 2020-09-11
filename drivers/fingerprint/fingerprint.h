@@ -41,8 +41,6 @@ enum {
 };
 
 #define SENSOR_STATUS_SIZE 12
-static char sensor_status[SENSOR_STATUS_SIZE][10] = {"ooo", "unknown", "failed",
-	"viper", "raptor", "egis", "viper_wog", "namsan", "goodix", "qbt2000", "et7xx", "goodixopt"};
 
 /* For Finger Detect Mode */
 enum {
