@@ -664,7 +664,7 @@ static void simulate_SAFEFAULT(char *arg)
 
 	smp_call_function(simulate_ALLSPIN_LOCKUP_handler, NULL, 0);
 
-	pr_info("%s %p %s %d %p %p %llx\n",
+	pr_info("%s %p %s %d %p %p %lx\n",
 		__func__, current, current->comm, current->pid,
 		current_thread_info(), current->stack, current_stack_pointer);
 

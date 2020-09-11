@@ -42,7 +42,7 @@ static ssize_t sec_dhist_read(struct file *file, char __user *buf,
 	}
 
 	if (pos >= dhist_size) {
-		pr_crit("%s: pos %x , dhist: %x\n", __func__, pos, dhist_size);
+		pr_crit("%s: pos %lld, dhist: %x\n", __func__, pos, dhist_size);
 
 		ret = 0;
 
@@ -53,7 +53,7 @@ static ssize_t sec_dhist_read(struct file *file, char __user *buf,
 
 	base = (char *)phys_to_virt((phys_addr_t)dhist_base);
 	if (!base) {
-		pr_crit("%s: fail to get va (%llx)\n", __func__, dhist_base);
+		pr_crit("%s: fail to get va (%lx)\n", __func__, dhist_base);
 
 		ret = -EFAULT;
 
