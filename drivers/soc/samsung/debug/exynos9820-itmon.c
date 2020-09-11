@@ -1747,7 +1747,8 @@ static ssize_t itmon_scandump_store(struct kobject *kobj,
 {
 	unsigned long val = 0;
 
-	kstrtoul(buf, 16, &val);
+	if (kstrtoul(buf, 16, &val) < 0)
+		return -EINVAL;
 	g_itmon->pdata->sysfs_scandump = !!val;
 
 	return count;
@@ -1772,7 +1773,8 @@ static ssize_t itmon_s2d_store(struct kobject *kobj,
 {
 	unsigned long val = 0;
 
-	kstrtoul(buf, 16, &val);
+	if (kstrtoul(buf, 16, &val) < 0)
+		return -EINVAL;
 	g_itmon->pdata->sysfs_s2d = !!val;
 
 	return count;
