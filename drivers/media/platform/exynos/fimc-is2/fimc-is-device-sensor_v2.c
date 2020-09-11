@@ -3333,7 +3333,7 @@ int fimc_is_sensor_front_start(struct fimc_is_device_sensor *device,
 		mutex_lock(&camif_path_lock);
 		ret = fimc_is_hw_camif_fix_up(device);
 		if (ret) {
-			merr("failed to fix up CAM I/F", device, ret);
+			merr("failed to fix up CAM I/F(%d)", device, ret);
 			ret = -EINVAL;
 			mutex_unlock(&camif_path_lock);
 			goto p_err;
@@ -3341,7 +3341,7 @@ int fimc_is_sensor_front_start(struct fimc_is_device_sensor *device,
 
 		ret = fimc_is_hw_camif_pdp_in_enable(device, true);
 		if (ret) {
-			merr("failed to enable PDP IN", device, ret);
+			merr("failed to enable PDP IN(%d)", device, ret);
 			ret = -EINVAL;
 			mutex_unlock(&camif_path_lock);
 			goto p_err;
@@ -3451,7 +3451,7 @@ int fimc_is_sensor_front_stop(struct fimc_is_device_sensor *device)
 	if (IS_ENABLED(USE_CAMIF_FIX_UP)) {
 		ret = fimc_is_hw_camif_pdp_in_enable(device, false);
 		if (ret)
-			merr("failed to enable PDP IN", device, ret);
+			merr("failed to enable PDP IN(%d)", device, ret);
 	}
 
 reset_the_others:
