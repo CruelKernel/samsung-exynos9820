@@ -1552,12 +1552,12 @@ int sec_bat_parse_dt(struct device *dev,
 	if (p) {
 		battery->pdata->num_age_step = len / sizeof(sec_age_data_t);
 		battery->pdata->age_data = kzalloc(len, GFP_KERNEL);
-	if (dt_need_overwrite)
-		ret = of_property_read_u32_array(np, "battery,age_data_overwrite",
-					(u32 *)battery->pdata->age_data, len/sizeof(u32));
-	else
-		ret = of_property_read_u32_array(np, "battery,age_data",
-				 (u32 *)battery->pdata->age_data, len/sizeof(u32));
+		if (dt_need_overwrite)
+			ret = of_property_read_u32_array(np, "battery,age_data_overwrite",
+						(u32 *)battery->pdata->age_data, len/sizeof(u32));
+		else
+			ret = of_property_read_u32_array(np, "battery,age_data",
+					 (u32 *)battery->pdata->age_data, len/sizeof(u32));
 		if (ret) {
 			pr_err("%s failed to read battery->pdata->age_data: %d\n",
 					__func__, ret);
