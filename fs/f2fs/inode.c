@@ -430,7 +430,7 @@ static int do_read_inode(struct inode *inode)
 
 corrupted_inode:
 	printk_ratelimited(KERN_ERR "F2FS-fs: On-disk inode is corrupted: "
-			"err: %ld, inode: %u, first Non-zero: %lu\n",
+			"err: %d, inode: %lu, first Non-zero: %lu\n",
 			err, inode->i_ino,
 			find_first_bit(page_address(node_page), F2FS_BLKSIZE));
 	print_block_data(sbi->sb, node_page->index,
@@ -439,7 +439,7 @@ corrupted_inode:
 	if (unlikely(!ignore_fs_panic)) {
 		f2fs_set_sb_extra_flag(sbi, F2FS_SEC_EXTRA_FSCK_MAGIC);
 #ifdef CONFIG_F2FS_STRICT_BUG_ON
-		panic("F2FS 0x%p %x",
+		panic("F2FS 0x%p %lx",
 			page_address(node_page),
 			find_first_bit(page_address(node_page), F2FS_BLKSIZE*8));
 #else
