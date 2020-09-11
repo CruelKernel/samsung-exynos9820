@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G977B", "G970F", "G973F", "G975F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -38,17 +38,23 @@ jobs:
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
-                name="CRUEL-V3.6"         \
+                name="[-VN-Cruel.Kernel v3.6rc G97xX-]"         \
                 toolchain=$TOOLCHAIN      \
-                +magisk                   \
-                +nohardening              \
-                +ttl                      \
-                +wireguard                \
-                +cifs                     \
-                +sdfat                    \
-                +ntfs                     \
-                +morosound                \
-                +boeffla_wl_blocker       \
+                +magisk                  \
+                +nohardening             \
+                +ttl                     \
+                +wireguard               \
+                +cifs                    \
+                +sdfat                   \
+                +ntfs                    \
+                +morosound               \
+                +boeffla_wl_blocker      \
+                +noatime        \
+                +nohardening        \
+                +size        \
+                +nodebug        \
+                +noksm        \
+                +usb_serial        \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
