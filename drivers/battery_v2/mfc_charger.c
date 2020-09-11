@@ -2468,7 +2468,7 @@ static void mfc_wpc_rx_power_work(struct work_struct *work)
 
 	union power_supply_propval value;
 
-	pr_info("%s: rx power = %d (0x%x), This W/A is only for Factory\n", __func__, charger->max_power_by_txid);
+	pr_info("%s: rx power = %d, This W/A is only for Factory\n", __func__, charger->max_power_by_txid);
 
 	value.intval = charger->max_power_by_txid;
 	psy_do_property("wireless", set, POWER_SUPPLY_PROP_WIRELESS_RX_POWER, value);
@@ -3902,7 +3902,7 @@ out:
 		case POWER_SUPPLY_EXT_PROP_PAD_VOLT_CTRL:
 			if(charger->pdata->wpc_vout_ctrl_lcd_on) {
 				if (delayed_work_pending(&charger->wpc_vout_mode_work)) {
-					pr_info("%s : Already vout change. skip pad control\n");
+					pr_info("%s : Already vout change. skip pad control\n", __func__);
 					return 0;
 				}
 				if (val->intval && charger->is_afc_tx &&
