@@ -432,7 +432,7 @@ int exynos_usb_audio_hcd(struct usb_device *udev)
 	 */
 	if (ret == -EADDRINUSE) {
 		cancel_work_sync(&usb_audio->usb_work);
-		pr_err("iommu unmapping not done. unmap here\n", ret);
+		pr_err("iommu unmapping not done. unmap here %d\n", ret);
 		exynos_usb_audio_unmap_all();
 		ret = abox_iommu_map(dev, USB_AUDIO_XHCI_BASE,
 				USB_AUDIO_XHCI_BASE, PAGE_SIZE * 16, 0);
