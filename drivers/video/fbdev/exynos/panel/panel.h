@@ -807,20 +807,6 @@ enum stm_field_num {
 	STM_V_THRES,
 	STM_FIELD_MAX
 };
-
-static const char *str_stm_fied[STM_FIELD_MAX] = {
-	"stm_ctrl_en=",
-	"stm_max_opt=",
-	"stm_default_opt=",
-	"stm_dim_step=",
-	"stm_frame_period=",
-	"stm_min_sect=",
-	"stm_pixel_period=",
-	"stm_line_period=",
-	"stm_min_move=",
-	"stm_m_thres=",
-	"stm_v_thres="
-};
 #endif
 
 enum {
