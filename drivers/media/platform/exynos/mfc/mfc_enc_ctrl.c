@@ -1157,7 +1157,7 @@ static void __mfc_enc_set_buf_ctrls_exception(struct mfc_ctx *ctx,
 		value &= ~(0xFFFF);
 		value |= (p->rc_frame_delta & 0xFFFF);
 		MFC_WRITEL(value, MFC_REG_E_RC_FRAME_RATE);
-		mfc_debug(3, "[DROPCTRL] fps %d -> %d, delta: %d, reg: %#x\n",
+		mfc_debug(3, "[DROPCTRL] fps %d -> %ld, delta: %d, reg: %#x\n",
 				p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
 				p->rc_frame_delta, value);
 	}
@@ -1478,7 +1478,7 @@ static int mfc_enc_set_buf_ctrls_val_nal_q(struct mfc_ctx *ctx,
 			pInStr->RcFrameRate &= ~(buf_ctrl->mask << buf_ctrl->shft);
 			pInStr->RcFrameRate |=
 				(p->rc_frame_delta & buf_ctrl->mask) << buf_ctrl->shft;
-			mfc_debug(3, "[NALQ][DROPCTRL] fps %d -> %d, delta: %d, reg: %#x\n",
+			mfc_debug(3, "[NALQ][DROPCTRL] fps %d -> %ld, delta: %d, reg: %#x\n",
 					p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
 					p->rc_frame_delta, pInStr->RcFrameRate);
 			break;
