@@ -2117,9 +2117,10 @@ void max77705_usbc_clear_queue(struct max77705_usbc_platform_data *usbc_data)
 	while (!is_empty_usbc_cmd_queue(cmd_queue)) {
 		init_usbc_cmd_data(&cmd_data);
 		dequeue_usbc_cmd(cmd_queue, &cmd_data); 
-		if (max77705_check_recover_opcode(cmd_data.opcode))
-			usbc_data->recover_opcode_list[cmd_data.opcode]
-				= usbc_data->need_recover = true;
+		if (max77705_check_recover_opcode(cmd_data.opcode)) {
+			usbc_data->recover_opcode_list[cmd_data.opcode] = true;
+			usbc_data->need_recover = true;
+		}
 	}
 	usbc_data->opcode_stamp = 0;
 	msg_maxim("OUT");
