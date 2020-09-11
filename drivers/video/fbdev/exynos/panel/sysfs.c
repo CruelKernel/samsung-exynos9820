@@ -39,6 +39,20 @@ char *mcd_rs_name[MAX_MCD_RS] = {
 	"MCD1_R", "MCD1_L", "MCD2_R", "MCD2_L",
 };
 
+static const char *str_stm_fied[STM_FIELD_MAX] = {
+	"stm_ctrl_en=",
+	"stm_max_opt=",
+	"stm_default_opt=",
+	"stm_dim_step=",
+	"stm_frame_period=",
+	"stm_min_sect=",
+	"stm_pixel_period=",
+	"stm_line_period=",
+	"stm_min_move=",
+	"stm_m_thres=",
+	"stm_v_thres="
+};
+
 extern struct kset *devices_kset;
 
 #ifdef CONFIG_EXYNOS_LCD_ENG
