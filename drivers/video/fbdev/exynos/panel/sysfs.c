@@ -33,6 +33,23 @@
 #ifdef CONFIG_DYNAMIC_FREQ
 #include "dynamic_freq.h"
 #endif
+
+#ifdef CONFIG_SUPPORT_ISC_TUNE_TEST
+static const char *str_stm_fied[STM_FIELD_MAX] = {
+	"stm_ctrl_en=",
+	"stm_max_opt=",
+	"stm_default_opt=",
+	"stm_dim_step=",
+	"stm_frame_period=",
+	"stm_min_sect=",
+	"stm_pixel_period=",
+	"stm_line_period=",
+	"stm_min_move=",
+	"stm_m_thres=",
+	"stm_v_thres="
+};
+#endif
+
 static DEFINE_MUTEX(sysfs_lock);
 
 char *mcd_rs_name[MAX_MCD_RS] = {
