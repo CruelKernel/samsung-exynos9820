@@ -305,11 +305,22 @@ struct kobject *ems_kobj;
 static int __init init_sysfs(void)
 {
 	ems_kobj = kobject_create_and_add("ems", kernel_kobj);
+	if (!ems_kobj)
+		return -ENOMEM;
 
-	sysfs_create_file(ems_kobj, &sched_topology_attr.attr);
-	sysfs_create_file(ems_kobj, &eff_mode_attr.attr);
+	if (sysfs_create_file(ems_kobj, &sched_topology_attr.attr) < 0)
+		goto topology_err;
+	if (sysfs_create_file(ems_kobj, &eff_mode_attr.attr) < 0)
+		goto mode_err;
 
 	return 0;
+
+mode_err:
+	sysfs_remove_file(ems_kobj, &sched_topology_attr.attr);
+topology_err:
+	kobject_put(ems_kobj);
+	ems_kobj = NULL;
+	return -ENOMEM;
 }
 core_initcall(init_sysfs);
 
