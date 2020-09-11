@@ -48,6 +48,9 @@ static DEFINE_MUTEX(device_list_lock);
 int fpsensor_goto_suspend =0;
 #endif
 
+static char sensor_status[SENSOR_STATUS_SIZE][10] = {"ooo", "unknown", "failed",
+	"viper", "raptor", "egis", "viper_wog", "namsan", "goodix", "qbt2000", "et7xx", "goodixopt"};
+
 static int gpio_irq;
 static struct etspi_data *g_data;
 static DECLARE_WAIT_QUEUE_HEAD(interrupt_waitq);
