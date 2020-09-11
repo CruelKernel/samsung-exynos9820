@@ -287,7 +287,7 @@ void tsmux_print_cmu_mfc_sfr(struct tsmux_device *tsmux_dev) {
 
 	for (i = 0; i < tsmux_cmu_mfc_sfr_list_size; i++) {
 		cmu_mfc_sfr = TSMUX_CMU_MFC_READL(tsmux_cmu_mfc_sfr_list[i].offset);
-		print_tsmux(TSMUX_SFR, "%.8x: %.8x: %.8x, %s\n",
+		print_tsmux(TSMUX_SFR, "%.8llx: %.8x: %.8x, %s\n",
 			tsmux_cmu_mfc_sfr_list[i].base_pa,
 			tsmux_cmu_mfc_sfr_list[i].offset,
 			cmu_mfc_sfr,
