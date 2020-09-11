@@ -891,7 +891,7 @@ static void sec_debug_set_essinfo(void)
 		init_ess_info(index++, "empty");
 
 	for (index = 0; index < SD_NR_ESSINFO_ITEMS; index++)
-		printk("%s: key: %s offset: %llx nr: %x\n", __func__,
+		printk("%s: key: %s offset: %lx nr: %x\n", __func__,
 				sdn->ss_info.item[index].key,
 				sdn->ss_info.item[index].base,
 				sdn->ss_info.item[index].nr);
