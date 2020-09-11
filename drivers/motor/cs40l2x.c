@@ -3353,7 +3353,7 @@ static ssize_t cs40l2x_motor_type_show(struct device *dev,
 static ssize_t cs40l2x_event_cmd_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	pr_info("%s: [%d] %s\n", __func__, sec_prev_event_cmd);
+	pr_info("%s: %s\n", __func__, sec_prev_event_cmd);
 	return snprintf(buf, MAX_STR_LEN_EVENT_CMD, "%s\n", sec_prev_event_cmd);
 }
 
