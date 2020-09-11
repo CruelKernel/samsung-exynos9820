@@ -16,6 +16,10 @@
 
 static struct qbt2000_drvdata *g_data = NULL;
 
+static char sensor_status[SENSOR_STATUS_SIZE][10] = {"ooo", "unknown", "failed",
+	"viper", "raptor", "egis", "viper_wog", "namsan", "goodix", "qbt2000", "et7xx", "goodixopt"};
+
+
 /*
  * struct ipc_msg_type_to_fw_event -
  *      entry in mapping between an IPC message type to a firmware event
