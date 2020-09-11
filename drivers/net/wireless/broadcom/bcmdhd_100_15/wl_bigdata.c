@@ -272,7 +272,7 @@ wl_gather_ap_stadata(void *handle, void *event_info, u8 event)
 	wl_event_msg_t *e;
 
 	wl_ap_sta_data_t *sta_data;
-	wl_ap_sta_data_t temp_sta_data;
+	wl_ap_sta_data_t temp_sta_data = {0};
 	void *data = NULL;
 	int i;
 	int ret;
