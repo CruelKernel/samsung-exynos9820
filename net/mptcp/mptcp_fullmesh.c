@@ -1169,7 +1169,7 @@ static int inet6_addr_event(struct notifier_block *this, unsigned long event,
 	      event == NETDEV_CHANGE))
 		return NOTIFY_DONE;
 
-		addr6_event_handler(ifa6, event, net);
+	addr6_event_handler(ifa6, event, net);
 
 	return NOTIFY_DONE;
 }
