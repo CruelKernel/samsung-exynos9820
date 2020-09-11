@@ -159,7 +159,8 @@ static void parse_pwrsrc_rs(struct outbuf *buf)
 	unsigned long tmp;
 	long long_pwrsrc_rs;
 
-	kstrtol(pwrsrc_rs, 16, &long_pwrsrc_rs);
+	if (kstrtol(pwrsrc_rs, 16, &long_pwrsrc_rs))
+		return;
 
 	secdbg_write_buf(buf, 0, "OFFSRC::");
 	tmp = long_pwrsrc_rs & 0xff0000000000;
