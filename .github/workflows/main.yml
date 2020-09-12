@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [ "G973F" ]
-        version : [ "DTH7_195_09" ]
+        version : [ "DTH7_198_09" ]
 
     steps:
     - uses: actions/checkout@v1
