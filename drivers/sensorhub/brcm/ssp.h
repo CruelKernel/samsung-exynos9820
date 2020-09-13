@@ -1026,7 +1026,7 @@ struct ssp_data {
 /* AP suspend check flag*/
         bool IsAPsuspend;
 /* no ack about mcu_resp pin*/
-        bool IsNoRespCnt;
+        int IsNoRespCnt;
 /* hall ic */
 	bool hall_ic_status; // 0: open 1: close
 };
