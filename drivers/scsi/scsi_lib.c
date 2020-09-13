@@ -1462,7 +1462,7 @@ void scsi_alloc_tw(struct scsi_device *sdev)
 		blk_alloc_turbo_write(sdev->request_queue);
 		blk_register_tw_try_on_fn(sdev->request_queue, scsi_tw_try_on_fn);
 		blk_register_tw_try_off_fn(sdev->request_queue, scsi_tw_try_off_fn);
-		printk(KERN_INFO "%s: register scsi ufs tw interface for LU %d\n",
+		printk(KERN_INFO "%s: register scsi ufs tw interface for LU %llu\n",
 					__func__, sdev->lun);
 	}
 }
