@@ -27,7 +27,9 @@ static int initialized;
 
 static int sec_sdcard_ramdump(const char *val, const struct kernel_param *kp)
 {
-	kstrtouint(val, 16, &dump_sink);
+	if (kstrtouint(val, 16, &dump_sink))
+		return 0;
+
 	pr_crit("%s: %s %x\n", __func__, val, dump_sink);
 
 	if (!initialized)
