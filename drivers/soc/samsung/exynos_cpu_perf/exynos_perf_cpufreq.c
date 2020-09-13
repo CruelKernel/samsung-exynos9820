@@ -268,7 +268,7 @@ static int run_seq_show(struct seq_file *file, void *iter)
 	if (is_running) {
 		seq_printf(file, "NO RESULT\n");
 	} else {
-		seq_printf(file, "%s", buf);	// PRINT RESULT
+		seq_printf(file, "%s", (char *)buf);	// PRINT RESULT
 	}
 	return 0;
 }
