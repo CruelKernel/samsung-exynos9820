@@ -200,7 +200,7 @@ void exynos_err_parse(u32 reg_idx, u64 reg, struct err_variant_data *exynos_cpu_
 
 	valid = reg & BIT(exynos_cpu_err->valid_bit);
 	if (!valid) {
-		pr_emerg("%s valid_bit(%d) is NOT set (0x%lx)\n",
+		pr_emerg("%s valid_bit(%d) is NOT set (0x%llx)\n",
 				exynos_cpu_err->reg_name, exynos_cpu_err->valid_bit, valid);
 		return;
 	}
@@ -216,7 +216,7 @@ run_valid:
 
 		field = (reg & GENMASK_ULL(fld_end, fld_offset)) >> fld_offset;
 		if (field != 0)
-			pr_emerg("%s (%d:%d) %s 0x%lx\n",
+			pr_emerg("%s (%d:%d) %s 0x%x\n",
 				exynos_cpu_err->reg_name,
 				fld_end, fld_offset,
 				variant[i].fld_name, field);
