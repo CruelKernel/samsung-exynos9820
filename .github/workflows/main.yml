@@ -41,17 +41,6 @@ jobs:
                 name="Cruel-V3.6"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
-                +300hz                    \
-                +noatime                  \
-                +io_fiops                 \
-                +io_zen                   \
-                +io_anxiety               \
-                +io_maple                 \
-                +tcp_westwood             \
-                +nodebug                  \
-                +noksm                    \
-                +noswap                   \
-                +fake_config              \
                 +nohardening              \
                 +ttl                      \
                 +wireguard                \
