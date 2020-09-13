@@ -38,22 +38,22 @@ jobs:
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
-                name="CRUEL-V3.6"         \
+                name="CruelJim-V3.6_dev"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
                 +300hz                    \
                 +noatime                  \
-                +io_maple                 \
                 +io_fiops                 \
                 +io_zen                   \
                 +io_anxiety               \
+                +io_maple                 \
                 +tcp_westwood             \
                 +sched_ondemand           \
                 +sched_userspace          \
                 +mass_storage             \
                 +nodebug                  \
                 +noksm                    \
-                +no_swap                  \
+                +noswap                   \
                 +fake_config              \
                 +nohardening              \
                 +ttl                      \
