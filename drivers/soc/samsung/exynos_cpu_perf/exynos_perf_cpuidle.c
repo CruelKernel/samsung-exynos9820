@@ -362,7 +362,7 @@ static ssize_t show_result(char *buf)
 
 			if (cpu == cluster_first_cpu[cluster_index]) {
 				/* header: cpufreq */
-				ret += snprintf(buf + ret, PAGE_SIZE - ret, "#freq ", cpu);
+				ret += snprintf(buf + ret, PAGE_SIZE - ret, "#freq ");
 				for (freq = 0; freq < MAX_FREQ; freq++) {
 					freq_value = cpufreq_list[cluster_index][freq];
 					if (freq_value == 0) {
