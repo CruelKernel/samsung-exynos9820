@@ -923,7 +923,7 @@ ssize_t bbd_urgent_patch_read(struct file *user_filp, char __user *buf, size_t s
 			rd_size = urgent_patch_size - offset;
 
 		// 02-3. read requested size of urget_patch
-		pr_info("[SSPBBD] %s : download in progress (%d/%d)", __func__, offset  + rd_size, urgent_patch_size);
+		pr_info("[SSPBBD] %s : download in progress (%lu/%d)", __func__, offset  + rd_size, urgent_patch_size);
 
 		if(copy_to_user(buf, (void *)(urgent_buffer + offset), rd_size)) {
 			pr_info("[SSPBBD] %s : copy to user from urgent_buffer", __func__);
