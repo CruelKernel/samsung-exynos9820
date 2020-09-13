@@ -58,7 +58,7 @@ static void sec_free_rdx_bootdev(phys_addr_t paddr, u64 size)
 	unsigned long pfn_start, pfn_end, pfn_idx;
 	int ret;
 
-	pr_info("start (0x%p, 0x%llx)\n", paddr, size);
+	pr_info("start (0x%p, 0x%llx)\n", (void *)paddr, size);
 
 	if (!sec_rdx_bootdev_paddr) {
 		pr_err("reserved addr is null\n");
@@ -128,7 +128,7 @@ static ssize_t sec_rdx_bootdev_proc_write(struct file *file,
 		err = -ENODEV;
 	} else {
 		if (count > sec_rdx_bootdev_size) {
-			pr_err("size is wrong %llu > %llu\n", count, sec_rdx_bootdev_size);
+			pr_err("size is wrong %lu > %u\n", count, sec_rdx_bootdev_size);
 			err = -EINVAL;
 			goto out;
 		}
