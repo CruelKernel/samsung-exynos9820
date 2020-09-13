@@ -98,8 +98,8 @@ static int exynos_ehld_start_cpu(unsigned int cpu)
 		event = perf_event_create_kernel_counter(&exynos_ehld_attr, cpu, NULL,
 							 exynos_ehld_callback, NULL);
 		if (IS_ERR(event)) {
-			ehld_printk(0, "@%s: cpu%d event make failed err:%d\n",
-							__func__, cpu, (int)event);
+			ehld_printk(0, "@%s: cpu%d event make failed err: %ld\n",
+							__func__, cpu, PTR_ERR(event));
 			return PTR_ERR(event);
 		} else {
 			ehld_printk(0, "@%s: cpu%d event make success\n", __func__, cpu);
@@ -142,7 +142,7 @@ unsigned long long exynos_ehld_event_read_cpu(int cpu)
 
 	if (!in_irq() && event) {
 		total = perf_event_read_value(event, &enabled, &running);
-		ehld_printk(0, "%s: cpu%d - enabled: %zx, running: %zx, total: %zx\n",
+		ehld_printk(0, "%s: cpu%d - enabled: %llx, running: %llx, total: %llx\n",
 				__func__, cpu, enabled, running, total);
 	}
 	return total;
@@ -170,12 +170,12 @@ void exynos_ehld_event_raw_update_allcpu(void)
 			data->time[count] = cpu_clock(cpu);
 			if (cpu_is_offline(cpu) || !exynos_cpu.power_state(cpu) ||
 				!ctrl->ehld_running) {
-				ehld_printk(0, "%s: cpu%d is turned off : running:%x, power:%x, offline:%x\n",
+				ehld_printk(0, "%s: cpu%d is turned off : running:%x, power:%x, offline:%lx\n",
 					__func__, cpu, ctrl->ehld_running, exynos_cpu.power_state(cpu), cpu_is_offline(cpu));
 				data->event[count] = 0xC2;
 				data->pmpcsr[count] = 0;
 			} else {
-				ehld_printk(0, "%s: cpu%d is turned on : running:%x, power:%x, offline:%x\n",
+				ehld_printk(0, "%s: cpu%d is turned on : running:%x, power:%x, offline:%lx\n",
 					__func__, cpu, ctrl->ehld_running, exynos_cpu.power_state(cpu), cpu_is_offline(cpu));
 				DBG_UNLOCK(ctrl->dbg_base + PMU_OFFSET);
 				val = __raw_readq(ctrl->dbg_base + PMU_OFFSET + PMUPCSR);
@@ -186,7 +186,7 @@ void exynos_ehld_event_raw_update_allcpu(void)
 				DBG_LOCK(ctrl->dbg_base + PMU_OFFSET);
 			}
 			raw_spin_unlock_irqrestore(&ctrl->lock, flags);
-			ehld_printk(0, "%s: cpu%d - time:%llu, event:0x%x\n",
+			ehld_printk(0, "%s: cpu%d - time:%llu, event:0x%llx\n",
 				__func__, cpu, data->time[count], data->event[count]);
 		}
 	}
@@ -444,7 +444,7 @@ static int exynos_ehld_init_dt_parse(struct device_node *np)
 			return -ENOMEM;
 		}
 
-		ehld_printk(1, "exynos-ehld: cpu#%d, cs_base:0x%x, dbg_base:0x%x, total:0x%x, ioremap:0x%x\n",
+		ehld_printk(1, "exynos-ehld: cpu#%d, cs_base:0x%x, dbg_base:0x%x, total:0x%x, ioremap:0x%lx\n",
 				cpu, base, offset, ehld_main.cs_base + offset,
 				(unsigned long)ctrl->dbg_base);
 	}
