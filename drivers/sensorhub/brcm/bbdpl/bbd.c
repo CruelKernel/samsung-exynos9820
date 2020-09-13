@@ -902,22 +902,22 @@ ssize_t bbd_urgent_patch_read(struct file *user_filp, char __user *buf, size_t s
 		} else
 			is_signed = true;
 
-			if (is_signed == false) {
-				pr_err("[SSPBBD] %s : urgent_patch is not signed", __func__);
-				kfree(urgent_buffer);
-				return 0;
-			}
+		if (is_signed == false) {
+			pr_err("[SSPBBD] %s : urgent_patch is not signed", __func__);
+			kfree(urgent_buffer);
+			return 0;
+		}
 
-			urgent_patch_size = ret;
-			pr_err("[SSPBBD] %s : total: %d  patch size: %d", __func__, fsize, urgent_patch_size);
+		urgent_patch_size = ret;
+		pr_err("[SSPBBD] %s : total: %lld  patch size: %d", __func__, fsize, urgent_patch_size);
 
-			if (offset >= urgent_patch_size) {	// signal EOF 
-				pr_err("[SSPBBD] %s : signal EOF", __func__);
+		if (offset >= urgent_patch_size) {	// signal EOF 
+			pr_err("[SSPBBD] %s : signal EOF", __func__);
 
-				*ppos = 0;
-				kfree(urgent_buffer);
-				return 0;
-			}
+			*ppos = 0;
+			kfree(urgent_buffer);
+			return 0;
+		}
 
 		if (offset + size > urgent_patch_size)
 			rd_size = urgent_patch_size - offset;
