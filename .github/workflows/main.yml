@@ -41,21 +41,20 @@ jobs:
                 name="CRUEL-V3.6"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
-                +300hz \
-                +noatime \
-                +io_maple \
-                +io_fiops \
-                +io_zen \
-                +io_anxiety \
-                +maple \
-                +tcp_westwood \
-                +sched_ondemand \
-                +sched_userspace \
-                +mass_storage \
-                +nodebug \
-                +noksm \
-                +no_swap \
-                +fake_config \
+                +300hz                    \
+                +noatime                  \
+                +io_maple                 \
+                +io_fiops                 \
+                +io_zen                   \
+                +io_anxiety               \
+                +tcp_westwood             \
+                +sched_ondemand           \
+                +sched_userspace          \
+                +mass_storage             \
+                +nodebug                  \
+                +noksm                    \
+                +no_swap                  \
+                +fake_config              \
                 +nohardening              \
                 +ttl                      \
                 +wireguard                \
