@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: default
+  TOOLCHAIN: arter97
 
 jobs:
   build:
@@ -38,7 +38,7 @@ jobs:
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
-                name="CruelJim-V3.6_dev"         \
+                name="Cruel-V3.6"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
                 +300hz                    \
@@ -48,9 +48,6 @@ jobs:
                 +io_anxiety               \
                 +io_maple                 \
                 +tcp_westwood             \
-                +sched_ondemand           \
-                +sched_userspace          \
-                +mass_storage             \
                 +nodebug                  \
                 +noksm                    \
                 +noswap                   \
