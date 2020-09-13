@@ -49,19 +49,19 @@ jobs:
                 +ntfs                     \
                 +morosound                \
                 +boeffla_wl_blocker       \
-                +noatime \
-                +size \
-                +nodebug \
-                +noksm \
-                +io_cfq \
-                +sched_... \
-                +usb_serial \
-                +nohardening2 \
-                +nomodules \
-                +noaudit \
-                +noswap \
-                +nozram \
-                +fake_config \
+                +noatime       \
+                +size       \
+                +nodebug       \
+                +noksm       \
+                +io_cfq       \
+                +sched_...       \
+                +usb_serial       \
+                +nohardening2       \
+                +nomodules       \
+                +noaudit       \
+                +noswap       \
+                +nozram       \
+                +fake_config       \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
