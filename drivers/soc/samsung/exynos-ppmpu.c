@@ -231,7 +231,7 @@ static int exynos_ppmpu_probe(struct platform_device *pdev)
 			break;
 		case PPMPU_ERROR_INVALID_FAIL_INFO_SIZE:
 			dev_err(data->dev,
-				"The size of struct ppmpu_fail_info(%#x) is invalid\n",
+				"The size of struct ppmpu_fail_info(%#lx) is invalid\n",
 				sizeof(struct ppmpu_fail_info));
 			break;
 		case SMC_CMD_CHECK_PPMPU_CH_NUM:
@@ -277,7 +277,7 @@ static int exynos_ppmpu_probe(struct platform_device *pdev)
 		"VA of ppmpu_fail_info : %lx\n",
 		(unsigned long)data->fail_info);
 	dev_dbg(data->dev,
-		"PA of ppmpu_fail_info : %lx\n",
+		"PA of ppmpu_fail_info : %llx\n",
 		data->fail_info_pa);
 
 	ret = of_property_read_u32(data->dev->of_node, "irqcnt", &data->irqcnt);
