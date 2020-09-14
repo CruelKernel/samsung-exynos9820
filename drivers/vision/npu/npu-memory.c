@@ -99,7 +99,7 @@ int npu_memory_map(struct npu_memory *memory, struct npu_memory_buffer *buffer)
 
 	buffer->dma_buf = dma_buf_get(buffer->fd);
 	if (IS_ERR_OR_NULL(buffer->dma_buf)) {
-		npu_err("dma_buf_get is fail(0x%08x)\n", buffer->dma_buf);
+		npu_err("dma_buf_get is fail(0x%p)\n", buffer->dma_buf);
 		ret = -EINVAL;
 		goto p_err;
 	}
@@ -231,7 +231,7 @@ int npu_memory_alloc(struct npu_memory *memory, struct npu_memory_buffer *buffer
 
 	dma_buf = ion_alloc_dmabuf(heapname, size, flag);
 	if (IS_ERR_OR_NULL(dma_buf)) {
-		npu_err("ion_alloc_dmabuf is fail(0x%08x)\n", dma_buf);
+		npu_err("ion_alloc_dmabuf is fail(0x%p)\n", dma_buf);
 		ret = -EINVAL;
 		goto p_err;
 	}
