@@ -2612,7 +2612,7 @@ static int asrc_update_tick(struct abox_data *data, int stream, int id)
 	int ticknum, tickdiv;
 	int i, res, ret = 0;
 
-	dev_dbg(dev, "%s(%d, %d, %ulHz)\n", __func__, stream, id, aclk);
+	dev_dbg(dev, "%s(%d, %d, %luHz)\n", __func__, stream, id, aclk);
 
 	if (idx < 0) {
 		dev_err(dev, "%s(%d, %d): invalid idx: %d\n", __func__,
