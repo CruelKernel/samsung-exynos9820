@@ -159,14 +159,14 @@ queueing:
 		if ((skb2->dropmask & PACKET_IN)
 		    && (skb2->data > skb_network_header(skb2))) {
 			if (skb_headroom(skb2) == skb2->transport_header) {
-				push_len = (unsigned int)skb_network_header_len(skb2);
+				push_len = (uintptr_t)skb_network_header_len(skb2);
 			} else if (skb_headroom(skb2) > skb2->transport_header) {
 				struct tcphdr *tcph = tcp_hdr(skb2);
-				push_len = (unsigned int)skb_network_header_len(skb2) 
-					   + (unsigned int)(tcph->doff * 4);
+				push_len = (ptrdiff_t)skb_network_header_len(skb2) 
+					   + (ptrdiff_t)(tcph->doff * 4);
 			} else {
-				push_len = (unsigned int)skb2->data 
-					   - (unsigned int)skb_network_header(skb2);
+				push_len = (ptrdiff_t)skb2->data 
+					   - (ptrdiff_t)skb_network_header(skb2);
 			}
 
 			if (unlikely(skb_headroom(skb2) < push_len)) {
