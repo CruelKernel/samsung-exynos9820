@@ -2480,14 +2480,14 @@ static int of_get_panel_gpio(struct device_node *np, struct panel_gpio *gpio)
 	if ((gpio->dir & GPIOF_DIR_IN) == GPIOF_DIR_OUT) {
 		ret = gpio_request(gpio->num, gpio->name);
 		if (ret < 0) {
-			panel_err("PANEL:ERR:%s:failed to request gpio(%s:%d)\n",
+			panel_err("PANEL:ERR:%s:failed to request gpio(%d:%s)\n",
 					__func__, gpio->num, gpio->name);
 			return ret;
 		}
 	} else {
 		ret = gpio_request_one(gpio->num, GPIOF_IN, gpio->name);
 		if (ret < 0) {
-			panel_err("PANEL:ERR:%s:failed to request gpio(%s:%d)\n",
+			panel_err("PANEL:ERR:%s:failed to request gpio(%d:%s)\n",
 					__func__, gpio->num, gpio->name);
 			return ret;
 		}
