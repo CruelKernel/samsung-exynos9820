@@ -10122,7 +10122,7 @@ static void ufs_sec_send_errinfo(void *data)
 {
 	static struct ufs_hba *hba;
 	struct SEC_UFS_counting *err_info;
-	char buf[22];
+	char buf[23];
 
 	if (data) {
 		hba = (struct ufs_hba *)data;
