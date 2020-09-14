@@ -1279,7 +1279,7 @@ static ssize_t self_mask_check_show(struct device *dev,
 		len = snprintf(buf, PAGE_SIZE, "%d", success_check);
 		for (i = 0; i < aod->props.self_mask_checksum_len; i++)
 			len += snprintf(buf + len, PAGE_SIZE - len, " %02x", recv_checksum[i]);
-		len += snprintf(buf + len, PAGE_SIZE - len, "\n", recv_checksum[i]);
+		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 		kfree(recv_checksum);
 	} else {
 		snprintf(buf, PAGE_SIZE, "-1\n");
