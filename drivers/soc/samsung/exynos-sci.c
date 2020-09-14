@@ -585,14 +585,14 @@ void sci_error_dump(void)
 	exynos_sci_err_parse(SCI_ERRSTATHI, sci_reg);
 	pr_info("SCI_ErrStatLo : %08x\n", sci_reg = __raw_readl(sci_base + SCI_ErrStatLo));
 	exynos_sci_err_parse(SCI_ERRSTATLO, sci_reg);
-	pr_info("SCI_ErrAddr(Hi,Lo): %08x %08x\n",
+	pr_info("SCI_ErrAddr(Hi,Lo): %08lx %08x\n",
 			sci_reg_hi = __raw_readl(sci_base + SCI_ErrAddrHi),
 			sci_reg = __raw_readl(sci_base + SCI_ErrAddrLo));
 
 	sci_reg_addr = sci_reg + (MSB_MASKING & (sci_reg_hi << 32L));
 	sci_ns = (ERR_NS & sci_reg_hi) >> 8;
 	sci_err_inj = (ERR_INJ_DONE & sci_reg_hi) >> 31;
-	pr_info("SCI_ErrAddr : %016lx (NS:%d, ERR_INJ:%d)\n", sci_reg_addr, sci_err_inj);
+	pr_info("SCI_ErrAddr : %016lx (NS:%u, ERR_INJ:%u)\n", sci_reg_addr, sci_ns, sci_err_inj);
 	exynos_dump_common_cpu_reg();
 	pr_info("============================================================\n");
 }
