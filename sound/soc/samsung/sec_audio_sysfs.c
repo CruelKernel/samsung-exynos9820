@@ -249,7 +249,7 @@ static int __init sec_audio_sysfs_init(void)
 			audio_data->jack_dev = NULL;
 			--dev_id;
 		} else {
-			pr_info("%s: create earjack device id(%lu)\n",
+			pr_info("%s: create earjack device id(%u)\n",
 							__func__, dev_id);
 			audio_data->jack_dev_id = dev_id;
 		}
@@ -275,7 +275,7 @@ static int __init sec_audio_sysfs_init(void)
 			audio_data->codec_dev = NULL;
 			--dev_id;
 		} else {
-			pr_info("%s: create codec device id(%lu)\n",
+			pr_info("%s: create codec device id(%u)\n",
 							__func__, dev_id);
 			audio_data->codec_dev_id = dev_id;
 		}
