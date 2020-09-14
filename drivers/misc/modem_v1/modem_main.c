@@ -662,7 +662,7 @@ enum mif_sim_mode {
 
 static int simslot_count(struct seq_file *m, void *v)
 {
-	enum mif_sim_mode mode = (enum mif_sim_mode)m->private;
+	enum mif_sim_mode mode = (uintptr_t)m->private;
 
 	seq_printf(m, "%u\n", mode);
 	return 0;
