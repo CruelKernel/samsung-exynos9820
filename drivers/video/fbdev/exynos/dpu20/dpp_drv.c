@@ -654,8 +654,7 @@ static long dpp_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg
 		break;
 
 	case DPP_STOP:
-		if (&arg != NULL)
-			reset = (bool)arg;
+		reset = (bool)arg;
 #ifdef CONFIG_EXYNOS_MCD_HDR
 		ret = dpp_mcd_stop(dpp);
 #endif
