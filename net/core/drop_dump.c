@@ -170,9 +170,9 @@ queueing:
 			}
 
 			if (unlikely(skb_headroom(skb2) < push_len)) {
-				pr_drop("odd skb: %p len:%d head:%p data:%p ",
+				pr_drop("odd skb: %p len:%d head:%p data:%p "
+ 					"tail:%#lx end:%#lx dev:%s\n",
  					 skb2, skb2->len, skb2->head, skb2->data,
- 					 "tail:%#lx end:%#lx dev:%s\n",
  					 (unsigned long)skb2->tail, (unsigned long)skb2->end,
  					 skb2->dev ? skb2->dev->name : "<NULL>");
 				goto error_exit;
