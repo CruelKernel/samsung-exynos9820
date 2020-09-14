@@ -655,7 +655,7 @@ static int npu_store_log_dump(const size_t dump_size)
 	total = 0;
 	ret = spin_lock_safe_isr(&npu_log_lock);
 	if (ret) {
-		pr_err("NPU log dump is not available - in interrupt context\n", total);
+		pr_err("NPU log dump is not available - in interrupt context\n");
 		goto err_exit;
 	}
 
