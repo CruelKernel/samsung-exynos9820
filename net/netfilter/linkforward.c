@@ -224,18 +224,20 @@ int linkforward_add(__be16 dst_port, struct nf_conntrack_tuple *t_rpl, struct nf
 
 	if (!room_found) {
 		last_conn_idx++;
+
 		if (last_conn_idx == MAX_CONNECTION_CNT)
 			last_conn_idx = 0;
-			i = last_conn_idx;
-			conn[i].enabled = true;
-			conn[i].dst_port = dst_port;
-			conn[i].netdev = netdev;
-			memcpy(&conn[i].t[0], t_org, sizeof(struct nf_conntrack_tuple));
-			memcpy(&conn[i].t[1], t_rpl, sizeof(struct nf_conntrack_tuple));
+
+		i = last_conn_idx;
+		conn[i].enabled = true;
+		conn[i].dst_port = dst_port;
+		conn[i].netdev = netdev;
+		memcpy(&conn[i].t[0], t_org, sizeof(struct nf_conntrack_tuple));
+		memcpy(&conn[i].t[1], t_rpl, sizeof(struct nf_conntrack_tuple));
 
 #ifdef CONFIG_CP_DIT
-			dit_set_nat_local_addr(t_org->src.u3.ip);
-			dit_set_nat_filter(i, IPPROTO_TCP, 0xffffffff, 0xffff, dst_port);
+		dit_set_nat_local_addr(t_org->src.u3.ip);
+		dit_set_nat_filter(i, IPPROTO_TCP, 0xffffffff, 0xffff, dst_port);
 #endif
 	}
 
