@@ -4440,7 +4440,7 @@ ssize_t mfc_s2miw04_store_attrs(struct device *dev,
 		ret = count;
 		break;
 	case MFC_PACKET:
-		if (sscanf(buf, "0x%4x 0x%4x 0x%4x\n", &header, &data_com, &data_val) == 3) {
+		if (sscanf(buf, "0x%4hhx 0x%4hhx 0x%4hhx\n", &header, &data_com, &data_val) == 3) {
 			dev_info(charger->dev, "%s 0x%x, 0x%x, 0x%x \n", __func__, header, data_com, data_val);
 			mfc_send_packet(charger, header, data_com, &data_val, 1);
 		}
