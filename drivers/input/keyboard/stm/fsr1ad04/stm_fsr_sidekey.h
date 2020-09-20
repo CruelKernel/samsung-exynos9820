@@ -144,13 +144,9 @@ struct fsr_sidekey_plat_data {
 
 #define BUFFER_MAX			((256 * 1024) - 16)
 
-static int G1[4] = { -2400, -2400, -4800, -4800 };
-static int G2[4][4] = {
-	{-250, -250, -500, -500},
-	{-125, -125, -250, -250},
-	{-500, -500, -1000, -1000},
-	{-250, -250, -500, -500}
-};
+extern int G1[4];
+extern int G2[4][4];
+
 
 enum {
 	TYPE_RAW_DATA,
