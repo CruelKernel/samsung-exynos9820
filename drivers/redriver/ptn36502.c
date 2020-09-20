@@ -135,7 +135,7 @@ int ptn36502_config(int config, int is_DFP)
 		break;
 
 	case CHECK_EXIST:
-		pr_err("%s: dummy\n");
+		pr_err("%s: dummy\n", __func__);
 		break;
 
 	default:
