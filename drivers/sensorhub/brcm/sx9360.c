@@ -958,7 +958,7 @@ static ssize_t sx9360_normal_threshold_show(struct device *dev,
 		break;
 	}
 
-	return snprintf(buf, PAGE_SIZE, "%lu,%lu\n",
+	return snprintf(buf, PAGE_SIZE, "%u,%u\n",
 		(u32)threshold + (u32)hyst, (u32)threshold - (u32)hyst);
 }
 
