@@ -1827,7 +1827,7 @@ static int dpu_set_pre_df_dsim(struct decon_device *decon)
 		return -EINVAL;
 	}
 	if (df_set->hs == 0) {
-		decon_err("[DYN_FREQ]:ERR:%s:df index : %d hs is 0 : %d\n",
+		decon_err("[DYN_FREQ]:ERR:%s:df index : %d hs is 0\n",
 			__func__, status->target_df);
 		return -EINVAL;
 	}
