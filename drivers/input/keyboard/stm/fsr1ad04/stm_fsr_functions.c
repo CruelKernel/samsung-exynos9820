@@ -29,6 +29,14 @@
 
 #include "stm_fsr_sidekey.h"
 
+int G1[4] = { -2400, -2400, -4800, -4800 };
+int G2[4][4] = {
+	{-250, -250, -500, -500},
+	{-125, -125, -250, -250},
+	{-500, -500, -1000, -1000},
+	{-250, -250, -500, -500}
+};
+
 static void fw_update(void *device_data);
 static void get_chip_vendor(void *device_data);
 static void get_chip_name(void *device_data);
