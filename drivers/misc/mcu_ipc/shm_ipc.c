@@ -1031,16 +1031,16 @@ static int shm_probe(struct platform_device *pdev)
 			pdata.p_acpm_addr, pdata.acpm_size);
 
 #ifdef CONFIG_LINK_DEVICE_PCIE
-	dev_info(dev, "msi_base=0x%08X msi_size=0x%08X\n",
+	dev_info(dev, "msi_base=0x%08lX msi_size=0x%08X\n",
 			pdata.p_msi_addr, pdata.t_msi_size);
 #endif
 
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
-	dev_info(dev, "s5100_ipc_base=0x%08X s5100_ipc_size=0x%08X\n",
+	dev_info(dev, "s5100_ipc_base=0x%08lX s5100_ipc_size=0x%08X\n",
 			pdata.p_s5100_ipc_addr, pdata.t_s5100_ipc_size);
 
-	dev_info(dev, "s5100_cp2cp_addr=0x%08X s5100_cp2cp_size=0x%08X s5100_cp2cp_offset=0x%08X\n",
-			pdata.p_s5100_ipc_addr, pdata.t_s5100_ipc_size,
+	dev_info(dev, "s5100_cp2cp_addr=0x%08lX s5100_cp2cp_size=0x%08X s5100_cp2cp_offset=0x%08X\n",
+			pdata.p_s5100_cp2cp_addr, pdata.t_s5100_cp2cp_size,
 			pdata.s5100_cp2cp_off);
 #endif
 
