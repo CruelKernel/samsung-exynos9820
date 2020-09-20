@@ -365,7 +365,7 @@ u64 dpu_bts_calc_aclk_disp(struct decon_device *decon,
 
 		if ((aclk_disp > TSP_INTER_MIN) &&
 			(aclk_disp < TSP_INTER_MAX)) {
-			decon_dbg("aclk : %d -> %d\n", aclk_disp, ACLK_AVOID_INTER);
+			decon_dbg("aclk : %lld -> %d\n", aclk_disp, ACLK_AVOID_INTER);
 			aclk_disp = ACLK_AVOID_INTER;
 		}
 	}
