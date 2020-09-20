@@ -125,7 +125,8 @@ struct sx9360_p {
 	s16 max_normal_diff;
 
 	int debug_count;
-	char hall_ic[6];
+#define HALL_IC_LEN 6
+	char hall_ic[HALL_IC_LEN];
 	int is_unknown_mode;
 	int motion;
 	bool first_working;
@@ -137,12 +138,12 @@ struct sx9360_p {
 #endif	
 };
 
-static int sx9360_check_hallic_state(char *file_path, char hall_ic_status[])
+static int sx9360_check_hallic_state(char *file_path, char hall_ic_status[HALL_IC_LEN])
 {
 	int iRet = 0;
 	mm_segment_t old_fs;
 	struct file *filep;
-	char hall_sysfs[5];
+	char hall_sysfs[HALL_IC_LEN];
 
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -164,7 +165,7 @@ static int sx9360_check_hallic_state(char *file_path, char hall_ic_status[])
 		set_fs(old_fs);
 		return -EIO;
 	} else {
-		strncpy(hall_ic_status, hall_sysfs, sizeof(hall_sysfs));
+		strncpy(hall_ic_status, hall_sysfs, HALL_IC_LEN);
 	}
 
 	filp_close(filep, current->files);
