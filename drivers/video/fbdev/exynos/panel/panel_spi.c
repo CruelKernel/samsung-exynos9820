@@ -199,7 +199,7 @@ static int panel_spi_read_id(struct panel_spi_dev *spi_dev, u32 *id)
 		return -EIO;
 
 	*id = (rbuf[0] << 16) | (rbuf[1] << 8) | rbuf[2];
-	pr_debug("%s: 0x06X\n", __func__, *id);
+	pr_debug("%s: 0x%06X\n", __func__, *id);
 
 	return 0;
 }
