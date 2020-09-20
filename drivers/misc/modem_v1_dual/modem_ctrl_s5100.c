@@ -1220,7 +1220,7 @@ static int s5100_pm_notifier(struct notifier_block *notifier,
 		break;
 
 	default:
-		mif_info("pm_event %d\n", pm_event);
+		mif_info("pm_event %lu\n", pm_event);
 		break;
 	}
 
