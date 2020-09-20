@@ -861,7 +861,7 @@ int fig0_ext10_decoder(u8 *fibBuffer, int figLength)
 	u8 hour = 0; /*minutes = 0, seconds = 0*/
 	u16 milliseconds = 0;
 
-	MJD = (fibBuffer[0] & 0x7f) << 10;
+	MJD = (fibBuffer[0] & 0x7fU) << 10;
 	MJD |= (fibBuffer[1] << 2);
 	MJD |= (fibBuffer[2] & 0xc0) >> 6;
 	/*LSI = (fibBuffer[2] & 0x20) >> 5; */
