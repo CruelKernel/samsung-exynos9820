@@ -2100,8 +2100,14 @@ int sec_ts_power(void *data, bool on)
 		if (regulator_is_enabled(regulator_dvdd)) {
 			ret = regulator_disable(regulator_dvdd);
 			if (ret) {
+				int ret;
+
 				input_err(true, &ts->client->dev, "%s: failed to disable dvdd: %d\n", __func__, ret);
-				regulator_enable(regulator_avdd);
+				ret = regulator_enable(regulator_avdd);
+				if (ret < 0) {
+					input_err(true, &ts->client->dev, "%s: failed to reenable dvdd: %d\n", __func__, ret);
+				}
+
 				goto out;
 			}
 		} else {
