@@ -116,7 +116,7 @@ send_doorbell_again:
 	reg = ioread32(s5100pcie.doorbell_addr);
 
 	/* debugging: */
-	mif_debug("DBG: s5100pcie.doorbell_addr = 0x%x - written(int_num=0x%x) read(reg=0x%x)\n", \
+	mif_debug("DBG: s5100pcie.doorbell_addr = 0x%p - written(int_num=0x%x) read(reg=0x%x)\n", \
 		s5100pcie.doorbell_addr, int_num, reg);
 
 	if (reg == 0xffffffff) {
@@ -400,7 +400,7 @@ static int s5100pcie_probe(struct pci_dev *pdev,
 		s5100pcie.doorbell_addr = devm_ioremap_wc(&pdev->dev,
 					0x11000d20, SZ_4);
 
-	pr_info("s5100pcie.doorbell_addr = 0x%x (CONFIG_SOC_EXYNOS9820: 0x11000d20)\n", \
+	pr_info("s5100pcie.doorbell_addr = 0x%p (CONFIG_SOC_EXYNOS9820: 0x11000d20)\n", \
 		s5100pcie.doorbell_addr);
 #else
 	#error "Can't set Doorbell interrupt register!"
