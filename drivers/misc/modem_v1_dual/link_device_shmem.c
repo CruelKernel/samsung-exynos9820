@@ -2453,7 +2453,7 @@ static int shmem_security_request(struct link_device *ld, struct io_device *iod,
 		cp_init_done = 1;
 	}
 
-	mif_err("mode=%lx, param2=0x%lx, param3=0x%lx, cp_base_addr=0x%lx\n",
+	mif_err("mode=%x, param2=0x%lx, param3=0x%lx, cp_base_addr=0x%lx\n",
 			msr.mode, param2, param3, shm_get_phys_base());
 	err = exynos_smc(SMC_ID, msr.mode, param2, param3);
 
@@ -2489,7 +2489,7 @@ static int shmem_security_cp2cp_baaw_request(struct link_device *ld,
 	unsigned int cp2cp_size = shm_get_s5100_cp2cp_size();
 	unsigned int cp2cp_offset = shm_get_s5100_cp2cp_offset();
 
-	mif_info("cp2cp_addr=0x%08X cp2cp_size=0x%08X cp2cp_offset=0x%08X\n",
+	mif_info("cp2cp_addr=0x%08lX cp2cp_size=0x%08X cp2cp_offset=0x%08X\n",
 			cp2cp_base, cp2cp_size, cp2cp_offset);
 
 #if defined(CONFIG_CP_SECURE_BOOT)
