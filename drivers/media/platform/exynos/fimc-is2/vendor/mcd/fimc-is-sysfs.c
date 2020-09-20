@@ -2761,7 +2761,7 @@ static ssize_t camera_front_tof_check_pd_store(struct device *dev,
 		return -ENODEV;
 	}
 
-	ret_count = sscanf(buf, "%d", &value);
+	ret_count = sscanf(buf, "%hhd", &value);
 	camera_tof_set_laser_current(SENSOR_POSITION_FRONT_TOF, value);
 	return count;
 }
