@@ -2,10 +2,10 @@
 obj-$(CONFIG_FIVE) += five.o
 obj-$(CONFIG_FIVE_PA_FEATURE) += five_pa.o
 
-EXTRA_CFLAGS += -I$(src)
-asflags-y += -Isecurity/integrity/five
-asflags-y += -Isecurity/samsung/five
-ccflags-y += -I$(srctree)
+asflags-y += -Wa,-I$(srctree)/security/integrity/five
+asflags-y += -Wa,-I$(srctree)/$(src)
+ccflags-y += -I$(srctree)/
+ccflags-y += -I$(srctree)/$(src)
 ccflags-y += -Wformat
 
 five-y := five_lv.o five_cert.o five_keyring.o five_init.o  \
