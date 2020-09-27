@@ -1,6 +1,6 @@
-subdir-ccflags-y += -I$(srctree)/drivers/misc/tzdev/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/tzdev
-ccflags-$(CONFIG_TZDEV_DEPLOY_TZAR) += -D"_STR(s)=\#s" -D"KBUILD_SRC=_STR($(KBUILD_SRC))"
+subdir-ccflags-y += -I$(srctree)/$(src)/include
+subdir-ccflags-y += -I$(srctree)/$(src)
+ccflags-$(CONFIG_TZDEV_DEPLOY_TZAR) += -Wa,-I$(srctree)/$(src)
 
 obj-$(CONFIG_TZDEV)			+= lib/
 obj-$(CONFIG_TZDEV)			+= teec/
