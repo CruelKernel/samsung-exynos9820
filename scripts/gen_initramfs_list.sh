@@ -203,11 +203,21 @@ input_file() {
 		fi
 		if [ -z ${dep_list} ]; then
 			print_mtime "$1" >> ${output}
-			cat "$1"         >> ${output}
+			cat "$1" | while read type dir file perm ; do
+				if [ "$type" = "file" ]; then
+					if [ "$1" != "${1#/}" ]; then
+						file="$(readlink -f "${srctree}/${file}")"
+					fi
+				fi
+				echo $type "${dir}" "${file}" $perm >> ${output}
+			done
 		else
 		        echo "$1 \\"
 			cat "$1" | while read type dir file perm ; do
 				if [ "$type" = "file" ]; then
+					if [ "$1" != "${1#/}" ]; then
+						file="$(readlink -f "${srctree}/${file}")"
+					fi
 					echo "$file \\";
 				fi
 			done
