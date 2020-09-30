@@ -26,7 +26,9 @@ $(obj)/initramfs_data.o: $(obj)/$(datafile_y) FORCE
 hostprogs-y := gen_init_cpio
 initramfs   := $(CONFIG_SHELL) $(srctree)/scripts/gen_initramfs_list.sh
 ramfs-input := $(if $(filter-out "",$(CONFIG_INITRAMFS_SOURCE)), \
-			$(shell echo $(CONFIG_INITRAMFS_SOURCE)),-d)
+			$(if $(patsubst /%,,$(CONFIG_INITRAMFS_SOURCE)), \
+				$(abspath $(srctree)/$(CONFIG_INITRAMFS_SOURCE)), \
+				$(CONFIG_INITRAMFS_SOURCE)),-d)
 ramfs-args  := \
         $(if $(CONFIG_INITRAMFS_ROOT_UID), -u $(CONFIG_INITRAMFS_ROOT_UID)) \
         $(if $(CONFIG_INITRAMFS_ROOT_GID), -g $(CONFIG_INITRAMFS_ROOT_GID))
