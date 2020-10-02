@@ -48,7 +48,7 @@ jobs:
                 +sdfat                    \
                 +ntfs                     \
                 +morosound                \
-                +boeffla_wl_blocker 
+                +boeffla_wl_blocker  \
                 +sched_conservative \
                 +sched_ondemand \
                 +sched_powersave \
