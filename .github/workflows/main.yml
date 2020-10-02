@@ -49,6 +49,11 @@ jobs:
                 +ntfs                     \
                 +morosound                \
                 +boeffla_wl_blocker       \
+                 + sched_conservative \
+ + sched_ondemand \
+ + sched_powersave \
+ + sched_userspace \
+ + sched_performance \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
