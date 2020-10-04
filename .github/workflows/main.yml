@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G977B" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -43,7 +43,7 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="CRUEL-V3.7"         \
+                     name="[-VN-KERNEL-V3.7-DTH7-]"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
@@ -54,6 +54,19 @@ jobs:
                      +ntfs                     \
                      +morosound                \
                      +boeffla_wl_blocker       \
+                +noatime \
+                +io_cfq \
+                +sched_ondemand \
+                +mass_storage \
+                +size \
+                +nodebug \
+                +noksm \
+                +nomodules \
+                +noaudit \
+                +noswap \
+                +nozram \
+                +usb_serial \
+                +fake_config \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./cruelbuild :build
