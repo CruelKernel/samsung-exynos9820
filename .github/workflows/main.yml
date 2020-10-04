@@ -38,7 +38,7 @@ jobs:
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
-                name="CRUEL-V3.6"         \
+                name="Zero Kernel"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
                 +nohardening              \
@@ -49,6 +49,8 @@ jobs:
                 +ntfs                     \
                 +morosound                \
                 +boeffla_wl_blocker       \
+                +300hz
+                +shed_perfomance
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./build :build
