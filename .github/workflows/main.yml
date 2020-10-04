@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G977B" ]
+        model: [ "G973F", "G975F", "G970F", "G977B", "N975F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -43,7 +43,7 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="[-VN-KERNEL-V3.7-DTH7-]"         \
+                     name="[-VN-KERNEL-V3.7-]"         \
                      toolchain=$TOOLCHAIN      \
                      os_patch_level="2099-01"      \
                      +magisk                   \
