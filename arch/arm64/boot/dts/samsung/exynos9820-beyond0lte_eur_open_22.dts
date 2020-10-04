@@ -2517,7 +2517,7 @@
 		target = <0xffffffff>;
 
 		__overlay__ {
-			bootargs_ext = "skip_initramfs rootwait ro init=/init";
+			bootargs_ext = "rootwait ro init=/init";
 		};
 	};
 
