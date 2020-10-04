@@ -26,7 +26,7 @@
 #ifndef CONFIG_ANDROID_SYSTEM_AS_ROOT
 	bootargs_ext = "root=/dev/ram0";
 #else
-	bootargs_ext = "skip_initramfs rootwait ro init=/init";
+	bootargs_ext = "rootwait ro init=/init";
 #endif
 };
 
