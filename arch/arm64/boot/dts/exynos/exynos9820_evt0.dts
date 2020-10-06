@@ -251,7 +251,7 @@
 					dev = "/dev/block/platform/13d60000.ufs/by-name/system";
 					type = "ext4";
 					mnt_flags = "ro";
-					fsmgr_flags = "wait, avb";
+					fsmgr_flags = "wait";
 					status = "disabled";
 				};
 				vendor {
@@ -259,7 +259,7 @@
 					dev = "/dev/block/platform/13d60000.ufs/by-name/vendor";
 					type = "ext4";
 					mnt_flags = "ro";
-					fsmgr_flags = "wait,verify,avb";
+					fsmgr_flags = "wait";
 					status = "okay";
 				};
 				product {
@@ -267,7 +267,7 @@
 					dev = "/dev/block/platform/13d60000.ufs/by-name/product";
 					type = "ext4";
 					mnt_flags = "ro";
-					fsmgr_flags = "wait,verify,avb";
+					fsmgr_flags = "wait";
 					status = "okay";
 				};
 			};
