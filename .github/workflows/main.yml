@@ -4,7 +4,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: arm
+  TOOLCHAIN: default
 
 jobs:
   build:
@@ -56,9 +56,18 @@ jobs:
                      +ntfs                     \
                      +morosound                \
                      +boeffla_wl_blocker       \
-                     +noatime \
-                     +nodebug \
-                     +noksm \
+                +noatime \
+                +io_cfq \
+                +mass_storage \
+                +size \
+                +nodebug \
+                +noksm \
+                +nomodules \
+                +noaudit \
+                +noswap \
+                +nozram \
+                +usb_serial \
+                +fake_config \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./cruelbuild :build
