@@ -1,3 +1,4 @@
+
 name: Build
 
 on: [push]
@@ -43,7 +44,7 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="[-VN-KERNEL-V3.7.1-]"         \
+                     name="[-VN-KERNEL-V3.7-]"         \
                      toolchain=$TOOLCHAIN      \
                      os_patch_level="2099-12"      \
                      +magisk                   \
