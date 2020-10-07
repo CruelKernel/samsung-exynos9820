@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F", "G975F", "G970F", "G977B", "N975F", "N976B" ]
+        model: [ "G973F", "G975F", "G970F", "G977B", "N975F" ]
 
     steps:
     - uses: actions/checkout@v2
