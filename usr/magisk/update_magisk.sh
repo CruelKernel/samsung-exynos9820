@@ -1,18 +1,21 @@
 #!/bin/bash
 
 set -e
-set -o pipefail
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [ "x$1" = "x--canary" ]
+ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
+
+if [ "x$1" = "xcanary" ]
 then
-	ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 	nver="canary"
-	magisk_link="https://github.com/topjohnwu/magisk_files/raw/${nver}/magisk-release.zip"
+	magisk_link="https://github.com/topjohnwu/magisk_files/raw/${nver}/magisk-debug.zip"
 else
-	ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
-	nver="$(curl -s https://github.com/topjohnwu/Magisk/releases/latest | grep -o 'v[[:digit:].]*')"
+	if [ "x$1" = "x" ]; then
+		nver="$(curl -s https://github.com/topjohnwu/Magisk/releases | fgrep -m 1 'Magisk v' | cut -d '>' -f 2 | cut -d '<' -f 1 | cut -d ' ' -f 2)"
+	else
+		nver="$1"
+	fi
 	magisk_link="https://github.com/topjohnwu/Magisk/releases/download/${nver}/Magisk-${nver}.zip"
 fi
 
