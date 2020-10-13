@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: default
+  TOOLCHAIN: arter97
 
 jobs:
   build:
@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G970F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -43,17 +43,19 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="CRUEL-V3.7"         \
+                     name="eszhi kerel v0.01"  \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
                      +ttl                      \
-                     +wireguard                \
                      +cifs                     \
                      +sdfat                    \
                      +ntfs                     \
                      +morosound                \
-                     +boeffla_wl_blocker       \
+                     +noksm                    \
+                     +300hz                    \
+                     +io_fiops                 \
+                     +tcp_westwood             \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./cruelbuild :build
