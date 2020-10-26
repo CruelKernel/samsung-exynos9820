@@ -24,6 +24,10 @@ ifdef CONFIG_MODEL_G977B
 include arch/arm64/boot/dts/G977B.mk
 endif
 
+ifdef CONFIG_MODEL_G977N
+include arch/arm64/boot/dts/G977N.mk
+endif
+
 ifdef CONFIG_MODEL_N970F
 include arch/arm64/boot/dts/N970F.mk
 endif

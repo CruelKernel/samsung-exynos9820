@@ -3,7 +3,7 @@
 ![CI](https://github.com/CruelKernel/samsung-exynos9820/workflows/CI/badge.svg)
 
 Based on samsung sources and android common tree.
-Supported devices: G970F, G970N, G973F, G975F, G975N, G977B, N970F, N975F,
+Supported devices: G970F, G970N, G973F, G975F, G975N, G977B, G977N, N970F, N975F,
 N971N, N976B, N976N.
 
 ## Contributors
@@ -76,7 +76,7 @@ and **edit** it from the browser.
 
 First of all, you need to edit model argument (by default it's G973F) to the model
 of your phone. You can select multiple models. Supported models are: G970F, G970N, G973F, G975F,
-G975N, G977B, N970F, N971N, N975F, N976B, N976N.
+G975N, G977B, G977N, N970F, N971N, N975F, N976B, N976N.
 
 Edit model:
 ```YAML

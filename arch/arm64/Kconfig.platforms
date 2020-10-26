@@ -323,7 +323,7 @@ config SOC_EXYNOS9820
 
 choice
 	prompt "Samsung EXYNOS982[05] Model"
-	default CONFIG_MODEL_NONE
+	default MODEL_NONE
 
 	help
 	  Select the phone model.
@@ -342,6 +342,8 @@ choice
 		bool "G975N"
 	config MODEL_G977B
 		bool "G977B"
+	config MODEL_G977N
+		bool "G977N"
 	config MODEL_N970F
 		bool "N970F"
 	config MODEL_N971N
