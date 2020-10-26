@@ -241,12 +241,11 @@ loff_t no_llseek(struct file *file, loff_t offset, int whence)
 }
 EXPORT_SYMBOL(no_llseek);
 
-loff_t default_llseek(struct file *file, loff_t offset, int whence)
+loff_t default_llseek_unlocked(struct file *file, loff_t offset, int whence)
 {
 	struct inode *inode = file_inode(file);
 	loff_t retval;
 
-	inode_lock(inode);
 	switch (whence) {
 		case SEEK_END:
 			offset += i_size_read(inode);
@@ -291,8 +290,18 @@ loff_t default_llseek(struct file *file, loff_t offset, int whence)
 		retval = offset;
 	}
 out:
-	inode_unlock(inode);
 	return retval;
+}
+EXPORT_SYMBOL(default_llseek_unlocked);
+
+loff_t default_llseek(struct file *file, loff_t offset, int origin)
+{
+	loff_t retval;
+
+	inode_lock(file_inode(file));
+	retval = default_llseek_unlocked(file, offset, origin);
+	inode_unlock(file_inode(file));
+ 	return retval;
 }
 EXPORT_SYMBOL(default_llseek);
 
@@ -395,7 +404,7 @@ int rw_verify_area(int read_write, struct file *file, const loff_t *ppos, size_t
 				read_write == READ ? MAY_READ : MAY_WRITE);
 }
 
-static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
+ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
 {
 	struct iovec iov = { .iov_base = buf, .iov_len = len };
 	struct kiocb kiocb;
@@ -411,6 +420,7 @@ static ssize_t new_sync_read(struct file *filp, char __user *buf, size_t len, lo
 	*ppos = kiocb.ki_pos;
 	return ret;
 }
+EXPORT_SYMBOL(new_sync_read);
 
 ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
 		   loff_t *pos)
