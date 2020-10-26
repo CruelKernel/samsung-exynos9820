@@ -1507,6 +1507,7 @@ extern struct pid *cad_pid;
 /*
  * Per process flags
  */
+#define PF_FLUSHER              0x00000001      /* responsible for disk writeback */
 #define PF_IDLE			0x00000002	/* I am an IDLE thread */
 #define PF_EXITING		0x00000004	/* Getting shut down */
 #define PF_EXITPIDONE		0x00000008	/* PI exit done on shut down */
