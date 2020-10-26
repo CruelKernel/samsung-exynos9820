@@ -345,7 +345,17 @@ extern void sec_debug_task_sched_log(int cpu, struct task_struct *task);
 extern void sec_debug_irq_sched_log(unsigned int irq, void *fn, int en);
 extern void sec_debug_irq_enterexit_log(unsigned int irq, unsigned long long start_time);
 
+#ifdef CONFIG_KALLSYMS
 extern void sec_debug_set_kallsyms_info(struct sec_debug_ksyms *ksyms, int magic);
+#else
+static inline void sec_debug_set_kallsyms_info(struct sec_debug_ksyms *ksyms, int magic)
+{
+	if (ksyms) {
+		memset(ksyms, 0, sizeof(*ksyms));
+		ksyms->magic = magic;
+	}
+}
+#endif
 extern int sec_debug_check_sj(void);
 
 extern unsigned int sec_debug_get_kevent_paddr(int type);
