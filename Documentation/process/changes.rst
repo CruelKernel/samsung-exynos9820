@@ -174,6 +174,13 @@ The reiserfsprogs package should be used for reiserfs-3.6.x
 versions of ``mkreiserfs``, ``resize_reiserfs``, ``debugreiserfs`` and
 ``reiserfsck``. These utils work on both i386 and alpha platforms.
 
+Reiser4progs
+------------
+
+The reiser4progs package contains utilities for the reiser4 file system.
+Detailed instructions are provided in the README file located at:
+<https://github.com/edward6/reiser4progs>.
+
 Xfsprogs
 --------
 
@@ -370,6 +377,11 @@ Reiserfsprogs
 -------------
 
 - <http://www.kernel.org/pub/linux/utils/fs/reiserfs/>
+
+Reiser4progs
+------------
+
+- <http://sourceforge.net/projects/reiser4/>
 
 Xfsprogs
 --------
