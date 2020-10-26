@@ -1,5 +1,5 @@
 config DTC
-	bool
+	bool "Build DTC compiler"
 
 menuconfig OF
 	bool "Device Tree and Open Firmware support"
@@ -35,7 +35,6 @@ config OF_ALL_DTBS
 
 config OF_FLATTREE
 	bool
-	select DTC
 	select LIBFDT
 	select CRC32
 
