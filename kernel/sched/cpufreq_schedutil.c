@@ -426,6 +426,17 @@ skip_betting:
 	return freq;
 }
 
+#ifdef CONFIG_SCHED_MUQSS
+static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+	*util = rq->load_avg;
+	if (*util > SCHED_CAPACITY_SCALE)
+		*util = SCHED_CAPACITY_SCALE;
+	*max = SCHED_CAPACITY_SCALE;
+}
+#else /* CONFIG_SCHED_MUQSS */
 static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 {
 	unsigned long max_cap, rt;
@@ -448,6 +459,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 #endif
 
 }
+#endif /* CONFIG_SCHED_MUQSS */
 
 #ifdef CONFIG_SCHED_KAIR_GLUE
 static inline void sugov_util_collapse(struct sugov_cpu *sg_cpu)
