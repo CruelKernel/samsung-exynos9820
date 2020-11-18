@@ -138,9 +138,8 @@ err_exit:
 }
 
 /* Deallocate profile data */
-static int dealloc_profile_data(struct npu_profile_control *profile_ctl)
+static void dealloc_profile_data(struct npu_profile_control *profile_ctl)
 {
-	int ret;
 	struct npu_system *system;
 
 	BUG_ON(!profile_ctl);
@@ -150,23 +149,14 @@ static int dealloc_profile_data(struct npu_profile_control *profile_ctl)
 
 	if (profile_ctl->buf.size == 0) {
 		npu_warn("profile data was not allocated. skipping deallocation.\n");
-		ret = 0;
-		goto err_exit;
+		return;
 	}
-	ret = npu_memory_free(&system->memory, &profile_ctl->buf);
-	if (ret) {
-		npu_err("npu_memory_free for profile buffer memory: ret(%d)\n", ret);
-		goto err_exit;
-	}
+	npu_memory_free(&system->memory, &profile_ctl->buf);
 	npu_info("profiling buffer deallocated.\n");
 
 	/* Clear pointer */
 	profile_ctl->profile_data = NULL;
 	profile_ctl->buf.size = 0;
-	ret = 0;
-
-err_exit:
-	return ret;
 }
 
 /* Call-back from Protodrv */
@@ -260,23 +250,17 @@ err_exit:
 	return ret;
 }
 
-static int npu_profile_clear(struct npu_profile_control *profile_ctl)
+static void npu_profile_clear(struct npu_profile_control *profile_ctl)
 {
-	int ret;
-
 	BUG_ON(!profile_ctl);
 
 	npu_dbg("start in npu_profile_clear\n");
 
-	ret = dealloc_profile_data(profile_ctl);
-	if (ret)
-		npu_err("error(%d) deallocate profile data\n", ret);
+	dealloc_profile_data(profile_ctl);
 
 	npu_statekeeper_transition(&profile_ctl->statekeeper, NPU_PROFILE_STATE_NOT_INITIALIZED);
 
 	npu_dbg("complete in npu_profile_clear.\n");
-
-	return 0;
 }
 
 static int npu_profile_stop(struct npu_profile_control *profile_ctl)
@@ -354,12 +338,7 @@ static int npu_profile_start(struct npu_profile_control *profile_ctl)
 
 	if (SKEEPER_COMPARE_STATE(&profile_ctl->statekeeper, NPU_PROFILE_STATE_EXPORT_READY)) {
 		npu_info("profiling data is remaining. cleaning it first.");
-		ret = npu_profile_clear(profile_ctl);
-		ret = 0;
-		if (ret) {
-			npu_err("fail(%d) in npu_profile_clear\n", ret);
-			goto not_alloc_err_exit;
-		}
+		npu_profile_clear(profile_ctl);
 	}
 	if (!npu_if_session_protodrv_is_opened()) {
 		/* NPU is not working now. Delay initialization until it is opened */
@@ -397,7 +376,6 @@ static int npu_profile_start(struct npu_profile_control *profile_ctl)
 err_exit:
 	npu_dbg("error occurred, deaalocated profiling data\n");
 	dealloc_profile_data(profile_ctl);
-not_alloc_err_exit:
 	npu_statekeeper_transition(&profile_ctl->statekeeper, NPU_PROFILE_STATE_NOT_INITIALIZED);
 ok_exit:
 	npu_dbg("complete in npu_profile_start\n");
@@ -715,7 +693,7 @@ static DEVICE_ATTR_RW(s_profiler);
  */
 int npu_profile_probe(struct npu_system *system)
 {
-	int ret;
+	int ret = 0;
 	struct npu_profile_control	*profile_ctl;
 	struct npu_device		*npu_device;
 	struct device			*dev;
@@ -731,8 +709,9 @@ int npu_profile_probe(struct npu_system *system)
 	s_profiler_ctl.dev = dev;
 	ret = sysfs_create_file(&dev->kobj, &dev_attr_s_profiler.attr);
 	if (ret) {
-		npu_err("sysfs_create_file error : ret = %d\n", ret);
+		probe_err("sysfs_create_file error : ret = %d\n", ret);
 		s_profiler_ctl.sysfs_ok = 0;
+		goto err_exit;
 	} else {
 		s_profiler_ctl.sysfs_ok = 1;
 	}
@@ -754,11 +733,16 @@ int npu_profile_probe(struct npu_system *system)
 
 	/* Initialized debugfs interface */
 	ret = npu_debug_register_arg("profile-control", profile_ctl, &profile_ctl_fops);
-	if (ret)
+	if (ret) {
 		probe_err("fail(%d) in npu_debug_register_arg(profile-control)\n", ret);
+		goto err_exit;
+	}
+
 	ret = npu_debug_register_arg("profile-result", profile_ctl, &profile_result_fops);
-	if (ret)
+	if (ret) {
 		probe_err("fail(%d) in npu_debug_register_arg(profile-result)\n", ret);
+		goto err_exit;
+	}
 
 	init_waitqueue_head(&profile_ctl->wq);
 
@@ -767,7 +751,8 @@ int npu_profile_probe(struct npu_system *system)
 
 	probe_info("complete in npu_profile_probe\n");
 
-	return 0;
+err_exit:
+	return ret;
 }
 
 int npu_profile_open(struct npu_system *system)
@@ -826,6 +811,7 @@ err_exit:
 
 int npu_profile_release(void)
 {
+	int ret = 0;
 	struct npu_profile_control *profile_ctl = profile_ctl_ref;
 
 	BUG_ON(!profile_ctl);
@@ -841,7 +827,11 @@ int npu_profile_release(void)
 
 	if (SKEEPER_COMPARE_STATE(&profile_ctl->statekeeper, NPU_PROFILE_STATE_GATHERING)) {
 		npu_info("profiling is GATHERING state. stopping it first.");
-		npu_profile_stop(profile_ctl);
+		ret = npu_profile_stop(profile_ctl);
+		if (ret) {
+			npu_err("fail(%d) in npu_profile_stop\n", ret);
+			goto err_exit;
+		}
 	}
 
 	if (SKEEPER_COMPARE_STATE(&profile_ctl->statekeeper, NPU_PROFILE_STATE_EXPORT_READY)) {
@@ -857,7 +847,9 @@ int npu_profile_release(void)
 	mutex_unlock(&profile_ctl->lock);
 
 	npu_dbg("Completed.\n");
-	return 0;
+
+err_exit:
+	return ret;
 }
 
 static inline void __profile_point(

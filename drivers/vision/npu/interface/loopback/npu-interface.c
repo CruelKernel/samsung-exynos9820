@@ -62,7 +62,7 @@ do { INSTANCE.lsm_destroy(); } while (0)
 /**
   * Test Module for LSM
   */
-void test_LSM(void)
+int test_LSM(void)
 {
 	int ret = 0;
 	//LSM_SETUP(mailboxMgr);
@@ -76,12 +76,18 @@ void test_LSM(void)
 	inpIF->ncp_header = nH;
 
 	ret = mailboxMgr.lsm_put_entry(REQUESTED, inpIF);
-	npu_err("LSM: index(%d)\n", ret);
+	if (ret) {
+		npu_err("LSM: index(%d)\n", ret);
+		return ret;
+	}
 
 	outIF = mailboxMgr.lsm_get_entry(FREE);
-	npu_err("LSM: magic number(%d)\t hdr_version(%d)\n", outIF->ncp_header->magic_number1, outIF->ncp_header->hdr_version);
+	if (ret) {
+		npu_err("LSM: magic number(%d)\t hdr_version(%d)\n", outIF->ncp_header->magic_number1, outIF->ncp_header->hdr_version);
+		return ret;
+	}
 
-
+	return ret;
 }
 
 /**
@@ -107,7 +113,7 @@ int npu_interface_probe(struct npu_interface *interface,
 	  * 1. Create LSM with proper size
 	  */
 	LSM_SETUP(mailboxMgr);
-	//test_LSM();
+	//ret = test_LSM();
 	/**
 	  * 2. mem allocation for private_data in interface
 	  */
@@ -200,10 +206,6 @@ int npu_set_cmd(struct npu_interface *interface)
 
 	ret = npu_mailbox_write(mctrl);
 	if (ret) {//failure case
-		exit_process_barrier(interface);
-	}
-
-	if (ret) {
 		exit_process_barrier(interface);
 	}
 

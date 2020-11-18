@@ -68,6 +68,7 @@ static inline int __msgid_claim(struct msgid_pool *handle, const int msg_id)
 		npu_warn("claim for msg_id(%d), not occupied", msg_id);
 		return 1;
 	}
+
 	return 0;
 }
 

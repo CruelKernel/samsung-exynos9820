@@ -113,7 +113,7 @@ void npu_store_log_deinit(void);
 void npu_log_on_error(void);
 
 void npu_fw_report_init(char *buf_addr, const size_t size);
-int npu_fw_report_store(char *strRep, int nSize);
+void npu_fw_report_store(char *strRep, int nSize);
 void dbg_print_fw_report_st(struct npu_log stLog);
 void npu_fw_report_deinit(void);
 

@@ -124,7 +124,7 @@ static int __put_entry_unsorted(struct list_head *target_list_head,
 int __lsm_put_entry(struct lsm_internal_data *lsm, lsm_list_type_e type,
 		    struct lsm_base_entry *new_entry)
 {
-	int ret;
+	int ret = 0;
 	struct list_head *target_list_head;
 
 	BUG_ON(!new_entry);

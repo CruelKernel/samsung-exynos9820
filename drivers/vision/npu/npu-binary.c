@@ -38,8 +38,6 @@ int npu_binary_init(struct npu_binary *binary,
 	char *fpath2,
 	char *fname)
 {
-	int ret = 0;
-
 	BUG_ON(!binary);
 	BUG_ON(!dev);
 
@@ -48,7 +46,7 @@ int npu_binary_init(struct npu_binary *binary,
 	snprintf(binary->fpath1, sizeof(binary->fpath1), "%s%s", fpath1, fname);
 	snprintf(binary->fpath2, sizeof(binary->fpath2), "%s%s", fpath2, fname);
 
-	return ret;
+	return 0;
 }
 
 int npu_binary_g_size(struct npu_binary *binary, size_t *size)
@@ -177,8 +175,10 @@ static long __npu_binary_read(struct npu_binary *binary, void *target, size_t ta
 	ret = fsize;
 
 p_err:
-	vfree(buf);
-	filp_close(fp, current->files);
+	if (buf)
+		vfree(buf);
+	if (fp)
+		filp_close(fp, current->files);
 	set_fs(old_fs);
 
 	return ret;

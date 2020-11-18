@@ -78,7 +78,7 @@ static int vision_release(struct inode *inode, struct file *file)
 	ret = (vdev->fops->release ? vdev->fops->release(file) : -EINVAL);
 	put_device(&vdev->dev);
 
-	return 0;
+	return ret;
 }
 
 static long vision_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -174,8 +174,10 @@ static ssize_t debug_store(struct device *dev,
 	u16 value;
 
 	res = kstrtou16(buf, 0, &value);
-	if (res)
+	if (res) {
+		vision_err("kstrtou16 is fail\n");
 		return res;
+	}
 
 	vdev->debug = value;
 	return len;

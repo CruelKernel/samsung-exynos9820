@@ -109,7 +109,7 @@ err_exit:
 
 int npu_get_sfr(const u32 sfr_addr)
 {
-	int			ret;
+	int			ret = 0;
 	void __iomem		*iomem = NULL;
 	struct npu_iomem_area	area_info;	/* Save iomem result */
 	volatile u32 v;

@@ -119,7 +119,7 @@ int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 	/* Initialize firmware utc handler with dram log buf */
 	ret = npu_fw_test_initialize(system, &dram_fw_log_buf);
 	if (ret) {
-		npu_err("npu_fw_test_probe() failed : ret = %d\n", ret);
+		npu_err("npu_fw_test_initialize() failed : ret = %d\n", ret);
 		return ret;
 	}
 	npu_info("complete : initialization.\n");
@@ -128,24 +128,16 @@ int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 
 static int npu_system_free_fw_dram_log_buf(struct npu_system *system)
 {
-	int ret;
-
 	BUG_ON(!system);
 
 	/* De-initialize memory logger dram log buf */
 	npu_store_log_deinit();
 
-	ret = npu_memory_free(&system->memory, &dram_fw_log_buf);
-	if (ret) {
-		npu_err("fail(%d) in Log buffer memory free\n", ret);
-		goto err_exit;
-	}
+	npu_memory_free(&system->memory, &dram_fw_log_buf);
 
 	npu_info("DRAM log buffer for firmware freed.\n");
-	ret = 0;
 
-err_exit:
-	return ret;
+	return 0;
 }
 
 #else

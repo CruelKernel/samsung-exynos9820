@@ -91,7 +91,7 @@ static ssize_t fw_mem_log_read_fops(struct file *file, char __user *buf, size_t 
 	while ((*p != '\0') && (stats->readpos < MEM_LOG_SIZE) && (copied < size)) {
 		/* Copy to user buffer */
 		get_user(ch, p);
-		buf[copied] = ch;
+		put_user(ch, &buf[copied]);
 		/* Adjust pointer */
 		p++;
 		stats->readpos++;
@@ -111,8 +111,9 @@ static int fw_mem_log_close_fops(struct inode *inode, struct file *file)
 	return 0;
 }
 
-void ram_dump_fault_listner(struct npu_device *npu)
+int ram_dump_fault_listner(struct npu_device *npu)
 {
+	int ret = 0;
 	struct npu_system *system = &npu->system;
 	u32 *tcu_dump_addr = kzalloc(system->tcu_sram.size, GFP_ATOMIC);
 	u32 *idp_dump_addr = kzalloc(system->idp_sram.size, GFP_ATOMIC);
@@ -120,23 +121,41 @@ void ram_dump_fault_listner(struct npu_device *npu)
 	if (tcu_dump_addr) {
 		memcpy_fromio(tcu_dump_addr, system->tcu_sram.vaddr, system->tcu_sram.size);
 		pr_err("NPU TCU SRAM dump - %pK / %paB\n", tcu_dump_addr, &system->tcu_sram.size);
+	} else {
+		pr_err("tcu_dump_addr is NULL\n");
+		ret= -ENOMEM;
+		goto exit_err;
 	}
 	if (idp_dump_addr) {
 		memcpy_fromio(idp_dump_addr, system->idp_sram.vaddr, system->idp_sram.size);
 		pr_err("NPU IDP SRAM dump - %pK / %paB\n", idp_dump_addr, &system->idp_sram.size);
+	} else {
+		pr_err("idp_dump_addr is NULL\n");
+		ret = -ENOMEM;
+		goto exit_err;
 	}
 	/* tcu_dump_addr and idp_dump_addr are not freed, because we expect them left on ramdump */
 
-	return;
+	return ret;
+
+exit_err:
+	if (tcu_dump_addr)
+		kfree(tcu_dump_addr);
+	return ret;
 }
 
 int npu_util_dump_handle_error_k(struct npu_device *device)
 {
+	int ret = 0;
+
 	proto_req_fault_listener();
 	mbx_rslt_fault_listener();
-	ram_dump_fault_listner(device);
+	ret = ram_dump_fault_listner(device);
+	if (ret) {
+		pr_err("failed in ram_dump_fault_listner\n");
+	}
 	session_fault_listener();
-	return 0;
+	return ret;
 }
 
 static struct file_operations fw_mem_log_fops = {
@@ -202,7 +221,8 @@ static ssize_t __npu_sram_dump_read(
 	}
 
 err_exit:
-	kfree(tmp_buf);
+	if (tmp_buf)
+		kfree(tmp_buf);
 	return ret;
 }
 
@@ -308,13 +328,13 @@ int npu_util_memdump_open(struct npu_system *system)
 		npu_info("register debugfs %s\n", TCU_SRAM_DUMP_SYSFS_NAME);
 		ret = npu_debug_register(TCU_SRAM_DUMP_SYSFS_NAME, &NPU_SRAM_DUMP_FOPS(tcu));
 		if (ret) {
-			npu_err("%s register error : ret = %d\n", TCU_SRAM_DUMP_SYSFS_NAME, ret);
+			npu_err("%s npu_debug_register error : ret = %d\n", TCU_SRAM_DUMP_SYSFS_NAME, ret);
 			goto p_err;
 		}
 		npu_info("register debugfs %s\n", IDP_SRAM_DUMP_SYSFS_NAME);
 		ret = npu_debug_register(IDP_SRAM_DUMP_SYSFS_NAME, &NPU_SRAM_DUMP_FOPS(idp));
 		if (ret) {
-			npu_err("%s register error : ret = %d\n", IDP_SRAM_DUMP_SYSFS_NAME, ret);
+			npu_err("%s npu_debug_register error : ret = %d\n", IDP_SRAM_DUMP_SYSFS_NAME, ret);
 			goto p_err;
 		}
 #endif
@@ -322,7 +342,7 @@ int npu_util_memdump_open(struct npu_system *system)
 	npu_info("complete in npu_util_memdump_open");
 	return 0;
 p_err:
-	npu_info("fail(%d) in npu_util_memdump_open", ret);
+	npu_err("fail(%d) in npu_util_memdump_open", ret);
 	return ret;
 }
 

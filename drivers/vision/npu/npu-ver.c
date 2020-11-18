@@ -57,7 +57,7 @@ static DEVICE_ATTR_RO(version);
 /* Exported functions */
 int npu_ver_probe(struct npu_device *npu_device)
 {
-	int ret;
+	int ret = 0;
 	struct device *dev;
 
 	BUG_ON(!npu_device);
@@ -70,7 +70,7 @@ int npu_ver_probe(struct npu_device *npu_device)
 		return ret;
 	}
 
-	return 0;
+	return ret;
 }
 /* Exported functions */
 int npu_ver_release(struct npu_device *npu_device)

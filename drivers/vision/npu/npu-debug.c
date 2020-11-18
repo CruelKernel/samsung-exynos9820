@@ -166,12 +166,14 @@ int npu_debug_probe(struct npu_device *npu_device)
 				 , &npu_debug_unittest_fops);
 	if (ret) {
 		probe_err("loading npu_debug : debugfs for unittest can not be created\n");
+		goto err_exit;
 	}
 #endif
 
 	ret = npu_ver_probe(npu_device);
 	if (ret) {
 		probe_err("loading npu_debug : npu_ver_probe failed.\n");
+		goto err_exit;
 	}
 
 	probe_info("loading npu_debug : completed.\n");
@@ -191,7 +193,7 @@ int npu_debug_release(void)
 	if (!check_state_bit(FS_READY)) {
 		/* No need to clean-up */
 		npu_err("not ready in npu_debug\n");
-		return 0;
+		return -1;
 	}
 
 	/* Retrieve struct device to use devm_XX api */
@@ -200,8 +202,10 @@ int npu_debug_release(void)
 
 	/* remove version info */
 	ret = npu_ver_release(npu_device);
-	if (ret)
+	if (ret) {
 		npu_err("npu_ver_release error : ret = %d\n", ret);
+		return ret;
+	}
 
 	/* Remove debug fs entries */
 	debugfs_remove_recursive(npu_debug_ref->dfile_root);

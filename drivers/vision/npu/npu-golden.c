@@ -390,7 +390,7 @@ static int npu_golden_set_close(struct inode *inode, struct file *file)
 	if (npu_golden_ctx.data.flags.updated == 0) {
 		// No update after open
 		npu_err("no golden description\n");
-		ret = 0;
+		ret = -EINVAL;
 		goto err_exit;
 	}
 	if (npu_golden_ctx.data.parse_state != PS_BEGIN) {

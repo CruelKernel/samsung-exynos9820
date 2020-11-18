@@ -66,7 +66,7 @@ static int mailbox_mgr_mock_do_task(struct auto_sleep_thread_param *data)
 					msleep(1);
 				}
 			} else {
-				npu_err("No kept frame");
+				npu_warn("No kept frame");
 			}
 		}
 		ret++;

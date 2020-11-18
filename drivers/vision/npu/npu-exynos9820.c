@@ -109,7 +109,7 @@ p_err:
 	if (npu1cmu_base)
 		iounmap(npu1cmu_base);
 
-	return 0;
+	return ret;
 }
 
 int dummy_npu_exynos_clk_cfg(struct npu_exynos *exynos) { return 0; }

@@ -33,6 +33,6 @@ int npu_sessionmgr_stop(struct npu_sessionmgr *sessionmgr);
 int npu_sessionmgr_close(struct npu_sessionmgr *sessionmgr);
 
 int npu_sessionmgr_regID(struct npu_sessionmgr *sessionmgr, struct npu_session *session);
-int npu_sessionmgr_unregID(struct npu_sessionmgr *sessionmgr, struct npu_session *session);
+void npu_sessionmgr_unregID(struct npu_sessionmgr *sessionmgr, struct npu_session *session);
 
 #endif
