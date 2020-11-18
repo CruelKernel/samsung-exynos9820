@@ -200,10 +200,8 @@ void mfc_dec_calc_dpb_size(struct mfc_ctx *ctx)
 	raw = &ctx->raw_buf;
 	raw->total_plane_size = 0;
 
-	for (i = 0; i < raw->num_planes; i++) {
-		raw->plane_size[i] = 0;
+	for (i = 0; i < raw->num_planes; i++)
 		raw->plane_size_2bits[i] = 0;
-	}
 
 	switch (ctx->dst_fmt->fourcc) {
 	case V4L2_PIX_FMT_NV12M_S10B:
@@ -263,6 +261,9 @@ void mfc_dec_calc_dpb_size(struct mfc_ctx *ctx)
 		raw->plane_size[2] = YUV420N_CR_SIZE(ctx->img_width, ctx->img_height);
 		break;
 	default:
+		raw->plane_size[0] = 0;
+		raw->plane_size[1] = 0;
+		raw->plane_size[2] = 0;
 		mfc_err_ctx("Invalid pixelformat : %s\n", ctx->dst_fmt->name);
 		break;
 	}

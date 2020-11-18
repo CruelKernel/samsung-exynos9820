@@ -985,20 +985,35 @@ struct posix_acl;
 struct posix_acl *fuse_get_acl(struct inode *inode, int type);
 int fuse_set_acl(struct inode *inode, struct posix_acl *acl, int type);
 
+#ifdef CONFIG_FREEZER
+static inline void fuse_freezer_do_not_count(void)
+{
+	current->flags |= PF_FREEZER_SKIP;
+}
+
+static inline void fuse_freezer_count(void)
+{
+	current->flags &= ~PF_FREEZER_SKIP;
+}
+#else /* !CONFIG_FREEZER */
+static inline void fuse_freezer_do_not_count(void) {}
+static inline void fuse_freezer_count(void) {}
+#endif
+
 #define fuse_wait_event(wq, condition)						\
 ({										\
-	freezer_do_not_count();							\
+	fuse_freezer_do_not_count();						\
 	wait_event(wq, condition);						\
-	freezer_count();							\
+	fuse_freezer_count();							\
 })
 
 #define fuse_wait_event_killable(wq, condition)					\
 ({										\
 	int __ret = 0;								\
 										\
-	freezer_do_not_count();							\
+	fuse_freezer_do_not_count();						\
 	__ret = wait_event_killable(wq, condition);				\
-	freezer_count();							\
+	fuse_freezer_count();							\
 										\
 	__ret;									\
 })
@@ -1007,9 +1022,9 @@ int fuse_set_acl(struct inode *inode, struct posix_acl *acl, int type);
 ({										\
 	int __ret = 0;								\
 										\
-	freezer_do_not_count();							\
+	fuse_freezer_do_not_count();						\
 	__ret = wait_event_killable_exclusive(wq, condition);			\
-	freezer_count();							\
+	fuse_freezer_count();							\
 										\
 	__ret;									\
 })

@@ -638,6 +638,51 @@ static void update_cable_status(struct otg_notify *n, unsigned long event,
 	}
 }
 
+
+void send_usb_err_uevent(int err_type, int mode)
+{
+	struct otg_notify *o_notify = get_otg_notify();
+	char *envp[4];
+	char *type = {"TYPE=usberr"};
+	char *state;
+	char *words;
+	int index = 0;
+
+	if (!o_notify) {
+		pr_err("%s o_notify is null\n", __func__);
+		goto err;
+	}
+
+	if (mode)
+		state = "STATE=ADD";
+	else
+		state = "STATE=REMOVE";
+
+	envp[index++] = type;
+	envp[index++] = state;
+
+	switch (err_type) {
+	case USB_ERR_ABNORMAL_RESET:
+		words = "WORDS=abnormal_reset";
+		break;
+	default:
+		pr_err("%s invalid input\n", __func__);
+		goto err;
+	}
+
+	envp[index++] = words;
+	envp[index++] = NULL;
+
+	if (send_usb_notify_uevent(o_notify, envp)) {
+		pr_err("%s error\n", __func__);
+		goto err;
+	}
+	pr_info("%s: %s\n", __func__, words);
+err:
+	return;
+}
+EXPORT_SYMBOL(send_usb_err_uevent);
+
 static void otg_notify_state(struct otg_notify *n,
 			unsigned long event, int enable)
 {
@@ -1971,6 +2016,23 @@ end2:
 	return true;
 }
 EXPORT_SYMBOL(is_blocked);
+
+int send_usb_notify_uevent(struct otg_notify *n, char *envp_ext[])
+{
+	struct usb_notify *u_notify = (struct usb_notify *)(n->u_notify);
+	int ret = 0;
+
+	if (!u_notify) {
+		pr_err("%s u_notify is null\n", __func__);
+		ret = -EFAULT;
+		goto err;
+	}
+
+	ret = usb_notify_dev_uevent(&u_notify->udev, envp_ext);
+err:
+	return ret;
+}
+EXPORT_SYMBOL(send_usb_notify_uevent);
 
 #if defined(CONFIG_USB_HW_PARAM)
 unsigned long long *get_hw_param(struct otg_notify *n,

@@ -1179,7 +1179,7 @@ typedef struct dhd_pub {
 	void    *flowid_lock;       /* per os lock for flowid info protection */
 	void    *flowring_list_lock;       /* per os lock for flowring list protection */
 	uint8	max_multi_client_flow_rings;
-	uint8	multi_client_flow_rings;
+	osl_atomic_t multi_client_flow_rings;
 	uint32  num_flow_rings;
 	cumm_ctr_t cumm_ctr;        /* cumm queue length placeholder  */
 	cumm_ctr_t l2cumm_ctr;      /* level 2 cumm queue length placeholder */

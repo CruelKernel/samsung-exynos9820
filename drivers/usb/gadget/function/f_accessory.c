@@ -59,6 +59,8 @@
 #define TX_REQ_MAX 4
 #define RX_REQ_MAX 2
 
+bool acc_dev_status = false;
+
 struct acc_hid_dev {
 	struct list_head	list;
 	struct hid_device *hid;
@@ -1112,6 +1114,7 @@ acc_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	int i;
 
 	dev->online = 0;		/* clear online flag */
+	acc_dev_status = false;
 	wake_up(&dev->read_wq);		/* unblock reads on closure */
 	wake_up(&dev->write_wq);	/* likewise for writes */
 
@@ -1263,6 +1266,11 @@ static void acc_function_disable(struct usb_function *f)
 
 	DBG(cdev, "acc_function_disable\n");
 	acc_set_disconnected(dev); /* this now only sets disconnected */
+
+	/* check accessory reset */
+	if (dev->online)
+		acc_dev_status = true;
+
 	dev->online = 0; /* so now need to clear online flag here too */
 	usb_ep_disable(dev->ep_in);
 	usb_ep_disable(dev->ep_out);

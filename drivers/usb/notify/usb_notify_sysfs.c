@@ -658,6 +658,39 @@ error:
 	return ret;
 }
 
+
+int usb_notify_dev_uevent(struct usb_notify_dev *udev, char *envp_ext[])
+{
+	int ret = 0;
+
+	if (!udev || !udev->dev) {
+		pr_err("%s udev or udev->dev NULL\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (strncmp("TYPE", envp_ext[0], 4)) {
+		pr_err("%s error.first array must be filled TYPE\n",
+				__func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (strncmp("STATE", envp_ext[1], 5)) {
+		pr_err("%s error.second array must be filled STATE\n",
+				__func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	kobject_uevent_env(&udev->dev->kobj, KOBJ_CHANGE, envp_ext);
+	pr_info("%s\n", __func__);
+
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(usb_notify_dev_uevent);
+
 static DEVICE_ATTR(disable, 0664, disable_show, disable_store);
 static DEVICE_ATTR(support, 0444, support_show, NULL);
 static DEVICE_ATTR(otg_speed, 0444, otg_speed_show, NULL);

@@ -393,7 +393,8 @@ dhd_flow_rings_init(dhd_pub_t *dhdp, uint32 num_flow_rings)
 	bcopy(prio2ac, dhdp->flow_prio_map, sizeof(uint8) * NUMPRIO);
 
 	dhdp->max_multi_client_flow_rings = dhd_get_max_multi_client_flow_rings(dhdp);
-	dhdp->multi_client_flow_rings = 0U;
+	
+	OSL_ATOMIC_INIT(dhdp->osh, &dhdp->multi_client_flow_rings);
 
 #ifdef DHD_LOSSLESS_ROAMING
 	dhdp->dequeue_prec_map = ALLPRIO;
@@ -495,7 +496,8 @@ void dhd_flow_rings_deinit(dhd_pub_t *dhdp)
 	bzero(dhdp->flow_prio_map, sizeof(uint8) * NUMPRIO);
 
 	dhdp->max_multi_client_flow_rings = 0U;
-	dhdp->multi_client_flow_rings = 0U;
+	
+	OSL_ATOMIC_INIT(dhdp->osh, &dhdp->multi_client_flow_rings);
 
 	lock = dhdp->flowid_lock;
 	dhdp->flowid_lock = NULL;
@@ -735,9 +737,11 @@ dhd_flowid_lookup(dhd_pub_t *dhdp, uint8 ifindex,
 		/* Abort Flowring creation if multi client flowrings crossed the threshold */
 #ifdef DHD_LIMIT_MULTI_CLIENT_FLOWRINGS
 		if (if_role_multi_client &&
-			(dhdp->multi_client_flow_rings >= dhdp->max_multi_client_flow_rings)) {
+			(OSL_ATOMIC_READ(dhdp->osh, &dhdp->multi_client_flow_rings) >=
+				dhdp->max_multi_client_flow_rings)) {
 			DHD_ERROR_RLMT(("%s: Max multi client flow rings reached: %d:%d\n",
-				__FUNCTION__, dhdp->multi_client_flow_rings,
+				__FUNCTION__,
+				OSL_ATOMIC_READ(dhdp->osh, &dhdp->multi_client_flow_rings),
 				dhdp->max_multi_client_flow_rings));
 			return BCME_ERROR;
 		}
@@ -763,7 +767,7 @@ dhd_flowid_lookup(dhd_pub_t *dhdp, uint8 ifindex,
 
 		/* Only after flowid alloc, increment multi_client_flow_rings */
 		if (if_role_multi_client) {
-			dhdp->multi_client_flow_rings++;
+			OSL_ATOMIC_INC(dhdp->osh, &dhdp->multi_client_flow_rings);
 		}
 
 		/* register this flowid in dhd_pub */
@@ -980,7 +984,11 @@ dhd_flowid_free(dhd_pub_t *dhdp, uint8 ifindex, uint16 flowid)
 
 				/* Decrement multi_client_flow_rings */
 				if (if_role_multi_client) {
-					dhdp->multi_client_flow_rings--;
+					if (OSL_ATOMIC_READ(dhdp->osh,
+						&dhdp->multi_client_flow_rings)) {
+						OSL_ATOMIC_DEC(dhdp->osh,
+							&dhdp->multi_client_flow_rings);
+					}
 				}
 
 				/* deregister flowid from dhd_pub. */
@@ -1026,6 +1034,53 @@ dhd_flow_rings_delete(dhd_pub_t *dhdp, uint8 ifindex)
 			(flow_ring_table[id].status == FLOW_RING_STATUS_OPEN)) {
 			dhd_bus_flow_ring_delete_request(dhdp->bus,
 			                                 (void *) &flow_ring_table[id]);
+		}
+	}
+}
+
+void
+dhd_update_multicilent_flow_rings(dhd_pub_t *dhdp, uint8 ifindex, bool increment)
+{
+	uint32 id;
+	flow_ring_table_t *flow_ring_table;
+	uint32 max_h2d_rings;
+
+	DHD_ERROR(("%s: ifindex %u\n", __FUNCTION__, ifindex));
+
+	ASSERT(ifindex < DHD_MAX_IFS);
+	if (ifindex >= DHD_MAX_IFS)
+		return;
+
+	if (!dhdp->flow_ring_table)
+		return;
+
+	max_h2d_rings = dhd_bus_max_h2d_queues(dhdp->bus);
+	flow_ring_table = (flow_ring_table_t *)dhdp->flow_ring_table;
+	for (id = 0; id < max_h2d_rings; id++) {
+		if (flow_ring_table[id].active &&
+			(flow_ring_table[id].flow_info.ifindex == ifindex) &&
+			(flow_ring_table[id].status == FLOW_RING_STATUS_OPEN)) {
+			if (increment) {
+				if (OSL_ATOMIC_READ(dhdp->osh, &dhdp->multi_client_flow_rings) <
+					dhdp->max_multi_client_flow_rings) {
+					OSL_ATOMIC_INC(dhdp->osh, &dhdp->multi_client_flow_rings);
+				} else {
+					DHD_ERROR(("%s: multi_client_flow_rings:%u"
+						" reached max:%d\n", __FUNCTION__,
+						OSL_ATOMIC_READ(dhdp->osh,
+						&dhdp->multi_client_flow_rings),
+						dhdp->max_multi_client_flow_rings));
+				}
+			} else {
+				if (OSL_ATOMIC_READ(dhdp->osh, &dhdp->multi_client_flow_rings)) {
+					OSL_ATOMIC_DEC(dhdp->osh, &dhdp->multi_client_flow_rings);
+				} else {
+					DHD_ERROR(("%s: multi_client_flow_rings:%u"
+						" reached ZERO\n", __FUNCTION__,
+						OSL_ATOMIC_READ(dhdp->osh,
+						&dhdp->multi_client_flow_rings)));
+				}
+			}
 		}
 	}
 }
@@ -1119,8 +1174,16 @@ dhd_update_interface_flow_info(dhd_pub_t *dhdp, uint8 ifindex,
 	if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
 
 	if (op == WLC_E_IF_ADD || op == WLC_E_IF_CHANGE) {
-
+		DHD_ERROR(("%s: ifindex:%d previous role:%d new role:%d\n",
+			__FUNCTION__, ifindex, if_flow_lkup[ifindex].role, role));
+			
 		if_flow_lkup[ifindex].role = role;
+#ifdef PCIE_FULL_DONGLE
+		if (op == WLC_E_IF_CHANGE) {
+			bool increment = DHD_IF_ROLE_MULTI_CLIENT(dhdp, ifindex);
+			dhd_update_multicilent_flow_rings(dhdp, ifindex, increment);
+		}
+#endif /* PCIE_FULL_DONGLE */
 
 		if (role == WLC_E_IF_ROLE_WDS) {
 			/**

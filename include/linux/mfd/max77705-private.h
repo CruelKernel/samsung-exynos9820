@@ -131,6 +131,7 @@ enum max77705_fuelgauge_reg {
 	QRTABLE20_REG				= 0x32,
 	FULLCAP_REP_REG				= 0x35,
 	RCOMP_REG				= 0x38,
+	TEMPCO_REG				= 0x39,
 	VEMPTY_REG				= 0x3A,
 	FSTAT_REG				= 0x3D,
 	DISCHARGE_THRESHOLD_REG			= 0x40,

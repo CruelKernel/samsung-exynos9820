@@ -7451,8 +7451,9 @@ void dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 		dhdp->bus->h2d_mb_data_ptr_addr, dhdp->bus->d2h_mb_data_ptr_addr);
 	bcm_bprintf(strbuf, "dhd cumm_ctr %d\n", DHD_CUMM_CTR_READ(&dhdp->cumm_ctr));
 #ifdef DHD_LIMIT_MULTI_CLIENT_FLOWRINGS
-	bcm_bprintf(strbuf, "multi_client_flow_rings:%d max_multi_client_flow_rings:%d\n",
-		dhdp->multi_client_flow_rings, dhdp->max_multi_client_flow_rings);
+	bcm_bprintf(strbuf, "multi_client_flow_rings:%u max_multi_client_flow_rings:%d\n",
+		OSL_ATOMIC_READ(dhdp->osh, &dhdp->multi_client_flow_rings),
+		dhdp->max_multi_client_flow_rings);
 #endif /* DHD_LIMIT_MULTI_CLIENT_FLOWRINGS */
 	bcm_bprintf(strbuf,
 		"%4s %4s %2s %4s %17s %4s %4s %6s %10s %4s %4s ",

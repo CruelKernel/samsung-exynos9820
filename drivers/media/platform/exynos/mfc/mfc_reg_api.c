@@ -105,6 +105,13 @@ int mfc_set_dec_codec_buffers(struct mfc_ctx *ctx)
 	for (i = 0; i < raw->num_planes; i++) {
 		mfc_debug(2, "[FRAME] buf[%d] size: %d, stride: %d\n",
 				i, raw->plane_size[i], raw->stride[i]);
+		if (!raw->plane_size[i]) {
+			raw->plane_size[i] = mfc_get_min_dpb_size(i);
+			MFC_TRACE_CTX("plane[%d] size zero -> %d\n",
+					i, raw->plane_size[i]);
+			mfc_err_ctx("DPB plane[%d] size is zero, changed to min size: %d\n",
+					i, raw->plane_size[i]);
+		}
 		MFC_WRITEL(raw->plane_size[i], MFC_REG_D_FIRST_PLANE_DPB_SIZE + (i * 4));
 		MFC_WRITEL(ctx->raw_buf.stride[i],
 				MFC_REG_D_FIRST_PLANE_DPB_STRIDE_SIZE + (i * 4));

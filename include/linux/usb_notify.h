@@ -115,6 +115,10 @@ enum otg_notify_data_role {
 	HNOTIFY_DFP,
 };
 
+enum usb_err_type {
+	USB_ERR_ABNORMAL_RESET,
+};
+
 struct otg_notify {
 	int vbus_detect_gpio;
 	int redriver_en_gpio;
@@ -151,6 +155,7 @@ struct otg_booster {
 #ifdef CONFIG_USB_NOTIFY_LAYER
 extern const char *event_string(enum otg_notify_events event);
 extern const char *status_string(enum otg_notify_event_status status);
+extern void send_usb_err_uevent(int usb_certi, int mode);
 extern void send_otg_notify(struct otg_notify *n,
 					unsigned long event, int enable);
 extern struct otg_booster *find_get_booster(struct otg_notify *n);
@@ -168,6 +173,8 @@ extern int set_otg_notify(struct otg_notify *n);
 extern void put_otg_notify(struct otg_notify *n);
 extern bool is_blocked(struct otg_notify *n, int type);
 extern int usb_check_whitelist_for_mdm(struct usb_device *dev);
+extern int send_usb_notify_uevent
+		(struct otg_notify *n, char *envp_ext[]);
 #if defined(CONFIG_USB_HW_PARAM)
 extern unsigned long long *get_hw_param(struct otg_notify *n,
 					enum usb_hw_param index);
@@ -181,6 +188,7 @@ static inline const char *event_string(enum otg_notify_events event)
 			{return NULL; }
 static inline const char *status_string(enum otg_notify_event_status status)
 			{return NULL; }
+static inline void send_usb_err_uevent(int usb_certi, int mode) {}
 static inline void send_otg_notify(struct otg_notify *n,
 					unsigned long event, int enable) { }
 static inline struct otg_booster *find_get_booster(struct otg_notify *n)
@@ -201,6 +209,8 @@ static inline void put_otg_notify(struct otg_notify *n) {}
 static inline bool is_blocked(struct otg_notify *n, int type) {return false; }
 static inline int usb_check_whitelist_for_mdm(struct usb_device *dev)
 			{return 0; }
+static inline int send_usb_notify_uevent
+			(struct otg_notify *n, char *envp_ext[]) {return 0; }
 #if defined(CONFIG_USB_HW_PARAM)
 static inline unsigned long long *get_hw_param(struct otg_notify *n,
 			enum usb_hw_param index) {return NULL; }

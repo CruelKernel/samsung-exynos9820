@@ -10599,8 +10599,9 @@ dhd_prot_debug_info_print(dhd_pub_t *dhd)
 	DHD_ERROR(("%s: cur_ioctlresp_bufs_posted %d cur_event_bufs_posted %d\n",
 		__FUNCTION__, prot->cur_ioctlresp_bufs_posted, prot->cur_event_bufs_posted));
 #ifdef DHD_LIMIT_MULTI_CLIENT_FLOWRINGS
-	DHD_ERROR(("%s: multi_client_flow_rings:%d max_multi_client_flow_rings:%d\n",
-		__FUNCTION__, dhd->multi_client_flow_rings, dhd->max_multi_client_flow_rings));
+	DHD_ERROR(("%s: multi_client_flow_rings:%u max_multi_client_flow_rings:%d\n",
+		__FUNCTION__, OSL_ATOMIC_READ(dhd->osh, &dhd->multi_client_flow_rings),
+		dhd->max_multi_client_flow_rings));
 #endif /* DHD_LIMIT_MULTI_CLIENT_FLOWRINGS */
 
 	DHD_ERROR(("pktid_txq_start_cnt: %d\n", prot->pktid_txq_start_cnt));

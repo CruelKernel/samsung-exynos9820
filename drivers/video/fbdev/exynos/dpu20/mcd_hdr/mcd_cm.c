@@ -17,7 +17,7 @@
 
 enum pq_index luminance2pqindex(unsigned int luminance)
 {
-    return (luminance ==    0) ? INDEX_PQ1000 :
+    return (luminance <   100) ? INDEX_PQ1000 :
            (luminance <=  200) ? INDEX_PQ0200 :
            (luminance <=  250) ? INDEX_PQ0250 :
            (luminance <=  300) ? INDEX_PQ0300 :

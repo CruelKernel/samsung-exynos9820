@@ -126,9 +126,8 @@ struct battery_data_t {
 	u32 sw_v_empty_recover_vol;
 	u32 QResidual20;
 	u32 QResidual30;
-	u32 TempCo;
 	u32 Capacity;
-	u8	*type_str;
+	u8  *type_str;
 	u32 ichgterm;
 	u32 misccfg;
 	u32 fullsocthr;
@@ -158,6 +157,16 @@ struct cv_slope {
 	int fg_current;
 	int soc;
 	int time;
+};
+
+#define FG_RESET_DATA_COUNT		5
+
+struct fg_reset_wa {
+	u32 fullcapnom;
+	u32 dPacc;
+	u32 dQacc;
+	u32 rcomp0;
+	u32 tempco;
 };
 
 struct max77705_fuelgauge_data {
@@ -220,6 +229,8 @@ struct max77705_fuelgauge_data {
 	u32 discharge_volt_threshold;
 
 	u32 fg_resistor;
+
+	struct fg_reset_wa *fg_reset_data;
 
 #if defined(CONFIG_BATTERY_CISD)
 	bool valert_count_flag;
