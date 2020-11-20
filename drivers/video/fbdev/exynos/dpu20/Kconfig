@@ -23,6 +23,13 @@ config EXYNOS_DISPLAYPORT
 	help
 	  Enable DISPLAYPORT driver.
 
+config DISPLAYPORT_DEX_FORCE_WQHD
+	bool "Force WQHD in DEX"
+	depends on EXYNOS_DISPLAYPORT
+	default n
+	help
+	  Force WQHD mode in dex_adapter_type.
+
 config EXYNOS_WINDOW_UPDATE
         bool "Support Window Update Mode"
         depends on EXYNOS_DPU20
