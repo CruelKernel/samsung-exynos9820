@@ -2668,6 +2668,12 @@ static void displayport_aux_sel(struct displayport_device *displayport)
 	}
 }
 
+#ifdef CONFIG_DISPLAYPORT_DEX_FORCE_WQHD
+static void displayport_check_adapter_type(struct displayport_device *displayport)
+{
+	displayport->dex_adapter_type = DEX_WQHD_SUPPORT;
+}
+#else
 static void displayport_check_adapter_type(struct displayport_device *displayport)
 {
 #ifdef FEATURE_DEX_ADAPTER_TWEAK
@@ -2688,6 +2694,7 @@ static void displayport_check_adapter_type(struct displayport_device *displaypor
 		break;
 	};
 }
+#endif
 
 static int usb_typec_displayport_notification(struct notifier_block *nb,
 		unsigned long action, void *data)
