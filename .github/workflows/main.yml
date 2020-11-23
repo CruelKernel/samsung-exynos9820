@@ -32,6 +32,7 @@ jobs:
                      +ntfs                     \
                      +morosound                \
                      +boeffla_wl_blocker       \
+                     +force_dex_wqhd           \
                      +mass_storage             \
                      +usb_serial               \
         2>&1 | tee config.info
