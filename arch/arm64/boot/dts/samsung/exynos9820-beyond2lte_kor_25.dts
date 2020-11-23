@@ -1062,6 +1062,7 @@
 				fuelgauge,sw_v_empty_recover_voltage = <0xd98>;
 				fuelgauge,fg_resistor = <0x2>;
 				fuelgauge,capacity = <0xf76>;
+				fuelgauge,fg_reset_wa_data = <0xf76 0x3200 0x3c4 0x38 0x1527>;
 				fuelgauge,discharge_temp_threshold = <0x258>;
 				fuelgauge,discharge_volt_threshold = <0x1068>;
 				fuelgauge,ttf_capacity = <0xfa0>;
