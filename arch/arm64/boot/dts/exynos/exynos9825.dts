@@ -5305,11 +5305,6 @@
 		android {
 			compatible = "android,firmware";
 
-			vbmeta {
-				compatible = "android,vbmeta";
-				parts = "vbmeta,boot,recovery,system,vendor,product,dtb,dtbo,keystorage";
-			};
-
 			fstab {
 				compatible = "android,fstab";
 
