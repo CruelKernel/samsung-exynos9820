@@ -35,13 +35,6 @@ jobs:
                      +force_dex_wqhd           \
                      +mass_storage             \
                      +usb_serial               \
-                     +nodebug                  \
-                     +nozram                   \
-                     +noksm                    \
-                     +noatime                  \
-                     +performance              \
-                     +sched_powersave          \
-                     +sched performance        \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
       env:
