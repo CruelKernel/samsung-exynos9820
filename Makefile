@@ -738,6 +738,10 @@ else ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS += -Os
 endif
 
+ifdef CONFIG_SOC_EXYNOS9820
+KBUILD_CFLAGS	+= $(call cc-option,-mcpu=cortex-a75.cortex-a55,$(call cc-option,-mcpu=cortex-a55))
+endif
+
 ifeq ($(cc-name),clang)
 ifdef CONFIG_LLVM_POLLY
 KBUILD_CFLAGS	+= -mllvm -polly \
