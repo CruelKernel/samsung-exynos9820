@@ -672,6 +672,9 @@ config LLVM_POLLY
 	  maximum cache locality. This requires an LLVM toolchain explicitly
 	  compiled with Polly support.
 
+config GCC_GRAPHITE
+	bool "Enable GCC's optimizations using the polyhedral model (Graphite)"
+
 config HAVE_ARCH_WITHIN_STACK_FRAMES
 	bool
 	help
