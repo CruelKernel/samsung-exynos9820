@@ -120,6 +120,12 @@ modpost_link()
 		# This might take a while, so indicate that we're doing
 		# an LTO link
 		info LTO vmlinux.o
+	elif [ -n "${CONFIG_LTO_GCC}" ]; then
+		if [ -n "${LDFINAL_vmlinux}" ]; then
+			LD=${LDFINAL_vmlinux}
+			LDFLAGS="${LDFLAGS_FINAL_vmlinux} ${LDFLAGS}"
+		fi
+		info LDFINAL vmlinux.o
 	else
 		info LD vmlinux.o
 	fi
