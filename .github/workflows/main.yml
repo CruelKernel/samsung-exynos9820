@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "G975F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -21,7 +21,7 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Cruel-V3.9"         \
+                     name="Taver v2"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
@@ -30,7 +30,7 @@ jobs:
                      +cifs                     \
                      +sdfat                    \
                      +ntfs                     \
-                     +morosound                \
+                     +50hz                \
                      +boeffla_wl_blocker       \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
