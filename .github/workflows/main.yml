@@ -32,13 +32,13 @@ jobs:
                      +ntfs                     \
                      -morosound                \
                      +boeffla_wl_blocker       \
-+dtb \
-+50hz \
-+tcp_bbr \
-+nohardening2 \
-+nodebug  \
-+noswap \
-+nozram \
+                     +dtb                      \
+                     +50hz \
+                     +tcp_bbr \
+                     +nohardening2 \
+                     +nodebug  \
+                     +noswap \
+                     +nozram \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
       env:
