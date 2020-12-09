@@ -34,7 +34,7 @@ jobs:
                      +boeffla_wl_blocker       \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
-      if: env.TOOLCHAIN == 'system-gcc'
+      if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
       env:
         DEBIAN_FRONTEND: noninteractive
       run: sudo apt-get install -y -qq gcc-aarch64-linux-gnu
