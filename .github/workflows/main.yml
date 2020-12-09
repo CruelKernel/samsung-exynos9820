@@ -21,7 +21,7 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Taverv4"         \
+                     name="Taver v1"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk=canary                   \
                      +nohardening              \
@@ -39,6 +39,8 @@ jobs:
                      +nodebug  \
                      +noswap \
                      +nozram \
+                     +always_permit \
+                     +fake_config \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
       env:
