@@ -33,7 +33,6 @@ jobs:
                      -morosound                \
                      +boeffla_wl_blocker       \
 +dtb \
-+always_permit \
 +50hz \
 +tcp_bbr \
 +nohardening2 \
