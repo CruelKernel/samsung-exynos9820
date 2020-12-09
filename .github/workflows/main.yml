@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: default
+  TOOLCHAIN: cruel
   INSTALLER: yes
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "G975F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -21,17 +21,25 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Cruel-V3.9"         \
+                     name="Taverv4"         \
                      toolchain=$TOOLCHAIN      \
-                     +magisk                   \
+                     +magisk=canary                   \
                      +nohardening              \
                      +ttl                      \
                      +wireguard                \
                      +cifs                     \
                      +sdfat                    \
                      +ntfs                     \
-                     +morosound                \
+                     -morosound                \
                      +boeffla_wl_blocker       \
++dtb \
++always_permit \
++50hz \
++tcp_bbr \
++nohardening2 \
++nodebug  \
++noswap \
++nozram \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
       env:
