@@ -167,6 +167,7 @@ Presets list (+ means enabled by default, use NODEFAULTS=1 env var to drop them)
 * always\_permit - pin SELinux to always use permissive mode. Required on LOS rom.
 * always\_enforce - pin SELinux to always use enforcing mode.
 * +force\_dex\_wqhd - disable vendor check of DP cables in DEX mode and always use WQHD resolution.
+* 50hz - decrease interrupt clock freq from 250hz to 50hz.
 * 100hz - decrease interrupt clock freq from 250hz to 100hz.
 * 300hz - increase interrupt clock freq from 250hz to 300hz.
 * 1000hz - increase interrupt clock freq from 250hz to 1000hz. Don't use it if you
