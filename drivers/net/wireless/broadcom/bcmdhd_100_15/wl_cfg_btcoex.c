@@ -146,12 +146,12 @@ static bool btcoex_is_sco_active(struct net_device *dev)
 
 		ioc_res = dev_wlc_intvar_get_reg(dev, "btc_params", 27, &param27);
 
-		WL_TRACE(("sample[%d], btc params: 27:%x\n", i, param27));
-
 		if (ioc_res < 0) {
 			WL_ERR(("ioc read btc params error\n"));
 			break;
 		}
+
+		WL_TRACE(("sample[%d], btc params: 27:%x\n", i, param27));
 
 		if ((param27 & 0x6) == 2) { /* count both sco & esco  */
 			sco_id_cnt++;
