@@ -696,7 +696,7 @@ static ssize_t show_llc_region_alloc(struct device *dev,
 					struct platform_device, dev);
 	struct exynos_sci_data *data = platform_get_drvdata(pdev);
 	ssize_t count = 0;
-	unsigned int region_index;
+	unsigned int region_index = 0;
 	int ret;
 
 	ret = exynos_sci_llc_region_alloc(data, SCI_IPC_GET, &region_index, 0);
@@ -745,7 +745,7 @@ static ssize_t show_llc_enable(struct device *dev,
 					struct platform_device, dev);
 	struct exynos_sci_data *data = platform_get_drvdata(pdev);
 	ssize_t count = 0;
-	unsigned int enable;
+	unsigned int enable = 0;
 	int ret;
 
 	ret = exynos_sci_llc_enable(data, SCI_IPC_GET, &enable);
