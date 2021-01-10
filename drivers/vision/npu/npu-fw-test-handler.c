@@ -93,7 +93,10 @@ __attribute__((unused)) static int load_fw_utc_vector(struct npu_session *sess, 
 		ret = -EINVAL;
 		goto err_exit;
 	}
-	copy_from_user(vector_path, (__user void *)param->addr, param->size);
+	if (copy_from_user(vector_path, (__user void *)param->addr, param->size)) {
+		ret = -EINVAL;
+		goto err_exit;
+	}
 	vector_path[param->size] = '\0';
 	npu_dbg("Loading FW test vector from : %s\n", vector_path);
 
