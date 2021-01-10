@@ -3728,8 +3728,8 @@ static int displayport_update_hmd_list(struct displayport_device *displayport, c
 		ret = -EPERM;
 		goto exit;
 	}
-	kstrtouint(tok, 10, &num_hmd);
-	if (num_hmd > MAX_NUM_HMD) {
+	ret = kstrtouint(tok, 10, &num_hmd);
+	if (ret || num_hmd > MAX_NUM_HMD) {
 		displayport_err("invalid list num %d\n", num_hmd);
 		num_hmd = 0;
 		ret = -EPERM;
@@ -3747,14 +3747,20 @@ static int displayport_update_hmd_list(struct displayport_device *displayport, c
 		tok  = strsep(&p, ",");
 		if (tok == NULL || *tok == 0xa/*LF*/)
 			break;
-		kstrtouint(tok, 16, &val);
+		if (kstrtouint(tok, 16, &val)) {
+			ret = -EINVAL;
+			break;
+		}
 		displayport->hmd_list[j].ven_id = val;
 
 		/* PID */
 		tok  = strsep(&p, ",");
 		if (tok == NULL || *tok == 0xa/*LF*/)
 			break;
-		kstrtouint(tok, 16, &val);
+		if (kstrtouint(tok, 16, &val)) {
+			ret = -EINVAL;
+			break;
+		}
 		displayport->hmd_list[j].prod_id = val;
 
 		displayport_info("HMD%02d: %s, 0x%04x, 0x%04x\n", j,
