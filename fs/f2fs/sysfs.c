@@ -11,6 +11,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/seq_file.h>
 #include <linux/statfs.h>
+#include <linux/nls.h>
 
 #include "f2fs.h"
 #include "segment.h"
@@ -660,8 +661,7 @@ out:
 	if (a->struct_type == RESERVED_BLOCKS) {
 		spin_lock(&sbi->stat_lock);
 		if (t > (unsigned long)(sbi->user_block_count -
-				F2FS_OPTION(sbi).root_reserved_blocks -
-				F2FS_OPTION(sbi).core_reserved_blocks)) {
+				F2FS_OPTION(sbi).root_reserved_blocks)) {
 			spin_unlock(&sbi->stat_lock);
 			return -EINVAL;
 		}
@@ -1158,6 +1158,21 @@ void f2fs_exit_sysfs(void)
 	f2fs_proc_root = NULL;
 }
 
+#define SEC_MAX_VOLUME_NAME	16
+static bool __volume_is_userdata(struct f2fs_sb_info *sbi)
+{
+	char volume_name[SEC_MAX_VOLUME_NAME] = {0, };
+
+	utf16s_to_utf8s(sbi->raw_super->volume_name, SEC_MAX_VOLUME_NAME,
+			UTF16_LITTLE_ENDIAN, volume_name, SEC_MAX_VOLUME_NAME);
+	volume_name[SEC_MAX_VOLUME_NAME - 1] = '\0';
+
+	if (!strcmp(volume_name, "data"))
+		return true;
+
+	return false;
+}
+
 int f2fs_register_sysfs(struct f2fs_sb_info *sbi)
 {
 	struct super_block *sb = sbi->sb;
@@ -1170,9 +1185,13 @@ int f2fs_register_sysfs(struct f2fs_sb_info *sbi)
 	if (err)
 		return err;
 
-	err = sysfs_create_link(&f2fs_kset.kobj, &sbi->s_kobj, "userdata");
-	if (err)
-		printk(KERN_ERR "Can not create sysfs link for userdata(%d)\n", err);
+	if (__volume_is_userdata(sbi)) {
+		err = sysfs_create_link(&f2fs_kset.kobj, &sbi->s_kobj,
+				"userdata");
+		if (err)
+			pr_err("Can not create sysfs link for userdata(%d)\n",
+					err);
+	}
 
 	if (f2fs_proc_root)
 		sbi->s_proc = proc_mkdir(sb->s_id, f2fs_proc_root);
@@ -1199,6 +1218,9 @@ void f2fs_unregister_sysfs(struct f2fs_sb_info *sbi)
 		remove_proc_entry("victim_bits", sbi->s_proc);
 		remove_proc_entry(sbi->sb->s_id, f2fs_proc_root);
 	}
-	sysfs_delete_link(&f2fs_kset.kobj, &sbi->s_kobj, "userdata");
+
+	if (__volume_is_userdata(sbi))
+		sysfs_delete_link(&f2fs_kset.kobj, &sbi->s_kobj, "userdata");
+
 	kobject_del(&sbi->s_kobj);
 }

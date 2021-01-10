@@ -268,11 +268,11 @@ static void f2fs_write_end_io(struct bio *bio)
 				}
 #endif
 				f2fs_stop_checkpoint(sbi, true);
-				f2fs_bug_on(sbi, 1);
+				f2fs_bug_on_endio(sbi, 1);
 			}
 		}
 
-		f2fs_bug_on(sbi, page->mapping == NODE_MAPPING(sbi) &&
+		f2fs_bug_on_endio(sbi, page->mapping == NODE_MAPPING(sbi) &&
 					page->index != nid_of_node(page));
 
 		dec_page_count(sbi, type);

@@ -7,7 +7,6 @@
  */
 
 #include <linux/dsms.h>
-
 #include "dsms_access_control.h"
 
 // Policy entries *MUST BE* ordered by function_name field, as the find
@@ -15,7 +14,7 @@
 
 // vvvvv DO NOT CHANGE THESE LINES! vvvvv
 struct dsms_policy_entry dsms_policy[] = {
-{ "security/samsung/defex_lsm/defex_procs.c", "defex_report_violation" },
+{ "security/samsung/defex_lsm/core/defex_main.c", "defex_report_violation" },
 { "security/samsung/five/five_audit.c", "five_audit_sign_err" },
 { "security/samsung/five/five_dsms.c", "five_dsms_msg" },
 }; // dsms_policy
@@ -23,5 +22,5 @@ struct dsms_policy_entry dsms_policy[] = {
 
 size_t dsms_policy_size(void)
 {
-	return (sizeof dsms_policy)/(sizeof *dsms_policy);
+	return sizeof(dsms_policy)/sizeof(*dsms_policy);
 }

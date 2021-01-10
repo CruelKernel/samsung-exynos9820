@@ -115,7 +115,6 @@ enum {
 	Opt_noinline_data,
 	Opt_data_flush,
 	Opt_reserve_root,
-	Opt_reserve_core,
 	Opt_flush_group,
 	Opt_resgid,
 	Opt_resuid,
@@ -177,7 +176,6 @@ static match_table_t f2fs_tokens = {
 	{Opt_noinline_data, "noinline_data"},
 	{Opt_data_flush, "data_flush"},
 	{Opt_reserve_root, "reserve_root=%u"},
-	{Opt_reserve_core, "reserve_core=%u"},
 	{Opt_flush_group, "flush_group=%u"},
 	{Opt_resgid, "resgid=%u"},
 	{Opt_resuid, "resuid=%u"},
@@ -330,26 +328,17 @@ static inline void limit_reserve_root(struct f2fs_sb_info *sbi)
 			"Reduce reserved blocks for root = %u",
 			F2FS_OPTION(sbi).root_reserved_blocks);
 	}
-	if (test_opt(sbi, RESERVE_ROOT) &&
-			F2FS_OPTION(sbi).core_reserved_blocks > limit) {
-		F2FS_OPTION(sbi).core_reserved_blocks = limit;
-		f2fs_msg(sbi->sb, KERN_INFO,
-			"Reduce reserved blocks for core = %u",
-			F2FS_OPTION(sbi).core_reserved_blocks);
-	}
 	if (!test_opt(sbi, RESERVE_ROOT) &&
 		(!uid_eq(F2FS_OPTION(sbi).s_resuid,
 				make_kuid(&init_user_ns, F2FS_DEF_RESUID)) ||
 		!gid_eq(F2FS_OPTION(sbi).s_resgid,
-				make_kgid(&init_user_ns, F2FS_DEF_RESGID)) ||
-		F2FS_OPTION(sbi).core_reserved_blocks != 0))
+				make_kgid(&init_user_ns, F2FS_DEF_RESGID))))
 		f2fs_msg(sbi->sb, KERN_INFO,
-			"Ignore s_resuid=%u, s_resgid=%u reserve_core=%u w/o reserve_root",
+			"Ignore s_resuid=%u, s_resgid=%u w/o reserve_root",
 				from_kuid_munged(&init_user_ns,
 					F2FS_OPTION(sbi).s_resuid),
 				from_kgid_munged(&init_user_ns,
-					F2FS_OPTION(sbi).s_resgid),
-				F2FS_OPTION(sbi).core_reserved_blocks);
+					F2FS_OPTION(sbi).s_resgid));
 }
 
 static void init_once(void *foo)
@@ -657,11 +646,6 @@ static int parse_options(struct super_block *sb, char *options)
 				F2FS_OPTION(sbi).root_reserved_blocks = arg;
 				set_opt(sbi, RESERVE_ROOT);
 			}
-			break;
-		case Opt_reserve_core:
-			if (args->from && match_int(args, &arg))
-				return -EINVAL;
-			F2FS_OPTION(sbi).core_reserved_blocks = arg;
 			break;
 		case Opt_resuid:
 			if (args->from && match_int(args, &arg))
@@ -1415,11 +1399,9 @@ static int f2fs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	else
 		buf->f_bfree -= sbi->unusable_block_count;
 
-	if (buf->f_bfree > F2FS_OPTION(sbi).root_reserved_blocks +
-			   F2FS_OPTION(sbi).core_reserved_blocks)
+	if (buf->f_bfree > F2FS_OPTION(sbi).root_reserved_blocks)
 		buf->f_bavail = buf->f_bfree -
-				F2FS_OPTION(sbi).root_reserved_blocks -
-				F2FS_OPTION(sbi).core_reserved_blocks;
+				F2FS_OPTION(sbi).root_reserved_blocks;
 	else
 		buf->f_bavail = 0;
 
@@ -1554,9 +1536,8 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_puts(seq, "lfs");
 	seq_printf(seq, ",active_logs=%u", F2FS_OPTION(sbi).active_logs);
 	if (test_opt(sbi, RESERVE_ROOT))
-		seq_printf(seq, ",reserve_root=%u,reserve_core=%u,resuid=%u,resgid=%u",
+		seq_printf(seq, ",reserve_root=%u,resuid=%u,resgid=%u",
 				F2FS_OPTION(sbi).root_reserved_blocks,
-				F2FS_OPTION(sbi).core_reserved_blocks,
 				from_kuid_munged(&init_user_ns,
 					F2FS_OPTION(sbi).s_resuid),
 				from_kgid_munged(&init_user_ns,

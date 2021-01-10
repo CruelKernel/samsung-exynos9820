@@ -296,6 +296,8 @@ struct sec_battery_info {
 	struct pdic_notifier_struct pdic_info;
 	struct sec_bat_pdic_list pd_list;
 #endif
+	bool update_pd_list;
+
 #if defined(CONFIG_VBUS_NOTIFIER)
 	struct notifier_block vbus_nb;
 	int muic_vbus_status;
@@ -620,6 +622,7 @@ struct sec_battery_info {
 	unsigned int prev_misc_event;
 	unsigned int tx_retry_case;
 	unsigned int tx_misalign_cnt;
+	unsigned int tx_ocp_cnt;
 	struct delayed_work ext_event_work;
 	struct delayed_work misc_event_work;
 	struct wake_lock ext_event_wake_lock;
@@ -631,6 +634,8 @@ struct sec_battery_info {
 	struct mutex voutlock;
 	unsigned long tx_misalign_start_time;
 	unsigned long tx_misalign_passed_time;
+	unsigned long tx_ocp_start_time;
+	unsigned long tx_ocp_passed_time;
 
 	unsigned int hiccup_status;
 	bool hiccup_clear;
@@ -646,6 +651,8 @@ struct sec_battery_info {
 	int ta_alert_mode;
 
 	bool boot_complete;
+
+	bool support_unknown_wpcthm;
 };
 
 /* event check */
@@ -668,7 +675,6 @@ struct sec_battery_info {
 extern bool sleep_mode;
 extern bool mfc_fw_update;
 extern bool boot_complete;
-extern bool dt_need_overwrite;
 
 extern void select_pdo(int num);
 #if defined(CONFIG_PDIC_PD30)
@@ -739,5 +745,4 @@ int sec_bat_parse_dt(struct device *dev, struct sec_battery_info *battery);
 void sec_bat_parse_mode_dt(struct sec_battery_info *battery);
 void sec_bat_parse_mode_dt_work(struct work_struct *work);
 u8 sec_bat_get_wireless20_power_class(struct sec_battery_info *battery);
-
 #endif /* __SEC_BATTERY_H */

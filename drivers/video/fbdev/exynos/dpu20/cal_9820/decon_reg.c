@@ -2375,7 +2375,7 @@ int decon_check_global_limitation(struct decon_device *decon,
 		 */
 		if (config[i].compression && (config[i].src.w > 2048)) {
 			for (j = 0; j < MAX_DECON_WIN; j++) {
-				if (i == j)
+				if (i == j || (config[i].idma_type >= ODMA_WB))
 					continue;
 				/* idma_type means DPP channel number */
 				if ((config[j].state == DECON_WIN_STATE_BUFFER) &&
@@ -2411,7 +2411,7 @@ int decon_check_global_limitation(struct decon_device *decon,
 			}
 
 			for (j = 0; j < MAX_DECON_WIN; j++) {
-				if (i == j)
+				if (i == j || (config[i].idma_type >= ODMA_WB))
 					continue;
 				if ((config[j].state == DECON_WIN_STATE_BUFFER) &&
 						(config[j].idma_type ==

@@ -892,6 +892,7 @@ int edid_update(struct displayport_device *hdev)
 	fb_edid_to_monspecs(edid, &specs);
 	modedb_len = specs.modedb_len;
 
+	strlcpy(hdev->mon_name, specs.monitor, MON_NAME_LEN);
 	displayport_info("mon name: %s, gamma: %u.%u\n", specs.monitor,
 			specs.gamma / 100, specs.gamma % 100);
 

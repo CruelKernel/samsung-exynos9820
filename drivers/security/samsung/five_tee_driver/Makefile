@@ -28,8 +28,8 @@ obj-$(CONFIG_FIVE_USE_TRUSTONIC) += $(TEEC_CLIENT_PATH)/tee_client_api.o \
 ccflags-$(CONFIG_FIVE_USE_TRUSTONIC) += -I$(FIVE_TEE_DRIVER_PATH)/multibuild/include/gp-api
 ifeq ($(CONFIG_FIVE_USE_TRUSTONIC), y)
   ifeq ($(CONFIG_MACH_MT6768), y)
-    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Idrivers/misc/mediatek/gud/410/MobiCoreDriver
-    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Idrivers/misc/mediatek/gud/410/MobiCoreDriver/public
+    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -I$(srctree)/drivers/misc/mediatek/gud/410/MobiCoreDriver
+    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -I$(srctree)/drivers/misc/mediatek/gud/410/MobiCoreDriver/public
   else
     ifeq ($(CONFIG_SOC_EXYNOS7570), y)
       PLATFORM := exynos7570
@@ -48,8 +48,8 @@ ifeq ($(CONFIG_FIVE_USE_TRUSTONIC), y)
     else
       $(error "Unknown SoC")
     endif
-    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Idrivers/gud/gud-$(PLATFORM)/MobiCoreDriver
-    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -Idrivers/gud/gud-$(PLATFORM)/MobiCoreDriver/public
+    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -I$(srctree)/drivers/gud/gud-$(PLATFORM)/MobiCoreDriver
+    ccflags-$(CONFIG_FIVE_TEE_DRIVER) += -I$(srctree)/drivers/gud/gud-$(PLATFORM)/MobiCoreDriver/public
   endif # CONFIG_MACH_MT6768
 endif # CONFIG_FIVE_USE_TRUSTONIC
 
@@ -60,7 +60,7 @@ obj-$(CONFIG_FIVE_USE_QSEE) += $(TEEC_CLIENT_PATH)/tee_client_api.o \
                                $(TEEC_CLIENT_PATH)/teec_operation.o
 
 ccflags-$(CONFIG_FIVE_USE_QSEE) += -I$(FIVE_TEE_DRIVER_PATH)/multibuild/include/gp-api \
-                                   -Idrivers/misc
+                                   -I$(srctree)/drivers/misc
 aflags-$(CONFIG_FIVE_USE_QSEE) += -I$(srctree)
 
 # Teegris
@@ -77,7 +77,7 @@ ifeq ($(CONFIG_SOC_EXYNOS7885), y)
     use_teegris_v2 := y
   endif
   ifeq ($(CONFIG_TEEGRIS_VERSION), 3)
-    ccflags-$(CONFIG_FIVE_USE_TZDEV) += -Idrivers/misc/tzdev/3.0/include/tzdev
+    ccflags-$(CONFIG_FIVE_USE_TZDEV) += -I$(srctree)/drivers/misc/tzdev/3.0/include/tzdev
   endif
 endif
 
@@ -86,11 +86,11 @@ ifeq ($(use_teegris_v2), y)
                                   $(TEEC_CLIENT_PATH)/tee_client_api.o \
                                   $(PROTOCOL_PATH)/teec_param_utils.o \
                                   $(TEEC_CLIENT_PATH)/teec_operation.o
-  ccflags-$(CONFIG_FIVE_USE_TZDEV) += -Idrivers/misc/tzdev/include \
+  ccflags-$(CONFIG_FIVE_USE_TZDEV) += -I$(srctree)/drivers/misc/tzdev/include \
                                       -I$(FIVE_TEE_DRIVER_PATH)/multibuild/include/gp-api
 else
   obj-$(CONFIG_FIVE_USE_TZDEV) += $(TEEC_CLIENT_PATH)/teec_operation_teegris_v3.o
-  ccflags-$(CONFIG_FIVE_USE_TZDEV) += -Idrivers/misc/tzdev/include/tzdev
+  ccflags-$(CONFIG_FIVE_USE_TZDEV) += -I$(srctree)/drivers/misc/tzdev/include/tzdev
 endif
 
 subdir-ccflags-y := -Wformat

@@ -352,6 +352,14 @@ static irqreturn_t max77705_irq_thread(int irq, void *data)
 		if (!ic_alt_mode && max77705->set_altmode)
 			irq_reg[VIR_INT] |= (1 << 0);
 		pr_info("%s ic_alt_mode=%d\n", __func__, ic_alt_mode);
+
+		if (irq_reg[PD_INT] & BIT_PDMsg) {
+			if (dump_reg[6] == Sink_PD_PSRdy_received
+					|| dump_reg[6] == SRC_CAP_RECEIVED) {
+				if (max77705->check_pdmsg)
+					max77705->check_pdmsg(max77705->usbc_data, dump_reg[6]);
+			}
+		}
 	}
 
 	/* Apply masking */

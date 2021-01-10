@@ -86,6 +86,7 @@ static void simulate_MUTEX_ABBA(char *arg);
 static void simulate_WQ_LOCKUP(char *arg);
 static void simulate_RWSEM_R(char *arg);
 static void simulate_RWSEM_W(char *arg);
+static void simulate_PRINTK_FAULT(char *arg);
 
 enum {
 	FORCE_KERNEL_PANIC = 0,		/* KP */
@@ -135,6 +136,7 @@ enum {
 	FORCE_WQ_LOCKUP,		/* WORKQUEUE LOCKUP */
 	FORCE_RWSEM_R,			/* RWSEM READER */
 	FORCE_RWSEM_W,			/* RWSEM WRITER */
+	FORCE_PRINTK_FAULT,		/* PRINTK FAULT */
 	NR_FORCE_ERROR,
 };
 
@@ -196,6 +198,7 @@ struct force_error force_error_vector = {
 		{"wqlockup",	&simulate_WQ_LOCKUP},
 		{"rwsem-r",	&simulate_RWSEM_R},
 		{"rwsem-w",	&simulate_RWSEM_W},
+		{"printkfault",	&simulate_PRINTK_FAULT},
 	}
 };
 
@@ -1159,6 +1162,12 @@ static void simulate_RWSEM_W(char *arg)
 
 	up_read(&secdbg_test_rwsem);
 	mutex_unlock(&secdbg_test_mutex_for_rwsem);
+}
+
+static void simulate_PRINTK_FAULT(char *arg)
+{
+	pr_crit("%s()\n", __func__);
+	pr_err("%s: trying fault: %s\n", __func__, (char *)0x80000000);
 }
 
 static int sec_debug_get_force_error(char *buffer, const struct kernel_param *kp)

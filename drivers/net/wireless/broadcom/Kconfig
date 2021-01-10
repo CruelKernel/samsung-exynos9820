@@ -1,4 +1,4 @@
-config WLAN_VENDOR_BROADCOM
+config BCM_DHD_WLAN
 	bool "Broadcom devices"
 	default y
 	---help---
@@ -9,13 +9,14 @@ config WLAN_VENDOR_BROADCOM
 	  the questions about  cards. If you say Y, you will be asked for
 	  your specific card in the following questions.
 
-if WLAN_VENDOR_BROADCOM
+if BCM_DHD_WLAN
 
 source "drivers/net/wireless/broadcom/b43/Kconfig"
 source "drivers/net/wireless/broadcom/b43legacy/Kconfig"
 source "drivers/net/wireless/broadcom/brcm80211/Kconfig"
 source "drivers/net/wireless/broadcom/bcmdhd_100_10/Kconfig"
 source "drivers/net/wireless/broadcom/bcmdhd_100_15/Kconfig"
+source "drivers/net/wireless/broadcom/bcmdhd_101_16/Kconfig"
 source "drivers/net/wireless/broadcom/bcmdhd/Kconfig"
 
 endif # WLAN_VENDOR_BROADCOM

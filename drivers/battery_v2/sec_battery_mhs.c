@@ -21,6 +21,7 @@
 #endif
 
 bool sleep_mode = false;
+bool dt_need_overwrite = false;
 
 static enum power_supply_property sec_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,

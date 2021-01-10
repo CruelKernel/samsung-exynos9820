@@ -55,7 +55,7 @@
 				| MSK_IRQSTAT_RELEASE	\
 				| MSK_IRQSTAT_COMP)
 
-#define HALLIC_PATH		"/sys/class/sec/sec_key/hall_detect"
+#define HALLIC_PATH		"/sys/class/sec/hall_ic/hall_detect"
 
 struct sx9330_p {
 	struct i2c_client *client;

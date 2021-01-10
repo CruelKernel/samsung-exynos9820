@@ -48,7 +48,7 @@ int oem_flags_set(enum oemflag_id index)
 		if (ret)
 			pr_err("set_tamper_fuse error: ret=%d\n", ret);
 		ret = get_tamper_fuse(name);
-		if (ret)
+		if (!ret)
 			pr_err("get_tamper_fuse error: ret=%d\n", ret);
 		oem_flags_check[name] = 1;
 	} else {
@@ -57,4 +57,11 @@ int oem_flags_set(enum oemflag_id index)
 	}
 
 	return ret;
+}
+
+int oem_flags_get(enum oemflag_id index)
+{
+	uint32_t name = index;
+
+	return get_tamper_fuse(name);
 }

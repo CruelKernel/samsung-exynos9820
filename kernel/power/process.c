@@ -137,7 +137,9 @@ static int try_to_freeze_tasks(bool user_only)
 		read_unlock(&tasklist_lock);
 
 		sec_debug_set_extra_info_unfz(sys_state[system_state]);
+#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 		panic("fail to freeze tasks");
+#endif
 	} else {
 		pr_cont("(elapsed %d.%03d seconds) ", elapsed_msecs / 1000,
 			elapsed_msecs % 1000);

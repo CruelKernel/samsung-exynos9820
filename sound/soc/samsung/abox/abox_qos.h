@@ -35,7 +35,7 @@ struct abox_qos {
 	enum abox_qos_class qos_class;
 	unsigned int val;
 	const char *name;
-	struct abox_qos_req req_array[32];
+	struct abox_qos_req req_array[64];
 };
 
 /**

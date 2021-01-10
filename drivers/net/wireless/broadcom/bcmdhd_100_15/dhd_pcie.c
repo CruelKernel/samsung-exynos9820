@@ -9447,6 +9447,7 @@ void dhd_bus_clean_flow_ring(dhd_bus_t *bus, void *node)
 	/* Hold flowring_list_lock to ensure no race condition while accessing the List */
 	DHD_FLOWRING_LIST_LOCK(bus->dhd->flowring_list_lock, flags);
 	dll_delete(&flow_ring_node->list);
+	dll_init(&flow_ring_node->list);
 	DHD_FLOWRING_LIST_UNLOCK(bus->dhd->flowring_list_lock, flags);
 
 	/* Release the flowring object back into the pool */

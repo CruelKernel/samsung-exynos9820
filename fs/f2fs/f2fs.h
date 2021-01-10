@@ -43,7 +43,9 @@ extern void (*ufs_debug_func)(void *);
 extern struct super_block *keypress_callback_sb;
 extern int (*keypress_callback_fn)(struct super_block *sb);
 
-#define f2fs_bug_on(sbi, condition)						\
+#define f2fs_bug_on(sbi, condition)	  __f2fs_bug_on(sbi, condition, true)
+#define f2fs_bug_on_endio(sbi, condition) __f2fs_bug_on(sbi, condition, false)	
+#define __f2fs_bug_on(sbi, condition, set_extra_blk)				\
 	do {									\
 		if (unlikely(condition)) {					\
 			if (ufs_debug_func)					\
@@ -53,7 +55,8 @@ extern int (*keypress_callback_fn)(struct super_block *sb);
 				sbi->sec_stat.fs_por_error++;			\
 				WARN_ON(1);					\
 			} else if (unlikely(!ignore_fs_panic)) {		\
-				f2fs_set_sb_extra_flag(sbi,			\
+				if (set_extra_blk)				\
+					f2fs_set_sb_extra_flag(sbi,		\
 						F2FS_SEC_EXTRA_FSCK_MAGIC);	\
 				sbi->sec_stat.fs_error++;			\
 				BUG_ON_CHKFS(1);				\
@@ -142,7 +145,6 @@ struct f2fs_mount_info {
 	unsigned int opt;
 	int write_io_size_bits;		/* Write IO size bits */
 	block_t root_reserved_blocks;	/* root reserved blocks */
-	block_t core_reserved_blocks;	/* core reserved blocks */
 	kuid_t s_resuid;		/* reserved blocks for uid */
 	kgid_t s_resgid;		/* reserved blocks for gid */
 	kgid_t flush_group;		/* should issue flush for gid */
@@ -413,8 +415,6 @@ static inline bool __has_cursum_space(struct f2fs_journal *journal,
 #define F2FS_IOC_SETFLAGS		FS_IOC_SETFLAGS
 #define F2FS_IOC_GETVERSION		FS_IOC_GETVERSION
 
-#define F2FS_CORE_FILE_FL		0x40000000
-
 #define F2FS_IOCTL_MAGIC		0xf5
 #define F2FS_IOC_START_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 1)
 #define F2FS_IOC_COMMIT_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 2)
@@ -435,6 +435,7 @@ static inline bool __has_cursum_space(struct f2fs_journal *journal,
 #define F2FS_IOC_SET_PIN_FILE		_IOW(F2FS_IOCTL_MAGIC, 13, __u32)
 #define F2FS_IOC_GET_PIN_FILE		_IOR(F2FS_IOCTL_MAGIC, 14, __u32)
 #define F2FS_IOC_PRECACHE_EXTENTS	_IO(F2FS_IOCTL_MAGIC, 15)
+#define F2FS_IOC_GET_VALID_NODE_COUNT	_IOR(F2FS_IOCTL_MAGIC, 32, __u32)
 
 #define F2FS_IOC_SET_ENCRYPTION_POLICY	FS_IOC_SET_ENCRYPTION_POLICY
 #define F2FS_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
@@ -1984,12 +1985,8 @@ static inline int inc_valid_block_count(struct f2fs_sb_info *sbi,
 	avail_user_block_count = sbi->user_block_count -
 					sbi->current_reserved_blocks;
 
-	if (!__allow_reserved_blocks(sbi, inode, true)) {
+	if (!__allow_reserved_blocks(sbi, inode, true))
 		avail_user_block_count -= F2FS_OPTION(sbi).root_reserved_blocks;
-
-		if (!(F2FS_I(inode)->i_flags & F2FS_CORE_FILE_FL))
-			avail_user_block_count -= F2FS_OPTION(sbi).core_reserved_blocks;
-	}
 
 	if (unlikely(is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
 		avail_user_block_count -= sbi->unusable_block_count;
@@ -2205,11 +2202,8 @@ static inline int inc_valid_node_count(struct f2fs_sb_info *sbi,
 	valid_block_count = sbi->total_valid_block_count +
 					sbi->current_reserved_blocks + 1;
 
-	if (!__allow_reserved_blocks(sbi, inode, false)) {
+	if (!__allow_reserved_blocks(sbi, inode, false))
 		valid_block_count += F2FS_OPTION(sbi).root_reserved_blocks;
-		if (!(F2FS_I(inode)->i_flags & F2FS_CORE_FILE_FL))
-			valid_block_count += F2FS_OPTION(sbi).core_reserved_blocks;
-	}
 
 	if (unlikely(is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
 		valid_block_count += sbi->unusable_block_count;

@@ -708,5 +708,24 @@ extern size_t dbg_snapshot_get_curr_ptr_for_sysrq(void);
 /* sec_debug_memtab.c */
 extern void secdbg_base_set_memtab_info(struct sec_debug_memtab *ksyms);
 
+#ifdef CONFIG_SEC_DEBUG
+#define SDBG_KNAME_LEN	64
+struct secdbg_member_type {
+	char member[SDBG_KNAME_LEN];
+	uint16_t size;
+	uint16_t offset;
+	uint16_t unused[2];
+};
+#define SECDBG_DEFINE_MEMBER_TYPE(key, st, mem)					\
+	const struct secdbg_member_type sdbg_##key				\
+		__attribute__((__section__(".secdbg_mbtab." #key))) = {		\
+		.member = #key,							\
+		.size = FIELD_SIZEOF(struct st, mem),				\
+		.offset = offsetof(struct st, mem),				\
+	}
+#else
+#define SECDBG_DEFINE_MEMBER_TYPE(a, b, c)
+#endif /* CONFIG_SEC_DEBUG */
+
 #endif /* SEC_DEBUG_H */
 

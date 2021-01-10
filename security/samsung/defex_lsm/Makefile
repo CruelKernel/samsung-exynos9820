@@ -26,15 +26,15 @@ RAMDISK_ENABLE=true
 # do signing for rules
 SIGN_ENABLE=true
 
-obj-y := defex_lsm.o
-obj-y += defex_common.o
-obj-y += defex_catch_list.o
-obj-y += defex_ht.o
-obj-y += defex_config.o
-obj-y += defex_sysfs.o
-obj-y += defex_procs.o
+obj-y := core/defex_common.o
+obj-y += core/defex_lsm.o
+obj-y += core/defex_main.o
+obj-y += core/defex_get_mode.o
+obj-y += core/defex_sysfs.o
+obj-y += catch_engine/defex_catch_list.o
+obj-y += catch_engine/defex_ht.o
 obj-y += defex_rules.o
-obj-$(CONFIG_COMPAT) += defex_catch_list_compat.o
+obj-$(CONFIG_COMPAT) += catch_engine/defex_catch_list_compat.o
 
 # Immutable Feature is applied with permissive mode first.
 DEFEX_DEFINES := -DDEFEX_PERMISSIVE_IM
@@ -63,12 +63,12 @@ else
 endif
 
 ifeq ($(PED_ENABLE), true)
-    obj-y += defex_priv.o
+    obj-y += feature_privilege_escalation_detection/defex_priv.o
     DEFEX_DEFINES += -DDEFEX_PED_ENABLE
 endif
 
 ifeq ($(SAFEPLACE_ENABLE), true)
-    obj-y += defex_safeplace.o
+    obj-y += feature_safeplace/defex_safeplace.o
     DEFEX_DEFINES += -DDEFEX_SAFEPLACE_ENABLE
 endif
 
@@ -77,7 +77,7 @@ ifeq ($(INTEGRITY_ENABLE), true)
 endif
 
 ifeq ($(IMMUTABLE_ENABLE), true)
-    obj-y += defex_immutable.o
+    obj-y += feature_immutable/defex_immutable.o
     DEFEX_DEFINES += -DDEFEX_IMMUTABLE_ENABLE
 endif
 
@@ -90,7 +90,7 @@ ifeq ($(UMH_RESTRICTION_ENABLE), true)
 endif
 
 ifeq ($(CACHES_ENABLE), true)
-    obj-y += defex_caches.o
+    obj-y += catch_engine/defex_caches.o
     DEFEX_DEFINES += -DDEFEX_CACHES_ENABLE
 endif
 
@@ -102,13 +102,13 @@ ifeq ($(RAMDISK_ENABLE), true)
     DEFEX_DEFINES += -DDEFEX_RAMDISK_ENABLE
 ifeq ($(SIGN_ENABLE), true)
     obj-y += cert/defex_cert.o
-    obj-y += defex_sign.o
+    obj-y += cert/defex_sign.o
     DEFEX_DEFINES += -DDEFEX_SIGN_ENABLE
 endif
 endif
 
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
-    obj-y += defex_debug.o
+    obj-y += debug/defex_debug.o
     DEFEX_DEFINES += -DDEFEX_PERMISSIVE_SP
     DEFEX_DEFINES += -DDEFEX_PERMISSIVE_IM
     DEFEX_DEFINES += -DDEFEX_PERMISSIVE_LP
@@ -122,6 +122,8 @@ endif
 
 ccflags-y := -Wformat
 
+EXTRA_CFLAGS += -I$(srctree)/$(src)
+EXTRA_AFLAGS += -Isecurity/samsung/defex_lsm
 EXTRA_CFLAGS += -I$(srctree)/$(src)/cert
 EXTRA_AFLAGS += -Isecurity/samsung/defex_lsm/cert
 
@@ -143,7 +145,7 @@ ifneq ($(wildcard  $(srctree)/$(src)/pack_rules.c),)
     quiet_cmd_mkey = MAKEKEY $<
           cmd_mkey = cp -n $< $@ 2>/dev/null || true
 
-    $(obj)/defex_sysfs.o: $(obj)/pack_rules $(srctree)/$(src)/defex_packed_rules.inc
+    $(obj)/core/defex_sysfs.o: $(obj)/pack_rules $(srctree)/$(src)/defex_packed_rules.inc
 
     $(obj)/cert/defex_cert.o: $(obj)/cert/pubkey_eng.der $(obj)/cert/pubkey_user.der
 

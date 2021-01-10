@@ -212,7 +212,7 @@ int teei_generate_master_key(uint32_t lk_type, uint8_t *emkey, size_t emkey_len)
 		return ret;
 
 	/* copy encrypted mkey & wrapped mkey to hdcp ctx */
-	memcpy(emkey, hci->genmkey.emkey, hci->genmkey.emkey_len);
+	memcpy(emkey, hci->genmkey.emkey, emkey_len);
 
 	/* check returned message from SWD */
 
@@ -391,7 +391,7 @@ int teei_generate_skey(uint32_t lk_type,
 		return ret;
 
 	/* copy encrypted mkey & wrapped mkey to hdcp ctx */
-	memcpy(eskey, hci->genskey.eskey, hci->genskey.eskey_len);
+	memcpy(eskey, hci->genskey.eskey, eskey_len);
 
 	/* todo: check returned message from SWD */
 

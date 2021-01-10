@@ -21,7 +21,10 @@ static unsigned long buf_idx;
 size_t sec_debug_get_curr_init_ptr(void)
 {
 #ifdef CONFIG_SEC_DEBUG_SYSRQ_KMSG
-	return (size_t)(buf_ptr + buf_idx);
+	if (!buf_ptr || !buf_size)
+		return 0;
+	else
+		return (size_t)(buf_ptr + buf_idx);
 #endif
 	return 0;
 }
@@ -48,6 +51,9 @@ static int __init sec_debug_init_init_log(void)
 	buf_ptr = (char *)phys_to_virt((sec_debug_get_buf_base(SDN_MAP_INITTASK_LOG)));
 	buf_size = sec_debug_get_buf_size(SDN_MAP_INITTASK_LOG);
 	pr_err("%s: buffer size 0x%llx at addr 0x%llx\n", __func__, buf_size ,buf_ptr);
+
+	if (!buf_ptr || !buf_size)
+		return 0;
 
 	memset(buf_ptr, 0, buf_size);
 	register_init_log_hook_func(sec_debug_hook_init_log);

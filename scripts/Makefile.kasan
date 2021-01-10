@@ -33,6 +33,9 @@ else
     endif
 endif
 
+# don't treat warnings as error (bcmdhd compile failure)
+CFLAGS_KASAN += -Wno-error
+
 ifdef CONFIG_KASAN_EXTRA
 CFLAGS_KASAN += $(call cc-option, -fsanitize-address-use-after-scope)
 endif

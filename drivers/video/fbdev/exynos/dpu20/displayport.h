@@ -48,6 +48,7 @@
 #undef FEATURE_DP_UNDERRUN_TEST
 
 #define DISPLAYID_EXT 0x70
+#define FEATURE_MANAGE_HMD_LIST
 
 extern int displayport_log_level;
 extern int forced_resolution;
@@ -477,6 +478,8 @@ typedef enum {
 	V1440x2560P75,
 	V2560X1440P60,
 	V2560X1600P60,
+	V3200X1600P70,
+	V3200X1600P72,
 	V3440X1440P50,
 	V3840X1080P60,
 	V3840X1200P60,
@@ -492,6 +495,7 @@ typedef enum {
 	V3840X2160P59RB,
 	V3840X2160P50,
 	V3840X2160P60,
+	V2160X3840P72,
 	V4096X2160P50,
 	V4096X2160P60,
 	V640X10P60SACRC,
@@ -600,6 +604,27 @@ enum dex_support_type {
 	DEX_WQHD_SUPPORT,
 	DEX_UHD_SUPPORT
 };
+
+#define MON_NAME_LEN	14	/* monitor name */
+
+#ifdef FEATURE_MANAGE_HMD_LIST
+#define MAX_NUM_HMD	32
+#define DEX_TAG_HMD	"HMD"
+
+enum dex_hmd_type {
+	DEX_HMD_MON = 0,	/* monitor name field */
+	DEX_HMD_VID,		/* vid field */
+	DEX_HMD_PID,		/* pid field */
+	DEX_HMD_FIELD_MAX,
+};
+
+struct secdp_sink_dev {
+	u32 ven_id;		/* vendor id from PDIC */
+	u32 prod_id;		/* product id from PDIC */
+	char monitor_name[MON_NAME_LEN];	/* max 14 bytes, from EDID */
+};
+#endif
+
 struct displayport_device {
 	enum displayport_state state;
 	struct device *dev;
@@ -670,6 +695,13 @@ struct displayport_device {
 	videoformat cur_video;
 	uint64_t ven_id;
 	uint64_t prod_id;
+	char mon_name[MON_NAME_LEN];
+
+#ifdef FEATURE_MANAGE_HMD_LIST
+	struct secdp_sink_dev hmd_list[MAX_NUM_HMD];  /*list of supported HMD device*/
+	struct mutex hmd_lock;
+	bool is_hmd_dev;
+#endif
 
 	enum drm_state drm_start_state;
 	enum drm_state drm_smc_state;
@@ -914,6 +946,24 @@ struct displayport_supported_preset {
 #define DISPLAYID_2400X1200P90_RELUMINO { \
 	.type = V4L2_DV_BT_656_1120, \
 	V4L2_INIT_BT_TIMINGS(2400, 1200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) \
+}
+
+/* Harman VR */
+#define DISPLAYID_3200X1600P70_ADDED { \
+	.type = V4L2_DV_BT_656_1120, \
+	V4L2_INIT_BT_TIMINGS(3200, 1600, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) \
+}
+
+/* Pico X1 VR */
+#define DISPLAYID_3200X1600P72_ADDED { \
+	.type = V4L2_DV_BT_656_1120, \
+	V4L2_INIT_BT_TIMINGS(3200, 1600, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) \
+}
+
+/* Pico VR */
+#define DISPLAYID_2160X3840P72_ADDED { \
+	.type = V4L2_DV_BT_656_1120, \
+	V4L2_INIT_BT_TIMINGS(2160, 3840, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) \
 }
 
 extern const int supported_videos_pre_cnt;

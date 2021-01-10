@@ -25,7 +25,7 @@
 #endif
 #include "oemflag_arch.h"
 
-static uint32_t set_tamper_fuse_teegris(uint32_t cmd, uint32_t arg1,
+static uint32_t run_cmd_teegris(uint32_t cmd, uint32_t arg1,
 						uint32_t arg2, uint32_t arg3)
 {
 	int ret = 0;
@@ -51,19 +51,26 @@ static uint32_t set_tamper_fuse_teegris(uint32_t cmd, uint32_t arg1,
 		return -EFAULT;
 	}
 
-	return ret;
+	if (arg1)
+		return p2;
+	else
+		return ret;
 }
 
 int set_tamper_fuse(enum oemflag_id name)
 {
 	int ret;
 
-	ret = set_tamper_fuse_teegris(IRS_SET_FLAG_VALUE_CMD, 0, name, 1);
+	ret = run_cmd_teegris(IRS_SET_FLAG_VALUE_CMD, 0, name, 1);
 
 	return ret;
 }
 
-int get_tamper_fuse(enum oemflag_id flag)
+int get_tamper_fuse(enum oemflag_id name)
 {
-	return 0;
+	int ret;
+
+	ret = run_cmd_teegris(IRS_GET_FLAG_VAL_CMD, 1, name, 0);
+
+	return ret;
 }

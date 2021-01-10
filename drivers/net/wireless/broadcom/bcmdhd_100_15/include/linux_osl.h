@@ -351,39 +351,10 @@ extern uint64 osl_systztime_us(void);
 #define	bcmp(b1, b2, len)	memcmp((b1), (b2), (len))
 #define	bzero(b, len)		memset((b), '\0', (len))
 
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-extern int exynos_pcie_l1_exit(int ch_num);
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
 /* register access macros */
 
 #ifdef CONFIG_64BIT
 /* readq is defined only for 64 bit platform */
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-#define R_REG(osh, r) (\
-	SELECT_BUS_READ(osh, \
-		({ \
-			__typeof(*(r)) __osl_v = 0; \
-			exynos_pcie_l1_exit(0); \
-			BCM_REFERENCE(osh);	\
-			switch (sizeof(*(r))) { \
-				case sizeof(uint8):	__osl_v = \
-					readb((volatile uint8*)(r)); break; \
-				case sizeof(uint16):	__osl_v = \
-					readw((volatile uint16*)(r)); break; \
-				case sizeof(uint32):	__osl_v = \
-					readl((volatile uint32*)(r)); break; \
-				case sizeof(uint64):	__osl_v = \
-					readq((volatile uint64*)(r)); break; \
-			} \
-			__osl_v; \
-		}), \
-		OSL_READ_REG(osh, r)) \
-)
-#else /* !CONFIG_64BIT */
 #define R_REG(osh, r) (\
 	SELECT_BUS_READ(osh, \
 		({ \
@@ -403,9 +374,6 @@ extern int exynos_pcie_l1_exit(int ch_num);
 		}), \
 		OSL_READ_REG(osh, r)) \
 )
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
 #else /* !CONFIG_64BIT */
 #define R_REG(osh, r) (\
 	SELECT_BUS_READ(osh, \
@@ -427,26 +395,6 @@ extern int exynos_pcie_l1_exit(int ch_num);
 
 #ifdef CONFIG_64BIT
 /* writeq is defined only for 64 bit platform */
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-#define W_REG(osh, r, v) do { \
-	SELECT_BUS_WRITE(osh, \
-		({ \
-			exynos_pcie_l1_exit(0); \
-			switch (sizeof(*(r))) { \
-				case sizeof(uint8):	writeb((uint8)(v), \
-						(volatile uint8*)(r)); break; \
-				case sizeof(uint16):	writew((uint16)(v), \
-						(volatile uint16*)(r)); break; \
-				case sizeof(uint32):	writel((uint32)(v), \
-						(volatile uint32*)(r)); break; \
-				case sizeof(uint64):	writeq((uint64)(v), \
-						(volatile uint64*)(r)); break; \
-			} \
-		 }), \
-		(OSL_WRITE_REG(osh, r, v))); \
-	} while (0)
-#else
 #define W_REG(osh, r, v) do { \
 	SELECT_BUS_WRITE(osh, \
 		switch (sizeof(*(r))) { \
@@ -457,9 +405,7 @@ extern int exynos_pcie_l1_exit(int ch_num);
 		}, \
 		(OSL_WRITE_REG(osh, r, v))); \
 	} while (0)
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
+
 #else /* !CONFIG_64BIT */
 #define W_REG(osh, r, v) do { \
 	SELECT_BUS_WRITE(osh, \

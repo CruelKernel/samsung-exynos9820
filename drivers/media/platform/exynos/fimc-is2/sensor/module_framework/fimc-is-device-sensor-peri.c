@@ -199,7 +199,7 @@ static void fimc_is_sensor_init_expecting_dm(struct fimc_is_device_sensor *devic
 		goto p_err;
 	}
 
-	m_fcount = (device->fcount + 1) % EXPECT_DM_NUM;
+	m_fcount = device->fcount % EXPECT_DM_NUM;
 
 	module_ctl = &cis->sensor_ctls[m_fcount];
 	sensor_ctrl = &module_ctl->cur_cam20_sensor_ctrl;
@@ -222,7 +222,7 @@ static void fimc_is_sensor_init_expecting_dm(struct fimc_is_device_sensor *devic
 			exposureTime = sensor_ctrl->exposureTime;
 	}
 
-	for (i = m_fcount + 2; i < m_fcount + EXPECT_DM_NUM; i++) {
+	for (i = m_fcount; i < m_fcount + EXPECT_DM_NUM; i++) {
 		cis->expecting_sensor_dm[i % EXPECT_DM_NUM].sensitivity = sensitivity;
 		cis->expecting_sensor_dm[i % EXPECT_DM_NUM].exposureTime = exposureTime;
 
@@ -276,11 +276,10 @@ void fimc_is_sensor_set_cis_uctrl_list(struct fimc_is_device_sensor_peri *sensor
 		sensor_uctl = &sensor_peri->cis.sensor_ctls[i].cur_cam20_sensor_udctrl;
 
 		if (fimc_is_vender_wdr_mode_on(sensor_peri->cis.cis_data)) {
-			sensor_uctl->exposureTime = 0;
+			sensor_uctl->exposureTime = fimc_is_sensor_convert_us_to_ns(short_exp);
 			sensor_uctl->longExposureTime = fimc_is_sensor_convert_us_to_ns(long_exp);
 			sensor_uctl->shortExposureTime = fimc_is_sensor_convert_us_to_ns(short_exp);
 
-			sensor_uctl->sensitivity = long_total_gain;
 			sensor_uctl->analogGain = 0;
 			sensor_uctl->digitalGain = 0;
 
@@ -293,7 +292,6 @@ void fimc_is_sensor_set_cis_uctrl_list(struct fimc_is_device_sensor_peri *sensor
 			sensor_uctl->longExposureTime = 0;
 			sensor_uctl->shortExposureTime = 0;
 
-			sensor_uctl->sensitivity = long_total_gain;
 			sensor_uctl->analogGain = long_analog_gain;
 			sensor_uctl->digitalGain = long_digital_gain;
 
@@ -1678,8 +1676,6 @@ int fimc_is_sensor_peri_s_stream(struct fimc_is_device_sensor *device,
 	}
 
 	if (on) {
-		fimc_is_sensor_init_expecting_dm(device, cis);
-
 		/* If sensor setting @work is queued or executing,
 		   wait for it to finish execution when working s_format */
 		kthread_flush_work(&sensor_peri->mode_change_work);
@@ -1739,6 +1735,8 @@ int fimc_is_sensor_peri_s_stream(struct fimc_is_device_sensor *device,
 		} else {
 			fimc_is_sensor_setting_mode_change(sensor_peri);
 		}
+
+		fimc_is_sensor_init_expecting_dm(device, cis);
 
 		if (subdev_preprocessor) {
 			ret = CALL_PREPROPOPS(preprocessor, preprocessor_wait_s_input, subdev_preprocessor);

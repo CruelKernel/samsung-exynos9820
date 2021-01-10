@@ -60,8 +60,19 @@ struct evdev_client {
 	bool revoked;
 	unsigned long *evmasks[EV_CNT];
 	unsigned int bufsize;
+
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+	int device_type;
+	int touch_slot_cnt;
+	int ev_cnt;
+#endif
+
 	struct input_event buffer[];
 };
+
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+#include <linux/input/input_booster.h>
+#endif
 
 static size_t evdev_get_mask_cnt(unsigned int type)
 {
@@ -228,9 +239,20 @@ static int evdev_set_clk_type(struct evdev_client *client, unsigned int clkid)
 	return 0;
 }
 
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+#include "evdev_booster.c"
+#endif
+
 static void __pass_event(struct evdev_client *client,
 			 const struct input_event *event)
 {
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+	unsigned long flags;
+
+	pr_booster("Raw Input Data : %d, code : %d, Val : %d",
+		event->type, event->code, event->value);
+	client->ev_cnt++;
+#endif
 	client->buffer[client->head++] = *event;
 	client->head &= client->bufsize - 1;
 
@@ -251,6 +273,13 @@ static void __pass_event(struct evdev_client *client,
 
 	if (event->type == EV_SYN && event->code == SYN_REPORT) {
 		client->packet_head = client->head;
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+		pr_booster("IB Triggered :: HEAD(%d) TAIL(%d)", client->head, client->tail);
+		spin_lock_irqsave(&ib_type_lock, flags);
+		input_booster(client, client->head);
+		client->ev_cnt = 0;
+		spin_unlock_irqrestore(&ib_type_lock, flags);
+#endif
 		kill_fasync(&client->fasync, SIGIO, POLL_IN);
 	}
 }
@@ -1462,6 +1491,9 @@ static struct input_handler evdev_handler = {
 
 static int __init evdev_init(void)
 {
+#ifdef CONFIG_SEC_INPUT_BOOSTER
+	input_booster_init();
+#endif
 	return input_register_handler(&evdev_handler);
 }
 

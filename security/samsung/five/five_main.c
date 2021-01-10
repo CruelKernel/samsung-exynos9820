@@ -465,8 +465,12 @@ static inline bool is_dex2oat_binary(const struct file *file)
 	const char *pathname = NULL;
 	char *pathbuf = NULL;
 	const char * const dex2oat_full_path[] = {
-		"/apex/com.android.art/bin/dex2oat",	/* R OS */
-		"/apex/com.android.runtime/bin/dex2oat"	/* Q OS */
+		/* R OS */
+		"/apex/com.android.art/bin/dex2oat",
+		"/apex/com.android.art/bin/dex2oat32",
+		"/apex/com.android.art/bin/dex2oat64",
+		/* Q OS */
+		"/apex/com.android.runtime/bin/dex2oat"
 	};
 	char filename[NAME_MAX];
 	bool res = false;
@@ -476,7 +480,11 @@ static inline bool is_dex2oat_binary(const struct file *file)
 		return false;
 
 	if (strncmp(file->f_path.dentry->d_iname, "dex2oat",
-			sizeof("dex2oat")))
+			sizeof("dex2oat")) &&
+	    strncmp(file->f_path.dentry->d_iname, "dex2oat32",
+			sizeof("dex2oat32")) &&
+	    strncmp(file->f_path.dentry->d_iname, "dex2oat64",
+			sizeof("dex2oat64")))
 		return false;
 
 	pathname = five_d_path(&file->f_path, &pathbuf, filename);

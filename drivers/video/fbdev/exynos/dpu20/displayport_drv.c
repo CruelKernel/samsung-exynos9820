@@ -37,7 +37,9 @@
 #include <linux/smc.h>
 #include <linux/switch.h>
 #include <linux/exynos_iovmm.h>
-
+#ifdef CONFIG_SAMSUNG_TUI
+#include "stui_inf.h"
+#endif
 #if defined(CONFIG_COMBO_REDRIVER_PTN36502)
 #include <linux/combo_redriver/ptn36502.h>
 #endif
@@ -405,6 +407,14 @@ Reduce_Link_Rate_Retry:
 	val[0] = 0x21;	/* SCRAMBLING_DISABLE, TRAINING_PATTERN_1 */
 	displayport_reg_dpcd_write(DPCD_ADD_TRANING_PATTERN_SET, 1, val);
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+	if (displayport->is_hmd_dev &&
+		!strncmp(displayport->mon_name, "PicoVR", MON_NAME_LEN)) {
+		displayport_info("increase swing level\n");
+		for (i = 0; i < 4; i++)
+			drive_current[i] = 2;
+	}
+#endif
 Voltage_Swing_Retry:
 	displayport_dbg("Voltage_Swing_Retry\n");
 
@@ -884,6 +894,31 @@ static void displayport_find_proper_ratio_video_for_dex(struct displayport_devic
 		displayport_info("not found dex support ratio\n");
 }
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+static bool displayport_check_hmd_dev(struct displayport_device *displayport)
+{
+	bool ret = false;
+	int i;
+	struct secdp_sink_dev *hmd = displayport->hmd_list;
+
+	mutex_lock(&displayport->hmd_lock);
+	for (i = 0; i < MAX_NUM_HMD; i++) {
+		if (hmd[i].ven_id == 0 && hmd[i].prod_id == 0)
+			continue;
+		if (!strncmp(hmd[i].monitor_name, displayport->mon_name, MON_NAME_LEN) &&
+				hmd[i].ven_id == (u32)displayport->ven_id &&
+				hmd[i].prod_id == (u32)displayport->prod_id) {
+			displayport_info("HMD %s\n", hmd[i].monitor_name);
+			ret = true;
+			break;
+		}
+	}
+	mutex_unlock(&displayport->hmd_lock);
+
+	return ret;
+}
+#endif
+
 static int displayport_link_training(void)
 {
 	u8 val;
@@ -905,6 +940,9 @@ static int displayport_link_training(void)
 #endif
 	}
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+		displayport->is_hmd_dev = displayport_check_hmd_dev(displayport);
+#endif
 	/* find proper ratio resolution for DEX */
 	displayport_find_proper_ratio_video_for_dex(displayport);
 
@@ -922,10 +960,14 @@ static void displayport_set_switch_state(struct displayport_device *displayport,
 {
 	displayport_info("HPD status = %d\n", state);
 #if defined(CONFIG_EXTCON)
-	if (state)
+	if (state) {
+#ifdef CONFIG_SAMSUNG_TUI
+		stui_cancel_session();
+#endif
 		extcon_set_state_sync(displayport->extcon_displayport, EXTCON_DISP_DP, 1);
-	else
+	} else {
 		extcon_set_state_sync(displayport->extcon_displayport, EXTCON_DISP_DP, 0);
+	}
 #else
 	displayport_info("Not compiled EXTCON driver\n");
 #endif
@@ -2299,7 +2341,11 @@ static int displayport_enum_dv_timings(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+	if (displayport->dex_setting && !displayport->is_hmd_dev) {
+#else
 	if (displayport->dex_setting) {
+#endif
 		if (displayport->dex_video_pick &&
 				timings->index > displayport->dex_video_pick) {
 			displayport_info("dex proper ratio video pick %d\n", displayport->dex_video_pick);
@@ -2674,6 +2720,9 @@ static int usb_typec_displayport_notification(struct notifier_block *nb,
 			displayport->dex_state = DEX_OFF;
 			displayport->dex_ver[0] = 0;
 			displayport->dex_ver[1] = 0;
+#ifdef FEATURE_MANAGE_HMD_LIST
+			displayport->is_hmd_dev = false;
+#endif
 			displayport_hpd_changed(0);
 #if defined(CONFIG_COMBO_REDRIVER_PTN36502)
 			ptn36502_config(SAFE_STATE, 0);
@@ -3388,6 +3437,9 @@ static ssize_t dp_test_show(struct class *class,
 {
 	struct displayport_device *displayport = get_displayport_drvdata();
 	int size;
+#ifdef FEATURE_MANAGE_HMD_LIST
+	int i;
+#endif
 
 	size = snprintf(buf, PAGE_SIZE, "0: HPD test\n");
 	size += snprintf(buf + size, PAGE_SIZE - size, "1: uevent test\n");
@@ -3411,6 +3463,23 @@ static ssize_t dp_test_show(struct class *class,
 		size += snprintf(buf + size, PAGE_SIZE - size, "\n# gpio direction %d\n",
 			gpio_get_value(displayport->gpio_usb_dir));
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+	for (i = 0; i < MAX_NUM_HMD; i++) {
+		if (strlen(displayport->hmd_list[i].monitor_name) > 1 ||
+					displayport->hmd_list[i].ven_id != 0 ||
+					displayport->hmd_list[i].prod_id != 0) {
+			displayport_info("HMD%02d: %s, 0x%04x, 0x%04x\n", i,
+					displayport->hmd_list[i].monitor_name,
+					displayport->hmd_list[i].ven_id,
+					displayport->hmd_list[i].prod_id);
+			size += snprintf(buf + size, PAGE_SIZE - size,
+					"HMD%02d: %s, 0x%04x, 0x%04x\n", i,
+						displayport->hmd_list[i].monitor_name,
+						displayport->hmd_list[i].ven_id,
+						displayport->hmd_list[i].prod_id);
+		}
+	}
+#endif
 	return size;
 }
 static ssize_t dp_test_store(struct class *dev,
@@ -3629,6 +3698,90 @@ static ssize_t reduced_resolution_store(struct class *dev,
 }
 static CLASS_ATTR_RW(reduced_resolution);
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+/*
+ * assume that 1 HMD device has name(14),vid(4),pid(4) each, then
+ * max 32 HMD devices(name,vid,pid) need 806 bytes including TAG, NUM, comba
+ */
+#define MAX_DEX_STORE_LEN	1024
+static int displayport_update_hmd_list(struct displayport_device *displayport, const char *buf, size_t size)
+{
+	int ret = 0;
+	char str[MAX_DEX_STORE_LEN] = {0,};
+	char *p, *tok;
+	u32 num_hmd = 0;
+	int j = 0;
+	u32 val;
+
+	mutex_lock(&displayport->hmd_lock);
+
+	memcpy(str, buf, size);
+	p = str;
+
+	tok = strsep(&p, ",");
+	if (strncmp(DEX_TAG_HMD, tok, strlen(DEX_TAG_HMD))) {
+		displayport_dbg("not HMD tag %s\n", tok);
+		ret = -EINVAL;
+		goto not_tag_exit;
+	}
+
+	displayport_info("%s\n", __func__);
+
+	tok = strsep(&p, ",");
+	if (tok == NULL || *tok == 0xa/*LF*/) {
+		ret = -EPERM;
+		goto exit;
+	}
+	kstrtouint(tok, 10, &num_hmd);
+	if (num_hmd > MAX_NUM_HMD) {
+		displayport_err("invalid list num %d\n", num_hmd);
+		num_hmd = 0;
+		ret = -EPERM;
+		goto exit;
+	}
+
+	for (j = 0; j < num_hmd; j++) {
+		/* monitor name */
+		tok = strsep(&p, ",");
+		if (tok == NULL || *tok == 0xa/*LF*/)
+			break;
+		strlcpy(displayport->hmd_list[j].monitor_name, tok, MON_NAME_LEN);
+
+		/* VID */
+		tok  = strsep(&p, ",");
+		if (tok == NULL || *tok == 0xa/*LF*/)
+			break;
+		kstrtouint(tok, 16, &val);
+		displayport->hmd_list[j].ven_id = val;
+
+		/* PID */
+		tok  = strsep(&p, ",");
+		if (tok == NULL || *tok == 0xa/*LF*/)
+			break;
+		kstrtouint(tok, 16, &val);
+		displayport->hmd_list[j].prod_id = val;
+
+		displayport_info("HMD%02d: %s, 0x%04x, 0x%04x\n", j,
+				displayport->hmd_list[j].monitor_name,
+				displayport->hmd_list[j].ven_id,
+				displayport->hmd_list[j].prod_id);
+	}
+
+exit:
+	/* clear rest */
+	for (; j < MAX_NUM_HMD; j++) {
+		displayport->hmd_list[j].monitor_name[0] = '\0';
+		displayport->hmd_list[j].ven_id = 0;
+		displayport->hmd_list[j].prod_id = 0;
+	}
+
+not_tag_exit:
+	mutex_unlock(&displayport->hmd_lock);
+
+	return ret;
+}
+#endif
+
 static ssize_t dex_show(struct class *class,
 		struct class_attribute *attr, char *buf)
 {
@@ -3647,22 +3800,41 @@ static ssize_t dex_store(struct class *dev,
 		struct class_attribute *attr, const char *buf, size_t size)
 {
 	struct displayport_device *displayport = get_displayport_drvdata();
-	int val[4] = {0,};
-	int dex_run;
+	int val = 0;
+	u32 dex_run = 0;
 	int need_reconnect = 0;
+#ifdef FEATURE_MANAGE_HMD_LIST
+	int ret;
+#endif
 
 	if (displayport->dp_not_support)
 		return size;
 
-	if (strnchr(buf, size, '-')) {
-		pr_err("%s range option not allowed\n", __func__);
+#ifdef FEATURE_MANAGE_HMD_LIST
+	if (size >= MAX_DEX_STORE_LEN) {
+		displayport_err("invalid input size %lu\n", size);
 		return -EINVAL;
 	}
 
-	get_options(buf, 2, val);
+	ret = displayport_update_hmd_list(displayport, buf, size);
+	if (ret == 0) /* HMD list update success */
+		return size;
+	else if (ret != -EINVAL) /* try to update HMD list but error*/
+		return ret;
+#endif
 
-	displayport->dex_setting = (val[1] & 0xF0) >> 4;
-	dex_run = (val[1] & 0x0F);
+	if (kstrtouint(buf, 10, &val)) {
+		displayport_err("invalid input %s\n", buf);
+		return -EINVAL;
+	}
+
+	if (val != 0x00 && val != 0x01 && val != 0x10 && val != 0x11) {
+		displayport_err("invalid input 0x%X\n", val);
+		return -EINVAL;
+	}
+
+	displayport->dex_setting = (val & 0xF0) >> 4;
+	dex_run = (val & 0x0F);
 
 	displayport_info("dex state:%d, setting:%d, run:%d, hpd:%d\n",
 			displayport->dex_state, displayport->dex_setting,
@@ -3675,6 +3847,12 @@ static ssize_t dex_store(struct class *dev,
 		cancel_delayed_work_sync(&displayport->notifier_register_work);
 		manager_notifier_register(&displayport->dp_typec_nb,
 			usb_typec_displayport_notification, MANAGER_NOTIFY_CCIC_DP);
+		goto dex_exit;
+	}
+#endif
+#ifdef FEATURE_MANAGE_HMD_LIST
+	if (displayport->is_hmd_dev) {
+		displayport_info("HMD dev\n");
 		goto dex_exit;
 	}
 #endif
@@ -3847,6 +4025,9 @@ static int displayport_probe(struct platform_device *pdev)
 	init_waitqueue_head(&displayport->dp_wait);
 	init_waitqueue_head(&displayport->audio_wait);
 
+#ifdef FEATURE_MANAGE_HMD_LIST
+	mutex_init(&displayport->hmd_lock);
+#endif
 	ret = displayport_init_resources(displayport, pdev);
 	if (ret)
 		goto err_dt;

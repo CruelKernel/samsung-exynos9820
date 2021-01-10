@@ -157,6 +157,7 @@ struct max77705_usbc_platform_data {
 	uint32_t Device_Version;
 	uint32_t SVID_0;
 	uint32_t SVID_1;
+	uint32_t SVID_DP;
 	struct delayed_work acc_detach_work;
 	uint32_t dp_is_connect;
 	uint32_t dp_hs_connect;

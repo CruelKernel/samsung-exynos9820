@@ -71,7 +71,7 @@
 #if defined(CONFIG_FOLDER_HALL)
 #define HALLIC_PATH		"/sys/class/sec/sec_flip/flipStatus"
 #else
-#define HALLIC_PATH		"/sys/class/sec/sec_key/hall_detect"
+#define HALLIC_PATH		"/sys/class/sec/hall_ic/hall_detect"
 #endif
 
 struct sx9360_p {

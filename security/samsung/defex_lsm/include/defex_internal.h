@@ -204,6 +204,7 @@ char *get_dc_target_name(struct defex_context *dc);
 struct file *defex_get_source_file(struct task_struct *p);
 char *defex_get_filename(struct task_struct *p);
 char* defex_resolve_filename(const char *name, char **out_buff);
+int defex_files_identical(const struct file *f1, const struct file *f2);
 static inline void safe_str_free(void *ptr)
 {
 	if (ptr && ptr != unknown_file)

@@ -2531,7 +2531,7 @@ ssize_t sec_bat_store_attrs(
 				} else {
 					pr_info("%s: hv wireless charging is enabled\n", __func__);
 					sleep_mode = false;
-
+					battery->auto_mode = false;
 					value.intval = WIRELESS_SLEEP_MODE_DISABLE;
 					psy_do_property(battery->pdata->wireless_charger_name, set,
 								POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, value);
@@ -2659,7 +2659,7 @@ ssize_t sec_bat_store_attrs(
 		break;
 	case BATT_TUNE_CHG_LIMMIT_CUR:
 		sscanf(buf, "%10d\n", &x);
-		pr_info("%s chg_charging_limit_current	= %d ",__func__, x);
+		pr_info("%s chg_charging_limit_current	= %d ", __func__, x);
 		if(x < 3000 && x > 0)
 		{
 			battery->pdata->chg_charging_limit_current = x;

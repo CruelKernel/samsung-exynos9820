@@ -543,12 +543,6 @@ static int sec_direct_chg_set_property(struct power_supply *psy,
 			charger->dc_err = false;
 			charger->dc_retry_cnt = 0;
 			break;
-		case POWER_SUPPLY_EXT_PROP_DEFAULT_CURRENT:
-			if (dt_need_overwrite) {
-				pr_info("%s: dchg_temp_low_threshold (%d -> %d)\n ", __func__, charger->pdata->dchg_temp_low_threshold, val->intval);
-				charger->pdata->dchg_temp_low_threshold = val->intval;
-			}
-			break;
         case POWER_SUPPLY_EXT_PROP_CHANGE_CHARGING_SOURCE:
             {
 				charger->test_mode_source = val->intval;
@@ -607,12 +601,8 @@ static int sec_direct_charger_parse_dt(struct device *dev,
 		}
 		pr_info("%s: charger,dchg_min_current is %d\n", __func__, charger->pdata->dchg_min_current);
 
-		if (dt_need_overwrite)
-			ret = of_property_read_u32(np, "charger,dchg_temp_low_threshold_overwrite",
-				&charger->pdata->dchg_temp_low_threshold);
-		else
-			ret = of_property_read_u32(np, "charger,dchg_temp_low_threshold",
-				&charger->pdata->dchg_temp_low_threshold);
+		ret = of_property_read_u32(np, "charger,dchg_temp_low_threshold",
+			&charger->pdata->dchg_temp_low_threshold);
 		if (ret) {
 			pr_err("%s : charger,dchg_temp_low_threshold is Empty\n", __func__);
 			charger->pdata->dchg_temp_low_threshold = 180;

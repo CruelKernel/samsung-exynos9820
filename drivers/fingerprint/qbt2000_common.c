@@ -593,10 +593,10 @@ static long qbt2000_ioctl(
 #ifdef QBT2000_AVOID_NOISE
 		if (data == QBT2000_SENSORTEST_DONE) {
 			pr_info("SENSORTEST Finished\n");
-			qbt2000_noise_control(drvdata, QBT2000_NOISE_ON);
+			qbt2000_noise_control(drvdata, QBT2000_NOISE_BLOCK);
 		} else {
 			pr_info("SENSORTEST Start : 0x%x\n", data);
-			qbt2000_noise_control(drvdata, QBT2000_NOISE_OFF);
+			qbt2000_noise_control(drvdata, QBT2000_NOISE_UNBLOCK);
 		}
 #endif
 #endif
@@ -1547,7 +1547,7 @@ static int qbt2000_suspend(struct platform_device *pdev, pm_message_t state)
 		return -EBUSY;
 	else {
 #ifndef ENABLE_SENSORS_FPRINT_SECURE
-		fps_qbt2000_power_control(drvdata, 0);
+		qbt2000_power_control(drvdata, 0);
 #endif
 		qbt2000_disable_debug_timer();
 		pr_info("ret = %d\n", rc);

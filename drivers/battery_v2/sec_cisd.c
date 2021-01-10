@@ -408,18 +408,11 @@ static unsigned int convert_wc_index_to_pad_id(unsigned int wc_index)
 void set_cisd_pad_data(struct sec_battery_info *battery, const char* buf)
 {
 	struct cisd* pcisd = &battery->cisd;
-	unsigned int pad_index, pad_total_count, pad_id, pad_count;
+	unsigned int pad_total_count, pad_id, pad_count;
 	struct pad_data* pad_data;
 	int i, x;
 
 	pr_info("%s: %s\n", __func__, buf);
-	if (sscanf(buf, "%10d %n", &pad_index, &x) <= 0) {
-		pr_info("%s: failed to read pad index\n", __func__);
-		return;
-	}
-	buf += (size_t)x;
-	pr_info("%s: stored pad_index(%d)\n", __func__, pad_index);
-
 	if (pcisd->pad_count > 0)
 		init_cisd_pad_data(pcisd);
 
@@ -428,7 +421,14 @@ void set_cisd_pad_data(struct sec_battery_info *battery, const char* buf)
 		return;
 	}
 
-	if (!pad_index) {
+	if (sscanf(buf, "%10u %n", &pad_total_count, &x) <= 0) {
+		pr_info("%s: failed to read pad index\n", __func__);
+		return;
+	}
+	buf += (size_t)x;
+	pr_info("%s: stored pad_total_count(%d)\n", __func__, pad_total_count);
+
+	if (!pad_total_count) {
 		for (i = WC_DATA_INDEX + 1; i < WC_DATA_MAX; i++) {
 			if (sscanf(buf, "%10d %n", &pad_count, &x) <= 0)
 				break;
@@ -446,10 +446,8 @@ void set_cisd_pad_data(struct sec_battery_info *battery, const char* buf)
 			}
 		}
 	} else {
-		if ((sscanf(buf, "%10d %n", &pad_total_count, &x) <= 0) ||
-			(pad_total_count >= MAX_PAD_ID))
+		if (pad_total_count >= MAX_PAD_ID)
 			return;
-		buf += (size_t)x;
 
 		pr_info("%s: add pad data(count: %d)\n", __func__, pad_total_count);
 		for (i = 0; i < pad_total_count; i++) {

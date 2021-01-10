@@ -64,6 +64,7 @@ struct exynos_video_dec_data {
 
 struct exynos_video_enc_data {
 	struct exynos_video_ysum_data sysum_data;
+	int nUseGdcOTF;
 };
 
 struct exynoshdrdynamicinfo {

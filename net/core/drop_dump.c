@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/ip.h>
+#include <linux/kernel.h>
 #include <net/ip.h>
 #include <net/netevent.h>
 
@@ -84,7 +85,7 @@ static void dropdump_print_skb(struct sk_buff *skb)
 	return false; \
 }
 
-bool dropdump_queue_skb(struct sk_buff *skb)
+bool dropdump_queue_skb(struct sk_buff *skb, int mode)
 {
 	struct packet_type *ptype;
 	struct packet_type *pt_prev = NULL;
@@ -92,9 +93,11 @@ bool dropdump_queue_skb(struct sk_buff *skb)
 	struct list_head *ptype_list = &ptype_log;
 	struct net_device *dev = NULL;
 	struct net_device *old_dev;
-	struct iphdr *iphdr;
+	struct iphdr *iphdr = (struct iphdr *)(skb_network_header(skb));
+	struct ipv6hdr *ip6hdr = (struct ipv6hdr *)iphdr;
 	bool ret = false;
-	unsigned int push_len;
+	unsigned int len = 0;
+	static ktime_t tstamp_bck;
 
 	old_dev = skb->dev;
 	if (skb->dev)
@@ -129,6 +132,15 @@ queueing:
 	skb->dev = dev;
 	skb->dropmask |= PACKET_LOGED;
 
+	if (iphdr->version == 4) {
+		len = ntohs(iphdr->tot_len);
+	} else if (iphdr->version == 6) {
+		len = skb_network_header_len(skb) + ntohs(ip6hdr->payload_len);
+	} else {
+		pr_drop("%s: invalid ip data\n", __func__);
+		return false;
+	}
+
 	list_for_each_entry_rcu(ptype, ptype_list, list) {
 		if (pt_prev) {
 			deliver_skb(skb2, pt_prev, dev);
@@ -136,65 +148,42 @@ queueing:
 			continue;
 		}
 
-		/* need to clone skb, done only once */
-		skb2 = skb_clone(skb, GFP_ATOMIC);
-		if (!skb2)
+		if (mode) {
+			len = min(0x80u, len);
+			tstamp_bck = skb->tstamp;
+		}
+
+		skb2 = netdev_alloc_skb(dev, len);
+		if (unlikely(!skb2)) {
+			pr_drop("%s: alloc fail\n", __func__);
 			goto out_unlock;
+		}
 
-		net_timestamp_set(skb2);
+		skb2->protocol		= skb->protocol;
+		skb2->tstamp		= mode ? skb->tstamp : tstamp_bck;
+		skb2->pkt_type		= skb->dropmask & PACKET_IN ?
+					  PACKET_HOST : PACKET_OUTGOING;
 
-		/* skb->nh should be correctly
-		 * set by sender, so that the second statement is
-		 * just protection against buggy protocols.
-		 */
+		skb2->dropmask		= skb->dropmask;
+		skb2->dropid		= skb->dropid;
+		
+
+		skb_put(skb2, len);
 		skb_reset_mac_header(skb2);
+		skb_reset_network_header(skb2);
+		skb_set_transport_header(skb2, skb_network_header_len(skb));
 
-		if (skb_network_header(skb2) > skb_tail_pointer(skb2)) {
-			pr_drop("protocol %04x is buggy, dev %s\n",
-					     ntohs(skb2->protocol),
-					     dev->name);
-			skb_reset_network_header(skb2);
+		memcpy(skb_network_header(skb2), skb_network_header(skb), len);
+
+		iphdr = (struct iphdr *)(skb_network_header(skb2));
+		if (iphdr->version == 4) {
+			iphdr->ttl = (u8)skb->dropid;
+		} else if (iphdr->version == 6) {
+			ip6hdr = (struct ipv6hdr *)iphdr;
+			ip6hdr->hop_limit = (u8)skb->dropid;
 		}
 
-		if ((skb2->dropmask & PACKET_IN)
-		    && (skb2->data > skb_network_header(skb2))) {
-			if (skb_headroom(skb2) == skb2->transport_header) {
-				push_len = (unsigned int)skb_network_header_len(skb2);
-			} else if (skb_headroom(skb2) > skb2->transport_header) {
-				struct tcphdr *tcph = tcp_hdr(skb2);
-				push_len = (unsigned int)skb_network_header_len(skb2) 
-					   + (unsigned int)(tcph->doff * 4);
-			} else {
-				push_len = (unsigned int)skb2->data 
-					   - (unsigned int)skb_network_header(skb2);
-			}
-
-			if (unlikely(skb_headroom(skb2) < push_len)) {
-				pr_drop("odd skb: %p len:%d head:%p data:%p ",
- 					 skb2, skb2->len, skb2->head, skb2->data,
- 					 "tail:%#lx end:%#lx dev:%s\n",
- 					 (unsigned long)skb2->tail, (unsigned long)skb2->end,
- 					 skb2->dev ? skb2->dev->name : "<NULL>");
-				goto error_exit;
-			}
-			skb_push(skb2, push_len);
-		}
-
-		skb2->transport_header = skb2->network_header;
-		skb2->pkt_type = skb2->dropmask & PACKET_IN ?
-					PACKET_HOST : PACKET_OUTGOING;
 		pt_prev = ptype;
-
-		if (skb->dropmask & PACKET_DUMMY) {
-			iphdr = (struct iphdr *)skb_network_header(skb2);
-			if (iphdr->version == 4) {
-				iphdr->ttl = (u8)skb->dropid;
-			} else if (iphdr->version == 6) {
-				struct ipv6hdr *ip6hdr = (struct ipv6hdr *)iphdr;
-				ip6hdr->hop_limit = (u8)skb->dropid;
-			}
-		}
-
 		ret = true;
 	}
 
@@ -203,7 +192,6 @@ out_unlock:
 		if (!skb_orphan_frags_rx(skb2, GFP_ATOMIC))
 			pt_prev->func(skb2, skb->dev, pt_prev, skb->dev);
 		else
-error_exit:
 			__kfree_skb(skb2);
 	}
 
@@ -384,12 +372,12 @@ void dropdump_queue(struct sk_buff *skb)
 	if (unlikely(!netdev_support_dropdump))
 		return;
 
-	logging = dropdump_queue_skb(skb);
+	logging = dropdump_queue_skb(skb, 1);
 
 	if (unlikely(logging)) {
 		dmy = get_dummy(skb);
 		if (likely(dmy)) {
-			dropdump_queue_skb(dmy);
+			dropdump_queue_skb(dmy, 0);
 			__kfree_skb(dmy);
 		}
 	}

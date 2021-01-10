@@ -707,6 +707,8 @@ int sec_bat_parse_dt(struct device *dev,
 
                 battery->wpc_vout_ctrl_lcd_on = of_property_read_bool(np,
 						     "battery,wpc_vout_ctrl_lcd_on");
+		battery->support_unknown_wpcthm = of_property_read_bool(np,
+						     "battery,support_unknown_wpcthm");
 	}
 
 	ret = of_property_read_u32(np, "battery,wc_full_input_limit_current",
@@ -1298,109 +1300,80 @@ int sec_bat_parse_dt(struct device *dev,
 			pdata->swelling_low_temp_block_3rd = pdata->swelling_low_temp_block_2nd;
 		}
 
-		if (dt_need_overwrite) {
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_3rd_overwrite",
-						   &temp);
-			pdata->swelling_low_temp_recov_3rd = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp recovery 3rd is Empty\n", __func__);
-				pdata->swelling_low_temp_recov_3rd = pdata->swelling_low_temp_recov_2nd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_current_3rd_overwrite",
-							&pdata->swelling_low_temp_current_3rd);
-			if (ret) {
-				pr_info("%s: swelling_low_temp_current_3rd is Empty, set swelling_low_temp_current value \n", __func__);
-				pdata->swelling_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_wc_low_temp_current_3rd_overwrite",
-							&pdata->swelling_wc_low_temp_current_3rd);
-			if (ret) {
-				pr_info("%s: swelling_wc_low_temp_current_3rd is Empty, set swelling_wc_low_temp_current \n", __func__);
-				pdata->swelling_wc_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
-			}
-		}else {
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_3rd",
-						   &temp);
-			pdata->swelling_low_temp_recov_3rd = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp recovery 3rd is Empty\n", __func__);
-				pdata->swelling_low_temp_recov_3rd = pdata->swelling_low_temp_recov_2nd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_current_3rd",
-							&pdata->swelling_low_temp_current_3rd);
-			if (ret) {
-				pr_info("%s: swelling_low_temp_current_3rd is Empty, set swelling_low_temp_current value \n", __func__);
-				pdata->swelling_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_wc_low_temp_current_3rd",
-							&pdata->swelling_wc_low_temp_current_3rd);
-			if (ret) {
-				pr_info("%s: swelling_wc_low_temp_current_3rd is Empty, set swelling_wc_low_temp_current \n", __func__);
-				pdata->swelling_wc_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
-			}
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_3rd",
+					   &temp);
+		pdata->swelling_low_temp_recov_3rd = (int)temp;
+		if (ret) {
+			pr_info("%s: swelling low temp recovery 3rd is Empty\n", __func__);
+			pdata->swelling_low_temp_recov_3rd = pdata->swelling_low_temp_recov_2nd;
 		}
-		pr_info("%s: enable swelling_low_temp_block_3rd \n", __func__);
+
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_current_3rd",
+						&pdata->swelling_low_temp_current_3rd);
+		if (ret) {
+			pr_info("%s: swelling_low_temp_current_3rd is Empty, set swelling_low_temp_current value \n", __func__);
+			pdata->swelling_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
+		}
+
+		ret = of_property_read_u32(np, "battery,swelling_wc_low_temp_current_3rd",
+						&pdata->swelling_wc_low_temp_current_3rd);
+		if (ret) {
+			pr_info("%s: swelling_wc_low_temp_current_3rd is Empty, set swelling_wc_low_temp_current \n", __func__);
+			pdata->swelling_wc_low_temp_current_3rd = pdata->swelling_low_temp_current_2nd;
+		}
 	}
 
-	if (dt_need_overwrite) {
-		battery->swelling_low_temp_4th_ctrl = of_property_read_bool(np,
-							     "battery,swelling_low_temp_4th_ctrl");
-		if (battery->swelling_low_temp_4th_ctrl) {
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_block_4th",
-						   &temp);
-			pdata->swelling_low_temp_block_4th = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp block is Empty\n", __func__);
-				pdata->swelling_low_temp_block_4th = pdata->swelling_low_temp_block_3rd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_4th",
-						   &temp);
-			pdata->swelling_low_temp_recov_4th = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp recovery 4th is Empty\n", __func__);
-				pdata->swelling_low_temp_recov_4th = pdata->swelling_low_temp_recov_3rd;
-			}
-
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_current_4th",
-							&pdata->swelling_low_temp_current_4th);
-			if (ret) {
-				pr_info("%s: swelling_low_temp_current_4th is Empty, set swelling_low_temp_current value \n", __func__);
-				pdata->swelling_low_temp_current_4th = pdata->swelling_low_temp_current_3rd;
-			}
-			pr_info("%s: enable swelling_low_temp_block_4th\n", __func__);
+	battery->swelling_low_temp_4th_ctrl = of_property_read_bool(np,
+						     "battery,swelling_low_temp_4th_ctrl");
+	if (battery->swelling_low_temp_4th_ctrl) {
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_block_4th",
+					   &temp);
+		pdata->swelling_low_temp_block_4th = (int)temp;
+		if (ret) {
+			pr_info("%s: swelling low temp block is Empty\n", __func__);
+			pdata->swelling_low_temp_block_4th = pdata->swelling_low_temp_block_3rd;
 		}
 
-		battery->swelling_low_temp_5th_ctrl = of_property_read_bool(np,
-							     "battery,swelling_low_temp_5th_ctrl");
-		if (battery->swelling_low_temp_5th_ctrl) {
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_block_5th",
-						   &temp);
-			pdata->swelling_low_temp_block_5th = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp block is Empty\n", __func__);
-				pdata->swelling_low_temp_block_5th = pdata->swelling_low_temp_block_3rd;
-			}
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_4th",
+					   &temp);
+		pdata->swelling_low_temp_recov_4th = (int)temp;
+		if (ret) {
+			pr_info("%s: swelling low temp recovery 4th is Empty\n", __func__);
+			pdata->swelling_low_temp_recov_4th = pdata->swelling_low_temp_recov_3rd;
+		}
 
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_5th",
-						   &temp);
-			pdata->swelling_low_temp_recov_5th = (int)temp;
-			if (ret) {
-				pr_info("%s: swelling low temp recovery 5th is Empty\n", __func__);
-				pdata->swelling_low_temp_recov_5th = pdata->swelling_low_temp_recov_3rd;
-			}
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_current_4th",
+						&pdata->swelling_low_temp_current_4th);
+		if (ret) {
+			pr_info("%s: swelling_low_temp_current_4th is Empty, set swelling_low_temp_current value \n", __func__);
+			pdata->swelling_low_temp_current_4th = pdata->swelling_low_temp_current_3rd;
+		}
+	}
 
-			ret = of_property_read_u32(np, "battery,swelling_low_temp_current_5th",
-							&pdata->swelling_low_temp_current_5th);
-			if (ret) {
-				pr_info("%s: swelling_low_temp_current_5th is Empty, set swelling_low_temp_current value \n", __func__);
-				pdata->swelling_low_temp_current_5th = pdata->swelling_low_temp_current_3rd;
-			}
-			pr_info("%s: enable swelling_low_temp_block_5th\n", __func__);
+	battery->swelling_low_temp_5th_ctrl = of_property_read_bool(np,
+						     "battery,swelling_low_temp_5th_ctrl");
+	if (battery->swelling_low_temp_5th_ctrl) {
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_block_5th",
+					   &temp);
+		pdata->swelling_low_temp_block_5th = (int)temp;
+		if (ret) {
+			pr_info("%s: swelling low temp block is Empty\n", __func__);
+			pdata->swelling_low_temp_block_5th = pdata->swelling_low_temp_block_3rd;
+		}
+
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_recov_5th",
+					   &temp);
+		pdata->swelling_low_temp_recov_5th = (int)temp;
+		if (ret) {
+			pr_info("%s: swelling low temp recovery 5th is Empty\n", __func__);
+			pdata->swelling_low_temp_recov_5th = pdata->swelling_low_temp_recov_3rd;
+		}
+
+		ret = of_property_read_u32(np, "battery,swelling_low_temp_current_5th",
+						&pdata->swelling_low_temp_current_5th);
+		if (ret) {
+			pr_info("%s: swelling_low_temp_current_5th is Empty, set swelling_low_temp_current value \n", __func__);
+			pdata->swelling_low_temp_current_5th = pdata->swelling_low_temp_current_3rd;
 		}
 	}
 
@@ -1545,17 +1518,10 @@ int sec_bat_parse_dt(struct device *dev,
 		pdata->wpc_en = 0;
 	}
 #if defined(CONFIG_BATTERY_AGE_FORECAST)
-	if (dt_need_overwrite)
-		p = of_get_property(np, "battery,age_data_overwrite", &len);
-	else
-		p = of_get_property(np, "battery,age_data", &len);
+	p = of_get_property(np, "battery,age_data", &len);
 	if (p) {
 		battery->pdata->num_age_step = len / sizeof(sec_age_data_t);
 		battery->pdata->age_data = kzalloc(len, GFP_KERNEL);
-	if (dt_need_overwrite)
-		ret = of_property_read_u32_array(np, "battery,age_data_overwrite",
-					(u32 *)battery->pdata->age_data, len/sizeof(u32));
-	else
 		ret = of_property_read_u32_array(np, "battery,age_data",
 				 (u32 *)battery->pdata->age_data, len/sizeof(u32));
 		if (ret) {

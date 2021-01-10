@@ -60,6 +60,7 @@ static struct keyinfo KEYINFO(s6e3ha9_aod_l2_key_enable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l2_key_disable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l3_key_enable);
 static struct keyinfo KEYINFO(s6e3ha9_aod_l3_key_disable);
+static DEFINE_PANEL_UDELAY(s6e3ha9_aod_self_spsram_sel_delay, 1);
 
 static char s6e3ha9_aod_self_move_pos_tbl[][90] = {
 	{
@@ -383,6 +384,7 @@ static void *s6e3ha9_aod_disable_cmdtbl[] = {
 static void *s6e3ha9_aod_icon_img_cmdtbl[] = {
 	&KEYINFO(s6e3ha9_aod_l2_key_enable),
 	&PKTINFO(s6e3ha9_aod_icon_sd_path),
+	&DLYINFO(s6e3ha9_aod_self_spsram_sel_delay),
 	&PKTINFO(s6e3ha9_aod_icon_img),
 	&PKTINFO(s6e3ha9_aod_reset_sd_path),
 	&KEYINFO(s6e3ha9_aod_l2_key_disable),
@@ -437,6 +439,7 @@ static DEFINE_STATIC_PACKET(s6e3ha9_aod_analog_img, DSI_PKT_TYPE_WR_SR, S6E3HA9_
 static void *s6e3ha9_aod_analog_img_cmdtbl[] = {
 	&KEYINFO(s6e3ha9_aod_l2_key_enable),
 	&PKTINFO(s6e3ha9_aod_sd_path_analog),
+	&DLYINFO(s6e3ha9_aod_self_spsram_sel_delay),
 	&PKTINFO(s6e3ha9_aod_analog_img),
 	&PKTINFO(s6e3ha9_aod_reset_sd_path),
 	&KEYINFO(s6e3ha9_aod_l2_key_disable),
@@ -465,7 +468,7 @@ static char S6E3HA9_AOD_ANALOG_MASK[] = {
 	0x77,
 	0x00,
 	0x50, 0x13, 0x50, 0x13, 0x50, 0x13,
-	0x0F, 0x07, 0x85, 0x1F, 0x0F, 0x07, 0xA6, 0x20, 0x01, 0x00, 0xB2, 0x28, /*s6e3ha9_aod_analog_mask*/
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*s6e3ha9_aod_analog_mask*/
 };
 static DEFINE_STATIC_PACKET(s6e3ha9_aod_analog_mask ,DSI_PKT_TYPE_WR, S6E3HA9_AOD_ANALOG_MASK, 7);
 
@@ -473,10 +476,10 @@ static DEFINE_STATIC_PACKET(s6e3ha9_aod_analog_mask ,DSI_PKT_TYPE_WR, S6E3HA9_AO
 static char S6E3HA9_AOD_ANALOG_MEM[] = {
 	0x77,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*s6e3ha9_aod_analog_mem*/
-	0x00,
-	0x08
+	0x07,
+	0x07
 };
-static DEFINE_STATIC_PACKET(s6e3ha9_aod_analog_mem ,DSI_PKT_TYPE_WR, S6E3HA9_AOD_ANALOG_MASK, 26);
+static DEFINE_STATIC_PACKET(s6e3ha9_aod_analog_mem ,DSI_PKT_TYPE_WR, S6E3HA9_AOD_ANALOG_MEM, 26);
 
 static char S6E3HA9_AOD_TIMER_EN[] = {
 	0x81,
@@ -495,11 +498,7 @@ static DEFINE_VARIABLE_PACKET(s6e3ha9_aod_time, DSI_PKT_TYPE_WR, S6E3HA9_AOD_TIM
 
 static char S6E3HA9_AOD_TIMER_RATE[] = {
 	0x81,
-#if 1 // for test
-	0x1E, 0x03, /* s6e3ha9_timer_rate - original value */
-#else
-	0x1E, 0x03, /* for test : force time upate*/
-#endif
+	0x1E, 0x03, /* s6e3ha9_timer_rate */
 };
 static DEFINE_PKTUI(s6e3ha9_aod_timer_rate, &s6e3ha9_aod_maptbl[SET_TIME_RATE], 0);
 static DEFINE_VARIABLE_PACKET(s6e3ha9_aod_timer_rate, DSI_PKT_TYPE_WR, S6E3HA9_AOD_TIMER_RATE, 6);
@@ -578,6 +577,7 @@ static DEFINE_STATIC_PACKET(s6e3ha9_aod_digital_img, DSI_PKT_TYPE_WR_SR, S6E3HA9
 static void *s6e3ha9_aod_digital_img_cmdtbl[] = {
 	&KEYINFO(s6e3ha9_aod_l2_key_enable),
 	&PKTINFO(s6e3ha9_aod_sd_path_digital),
+	&DLYINFO(s6e3ha9_aod_self_spsram_sel_delay),
 	&PKTINFO(s6e3ha9_aod_digital_img),
 	&PKTINFO(s6e3ha9_aod_reset_sd_path),
 	&KEYINFO(s6e3ha9_aod_l2_key_disable),

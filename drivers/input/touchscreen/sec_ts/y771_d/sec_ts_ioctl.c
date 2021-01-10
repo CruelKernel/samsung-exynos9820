@@ -299,10 +299,7 @@ int tsp_open(struct inode *inode, struct file *file)
 
 int tsp_close(struct inode *inode, struct file *file)
 {
-	struct miscdevice *c = (struct miscdevice *)file->private_data;
-	struct device *dev = (struct device *)c->parent;
-
-	input_info(true, dev, "%s\n", __func__);
+	pr_info("%s %s\n", SECLOG, __func__);
 
 	return 0;
 }

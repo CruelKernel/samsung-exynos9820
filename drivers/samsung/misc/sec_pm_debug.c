@@ -89,12 +89,24 @@ static ssize_t sleep_count_show(struct device *dev,
 	return sprintf(buf, "%u\n", sleep_count);
 }
 
+static ssize_t pwr_on_off_src_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	u8 onsrc = 0, offsrc = 0;
+
+	get_pwr_onoffsrc(&onsrc, &offsrc);
+
+	return sprintf(buf, "ONSRC:0x%02X OFFSRC:0x%02X\n", onsrc, offsrc);
+}
+
 static DEVICE_ATTR_RO(sleep_time_sec);
 static DEVICE_ATTR_RO(sleep_count);
+static DEVICE_ATTR_RO(pwr_on_off_src);
 
 static struct attribute *sec_pm_debug_attrs[] = {
 	&dev_attr_sleep_time_sec.attr,
 	&dev_attr_sleep_count.attr,
+	&dev_attr_pwr_on_off_src.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(sec_pm_debug);

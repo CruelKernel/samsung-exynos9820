@@ -1725,7 +1725,7 @@ int fimc_is_video_prepare(struct file *file,
 	struct v4l2_buffer *buf)
 {
 	int ret = 0;
-	int index = 0;
+	unsigned int index = 0;
 	struct fimc_is_device_ischain *device;
 	struct fimc_is_queue *queue;
 	struct vb2_queue *vbq;

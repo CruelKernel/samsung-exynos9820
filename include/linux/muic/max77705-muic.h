@@ -387,6 +387,7 @@ extern int max77705_muic_suspend(struct max77705_usbc_platform_data *usbc_data);
 extern int max77705_muic_resume(struct max77705_usbc_platform_data *usbc_data);
 #if defined(CONFIG_HV_MUIC_MAX77705_AFC)
 extern bool max77705_muic_check_is_enable_afc(struct max77705_muic_data *muic_data, muic_attached_dev_t new_dev);
+extern void max77705_muic_check_afc_disabled(struct max77705_muic_data *muic_data);
 extern void max77705_muic_clear_hv_control(struct max77705_muic_data *muic_data);
 extern void max77705_muic_afc_hv_set(struct max77705_muic_data *muic_data, int voltage);
 extern void max77705_muic_qc_hv_set(struct max77705_muic_data *muic_data, int voltage);

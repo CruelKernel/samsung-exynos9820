@@ -92,6 +92,9 @@ static int __init sec_debug_hist_late_init(void)
 
 	pr_info("%s: base: %p(%lx) size: %x\n", __func__, base, dhist_base, dhist_size);
 
+	if (!dhist_base || !dhist_size)
+		return 0;
+
 	p = base;
 	pr_info("%s: dummy: %x\n", __func__, *p);
 	pr_info("%s: magic: %x\n", __func__, *(unsigned int *)(p + 4));

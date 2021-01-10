@@ -32,7 +32,9 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->data->under_android = pi->data->under_android;
 	ci->data->under_cache = pi->data->under_cache;
 	ci->data->under_obb = pi->data->under_obb;
+#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
 	ci->data->under_knox = pi->data->under_knox;
+#endif
 }
 
 /* helper function for derived state */
@@ -47,7 +49,9 @@ void setup_derived_state(struct inode *inode, perm_t perm, userid_t userid,
 	info->data->under_android = false;
 	info->data->under_cache = false;
 	info->data->under_obb = false;
+#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
 	info->data->under_knox = false;
+#endif
 }
 
 /* While renaming, there is a point where we want the path from dentry,
@@ -69,9 +73,11 @@ void get_derived_permission_inode_new(struct dentry *parent,
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_media = QSTR_LITERAL("media");
 	struct qstr q_cache = QSTR_LITERAL("cache");
+#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
 	/* refer to perm_t in sdcardfs.h */
 	struct qstr q_knox = QSTR_LITERAL("knox");
 	struct qstr q_shared = QSTR_LITERAL("shared");
+#endif
 
 	/* By default, each inode inherits from its parent.
 	 * the properties are maintained on its private fields
@@ -109,9 +115,11 @@ void get_derived_permission_inode_new(struct dentry *parent,
 			/* App-specific directories inside; let anyone traverse */
 			info->data->perm = PERM_ANDROID;
 			info->data->under_android = true;
+#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
 		} else if (qstr_case_eq(name, &q_knox)) {
 			info->data->perm = PERM_KNOX_PRE_ROOT;
 			info->data->under_knox = true;
+#endif
 		} else {
 			set_top(info, parent_info);
 		}
@@ -152,6 +160,7 @@ void get_derived_permission_inode_new(struct dentry *parent,
 		set_top(info, parent_info);
 		break;
 
+#if defined(CONFIG_SDCARD_FS_SUPPORT_KNOX)
 	/* KNOX */
 	case PERM_KNOX_PRE_ROOT:
 		info->data->perm = PERM_KNOX_ROOT;
@@ -189,6 +198,7 @@ void get_derived_permission_inode_new(struct dentry *parent,
 	case PERM_KNOX_ANDROID_PACKAGE:
 		set_top(info, parent_info);
 		break;
+#endif
 	}
 }
 

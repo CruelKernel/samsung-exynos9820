@@ -718,7 +718,8 @@ int set_mcps_move(const char *val, const struct kernel_param *kp)
 {
 	char *copy, *tmp, *sub;
 	int len = strlen(val);
-	int i, in[3] = {0,}; // from, to, option
+	int i;
+	unsigned int in[3] = {0,}; // from, to, option
 
 	if (len == 0) {
 		MCPS_DEBUG("%s - size 0\n", val);
@@ -726,24 +727,20 @@ int set_mcps_move(const char *val, const struct kernel_param *kp)
 	}
 
 	i = 0;
-	copy = (char *)kzalloc(sizeof(char) * len, GFP_KERNEL);
-	if (!copy) {
-		MCPS_DEBUG("set_mcps_move : fail to kzalloc\n");
+	tmp = copy = kstrdup(val, GFP_KERNEL);
+	if (!tmp) {
+		MCPS_DEBUG("kstrdup - fail\n");
 		goto end;
 	}
-	memcpy(copy, val, sizeof(char) * len);
-
-	tmp = copy;
 
 	while ((sub = strsep(&tmp, " ")) != NULL) {
-		int cpu, ret;
+		unsigned int cpu = 0;
 
 		if (i >= 3)
 			break;
 
-		ret = kstrtoint(sub, 0, &cpu);
-		if (ret) {
-			MCPS_DEBUG("kstrtoint fail\n");
+		if (kstrtouint(sub, 0, &cpu)) {
+			MCPS_DEBUG("kstrtouint fail\n");
 			goto fail;
 		}
 		in[i] = cpu;
@@ -754,7 +751,13 @@ int set_mcps_move(const char *val, const struct kernel_param *kp)
 		MCPS_DEBUG("params are not satisfied.\n");
 		goto fail;
 	}
-	MCPS_DEBUG("%d -> %d [%d]\n", in[0], in[1], in[2]);
+
+	if (!VALID_UCPU(in[0]) || !VALID_UCPU(in[1])) {
+		MCPS_DEBUG("fail to move : invalid cpu %u -> %u.\n", in[0], in[1]);
+		goto fail;
+	}
+
+	MCPS_DEBUG("%u -> %u [%u]\n", in[0], in[1], in[2]);
 
 	migrate_flow(in[0], in[1], in[2]);
 fail:

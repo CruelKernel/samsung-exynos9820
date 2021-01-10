@@ -192,7 +192,6 @@ void init_region(unsigned long pfn, unsigned long nr_pages,
 	region.zone = page_zone(pfn_to_page(pfn));
 	region.start_pfn = pfn;
 	region.end_pfn = pfn + nr_pages;
-	BUG_ON(region.zone != page_zone(pfn_to_page(region.end_pfn)));
 	region.ops = ops;
 	spin_lock_init(&region.lru_lock);
 	spin_lock_init(&region.region_lock);

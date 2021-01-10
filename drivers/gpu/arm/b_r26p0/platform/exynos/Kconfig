@@ -1,0 +1,136 @@
+#
+# (C) COPYRIGHT 2012 ARM Limited. All rights reserved.
+#
+# This program is free software and is provided to you under the terms of the
+# GNU General Public License version 2 as published by the Free Software
+# Foundation, and any use by you of this program is subject to the terms
+# of such GNU licence.
+#
+# A copy of the licence is included with the program, and can also be obtained
+# from Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA  02110-1301, USA.
+#
+#
+
+
+
+
+# Add your platform specific Kconfig file here
+#
+# "drivers/gpu/arm/.../platform/Kconfig"
+#
+# Where xxx is the platform name is the name set in MALI_PLATFORM_THIRDPARTY_NAME
+#
+config EXYNOS_SOC_NAME
+    depends on MALI_MIDGARD
+    string "Third party soc name"
+    help
+      soc name.
+
+config MALI_DVFS
+    bool "Enable EXYNOS DVFS"
+    default y
+    help
+      Choose this option to enable DVFS in the Mali Midgard DDK.
+
+config MALI_RT_PM
+    bool "Enable EXYNOS Runtime power management"
+    default y
+    help
+      Choose this option to enable runtime power management in the Mali Midgard DDK.
+
+config MALI_EXYNOS_TRACE
+    bool "Enable EXYNOS kbase tracing"
+    depends on MALI_MIDGARD
+    default y
+    help
+      Enables tracing in kbase.  Trace log available through
+      the "mali_trace" debugfs file, when the CONFIG_DEBUG_FS is enabled
+
+config MALI_DEBUG_SYS
+    bool "Enable sysfs for the Mali Midgard DDK "
+    depends on MALI_MIDGARD && SYSFS
+    default y
+    help
+      Enables sysfs for the Mali Midgard DDK. Set/Monitor the Mali Midgard DDK
+
+config MALI_SEC_CL_BOOST
+    bool "Enable EXYNOS cl booster"
+    default y
+    help
+      Enables open cl dvfs booster.
+
+config MALI_PM_QOS
+    bool "Enable DVFS with QoS"
+    default y
+    help
+      Choose this option to enable PM_QOS in the Mali tTRx DDK.
+
+config MALI_DEBUG_KERNEL_SYSFS
+    bool "Support Kernel Group Debug SysFS"
+    depends on MALI_MIDGARD && MALI_DEBUG_SYS
+    default y
+    help
+	Support Support Kernel Group Debug SysFS on /sys/kernel/gpu
+
+config MALI_ASV_CALIBRATION_SUPPORT
+	bool "Enable GPU ASV AUTO CALIBRATION"
+	depends on MALI_MIDGARD && MALI_RT_PM && MALI_DVFS && VDD_AUTO_CAL
+	default n
+	help
+	  Choose this option to enable AUTO_CALIBRATION_SUPPORT in the Mali tTRx DDK.
+
+config MALI_SEC_VK_BOOST
+	bool "Enable GPU VK JOB PMQOS BOOST"
+	default n
+	help
+	  Choose this option to enable VK JOB PMQOS BOOST in the Mali tTRx DDK.
+
+config MALI_SEC_JOB_STATUS_CHECK
+	bool "Enable GPU JOB & FENCE STATUS DUMP"
+	depends on MALI_MIDGARD && MALI_RT_PM && MALI_DVFS && (SYNC || SYNC_FILE)
+	default n
+	help
+		Choose this option to enable job & fence status dump feature in the Mali tTRx DDK.
+
+config MALI_SUSTAINABLE_OPT
+	bool "Enable Sustainable optimize"
+	depends on MALI_MIDGARD && MALI_RT_PM && MALI_DVFS
+	default n
+	help
+		Choose this option to enable sustainable optimization in the Mali tTRx DDK.
+
+config MALI_CAMERA_EXT_BTS
+	bool "Enable sysfs node for camera ext bts scenario"
+	depends on MALI_MIDGARD && EXYNOS_BTS && EXYNOS9630_BTS
+	default n
+	help
+		Choose this option to enable sysfs node for camera ext bts scenario
+
+config MALI_FTRACE_FREQ
+	bool "Enable ftrace for gpu frequency"
+	depends on MALI_MIDGARD && MALI_DVFS
+	default n
+	help
+		Choose this option to enable ftrace for gpu frequency
+
+config MALI_EXYNOS_SECURE_RENDERING_LEGACY
+    bool "Legacy"
+    depends on MALI_MIDGARD && ION_EXYNOS && EXYNOS_CONTENT_PATH_PROTECTION
+	default n
+    help
+      Support Secure Rendering on Exynos SoC (Legacy)
+
+config MALI_EXYNOS_SECURE_RENDERING_ARM
+    bool "Modified ARM"
+    depends on MALI_MIDGARD && ION_EXYNOS && EXYNOS_CONTENT_PATH_PROTECTION
+	default y
+    help
+      Support Secure Rendering on Exynos SoC (Newer ARM method)
+
+config MALI_EXYNOS_SECURE_RENDERING_UNSUPPORTED
+    bool "Disabled"
+	default !(MALI_EXYNOS_SECURE_RENDERING_LEGACY) && !(MALI_EXYNOS_SECURE_RENDERING_ARM)
+	help
+	  Does not support Secure Rendering on Exynos SoC.
+	  Should be enabled when MALI_EXYNOS_SECURE_RENDERING_LEGACY and MALI_EXYNOS_SECURE_RENDERING_ARM are disabled.

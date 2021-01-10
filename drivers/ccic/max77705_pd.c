@@ -1049,14 +1049,6 @@ static void max77705_pd_check_pdmsg(struct max77705_usbc_platform_data *usbc_dat
 		break;
 	case SRC_CAP_RECEIVED:
 		msg_maxim("SRC_CAP_RECEIVED : [%x]", pd_msg);
-		/* set src cap flag before ps_rdy */
-		psy_charger = power_supply_get_by_name("battery");
-		if (psy_charger && !usbc_data->pd_data->psrdy_received) {
-			val.intval = 1;
-			psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_SRCCAP, val);
-		} else {
-			pr_err("%s: Fail to get psy battery\n", __func__);
-		}
 		break;
 	case Status_Received:
 		value.opcode = OPCODE_SAMSUNG_READ_MESSAGE;
@@ -1076,6 +1068,25 @@ static void max77705_pd_check_pdmsg(struct max77705_usbc_platform_data *usbc_dat
 		break;
 	default:
 		break;
+	}
+}
+
+void max77705_pd_check_pdmsg_callback(void *data, u8 pdmsg)
+{
+	struct max77705_usbc_platform_data *usbc_data = data;
+
+	if (!usbc_data) {
+		msg_maxim("usbc_data is null");
+		return;
+	}
+
+	if (!usbc_data->pd_data->psrdy_received &&
+		(pdmsg == Sink_PD_PSRdy_received || pdmsg == SRC_CAP_RECEIVED)) {
+		union power_supply_propval val;
+
+		msg_maxim("pdmsg=%x", pdmsg);
+		val.intval = 1;
+		psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_SRCCAP, val);
 	}
 }
 
@@ -1501,6 +1512,9 @@ int max77705_pd_init(struct max77705_usbc_platform_data *usbc_data)
 	/* check CC Pin state for cable attach booting scenario */
 	max77705_datarole_irq_handler(usbc_data, CCIC_IRQ_INIT_DETECT);
 	max77705_check_cc_sbu_short(usbc_data);
+
+	max77705_register_pdmsg_func(usbc_data->max77705,
+		max77705_pd_check_pdmsg_callback, (void *)usbc_data);
 
 	msg_maxim(" OUT");
 	return 0;

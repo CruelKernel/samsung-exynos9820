@@ -151,6 +151,7 @@ config INPUT_JOYDEV
 
 config INPUT_EVDEV
 	tristate "Event interface"
+	select SEC_INPUT_BOOSTER
 	help
 	  Say Y here if you want your input device events be accessible
 	  under char device 13:64+ - /dev/input/eventX in a generic way.
@@ -236,6 +237,17 @@ config CERTIFY_HALL
 
 	  If unsure, say N.
 
+config HALL_NEW_NODE
+	bool "Chang the node location of HALL IC"
+	default y
+	depends on HALL
+	depends on ANDROID_MAJOR_VERSION >= "r"
+	help
+	  Say Y here if you want to change the location of hall ic node.
+	  it was decided with the framework to be changed from R OS
+	  The previous versions of R OS are created before the change.
+	  If unsure, say N.
+
 config SEC_AUTO_INPUT
 	tristate "Samsung auto input"
 	depends on !SAMSUNG_PRODUCT_SHIP
@@ -255,6 +267,15 @@ config TOUCHSCREEN_DUMP_MODE
 	  Say Y here if you need to get raw data.
 	  
 	  If unsure, say N.
+
+config SEC_INPUT_BOOSTER
+	bool "SEC INPUT BOOSTER"
+	depends on INPUT_EVDEV
+	default y
+	help
+	  Say Y here if you need to enable Input Booster.
+
+	  It's triggered in evdev module.
 
 comment "Input Device Drivers"
 

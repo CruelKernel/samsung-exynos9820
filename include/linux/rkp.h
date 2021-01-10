@@ -151,7 +151,7 @@ typedef struct kdp_init_struct {
 	u32 task_threadinfo;
 	u64 verifiedbootstate;
 	struct {
-		u64 :64;
+		u64 empty;
 		u64 ss_initialized_va;
 	} selinux;
 } kdp_init_t;

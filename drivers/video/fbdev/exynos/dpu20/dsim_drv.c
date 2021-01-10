@@ -2050,7 +2050,7 @@ void parse_lcd_info(struct device_node *node, struct decon_lcd *lcd_info)
 	of_property_read_u32_array(node, "size", res, 2);
 	lcd_info->width = res[0];
 	lcd_info->height = res[1];
-	dsim_dbg("LCD size: width(%d), height(%d)\n", res[0], res[1]);
+	dsim_info("LCD size: width(%d), height(%d)\n", res[0], res[1]);
 
 	of_property_read_u32(node, "timing,refresh", &lcd_info->fps);
 	dsim_dbg("LCD refresh rate(%d)\n", lcd_info->fps);

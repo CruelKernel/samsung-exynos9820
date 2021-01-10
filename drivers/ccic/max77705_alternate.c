@@ -178,6 +178,15 @@ static char DP_Pin_Assignment_Print[7][40] = {
 	{"DP_Pin_Assignment_F"},
 };
 
+static uint8_t DP_Pin_Assignment_Data[7] = {
+	DP_PIN_ASSIGNMENT_NODE,
+	DP_PIN_ASSIGNMENT_A,
+	DP_PIN_ASSIGNMENT_B,
+	DP_PIN_ASSIGNMENT_C,
+	DP_PIN_ASSIGNMENT_D,
+	DP_PIN_ASSIGNMENT_E,
+};
+
 int max77705_process_check_accessory(void *data)
 {
 	struct max77705_usbc_platform_data *usbpd_data = data;
@@ -349,16 +358,28 @@ void max77705_vdm_process_set_Dex_enter_mode_req(void *data)
 static int max77705_vdm_process_discover_svids(void *data, char *vdm_data, int len)
 {
 	struct max77705_usbc_platform_data *usbpd_data = data;
-	int timeleft = 0;
+	int timeleft = 0, i = 0;
+	uint16_t svid = 0;
 #if defined(CONFIG_USB_HOST_NOTIFY)
 		struct otg_notify *o_notify = get_otg_notify();
 #endif
+	DIS_MODE_DP_CAPA_Type *pDP_DIS_MODE = (DIS_MODE_DP_CAPA_Type *)&vdm_data[0];
+	int num_of_vdos = (pDP_DIS_MODE->MSG_HEADER.BITS.Number_of_obj - 2) * 2;
 	UND_VDO1_Type  *DATA_MSG_VDO1 = (UND_VDO1_Type  *)&vdm_data[8];
-
+	usbpd_data->SVID_DP = 0;
 	usbpd_data->SVID_0 = DATA_MSG_VDO1->BITS.SVID_0;
 	usbpd_data->SVID_1 = DATA_MSG_VDO1->BITS.SVID_1;
 
-	if (usbpd_data->SVID_0 == TypeC_DP_SUPPORT) {
+	for (i = 0; i < num_of_vdos; i++) {
+		memcpy(&svid, &vdm_data[8 + i * 2], 2);
+		if (svid == TypeC_DP_SUPPORT) {
+			msg_maxim("svid_%d : 0x%X", i, svid);
+			usbpd_data->SVID_DP = svid;
+			break;
+		}
+	}
+
+	if (usbpd_data->SVID_DP == TypeC_DP_SUPPORT) {
 		if (usbpd_data->is_client == CLIENT_ON) {
 			max77705_ccic_event_work(usbpd_data,
 				CCIC_NOTIFY_DEV_MUIC,
@@ -384,7 +405,7 @@ static int max77705_vdm_process_discover_svids(void *data, char *vdm_data, int l
 		/* If you want to support USB SuperSpeed when you connect
 		 * Display port dongle, You should change dp_hs_connect depend
 		 * on Pin assignment.If DP use 4lane(Pin Assignment C,E,A),
-		 * dp_hs_connect is 1. USB can support HS.If DP use 2lane(Pin Assigment B,D,F), dp_hs_connect is 0. USB
+		 * dp_hs_connect is 1. USB can support HS.If DP use 2lane(Pin Assignment B,D,F), dp_hs_connect is 0. USB
 		 * can support SS
 		 */
 		 usbpd_data->dp_hs_connect = 1;
@@ -420,7 +441,7 @@ static int max77705_vdm_process_discover_mode(void *data, char *vdm_data, int le
 	UND_DATA_MSG_VDM_HEADER_Type *DATA_MSG_VDM = (UND_DATA_MSG_VDM_HEADER_Type *)&vdm_data[4];
 
 	msg_maxim("vendor_id = 0x%04x , svid_1 = 0x%04x", DATA_MSG_VDM->BITS.Standard_Vendor_ID, usbpd_data->SVID_1);
-	if (DATA_MSG_VDM->BITS.Standard_Vendor_ID == TypeC_DP_SUPPORT && usbpd_data->SVID_0 == TypeC_DP_SUPPORT) {
+	if (DATA_MSG_VDM->BITS.Standard_Vendor_ID == TypeC_DP_SUPPORT && usbpd_data->SVID_DP == TypeC_DP_SUPPORT) {
 		/*  pDP_DIS_MODE->DATA_MSG_MODE_VDO_DP.BITS. */
 		msg_maxim("pDP_DIS_MODE->MSG_HEADER.DATA = 0x%08X", pDP_DIS_MODE->MSG_HEADER.DATA);
 		msg_maxim("pDP_DIS_MODE->DATA_MSG_VDM_HEADER.DATA = 0x%08X", pDP_DIS_MODE->DATA_MSG_VDM_HEADER.DATA);
@@ -492,19 +513,58 @@ static int max77705_vdm_process_enter_mode(void *data, char *vdm_data, int len)
 	return 0;
 }
 
+static int max77705_vdm_dp_select_pin(void *data, int multi)
+{
+	struct max77705_usbc_platform_data *usbpd_data = data;
+	int pin_sel = 0;
+
+	if (multi) {
+		if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D)
+			pin_sel = CCIC_NOTIFY_DP_PIN_D;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B)
+			pin_sel = CCIC_NOTIFY_DP_PIN_B;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F)
+			pin_sel = CCIC_NOTIFY_DP_PIN_F;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_C)
+			pin_sel = CCIC_NOTIFY_DP_PIN_C;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_E)
+			pin_sel = CCIC_NOTIFY_DP_PIN_E;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_A)
+			pin_sel = CCIC_NOTIFY_DP_PIN_A;
+		else
+			msg_maxim("wrong pin assignment value");
+	} else {
+		if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_C)
+			pin_sel = CCIC_NOTIFY_DP_PIN_C;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_E)
+			pin_sel = CCIC_NOTIFY_DP_PIN_E;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_A)
+			pin_sel = CCIC_NOTIFY_DP_PIN_A;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D)
+			pin_sel = CCIC_NOTIFY_DP_PIN_D;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B)
+			pin_sel = CCIC_NOTIFY_DP_PIN_B;
+		else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F)
+			pin_sel = CCIC_NOTIFY_DP_PIN_F;
+		else
+			msg_maxim("wrong pin assignment value");
+	}
+	return pin_sel;
+}
+
 static int max77705_vdm_dp_status_update(void *data, char *vdm_data, int len)
 {
 	struct max77705_usbc_platform_data *usbpd_data = data;
 	int i;
-	u8 multi_func_preference = 0;
-	int pin_assignment = 0;
+	uint8_t multi_func = 0;
+	int pin_sel = 0;
 	int hpd = 0;
 	int hpdirq = 0;
 	VDO_MESSAGE_Type *VDO_MSG;
 	DP_STATUS_UPDATE_Type *DP_STATUS;
 	uint8_t W_DATA = 0x0;
 
-	if (usbpd_data->SVID_0 == TypeC_DP_SUPPORT) {
+	if (usbpd_data->SVID_DP == TypeC_DP_SUPPORT) {
 		DP_STATUS = (DP_STATUS_UPDATE_Type *)&vdm_data[0];
 
 		msg_maxim("DP_STATUS_UPDATE = 0x%08X", DP_STATUS->DATA_DP_STATUS_UPDATE.DATA);
@@ -513,51 +573,13 @@ static int max77705_vdm_dp_status_update(void *data, char *vdm_data, int len)
 			msg_maxim("port disconnected!");
 		} else {
 			if (usbpd_data->is_sent_pin_configuration == 0) {
-
-				multi_func_preference =
-					DP_STATUS->DATA_DP_STATUS_UPDATE.BITS.Multi_Function_Preference;
-				if (multi_func_preference == 1) {
-					if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D) {
-						W_DATA = DP_PIN_ASSIGNMENT_D;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_D;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B) {
-						W_DATA = DP_PIN_ASSIGNMENT_B;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_B;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F) {
-						W_DATA = DP_PIN_ASSIGNMENT_F;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_F;
-					} else {
-						msg_maxim("wrong pin assignment value");
-					}
-				} else {
-					if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_C) {
-						W_DATA = DP_PIN_ASSIGNMENT_C;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_C;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_E) {
-						W_DATA = DP_PIN_ASSIGNMENT_E;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_E;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_A) {
-						W_DATA = DP_PIN_ASSIGNMENT_A;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_A;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D) {
-						W_DATA = DP_PIN_ASSIGNMENT_D;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_D;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B) {
-						W_DATA = DP_PIN_ASSIGNMENT_B;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_B;
-					} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F) {
-						W_DATA = DP_PIN_ASSIGNMENT_F;
-						pin_assignment = CCIC_NOTIFY_DP_PIN_F;
-					} else {
-						msg_maxim("wrong pin assignment value");
-					}
-				}
-				usbpd_data->dp_selected_pin = pin_assignment;
+				multi_func = DP_STATUS->DATA_DP_STATUS_UPDATE.BITS.Multi_Function_Preference;
+				pin_sel = max77705_vdm_dp_select_pin(usbpd_data, multi_func);
+				usbpd_data->dp_selected_pin = pin_sel;
+				W_DATA = DP_Pin_Assignment_Data[pin_sel];
 
 				msg_maxim("multi_func_preference %d,  %s, W_DATA : %d",
-					multi_func_preference,
-					DP_Pin_Assignment_Print[pin_assignment],
-					W_DATA);
+					multi_func, DP_Pin_Assignment_Print[pin_sel], W_DATA);
 
 				max77705_vdm_process_set_DP_configure_mode_req(data, W_DATA);
 
@@ -576,11 +598,9 @@ static int max77705_vdm_dp_status_update(void *data, char *vdm_data, int len)
 		if (DP_STATUS->DATA_DP_STATUS_UPDATE.BITS.HPD_Interrupt == 1)
 			hpdirq = CCIC_NOTIFY_IRQ;
 
-#if 1
 		max77705_ccic_event_work(usbpd_data,
 				CCIC_NOTIFY_DEV_DP, CCIC_NOTIFY_ID_DP_HPD,
 				hpd, hpdirq, 0);
-#endif
 	} else {
 		/* need to check F/W code */
 		VDO_MSG = (VDO_MESSAGE_Type *)&vdm_data[8];
@@ -596,65 +616,29 @@ static int max77705_vdm_dp_attention(void *data, char *vdm_data, int len)
 	int i;
 	int hpd = 0;
 	int hpdirq = 0;
-	int pin_assignment = 0;
+	uint8_t multi_func = 0;
+	int pin_sel = 0;
 
 	VDO_MESSAGE_Type *VDO_MSG;
 	DIS_ATTENTION_MESSAGE_DP_STATUS_Type *DP_ATTENTION;
-	u8 multi_func_preference = 0;
 	uint8_t W_DATA = 0;
 
-	if (usbpd_data->SVID_0 == TypeC_DP_SUPPORT) {
+	if (usbpd_data->SVID_DP == TypeC_DP_SUPPORT) {
 		DP_ATTENTION = (DIS_ATTENTION_MESSAGE_DP_STATUS_Type *)&vdm_data[0];
 
 		msg_maxim("%s DP_ATTENTION = 0x%08X\n", __func__,
 			DP_ATTENTION->DATA_MSG_DP_STATUS.DATA);
 		if (usbpd_data->is_sent_pin_configuration == 0) {
-		/* to do list */
-			multi_func_preference =
-				DP_ATTENTION->DATA_MSG_DP_STATUS.BITS.Multi_Function_Preference;
-			if (multi_func_preference == 1) {
-				if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D) {
-					W_DATA = DP_PIN_ASSIGNMENT_D;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_D;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B) {
-					W_DATA = DP_PIN_ASSIGNMENT_B;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_B;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F) {
-					W_DATA = DP_PIN_ASSIGNMENT_F;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_F;
-				} else {
-					pin_assignment = CCIC_NOTIFY_DP_PIN_UNKNOWN;
-					msg_maxim("wrong pin assignment value\n");
-				}
-			} else {
-				if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_C) {
-					W_DATA = DP_PIN_ASSIGNMENT_C;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_C;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_E) {
-					W_DATA = DP_PIN_ASSIGNMENT_E;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_E;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_A) {
-					W_DATA = DP_PIN_ASSIGNMENT_A;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_A;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_D) {
-					W_DATA = DP_PIN_ASSIGNMENT_D;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_D;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_B) {
-					W_DATA = DP_PIN_ASSIGNMENT_B;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_B;
-				} else if (usbpd_data->pin_assignment & DP_PIN_ASSIGNMENT_F) {
-					W_DATA = DP_PIN_ASSIGNMENT_F;
-					pin_assignment = CCIC_NOTIFY_DP_PIN_F;
-				} else {
-					pin_assignment = CCIC_NOTIFY_DP_PIN_UNKNOWN;
-					msg_maxim("wrong pin assignment value\n");
-				}
-			}
-			usbpd_data->dp_selected_pin = pin_assignment;
+			multi_func = DP_ATTENTION->DATA_MSG_DP_STATUS.BITS.Multi_Function_Preference;
+			pin_sel = max77705_vdm_dp_select_pin(usbpd_data, multi_func);
+			usbpd_data->dp_selected_pin = pin_sel;
+			W_DATA = DP_Pin_Assignment_Data[pin_sel];
 
-			msg_maxim("%s multi_func_preference %d  %s\n", __func__,
-				 multi_func_preference, DP_Pin_Assignment_Print[pin_assignment]);
+			msg_maxim("multi_func_preference %d,  %s, W_DATA : %d\n",
+				multi_func, DP_Pin_Assignment_Print[pin_sel], W_DATA);
+
 			max77705_vdm_process_set_DP_configure_mode_req(data, W_DATA);
+
 			usbpd_data->is_sent_pin_configuration = 1;
 		} else {
 			msg_maxim("%s : pin configuration is already sent as %s!\n", __func__,
@@ -690,7 +674,7 @@ static int max77705_vdm_dp_configure(void *data, char *vdm_data, int len)
 	int timeleft = 0;
 
 	msg_maxim("vendor_id = 0x%04x , svid_1 = 0x%04x", DATA_MSG_VDM->BITS.Standard_Vendor_ID, usbpd_data->SVID_1);
-	if (usbpd_data->SVID_0 == TypeC_DP_SUPPORT) {
+	if (usbpd_data->SVID_DP == TypeC_DP_SUPPORT) {
 		timeleft = wait_event_interruptible_timeout(usbpd_data->device_add_wait_q,
 				usbpd_data->device_add, HZ/2);
 		msg_maxim("%s timeleft = %d\n", __func__, timeleft);
@@ -903,7 +887,7 @@ static void max77705_process_alternate_mode(void *data)
 			msg_maxim("is blocked by mdm, skip all the alternate mode.");
 			goto process_error;
 		}
-			
+
 		if (mode & VDM_DISCOVER_ID)
 			ret = max77705_process_discover_identity(usbpd_data);
 		if (ret)
@@ -1448,7 +1432,7 @@ static int max77705_send_sec_unstructured_short_vdm_message(void *data, void *bu
 	usbpd_data->uvdm_error = 0;
 	max77705_send_vdm_write_message(SendMSG);
 
-	if (check_is_wait_ack_accessroy(usbpd_data->Vendor_ID, usbpd_data->Product_ID, usbpd_data->SVID_0)) {
+	if (check_is_wait_ack_accessroy(usbpd_data->Vendor_ID, usbpd_data->Product_ID, usbpd_data->SVID_DP)) {
 		reinit_completion(&usbpd_data->uvdm_longpacket_out_wait);
 		/* Wait Response*/
 		time_left =

@@ -327,6 +327,5 @@ struct proc_filemap_private {
 };
 
 extern const struct file_operations proc_pid_filemap_list_operations;
-extern const struct file_operations proc_pid_filemap_info_operations;
 extern const struct file_operations proc_pid_io_record_operations;
 #endif

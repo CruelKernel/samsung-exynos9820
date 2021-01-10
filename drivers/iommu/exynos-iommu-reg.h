@@ -351,13 +351,14 @@ finish:
 	pr_auto_disable(4);
 }
 
-static inline void show_fault_information(struct sysmmu_drvdata *drvdata,
+static inline int show_fault_information(struct sysmmu_drvdata *drvdata,
 				   int flags, unsigned long fault_addr)
 {
 	unsigned int info;
 	phys_addr_t pgtable;
 	int fault_id = SYSMMU_FAULT_ID(flags);
 	const char *port_name = NULL;
+	static int ptw_count = 0;
 #ifdef CONFIG_SEC_DEBUG_EXTRA_INFO
 	char temp_buf[SZ_128];
 #endif
@@ -413,11 +414,26 @@ static inline void show_fault_information(struct sysmmu_drvdata *drvdata,
 		}
 	}
 
+	if (fault_id == SYSMMU_FAULT_PTW_ACCESS) {
+		ptw_count++;
+		pr_auto(ASL4, "System MMU has failed to access page table, %d\n", ptw_count);
+		pgtable = 0;
+
+		if (ptw_count > 3)
+			panic("Unrecoverable System MMU PTW fault");
+
+		writel(0x1, drvdata->sfrbase + REG_INT_CLEAR);
+
+		return -EAGAIN;
+	}
+
 	dump_sysmmu_status(drvdata, pgtable);
 
 finish:
 	pr_auto(ASL4, "----------------------------------------------------------\n");
 	pr_auto_disable(4);
+
+	return 0;
 }
 
 static inline void __sysmmu_disable_nocount(struct sysmmu_drvdata *drvdata)
@@ -570,8 +586,6 @@ static inline void __sysmmu_set_tlb_port_type(struct sysmmu_drvdata *drvdata)
 static inline void __sysmmu_init_config(struct sysmmu_drvdata *drvdata)
 {
 	unsigned long cfg = 0;
-
-	writel_relaxed(CTRL_BLOCK, drvdata->sfrbase + REG_MMU_CTRL);
 
 	if (IS_TLB_WAY_TYPE(drvdata))
 		__sysmmu_set_tlb_way_type(drvdata);

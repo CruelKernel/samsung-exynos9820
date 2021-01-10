@@ -22,7 +22,7 @@
 #include <linux/sched/clock.h>
 
 #define BUF_SIZE	SZ_64K
-#define MAX_STR_LEN	128
+#define MAX_STR_LEN	160
 #define PROC_FILE_NAME	"dplog"
 #define LOG_PREFIX	"Displayport"
 
@@ -62,7 +62,7 @@ void dp_logger_print(const char *fmt, ...)
 {
 	int len;
 	va_list args;
-	char buf[MAX_STR_LEN + 16];
+	char buf[MAX_STR_LEN] = {0, };
 	u64 time;
 	unsigned long nsec;
 	volatile unsigned int curpos;
@@ -81,8 +81,11 @@ void dp_logger_print(const char *fmt, ...)
 	len = snprintf(buf, sizeof(buf), "[%5lu.%06ld] ", (unsigned long)time, nsec / 1000);
 
 	va_start(args, fmt);
-	len += vsnprintf(buf + len, MAX_STR_LEN, fmt, args);
+	len += vsnprintf(buf + len, MAX_STR_LEN - len, fmt, args);
 	va_end(args);
+
+	if (len > MAX_STR_LEN)
+		len = MAX_STR_LEN;
 
 	curpos = g_curpos; 
 	if (curpos + len >= BUF_SIZE) { 

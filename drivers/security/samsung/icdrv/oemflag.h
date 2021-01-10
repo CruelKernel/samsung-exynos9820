@@ -27,6 +27,16 @@ enum oemflag_id {
 	OEMFLAG_NUM_OF_FLAG,
 };
 
+#ifdef CONFIG_KUNIT
+#include <kunit/mock.h>
+#endif
+
+#ifdef CONFIG_KUNIT
+extern int oem_flags_set(enum oemflag_id index);
+extern int oem_flags_get(enum oemflag_id index);
+#else
 int oem_flags_set(enum oemflag_id index);
+int oem_flags_get(enum oemflag_id index);
+#endif
 
 #endif

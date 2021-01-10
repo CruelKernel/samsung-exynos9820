@@ -22,6 +22,7 @@ enum five_file_integrity {
 	FIVE_FILE_FAIL,
 	FIVE_FILE_RSA,
 	FIVE_FILE_DMVERITY,
+	FIVE_FILE_FSVERITY,
 	FIVE_FILE_HMAC
 };
 

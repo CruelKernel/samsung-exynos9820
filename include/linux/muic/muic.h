@@ -171,6 +171,7 @@ typedef enum {
 
 	ATTACHED_DEV_AFC_CHARGER_ERR_V_MUIC,
 	ATTACHED_DEV_AFC_CHARGER_ERR_V_DUPLI_MUIC,
+	ATTACHED_DEV_AFC_CHARGER_DISABLED_MUIC,
 	ATTACHED_DEV_QC_CHARGER_PREPARE_MUIC,
 	ATTACHED_DEV_QC_CHARGER_5V_MUIC,
 	ATTACHED_DEV_QC_CHARGER_ERR_V_MUIC,
@@ -226,6 +227,7 @@ struct muic_platform_data {
 
 	bool rustproof_on;
 	bool afc_disable;
+	int afc_disabled_updated;
 
 #ifdef CONFIG_MUIC_HV_FORCE_LIMIT
 	int hv_sel;

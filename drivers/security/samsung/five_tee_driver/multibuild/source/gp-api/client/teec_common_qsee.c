@@ -123,8 +123,24 @@ TEEC_Result QseeLoadTA(void *ta_session, const TEEC_UUID *uuid)
 				 ta_name,
 				 SBUF_LEN + RBUF_LEN);
 	if (qsee_res != QSEE_SUCCESS) {
-		status = qsee_res == -EINVAL ? TEEC_ERROR_TARGET_DEAD :
-							    TEEC_ERROR_GENERIC;
+		if (qsee_res == -EIO) {
+			qsee_res = qseecom_start_app(
+						&qsee_session->qsee_com_handle,
+						qsee_uuid,
+						SBUF_LEN + RBUF_LEN);
+			if (qsee_res != QSEE_SUCCESS) {
+				status = qsee_res == -EINVAL ?
+				TEEC_ERROR_TARGET_DEAD : TEEC_ERROR_GENERIC;
+			} else {
+				pr_info("FIVE: Load trusted app\n");
+				status = TEEC_SUCCESS;
+			}
+		} else {
+			status = qsee_res == -EINVAL ? TEEC_ERROR_TARGET_DEAD :
+							TEEC_ERROR_GENERIC;
+		}
+	} else {
+		pr_info("FIVE: Load trusted app from five dir\n");
 	}
 
 exit:

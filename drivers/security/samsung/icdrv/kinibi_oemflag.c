@@ -19,9 +19,10 @@
 #include <linux/types.h>
 #include "oemflag_arch.h"
 
-#define SMC_FUSE 0x83000004
+#define SMC_SET_FUSE 0x83000004
+#define SMC_GET_FUSE 0x83000003
 
-static uint32_t set_tamper_fuse_kinibi(uint32_t cmd, uint32_t arg1,
+static uint32_t run_cmd_kinibi(uint32_t cmd, uint32_t arg1,
 						uint32_t arg2, uint32_t arg3)
 {
 	register u64 reg0 __asm__("x0") = cmd;
@@ -43,11 +44,17 @@ int set_tamper_fuse(enum oemflag_id name)
 {
 	int ret;
 
-	ret = set_tamper_fuse_kinibi(SMC_FUSE, 0, name, 0);
+	ret = run_cmd_kinibi(SMC_SET_FUSE, 0, name, 0);
+
 	return ret;
 }
 
-int get_tamper_fuse(enum oemflag_id flag)
+int get_tamper_fuse(enum oemflag_id name)
 {
-	return 0;
+	int ret;
+
+	pr_info("[oemflag]kinibi cmd\n");
+	ret = run_cmd_kinibi(SMC_GET_FUSE, 1, name, 0);
+
+	return ret;
 }

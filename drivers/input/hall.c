@@ -23,8 +23,12 @@
 #include <linux/wakelock.h>
 #include <linux/hall.h>
 #include <linux/notifier.h>
+#include <linux/sec_class.h>
 
-
+#if defined(CONFIG_HALL_NEW_NODE)
+struct device *hall_ic;
+EXPORT_SYMBOL(hall_ic);
+#endif
 struct device *sec_device_create(void *drvdata, const char *fmt);
 
 struct hall_drvdata {
@@ -269,7 +273,12 @@ static int hall_probe(struct platform_device *pdev)
 
 	init_hall_ic_irq(input);
 
+#if defined(CONFIG_HALL_NEW_NODE)
+	hall_ic = sec_device_create(ddata, "hall_ic");
+	error = sysfs_create_group(&hall_ic->kobj, &hall_attr_group);
+#else
 	error = sysfs_create_group(&sec_key->kobj, &hall_attr_group);
+#endif
 	if (error) {
 		dev_err(dev, "Unable to export keys/switches, error: %d\n",
 			error);

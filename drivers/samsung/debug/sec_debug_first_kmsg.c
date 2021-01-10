@@ -55,6 +55,10 @@ int __init sec_first_kmsg_init(void)
 	curr_ptr = first_kmsg_base;
 
 	pr_info("%s: base: %p, size: 0x%lx\n", __func__, first_kmsg_base, first_kmsg_size);
+
+	if (!first_kmsg_base || !first_kmsg_size)
+		return 0;
+
 	memset(first_kmsg_base, 0, first_kmsg_size);
 	register_first_kmsg_hook_func(sec_debug_first_kmsg_hook);
 

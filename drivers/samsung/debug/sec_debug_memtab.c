@@ -15,14 +15,7 @@
 #include <linux/spinlock.h>
 #include <linux/sec_debug.h>
 
-#define SDBG_KNAME_LEN	64
-
-struct secdbg_member_type {
-	char member[SDBG_KNAME_LEN];
-	uint16_t size;
-	uint16_t offset;
-	uint16_t unused[2];
-};
+#define DEFINE_MEMBER_TYPE	SECDBG_DEFINE_MEMBER_TYPE
 
 extern struct secdbg_member_type __start__secdbg_member_table[];
 extern struct secdbg_member_type __stop__secdbg_member_table[];
@@ -32,14 +25,6 @@ void __init secdbg_base_set_memtab_info(struct sec_debug_memtab *mtab)
 	mtab->table_start_pa = __pa(__start__secdbg_member_table);
 	mtab->table_end_pa = __pa(__stop__secdbg_member_table);
 }
-
-#define DEFINE_MEMBER_TYPE(key, st, mem)					\
-	const struct secdbg_member_type sdbg_##key				\
-		__attribute__((__section__(".secdbg_mbtab." #key))) = {	\
-		.member = #key,						\
-		.size = FIELD_SIZEOF(struct st, mem),				\
-		.offset = offsetof(struct st, mem),				\
-	};
 
 DEFINE_MEMBER_TYPE(task_struct_pid, task_struct, pid);
 DEFINE_MEMBER_TYPE(task_struct_comm, task_struct, comm);
@@ -63,3 +48,14 @@ DEFINE_MEMBER_TYPE(raw_spinlock_owner, raw_spinlock, owner);
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
 DEFINE_MEMBER_TYPE(rw_semaphore_owner, rw_semaphore, owner);
 #endif
+DEFINE_MEMBER_TYPE(task_struct_cpus_allowed, task_struct, cpus_allowed);
+DEFINE_MEMBER_TYPE(task_struct_normal_prio, task_struct, normal_prio);
+DEFINE_MEMBER_TYPE(task_struct_rt_priority, task_struct, rt_priority);
+#ifdef CONFIG_FAST_TRACK
+DEFINE_MEMBER_TYPE(task_struct_se__ftt_mark, task_struct, se.ftt_mark);
+#endif
+DEFINE_MEMBER_TYPE(task_struct_se__vruntime, task_struct, se.vruntime);
+DEFINE_MEMBER_TYPE(task_struct_se__avg__load_avg, task_struct, se.avg.load_avg);
+DEFINE_MEMBER_TYPE(task_struct_se__avg__util_avg, task_struct, se.avg.util_avg);
+DEFINE_MEMBER_TYPE(task_struct_rt__avg__load_avg, task_struct, rt.avg.load_avg);
+DEFINE_MEMBER_TYPE(task_struct_rt__avg__util_avg, task_struct, rt.avg.util_avg);

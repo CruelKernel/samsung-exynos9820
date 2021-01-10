@@ -178,7 +178,7 @@ static irqreturn_t exynos_sysmmu_irq(int irq, void *dev_id)
 {
 	struct sysmmu_drvdata *drvdata = dev_id;
 	unsigned long addr = -1;
-	int flags = 0;
+	int flags = 0, ret;
 
 	dev_info(drvdata->sysmmu, "%s:%d: irq(%d) happened\n", __func__, __LINE__, irq);
 
@@ -187,7 +187,9 @@ static irqreturn_t exynos_sysmmu_irq(int irq, void *dev_id)
 		dev_name(drvdata->sysmmu));
 
 	sysmmu_get_interrupt_info(drvdata, &flags, &addr, false);
-	show_fault_information(drvdata, flags, addr);
+	ret = show_fault_information(drvdata, flags, addr);
+	if (ret == -EAGAIN)
+		return IRQ_HANDLED;
 	atomic_notifier_call_chain(&drvdata->fault_notifiers, addr, &flags);
 
 	panic("Unrecoverable System MMU Fault!!");

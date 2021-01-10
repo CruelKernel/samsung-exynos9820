@@ -43,7 +43,15 @@
 #define inode_unlock(inode)	mutex_unlock(&(inode)->i_mutex)
 #endif
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 115)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#include <linux/fs.h>
+
+#ifndef IS_VERITY
+#define IS_VERITY(inode) 0
+#endif
+#endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 20, 0)
 /* It is added for initialization purposes.
  * For developing LSM, please, use DEFINE_LSM
  */

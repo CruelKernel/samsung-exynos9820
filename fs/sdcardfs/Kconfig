@@ -11,3 +11,10 @@ config SDCARD_FS_FADV_NOACTIVE
 	default y
 	help
 	  Sdcardfs supports fadvise noactive mode.
+
+config SDCARD_FS_SUPPORT_KNOX
+	bool "sdcardfs support for Knox"
+	depends on SDCARD_FS
+	default y if ANDROID_VERSION < "110000"
+	help
+	  Sdcardfs supports Knox until the platform version 10.

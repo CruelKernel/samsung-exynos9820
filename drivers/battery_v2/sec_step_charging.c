@@ -398,24 +398,13 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 	char str[128] = {0,};
 	u32 *soc_cond_temp, *dc_step_chg_val_vfloat_temp, *dc_step_chg_val_iout_temp;
 
-	if (dt_need_overwrite) {
-		ret = of_property_read_u32(np, "battery,dc_step_chg_type_overwrite",
-				&battery->dc_step_chg_type);
-		pr_err("%s: dc_step_chg_type 0x%x\n", __func__, battery->dc_step_chg_type);
-		if (ret) {
-			pr_err("%s: dc_step_chg_type is Empty\n", __func__);
-			battery->dc_step_chg_type = 0;
-			return -1;
-		}
-	} else {
-		ret = of_property_read_u32(np, "battery,dc_step_chg_type",
-				&battery->dc_step_chg_type);
-		pr_err("%s: dc_step_chg_type 0x%x\n", __func__, battery->dc_step_chg_type);
-		if (ret) {
-			pr_err("%s: dc_step_chg_type is Empty\n", __func__);
-			battery->dc_step_chg_type = 0;
-			return -1;
-		}
+	ret = of_property_read_u32(np, "battery,dc_step_chg_type",
+			&battery->dc_step_chg_type);
+	pr_err("%s: dc_step_chg_type 0x%x\n", __func__, battery->dc_step_chg_type);
+	if (ret) {
+		pr_err("%s: dc_step_chg_type is Empty\n", __func__);
+		battery->dc_step_chg_type = 0;
+		return -1;
 	}
 
 	ret = of_property_read_u32(np, "battery,dc_step_chg_charge_power",
@@ -532,10 +521,7 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 	}
 
 	if (battery->dc_step_chg_type & STEP_CHARGING_CONDITION_INPUT_CURRENT) {
-		if (dt_need_overwrite)
-			p = of_get_property(np, "battery,dc_step_chg_cond_iin_overwrite", &len);
-		else
-			p = of_get_property(np, "battery,dc_step_chg_cond_iin", &len);
+		p = of_get_property(np, "battery,dc_step_chg_cond_iin", &len);
 		if (!p) {
 			pr_err("%s: dc_step_chg_cond_iin is Empty, type(0x%X->0x%x)\n",
 				__func__, battery->dc_step_chg_type,
@@ -551,13 +537,8 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 			}
 
 			pdata->dc_step_chg_cond_iin = kzalloc(sizeof(u32) * len, GFP_KERNEL);
-			if (dt_need_overwrite)
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_iin_overwrite",
-						pdata->dc_step_chg_cond_iin, len);
-			else
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_iin",
-						pdata->dc_step_chg_cond_iin, len);
-
+			ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_iin",
+					pdata->dc_step_chg_cond_iin, len);
 			if (ret) {
 				pr_info("%s : dc_step_chg_cond_iin read fail\n", __func__);
 				battery->dc_step_chg_type &= ~STEP_CHARGING_CONDITION_INPUT_CURRENT;
@@ -576,10 +557,7 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 	}
 
 	if (battery->dc_step_chg_type & STEP_CHARGING_CONDITION_FLOAT_VOLTAGE) {
-		if (dt_need_overwrite)
-			p = of_get_property(np, "battery,dc_step_chg_val_vfloat_overwrite", &len);
-		else
-			p = of_get_property(np, "battery,dc_step_chg_val_vfloat", &len);
+		p = of_get_property(np, "battery,dc_step_chg_val_vfloat", &len);
 		if (!p) {
 			pr_err("%s: dc_step_chg_val_vfloat is Empty, type(0x%X->0x%x)\n",
 				__func__, battery->dc_step_chg_type,
@@ -596,13 +574,9 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 			pr_info("%s step(%d) * age_step(%d) = %d \n", __func__, battery->dc_step_chg_step, battery->pdata->num_age_step, len); // debug
 
 			dc_step_chg_val_vfloat_temp = kzalloc(sizeof(u32) * battery->dc_step_chg_step * battery->pdata->num_age_step , GFP_KERNEL);
+			ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat",
+						dc_step_chg_val_vfloat_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
 
-			if (dt_need_overwrite)
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat_overwrite",
-							dc_step_chg_val_vfloat_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
-			else
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat",
-							dc_step_chg_val_vfloat_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
 			/* copy buff to 2d arr */
 			pdata->dc_step_chg_val_vfloat = kzalloc(sizeof(u32 *) * battery->pdata->num_age_step , GFP_KERNEL);
 			for( i = 0; i < battery->pdata->num_age_step; i++) {
@@ -614,12 +588,8 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 
 			/* if there are only 1 dimentional array of value, get the same value */
 			if(battery->dc_step_chg_step * battery->pdata->num_age_step != len) {
-				if (dt_need_overwrite)
-					ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat_overwrite",
-							*pdata->dc_step_chg_val_vfloat, battery->dc_step_chg_step);
-				else
-					ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat",
-							*pdata->dc_step_chg_val_vfloat, battery->dc_step_chg_step);
+				ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_vfloat",
+						*pdata->dc_step_chg_val_vfloat, battery->dc_step_chg_step);
 
 				for( i = 1; i < battery->pdata->num_age_step; i++) {
 					for( j = 0; j < battery->dc_step_chg_step; j++){
@@ -644,10 +614,7 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 		}
 	}
 
-	if (dt_need_overwrite)
-		p = of_get_property(np, "battery,dc_step_chg_val_iout_overwrite", &len);
-	else
-		p = of_get_property(np, "battery,dc_step_chg_val_iout", &len);
+	p = of_get_property(np, "battery,dc_step_chg_val_iout", &len);
 	if (!p) {
 		pr_err("%s: dc_step_chg_val_iout is Empty\n", __func__);
 		battery->dc_step_chg_type = 0;
@@ -663,13 +630,8 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 		pr_info("%s step(%d) * age_step(%d) = %d \n", __func__, battery->dc_step_chg_step, battery->pdata->num_age_step, len); // debug
 
 		dc_step_chg_val_iout_temp = kzalloc(sizeof(u32) * battery->dc_step_chg_step * battery->pdata->num_age_step , GFP_KERNEL);
-
-		if (dt_need_overwrite)
-			ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout_overwrite",
-						dc_step_chg_val_iout_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
-		else
-			ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout",
-						dc_step_chg_val_iout_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
+		ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout",
+					dc_step_chg_val_iout_temp, battery->dc_step_chg_step * battery->pdata->num_age_step);
 
 		/* copy buff to 2d arr */
 		pdata->dc_step_chg_val_iout = kzalloc(sizeof(u32 *) * battery->pdata->num_age_step , GFP_KERNEL);
@@ -682,12 +644,8 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 
 		/* if there are only 1 dimentional array of value, get the same value */
 		if(battery->dc_step_chg_step * battery->pdata->num_age_step != len) {
-			if (dt_need_overwrite)
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout_overwrite",
-						*pdata->dc_step_chg_val_iout, battery->dc_step_chg_step);
-			else
-				ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout",
-						*pdata->dc_step_chg_val_iout, battery->dc_step_chg_step);
+			ret = of_property_read_u32_array(np, "battery,dc_step_chg_val_iout",
+					*pdata->dc_step_chg_val_iout, battery->dc_step_chg_step);
 
 			for( i = 1; i < battery->pdata->num_age_step; i++) {
 				for( j = 0; j < battery->dc_step_chg_step; j++){

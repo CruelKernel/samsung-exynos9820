@@ -929,25 +929,40 @@ static ssize_t max77705_muic_set_afc_disable(struct device *dev,
 	struct max77705_muic_data *muic_data = dev_get_drvdata(dev);
 	struct muic_platform_data *pdata = muic_data->pdata;
 	int param_val, ret = 0;
+	bool curr_val = pdata->afc_disable;
 	union power_supply_propval psy_val;
 
 	if (!strncasecmp(buf, "1", 1)) {
+		/* Disable AFC */
 		ret = sec_set_param(CM_OFFSET + 1, '1');
-		if (ret < 0)
-			pr_err("%s:sec_set_param failed\n", __func__);
-		else
-			pdata->afc_disable = true;
+		pdata->afc_disable = true;
 	} else if (!strncasecmp(buf, "0", 1)) {
+	/* Enable AFC */
 		ret = sec_set_param(CM_OFFSET + 1, '0');
-		if (ret < 0)
-			pr_err("%s:sec_set_param failed\n", __func__);
-		else
-			pdata->afc_disable = false;
+		pdata->afc_disable = false;
 	} else {
 		pr_warn("%s invalid value\n", __func__);
 	}
 
 	param_val = pdata->afc_disable ? '1' : '0';
+	pr_info("%s: param_val:%d\n", __func__, param_val);
+
+	if (ret < 0) {
+		pr_info("%s:set_param failed - %02x:%02x(%d)\n", __func__,
+			param_val, curr_val, ret);
+
+		pdata->afc_disable = curr_val;
+
+		return -EIO;
+	} else {
+		pr_info("%s: afc_disable:%d (AFC %s)\n", __func__,
+			pdata->afc_disable, pdata->afc_disable ? "Disabled" : "Enabled");
+
+		if (pdata->afc_disabled_updated & 0x2)	
+			pdata->afc_disabled_updated |= 0x1;
+		else
+			max77705_muic_check_afc_disabled(muic_data);
+	}
 
 #if defined(CONFIG_SEC_FACTORY)
 	/* for factory self charging test (AFC-> NORMAL TA) */
@@ -1878,9 +1893,17 @@ static void max77705_muic_afc_work(struct work_struct *work)
 	pr_info("%s\n", __func__);
 
 	if (max77705_muic_check_is_enable_afc(muic_data, muic_data->attached_dev)) {
-		muic_data->is_check_hv = true;
-		muic_data->hv_voltage = 9;
-		max77705_muic_afc_hv_set(muic_data, 9);
+		muic_data->pdata->afc_disabled_updated |= 0x2;
+
+		if (!muic_data->pdata->afc_disable) {
+			muic_data->is_check_hv = true;
+			muic_data->hv_voltage = 9;
+			max77705_muic_afc_hv_set(muic_data, 9);
+		} else {
+			muic_data->is_check_hv = true;
+			muic_data->hv_voltage = 5;
+			max77705_muic_afc_hv_set(muic_data, 5);
+		}	
 	}
 }
 
@@ -2465,6 +2488,8 @@ int max77705_muic_probe(struct max77705_usbc_platform_data *usbc_data)
 		pr_info("%s: afc_disable: AFC enabled\n", __func__);
 		muic_data->pdata->afc_disable = false;
 	}
+
+	muic_data->pdata->afc_disabled_updated = 0;
 
 	INIT_DELAYED_WORK(&(muic_data->afc_work),
 		max77705_muic_afc_work);

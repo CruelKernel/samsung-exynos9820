@@ -391,7 +391,7 @@ static const char * const dropdump_drop_str[] = {
 
 extern int netdev_support_dropdump;
 extern void dropdump_queue(struct sk_buff *skb);
-extern bool dropdump_queue_skb(struct sk_buff *skb);
+extern bool dropdump_queue_skb(struct sk_buff *skb, int mode);
 #else
 #define DROPDUMP_QUEUE_SKB(skb, id) {}
 #define DROPDUMP_QPCAP_SKB(skb, id) {}
@@ -400,7 +400,7 @@ extern bool dropdump_queue_skb(struct sk_buff *skb);
 #define DROPDUMP_CHECK_SKB(skb) {}
 
 #define dropdump_queue(skb) {} 
-#define dropdump_queue_skb(skb) {}
+#define dropdump_queue_skb(skb, mode) {}
 #endif
 
 #endif //__NET_DROPDUMP_H

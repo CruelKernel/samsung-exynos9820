@@ -409,6 +409,7 @@ int load_file_list(const char *name)
 		str = remove_redundant_chars(work_str);
 		if (*str == '/' &&
 				(!strncmp(str, "/root/", 6) ||
+				!strncmp(str, "/product/", 9) ||
 				!strncmp(str, "/recovery/", 10) ||
 				!strncmp(str, "/system/", 8) ||
 				!strncmp(str, "/tmp/", 5) ||

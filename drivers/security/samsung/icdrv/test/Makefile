@@ -1,0 +1,1 @@
+ccflags-y += -I$(src)/..

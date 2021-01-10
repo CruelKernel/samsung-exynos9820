@@ -1073,6 +1073,23 @@ int decon_update_pwr_state(struct decon_device *decon, u32 mode)
 	}
 
 #if defined(CONFIG_EXYNOS_DISPLAYPORT)
+	if (mode == DISP_PWR_NORMAL && decon->dt.out_type == DECON_OUT_DP) {
+		struct decon_device *decon0 = get_decon_drvdata(0);
+		const int max_wait = 100;
+		int wait_cnt = 0;
+
+		if (decon0) {
+			while (decon0->state == DECON_STATE_TUI && wait_cnt++ < max_wait)
+				msleep(20);
+
+			if (wait_cnt >= max_wait) {
+				decon_err("Displayport: tui close timeout\n");
+				goto out;
+			} else if (wait_cnt) {
+				decon_warn("Displayport: tui close wait(%dms)\n", wait_cnt * 20);
+			}
+		}
+	}
 	if (mode == DISP_PWR_OFF && decon->dt.out_type == DECON_OUT_DP
 		&& IS_DISPLAYPORT_HPD_PLUG_STATE()) {
 		decon_info("skip decon-%d disable(hpd plug)\n", decon->id);

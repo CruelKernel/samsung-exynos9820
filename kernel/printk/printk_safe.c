@@ -22,6 +22,7 @@
 #include <linux/cpumask.h>
 #include <linux/irq_work.h>
 #include <linux/printk.h>
+#include <linux/sec_debug.h>
 
 #include "internal.h"
 
@@ -52,6 +53,10 @@ struct printk_safe_seq_buf {
 	struct irq_work		work;	/* IRQ work that flushes the buffer */
 	unsigned char		buffer[SAFE_LOG_BUF_LEN];
 };
+
+#ifdef CONFIG_SEC_DEBUG
+SECDBG_DEFINE_MEMBER_TYPE(printk_safe_seq_buf_buffer, printk_safe_seq_buf, buffer);
+#endif
 
 static DEFINE_PER_CPU(struct printk_safe_seq_buf, safe_print_seq);
 static DEFINE_PER_CPU(int, printk_context);

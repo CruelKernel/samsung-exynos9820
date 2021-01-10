@@ -839,6 +839,13 @@ bool jd_submit_atom(struct kbase_context *kctx, const struct base_jd_atom_v2 *us
 /* SRUK-MALI_SYSTRACE_SUPPORT }*/
 	katom->age = kctx->age_count++;
 
+	if (!(katom->core_req & BASE_JD_REQ_SOFT_JOB)) {
+		if (!kbase_js_is_atom_valid(kctx->kbdev, katom)) {
+			katom->event_code = BASE_JD_EVENT_JOB_INVALID;
+			return jd_done_nolock(katom, NULL);
+		}
+	}
+
 	INIT_LIST_HEAD(&katom->queue);
 	INIT_LIST_HEAD(&katom->jd_item);
 #ifdef CONFIG_MALI_DMA_FENCE

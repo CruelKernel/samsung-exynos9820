@@ -79,12 +79,6 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #endif /* USE_SMMU_ARCH_MSM */
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-#include <linux/exynos-pci-ctrl.h>
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
 
 #define PCI_CFG_RETRY 		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -986,12 +980,6 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 	}
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 	DHD_ERROR(("%s: Enter\n", __FUNCTION__));
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-	exynos_pcie_l1ss_ctrl(0, PCIE_L1SS_CTRL_WIFI);
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
 	dhdpcie_suspend_dump_cfgregs(bus, "BEFORE_EP_SUSPEND");
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
 	dhd_dpc_tasklet_kill(bus->dhd);
@@ -1067,12 +1055,6 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 	}
 	BCM_REFERENCE(pch);
 	dhdpcie_suspend_dump_cfgregs(pch->bus, "AFTER_EP_RESUME");
-#if defined(CONFIG_SOC_EXYNOS9810) || defined(CONFIG_SOC_EXYNOS9820) || \
-	defined(CONFIG_SOC_EXYNOS9830)
-	exynos_pcie_l1ss_ctrl(1, PCIE_L1SS_CTRL_WIFI);
-#endif /* CONFIG_SOC_EXYNOS9810 || CONFIG_SOC_EXYNOS9820 ||
-	* CONFIG_SOC_EXYNOS9830
-	*/
 out:
 	return err;
 }

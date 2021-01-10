@@ -58,6 +58,8 @@
 #define I2C_ADDR_FG     (0x6C >> 1)
 #define I2C_ADDR_DEBUG  (0xC4 >> 1)
 
+#define I2C_RETRY_CNT	3
+
 /*
  * pmic revision information
  */
@@ -101,10 +103,16 @@ int max77705_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret;
+	int ret, i;
 
 	mutex_lock(&max77705->i2c_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
+	for (i = 0; i < I2C_RETRY_CNT; ++i) {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+			MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+	}
 	mutex_unlock(&max77705->i2c_lock);
 	if (ret < 0) {
 		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
@@ -125,10 +133,16 @@ int max77705_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret;
+	int ret, i;
 
 	mutex_lock(&max77705->i2c_lock);
-	ret = i2c_smbus_read_i2c_block_data(i2c, reg, count, buf);
+	for (i = 0; i < I2C_RETRY_CNT; ++i) {
+		ret = i2c_smbus_read_i2c_block_data(i2c, reg, count, buf);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+			MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+	}
 	mutex_unlock(&max77705->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
@@ -145,10 +159,16 @@ int max77705_read_word(struct i2c_client *i2c, u8 reg)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret;
+	int ret, i;
 
 	mutex_lock(&max77705->i2c_lock);
-	ret = i2c_smbus_read_word_data(i2c, reg);
+	for (i = 0; i < I2C_RETRY_CNT; ++i) {
+		ret = i2c_smbus_read_word_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+			MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+	}
 	mutex_unlock(&max77705->i2c_lock);
 #if defined(CONFIG_USB_HW_PARAM)
 	if (ret < 0) {
@@ -164,13 +184,19 @@ int max77705_write_reg(struct i2c_client *i2c, u8 reg, u8 value)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret = -EIO;
+	int ret = -EIO, i;
 	int timeout = 2000; /* 2sec */
 	int interval = 100;
 
 	while (ret == -EIO) {
 		mutex_lock(&max77705->i2c_lock);
-		ret = i2c_smbus_write_byte_data(i2c, reg, value);
+		for (i = 0; i < I2C_RETRY_CNT; ++i) {
+			ret = i2c_smbus_write_byte_data(i2c, reg, value);
+			if ((ret >= 0) || (ret == -EIO))
+				break;
+			pr_info("%s:%s reg(0x%02x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+				MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+		}
 		mutex_unlock(&max77705->i2c_lock);
 
 		if (ret < 0) {
@@ -196,13 +222,19 @@ int max77705_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret = -EIO;
+	int ret = -EIO, i;
 	int timeout = 2000; /* 2sec */
 	int interval = 100;
 
 	while (ret == -EIO) {
 		mutex_lock(&max77705->i2c_lock);
-		ret = i2c_smbus_write_i2c_block_data(i2c, reg, count, buf);
+		for (i = 0; i < I2C_RETRY_CNT; ++i) {
+			ret = i2c_smbus_write_i2c_block_data(i2c, reg, count, buf);
+			if ((ret >= 0) || (ret == -EIO))
+				break;
+			pr_info("%s:%s reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+				MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+		}
 		mutex_unlock(&max77705->i2c_lock);
 
 		if (ret < 0) {
@@ -228,10 +260,16 @@ int max77705_write_word(struct i2c_client *i2c, u8 reg, u16 value)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret;
+	int ret, i;
 
 	mutex_lock(&max77705->i2c_lock);
-	ret = i2c_smbus_write_word_data(i2c, reg, value);
+	for (i = 0; i < I2C_RETRY_CNT; ++i) {
+		ret = i2c_smbus_write_word_data(i2c, reg, value);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+			MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+	}
 	mutex_unlock(&max77705->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
@@ -248,11 +286,17 @@ int max77705_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask)
 {
 	struct max77705_dev *max77705 = i2c_get_clientdata(i2c);
 	struct otg_notify *o_notify = get_otg_notify();
-	int ret;
+	int ret, i;
 	u8 old_val, new_val;
 
 	mutex_lock(&max77705->i2c_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
+	for (i = 0; i < I2C_RETRY_CNT; ++i) {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s read reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+			MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+	}
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
@@ -263,7 +307,13 @@ int max77705_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask)
 	if (ret >= 0) {
 		old_val = ret & 0xff;
 		new_val = (val & mask) | (old_val & (~mask));
-		ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+		for (i = 0; i < I2C_RETRY_CNT; ++i) {
+			ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+			if (ret >= 0)
+				break;
+			pr_info("%s:%s write reg(0x%x), ret(%d), i2c_retry_cnt(%d/%d)\n",
+				MFD_DEV_NAME, __func__, reg, ret, i + 1, I2C_RETRY_CNT);
+		}
 		if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
 			if (o_notify)
@@ -920,6 +970,19 @@ static u8 max77705_revision_check(u8 pmic_id, u8 pmic_rev) {
 	}
 	return logical_id;
 }
+
+void max77705_register_pdmsg_func(struct max77705_dev *max77705,
+	void (*check_pdmsg)(void *data, u8 pdmsg), void *data)
+{
+	if (!max77705) {
+		pr_err("%s max77705 is null\n", __func__);
+		return;
+	}
+
+	max77705->check_pdmsg = check_pdmsg;
+	max77705->usbc_data = data;
+}
+EXPORT_SYMBOL_GPL(max77705_register_pdmsg_func);
 
 static int max77705_i2c_probe(struct i2c_client *i2c,
 				const struct i2c_device_id *dev_id)

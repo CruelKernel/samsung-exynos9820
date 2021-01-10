@@ -259,6 +259,16 @@ static bool readonly_sb(struct inode *inode)
 }
 
 /*
+ * five_is_fsverity_protected - checks if file is protected by FSVERITY
+ *
+ * Return true/false
+ */
+static bool five_is_fsverity_protected(const struct inode *inode)
+{
+	return IS_VERITY(inode);
+}
+
+/*
  * five_appraise_measurement - appraise file measurement
  *
  * Return 0 on success, error code otherwise
@@ -294,7 +304,9 @@ int five_appraise_measurement(struct task_struct *task, int func,
 
 	if (!cert) {
 		cause = CAUSE_NO_CERT;
-		if (five_is_dmverity_protected(file))
+		if (five_is_fsverity_protected(inode))
+			status = FIVE_FILE_FSVERITY;
+		else if (five_is_dmverity_protected(file))
 			status = FIVE_FILE_DMVERITY;
 		goto out;
 	}

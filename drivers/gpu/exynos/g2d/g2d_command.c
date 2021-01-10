@@ -264,7 +264,12 @@ static const struct g2d_fmt g2d_formats_common[] = {
 		.fmtvalue	= G2D_FMT_ABGR2101010,	/* [31:0] ABGR */
 		.bpp		= { 32 },
 		.num_planes	= 1,
-	},
+	}, {
+		.name		= "XBGR2101010",
+		.fmtvalue	= G2D_FMT_XBGR2101010,
+		.bpp		= { 32 },
+		.num_planes	= 1,
+	}
 };
 
 static const struct g2d_fmt g2d_formats_9810[] = {
