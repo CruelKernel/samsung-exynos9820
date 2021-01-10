@@ -575,10 +575,16 @@ int __get_session_info(struct npu_session *session, struct vs4l_graph *info)
 		ret = -ENOMEM;
 		return ret;
 	}
-	copy_from_user((void *)usr_data, (void *)info->addr, sizeof(struct drv_usr_share));
+	if (copy_from_user((void *)usr_data, (void *)info->addr, sizeof(struct drv_usr_share))) {
+		ret = -EFAULT;
+		goto p_err;
+	}
 	__set_unique_id(session, usr_data);
 	npu_utrace("usr_data(0x%pK), ncp_size(%u)\n", session, usr_data, usr_data->ncp_size);
-	copy_to_user((void *)info->addr, (void *)usr_data, sizeof(struct drv_usr_share));
+	if (copy_to_user((void *)info->addr, (void *)usr_data, sizeof(struct drv_usr_share))) {
+		ret = -EFAULT;
+		goto p_err;
+	}
 	ret = __ncp_ion_map(session, usr_data);
 	if (ret) {
 		npu_uerr("__ncp_ion_map is fail(%d)\n", session, ret);
