@@ -1289,6 +1289,7 @@ dhd_dbg_read_ring_into_trace_buf(dhd_dbg_ring_t *ring, trace_buf_info_t *trace_b
 {
 	dhd_dbg_ring_status_t ring_status;
 	uint32 rlen = 0;
+	int ret = 0;
 
 	rlen = dhd_dbg_ring_pull_single(ring, trace_buf_info->buf, TRACE_LOG_BUF_MAX_SIZE, TRUE);
 
@@ -1299,9 +1300,9 @@ dhd_dbg_read_ring_into_trace_buf(dhd_dbg_ring_t *ring, trace_buf_info_t *trace_b
 		return;
 	}
 
-	__dhd_dbg_get_ring_status(ring, &ring_status);
+	ret = __dhd_dbg_get_ring_status(ring, &ring_status);
 
-	if (ring_status.written_bytes != ring_status.read_bytes) {
+	if (ret == BCME_OK && ring_status.written_bytes != ring_status.read_bytes) {
 		trace_buf_info->availability = NEXT_BUF_AVAIL;
 	}
 }
