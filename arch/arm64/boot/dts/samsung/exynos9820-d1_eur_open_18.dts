@@ -691,7 +691,7 @@
 			s6e3ha9_beyond2 {
 				mode = <0x2>;
 				resolution = <0x5a0 0xbe0>;
-				size = <0x45 0x93>;
+				size = <0x46 0x94>;
 				timing,refresh = <0x3c>;
 				timing,h-porch = <0x2 0x2 0x2>;
 				timing,v-porch = <0xf 0x3 0x1>;
@@ -1031,10 +1031,10 @@
 				battery,siop_hv_wireless_input_limit_current = <0x258>;
 				battery,siop_hv_wireless_charging_limit_current = <0x352>;
 				battery,siop_store_hv_wireless_input_limit_current = <0x1c2>;
-				battery,ttf_hv_charge_current = <0xa8c>;
-				battery,ttf_hv_wireless_charge_current = <0x55f>;
-				battery,ttf_wireless_charge_current = <0x38e>;
-				battery,ttf_dc25_charge_current = <0xc80>;
+				battery,ttf_hv_charge_current = <0x9f6>;
+				battery,ttf_hv_wireless_charge_current = <0x4e2>;
+				battery,ttf_wireless_charge_current = <0x35c>;
+				battery,ttf_dc25_charge_current = <0xa8c>;
 				battery,rp_current_rp1 = <0x1f4>;
 				battery,rp_current_rp2 = <0x5dc>;
 				battery,rp_current_rp3 = <0xbb8>;
@@ -1083,6 +1083,7 @@
 				battery,tx_mfc_iout_phone = <0x44c>;
 				battery,tx_mfc_iout_phone_5v = <0x12c>;
 				battery,tx_mfc_iout_lcd_on = <0x384>;
+				battery,support_unknown_wpcthm;
 				io-channels = <0xffffffff 0x4 0xffffffff 0x3 0xffffffff 0xb 0xffffffff 0x4 0xffffffff 0x1>;
 				io-channel-names = "adc-temp", "adc-chg-temp", "adc-in-bat", "adc-wpc-temp", "adc-usb-temp";
 				#io-channel-cells = <0x5>;
@@ -1109,10 +1110,11 @@
 				fuelgauge,sw_v_empty_recover_voltage = <0xd98>;
 				fuelgauge,fg_resistor = <0x2>;
 				fuelgauge,capacity = <0xce2>;
+				fuelgauge,fg_reset_wa_data = <0xce2 0x3200 0x338 0x36 0x151f>;
 				fuelgauge,discharge_temp_threshold = <0x258>;
 				fuelgauge,discharge_volt_threshold = <0x1068>;
-				fuelgauge,ttf_capacity = <0xcfd>;
-				fuelgauge,cv_data = <0x9b8 0x329 0x711 0x969 0x32c 0x704 0x917 0x331 0x6e9 0x8e0 0x334 0x6cf 0x886 0x33a 0x6b9 0x838 0x33e 0x69a 0x7f6 0x342 0x686 0x79e 0x347 0x668 0x770 0x349 0x656 0x72e 0x34d 0x63a 0x705 0x34f 0x628 0x6d5 0x352 0x618 0x693 0x355 0x5fb 0x67c 0x357 0x5f5 0x675 0x358 0x5eb 0x64f 0x35a 0x5e8 0x62c 0x35c 0x5e5 0x611 0x35d 0x5de 0x608 0x35e 0x5cb 0x5f0 0x35f 0x5b7 0x5c5 0x362 0x5b2 0x597 0x364 0x5ab 0x574 0x367 0x590 0x543 0x36a 0x581 0x513 0x36c 0x567 0x4f3 0x36e 0x551 0x4cf 0x372 0x534 0x4b2 0x374 0x523 0x47c 0x376 0x508 0x455 0x379 0x4ef 0x42b 0x37b 0x4db 0x407 0x37e 0x4bd 0x3f5 0x37f 0x4a1 0x3cf 0x381 0x484 0x3c1 0x383 0x474 0x399 0x385 0x457 0x37c 0x387 0x43c 0x377 0x387 0x428 0x35f 0x389 0x40e 0x341 0x38b 0x3fb 0x328 0x38d 0x3ec 0x313 0x38e 0x3d0 0x2fc 0x390 0x3b2 0x2e8 0x392 0x396 0x2da 0x393 0x388 0x2cb 0x394 0x37f 0x2b5 0x395 0x360 0x2a9 0x396 0x34e 0x29a 0x398 0x33c 0x28b 0x399 0x320 0x280 0x39a 0x30f 0x274 0x39d 0x2f0 0x26e 0x39e 0x2df 0x26a 0x39f 0x2c8 0x258 0x3a2 0x2b9 0x254 0x3a3 0x2a7 0x248 0x3a5 0x298 0x240 0x3a8 0x286 0x241 0x3a9 0x273 0x232 0x3aa 0x266 0x1ff 0x3b4 0x259 0x1f9 0x3b5 0x23c 0x1ed 0x3b7 0x229 0x1ec 0x3b8 0x217 0x1e4 0x3b9 0x1fa 0x1e0 0x3bb 0x1e7 0x1da 0x3bc 0x1d0 0x1ce 0x3bd 0x1b3 0x1c8 0x3be 0x1a1 0x1c4 0x3bf 0x18e 0x1be 0x3c1 0x17c 0x1b5 0x3c2 0x16c 0x1ad 0x3c4 0x163 0x1a7 0x3c5 0x150 0x1a6 0x3c6 0x149 0x19e 0x3c7 0x12f 0x19b 0x3c8 0x11a 0x195 0x3c9 0xff 0x18d 0x3ca 0xf2 0x187 0x3cb 0xe5 0x183 0x3cc 0xd3 0x180 0x3cd 0xc7 0x174 0x3cf 0xbf 0x16c 0x3d1 0xab 0x164 0x3d2 0x8c 0x15e 0x3d5 0x7e 0x154 0x3d9 0x6b 0x14f 0x3dc 0x54 0x147 0x3df 0x36 0x140 0x3e3 0x1a 0x139 0x3e6 0xd 0x0 0x3e8 0x0>;
+				fuelgauge,ttf_capacity = <0xbb8>;
+				fuelgauge,cv_data = <0x9b1 0x2fa 0x77a 0x8b5 0x30f 0x709 0x804 0x323 0x69a 0x720 0x332 0x635 0x6bc 0x341 0x5d4 0x5dc 0x34f 0x56b 0x56e 0x35d 0x4e8 0x52a 0x36a 0x469 0x4b7 0x375 0x40f 0x446 0x37f 0x397 0x3fe 0x388 0x327 0x36b 0x391 0x2c5 0x331 0x396 0x263 0x2f6 0x39e 0x200 0x2c1 0x3a6 0x1d1 0x28f 0x3a8 0x1a4 0x27c 0x3ab 0x173 0x270 0x3ad 0x143 0x260 0x3ae 0x125 0x256 0x3b4 0x10a 0x24c 0x3b9 0xdb 0x238 0x3bf 0xc7 0x220 0x3d1 0x84 0x21e 0x3e7 0x14 0x21b 0x3e8 0x0>;
 			};
 
 			cable-info {
@@ -1207,7 +1209,7 @@
 					vout = <0x157c>;
 					input_current_limit = <0x320>;
 					fast_charging_current = <0x960>;
-					ttf_charge_current = <0x38e>;
+					ttf_charge_current = <0x35c>;
 					rx_power = <0x1194>;
 				};
 
@@ -1216,7 +1218,7 @@
 					vout = <0x2710>;
 					input_current_limit = <0x28a>;
 					fast_charging_current = <0x960>;
-					ttf_charge_current = <0x465>;
+					ttf_charge_current = <0x4e2>;
 					rx_power = <0x1d4c>;
 				};
 
@@ -1333,6 +1335,8 @@
 				battery,fod_data_cv = <0x96 0x5e 0x8e 0x54 0x96 0x42 0x96 0x3f 0x9b 0x32 0x9c 0x31>;
 				battery,fod_hero_5v_data = <0x96 0x2 0x8e 0xfffffffa 0x96 0xffffffec 0x96 0xffffffe4 0xa5 0xb9 0x9c 0xffffffd9>;
 				battery,wc_cover_rpp = <0x44>;
+				battery,oc_fod1 = <0x44c>;
+				battery,tx_gear_min_op_freq_delay = <0xfa0>;
 				battery,phone_fod_threshold = <0x3b>;
 				battery,wireless20_vout_list = <0x9>;
 				battery,wireless20_vrect_list = <0xa>;
@@ -4121,165 +4125,423 @@
 			input_booster {
 				status = "okay";
 				compatible = "input_booster";
+				max_resource_count = [37 00];
 				#address-cells = <0x1>;
 				#size-cells = <0x0>;
+				ib_release_values = "0,0,0,0,0,0,0";
 
 				booster_key@1 {
-					input_booster,label = "KEY";
+					input_booster,label = "key";
 					input_booster,type = <0x0>;
-					input_booster,levels = <0x1>;
-					input_booster,cpu2_freqs = <0x0>;
-					input_booster,cpu1_freqs = <0x156c60>;
-					input_booster,hmp_boost = <0x1>;
-					input_booster,kfc_freqs = <0x0>;
-					input_booster,mif_freqs = <0x0>;
-					input_booster,int_freqs = <0x0>;
-					input_booster,ucc_requested_val = <0x1>;
-					input_booster,head_times = <0x1f4>;
-					input_booster,tail_times = <0x1f4>;
-					input_booster,phase_times = <0x0>;
+					input_booster,head_time = <0x1f4>;
+					input_booster,tail_time = <0x1f4>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x0>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x0>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x0>;
+						};
+					};
 				};
 
 				booster_key@2 {
-					input_booster,label = "TOUCHKEY";
+					input_booster,label = "touchkey";
 					input_booster,type = <0x1>;
-					input_booster,levels = <0x1>;
-					input_booster,cpu2_freqs = <0x0>;
-					input_booster,cpu1_freqs = <0x156c60>;
-					input_booster,hmp_boost = <0x1>;
-					input_booster,kfc_freqs = <0x0>;
-					input_booster,mif_freqs = <0x0>;
-					input_booster,int_freqs = <0x0>;
-					input_booster,ucc_requested_val = <0x1>;
-					input_booster,head_times = <0x0>;
-					input_booster,tail_times = <0xc8>;
-					input_booster,phase_times = <0x0>;
+					input_booster,head_time = <0x0>;
+					input_booster,tail_time = <0xc8>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x0>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x0>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x0>;
+						};
+					};
 				};
 
 				booster_key@3 {
-					input_booster,label = "TOUCH";
+					input_booster,label = "touch";
 					input_booster,type = <0x2>;
-					input_booster,levels = <0x1 0x2 0x3>;
-					input_booster,cpu2_freqs = <0xc7f38 0xc7f38 0x98580>;
-					input_booster,cpu1_freqs = <0x12a570 0x12a570 0xeadd0>;
-					input_booster,hmp_boost = <0x1 0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70 0xc4c70>;
-					input_booster,mif_freqs = <0xf78f0 0xf78f0 0xf78f0>;
-					input_booster,int_freqs = <0x0 0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1 0x1>;
-					input_booster,head_times = <0x82 0x82 0x0>;
-					input_booster,tail_times = <0x0 0x0 0x1f4>;
-					input_booster,phase_times = <0x0 0x0 0x0>;
+					input_booster,head_time = <0x82>;
+					input_booster,tail_time = <0x1f4>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0xc7f38 0x98580>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x12a570 0xeadd0>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0xf78f0 0xf78f0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@4 {
-					input_booster,label = "MULTITOUCH";
+					input_booster,label = "multitouch";
 					input_booster,type = <0x3>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0xc7f38 0x98580>;
-					input_booster,cpu1_freqs = <0x12a570 0xeadd0>;
-					input_booster,hmp_boost = <0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
-					input_booster,mif_freqs = <0xf78f0 0xf78f0>;
-					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0x3e8 0x0>;
-					input_booster,tail_times = <0x0 0x1f4>;
-					input_booster,phase_times = <0x0 0x0>;
+					input_booster,head_time = <0x3e8>;
+					input_booster,tail_time = <0x1f4>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0xc7f38 0x98580>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x12a570 0xeadd0>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0xf78f0 0xf78f0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@5 {
-					input_booster,label = "KEYBOARD";
+					input_booster,label = "keyboard";
 					input_booster,type = <0x4>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x156c60 0x156c60>;
-					input_booster,hmp_boost = <0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
-					input_booster,mif_freqs = <0x0 0x0>;
-					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0x82 0x82>;
-					input_booster,tail_times = <0x0 0x0>;
-					input_booster,phase_times = <0x0 0x0>;
+					input_booster,head_time = <0x82>;
+					input_booster,tail_time = <0x0>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x156c60>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@6 {
-					input_booster,label = "MOUSE";
+					input_booster,label = "mouse";
 					input_booster,type = <0x5>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x156c60 0x12a570>;
-					input_booster,hmp_boost = <0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
-					input_booster,mif_freqs = <0x0 0x0>;
-					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0x82 0x0>;
-					input_booster,tail_times = <0x0 0x1f4>;
-					input_booster,phase_times = <0x0 0x0>;
+					input_booster,head_time = <0x82>;
+					input_booster,tail_time = <0x1f4>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x12a570>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@7 {
-					input_booster,label = "MOUSE WHEEL";
+					input_booster,label = "mouse_wheel";
 					input_booster,type = <0x6>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x156c60 0x0>;
-					input_booster,hmp_boost = <0x1 0x0>;
-					input_booster,kfc_freqs = <0xc4c70 0x0>;
-					input_booster,mif_freqs = <0x0 0x0>;
-					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0x82 0x0>;
-					input_booster,tail_times = <0x0 0x0>;
-					input_booster,phase_times = <0x0 0x0>;
+					input_booster,head_time = <0x82>;
+					input_booster,tail_time = <0x0>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x0>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0x0>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x0>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@8 {
-					input_booster,label = "PEN HOVER";
+					input_booster,label = "pen_hover";
 					input_booster,type = <0x7>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x156c60 0x12a570>;
-					input_booster,hmp_boost = <0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
-					input_booster,mif_freqs = <0x0 0x0>;
-					input_booster,int_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0x82 0x0>;
-					input_booster,tail_times = <0x0 0x1f4>;
-					input_booster,phase_times = <0x0 0x0>;
+					input_booster,head_time = <0x82>;
+					input_booster,tail_time = <0x1f4>;
+
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x156c60 0x12a570>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "int";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 
 				booster_key@9 {
-					input_booster,label = "PEN";
+					input_booster,label = "pen";
 					input_booster,type = <0x8>;
-					input_booster,levels = <0x1 0x2>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x1702a0 0x12a570>;
-					input_booster,hmp_boost = <0x1 0x1>;
-					input_booster,kfc_freqs = <0xc4c70 0xc4c70>;
-					input_booster,bimc_freqs = <0x0 0x0>;
-					input_booster,ucc_requested_val = <0x1 0x1>;
-					input_booster,head_times = <0xc8 0x0>;
-					input_booster,tail_times = <0x0 0x258>;
-				};
+					input_booster,head_time = <0xc8>;
+					input_booster,tail_time = <0x258>;
 
-				booster_key@10 {
-					input_booster,label = "KEY_TWO";
-					input_booster,type = <0x9>;
-					input_booster,levels = <0x1>;
-					input_booster,cpu2_freqs = <0x0 0x0>;
-					input_booster,cpu1_freqs = <0x1702a0>;
-					input_booster,hmp_boost = <0x1>;
-					input_booster,kfc_freqs = <0x101148>;
-					input_booster,mif_freqs = <0x0>;
-					input_booster,int_freqs = <0x0>;
-					input_booster,ucc_requested_val = <0x1>;
-					input_booster,head_times = <0x2bc>;
-					input_booster,tail_times = <0x2bc>;
-					input_booster,phase_times = <0x0>;
+					inputbooster,resource {
+						compatible = "resource";
+
+						resource@1 {
+							resource,label = "cluster2";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@2 {
+							resource,label = "cluster1";
+							resource,value = <0x1702a0 0x12a570>;
+						};
+
+						resource@3 {
+							resource,label = "cluster0";
+							resource,value = <0xc4c70 0xc4c70>;
+						};
+
+						resource@4 {
+							resource,label = "mif";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@5 {
+							resource,label = "bimc";
+							resource,value = <0x0 0x0>;
+						};
+
+						resource@6 {
+							resource,label = "hmp";
+							resource,value = <0x1 0x1>;
+						};
+
+						resource@7 {
+							resource,label = "ucc";
+							resource,value = <0x1 0x1>;
+						};
+					};
 				};
 			};
 		};
