@@ -1916,7 +1916,7 @@ static ssize_t show_kernel_sysfs_gpu_memory(struct kobject *kobj, struct kobj_at
 	kbase_device_put_list(kbdev_list);
 
 	if (buffer_full)
-		ret += scnprintf(buf + ret, buf_size - ret, "error: buffer is full\n", ret);
+		ret += scnprintf(buf + ret, buf_size - ret, "error: %zi buffer is full\n", ret);
 
 	return ret;
 }
