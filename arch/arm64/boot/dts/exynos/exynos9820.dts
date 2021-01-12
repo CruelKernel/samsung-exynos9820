@@ -5277,7 +5277,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ram bcm_setup=0xffffff80f8e00000 pmic_info=0x3 ccic_info=0x1 firmware_class.path=/vendor/firmware reserve-fimc=0xffffff80fa000000 sec_debug.cp=0 nohugeiomap epx_activate=true";
+		bootargs = [00];
 		linux,initrd-start = <0x84000000>;
 		linux,initrd-end = <0x841fffff>;
 		linux,phandle = <0x1e2>;
