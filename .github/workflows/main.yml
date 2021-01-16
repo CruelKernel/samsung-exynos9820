@@ -35,7 +35,6 @@ jobs:
                      +boeffla_wl_blocker       \
                      +tcp_bbr       \
                      +25hz       \
-                     +always_permit       \
                      +fp_boost       \
                      +noatime       \
                      +nohardening2       \
