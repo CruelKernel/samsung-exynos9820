@@ -31,7 +31,6 @@ jobs:
                      +sdfat                    \
                      +ntfs                     \
                      +force_dex_wqhd           \
-                     +nomorosound                \
                      +boeffla_wl_blocker       \
                      +tcp_bbr       \
                      +25hz       \
