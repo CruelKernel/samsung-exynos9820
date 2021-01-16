@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: default
+  TOOLCHAIN: cruel
   INSTALLER: yes
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Cruel-v4.0"         \
+                     name="Taver2"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
@@ -31,8 +31,19 @@ jobs:
                      +sdfat                    \
                      +ntfs                     \
                      +force_dex_wqhd           \
-                     +morosound                \
+                     +nomorosound                \
                      +boeffla_wl_blocker       \
+                     +tcp_bbr       \
+                     +25hz       \
+                     +always_permit       \
+                     +fp_boost       \
+                     +noatime       \
+                     +nohardening2       \
+                     +noksm       \
+                     +noaudit       \
+                     +noswap       \
+                     +nozram       \
+                     +fake_config       \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
       if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
