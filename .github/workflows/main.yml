@@ -21,7 +21,7 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Taver2"         \
+                     name="Taver3"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
@@ -41,6 +41,7 @@ jobs:
                      +noaudit       \
                      +noswap       \
                      +nozram       \
+                     +always_permit       \
                      +fake_config       \
         2>&1 | tee config.info
     - name: Install gcc-aarch64-linux-gnu
