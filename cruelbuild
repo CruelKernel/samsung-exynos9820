@@ -75,42 +75,42 @@ models = {
     'G970F': {
         'config': 'exynos9820-beyond0lte_defconfig'
     },
-    'G970N': {
-        'config': 'exynos9820-beyond0lteks_defconfig'
-    },
+#    'G970N': {
+#        'config': 'exynos9820-beyond0lteks_defconfig'
+#    },
     'G973F': {
         'config': 'exynos9820-beyond1lte_defconfig'
     },
-    'G973N': {
-        'config': 'exynos9820-beyond1lteks_defconfig'
-    },
+#    'G973N': {
+#        'config': 'exynos9820-beyond1lteks_defconfig'
+#    },
     'G975F': {
         'config': 'exynos9820-beyond2lte_defconfig'
     },
-    'G975N': {
-        'config': 'exynos9820-beyond2lteks_defconfig'
-    },
+#    'G975N': {
+#        'config': 'exynos9820-beyond2lteks_defconfig'
+#    },
     'G977B': {
         'config': 'exynos9820-beyondx_defconfig'
     },
-    'G977N': {
-        'config': 'exynos9820-beyondxks_defconfig'
-    },
+#    'G977N': {
+#        'config': 'exynos9820-beyondxks_defconfig'
+#    },
     'N970F': {
         'config': 'exynos9820-d1_defconfig'
     },
-    'N971N': {
-        'config': 'exynos9820-d1xks_defconfig'
-    },
+#    'N971N': {
+#        'config': 'exynos9820-d1xks_defconfig'
+#    },
     'N975F': {
         'config': 'exynos9820-d2s_defconfig'
     },
     'N976B': {
         'config': 'exynos9820-d2x_defconfig'
     },
-    'N976N': {
-        'config': 'exynos9820-d2xks_defconfig'
-    }
+#    'N976N': {
+#        'config': 'exynos9820-d2xks_defconfig'
+#    }
 }
 
 OBJTREE_SIZE_GB = 3
