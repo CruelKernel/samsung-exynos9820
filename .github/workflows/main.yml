@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G970F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -38,7 +38,7 @@ jobs:
       run: |
         ./build config                    \
                 model=${{ matrix.model }} \
-                name="CRUEL-V3.6"         \
+                name="CRUEL-V3.6_by_PAKHARENKO"         \
                 toolchain=$TOOLCHAIN      \
                 +magisk                   \
                 +nohardening              \
