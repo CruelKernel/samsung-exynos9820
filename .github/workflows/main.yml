@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G970F" ]
 
     steps:
     - uses: actions/checkout@v2
