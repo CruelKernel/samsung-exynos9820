@@ -2722,7 +2722,7 @@ wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 			WL_INFORM_MEM(("bss list empty. report sched_scan_stop\n"));
 			wl_cfg80211_stop_pno(cfg,  bcmcfg_to_prmry_ndev(cfg));
 			/* schedule the work to indicate sched scan stop to cfg layer */
-			schedule_work(&cfg->sched_scan_stop_work);
+			schedule_delayed_work(&cfg->sched_scan_stop_work, 0);
 		}
 	}
 #endif /* WL_SCHED_SCAN */
@@ -3627,6 +3627,8 @@ wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 	WL_INFORM((">>> SCHED SCAN STOP\n"));
 	wl_cfg80211_stop_pno(cfg, dev);
 
+	cancel_delayed_work(&cfg->sched_scan_stop_work);
+
 	mutex_lock(&cfg->scan_sync);
 	if (cfg->sched_scan_req) {
 		if (cfg->sched_scan_running && wl_get_drv_status(cfg, SCANNING, dev)) {
@@ -3651,14 +3653,17 @@ wl_cfgscan_sched_scan_stop_work(struct work_struct *work)
 {
 	struct bcm_cfg80211 *cfg = NULL;
 	struct wiphy *wiphy = NULL;
+	struct delayed_work *dw = to_delayed_work(work);
 
-	cfg = container_of(work, struct bcm_cfg80211, sched_scan_stop_work);
-	wiphy = cfg->sched_scan_req->wiphy;
+	GCC_DIAGNOSTIC_PUSH_SUPPRESS_CAST();
+	cfg = container_of(dw, struct bcm_cfg80211, sched_scan_stop_work);
+	GCC_DIAGNOSTIC_POP();
 
 	/* Hold rtnl_lock -> scan_sync lock to be in sync with cfg80211_ops path */
 	rtnl_lock();
 	mutex_lock(&cfg->scan_sync);
 	if (cfg->sched_scan_req) {
+		wiphy = cfg->sched_scan_req->wiphy;
 		/* Indicate sched scan stopped so that user space
 		 * can do a full scan incase found match is empty.
 		 */
@@ -3892,7 +3897,6 @@ static void wl_scan_timeout(unsigned long data)
 		dhdp->scan_timeout_occurred = FALSE;
 	}
 #endif /* DHD_FW_COREDUMP */
-	cfg->scan_request = NULL;
 
 	msg.event_type = hton32(WLC_E_ESCAN_RESULT);
 	msg.status = hton32(WLC_E_STATUS_TIMEOUT);
@@ -4489,7 +4493,7 @@ out_err:
 			WL_ERR(("sched_scan stopped\n"));
 			wl_cfg80211_stop_pno(cfg,  bcmcfg_to_prmry_ndev(cfg));
 			/* schedule the work to indicate sched scan stop to cfg layer */
-			schedule_work(&cfg->sched_scan_stop_work);
+			schedule_delayed_work(&cfg->sched_scan_stop_work, 0);
 		} else {
 			WL_ERR(("sched scan req null!\n"));
 		}

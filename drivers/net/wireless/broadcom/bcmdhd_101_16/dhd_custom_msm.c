@@ -65,7 +65,7 @@ static int wlan_host_wake_irq = 0;
 #define WIFI_WLAN_HOST_WAKE_PROPNAME    "wlan-host-wake-gpio"
 #endif /* CONFIG_BCMDHD_OOB_HOST_WAKE */
 
-int __init
+int
 dhd_wifi_init_gpio(void)
 {
 	char *wlan_node = DHD_DT_COMPAT_ENTRY;
@@ -213,7 +213,7 @@ struct wifi_platform_data dhd_wlan_control = {
 };
 EXPORT_SYMBOL(dhd_wlan_control);
 
-int __init
+int
 dhd_wlan_init(void)
 {
 	int ret;

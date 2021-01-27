@@ -1915,7 +1915,7 @@ struct bcm_cfg80211 {
 	wl_roamoff_info_t *roamoff_info;
 #endif /* DEBUG_SETROAMMODE */
 #ifdef WL_SCHED_SCAN
-	struct work_struct sched_scan_stop_work;
+	struct delayed_work sched_scan_stop_work;
 #endif /* WL_SCHED_SCAN */
 };
 

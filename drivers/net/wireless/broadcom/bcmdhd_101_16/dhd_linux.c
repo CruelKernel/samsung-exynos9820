@@ -197,6 +197,12 @@ static int dhd_wait_for_file_dump(dhd_pub_t *dhdp);
 /* Maximum STA per radio */
 #define DHD_MAX_STA     32
 
+#if defined(IFACE_HANG_FORCE_DEV_CLOSE) && defined(HANG_DELAY_BEFORE_DEV_CLOSE)
+#ifndef WAIT_FOR_DEV_CLOSE_MAX
+#define WAIT_FOR_DEV_CLOSE_MAX 50
+#endif /* WAIT_FOR_DEV_CLOSE_MAX */
+#endif /* IFACE_HANG_FORCE_DEV_CLOSE && HANG_DELAY_BEFORE_DEV_CLOSE */
+
 #ifdef DHD_EVENT_LOG_FILTER
 #include <dhd_event_log_filter.h>
 #endif /* DHD_EVENT_LOG_FILTER */
@@ -378,6 +384,12 @@ dhd_pub_t	*g_dhd_pub = NULL;
 #if defined(BT_OVER_SDIO)
 #include "dhd_bt_interface.h"
 #endif /* defined (BT_OVER_SDIO) */
+
+#if defined(CONFIG_SOC_EXYNOS2100) || defined(CONFIG_SOC_EXYNOS1000)
+#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
+#include <soc/samsung/exynos-s2mpu.h>
+#endif /* CONFIG_EXYNOS_S2MPU */
+#endif /* CONFIG_SOC_EXYNOS2100 || CONFIG_SOC_EXYNOS1000 */
 
 #ifdef WL_STATIC_IF
 bool dhd_is_static_ndev(dhd_pub_t *dhdp, struct net_device *ndev);
@@ -890,6 +902,18 @@ static int dhd_toe_set(dhd_info_t *dhd, int idx, uint32 toe_ol);
 
 static int dhd_wl_host_event(dhd_info_t *dhd, int ifidx, void *pktdata, uint16 pktlen,
 		wl_event_msg_t *event_ptr, void **data_ptr);
+
+#ifdef DHD_MAP_LOGGING
+void dhd_smmu_fault_handler(uint32 axid, ulong fault_addr);
+#endif /* DHD_MAP_LOGGING */
+
+#if defined(CONFIG_SOC_EXYNOS2100) || defined(CONFIG_SOC_EXYNOS1000)
+#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
+int s2mpufd_notifier_callback(struct s2mpufd_notifier_block *block,
+		struct s2mpufd_notifier_info *info);
+static void dhd_module_s2mpu_register(struct device *dev);
+#endif /* CONFIG_EXYNOS_S2MPU */
+#endif /* CONFIG_SOC_EXYNOS2100 || CONFIG_SOC_EXYNOS1000 */
 
 #if defined(CONFIG_PM_SLEEP)
 static int dhd_pm_callback(struct notifier_block *nfb, unsigned long action, void *ignored)
@@ -8957,6 +8981,12 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	}
 #endif /* defined(DHD_TX_PROFILE) */
 
+#if defined(CONFIG_SOC_EXYNOS2100) || defined(CONFIG_SOC_EXYNOS1000)
+#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
+	dhd_module_s2mpu_register(dhd_bus_to_dev(bus));
+#endif /* CONFIG_EXYNOS_S2MPU */
+#endif /* CONFIG_SOC_EXYNOS2100 || CONFIG_SOC_EXYNOS1000 */
+
 	return &dhd->pub;
 
 fail:
@@ -13586,7 +13616,7 @@ _dhd_module_init(void)
 	return err;
 }
 
-static int __init
+static int
 dhd_module_init(void)
 {
 	int err;
@@ -16087,15 +16117,23 @@ static void dhd_hang_process(struct work_struct *work_data)
 	}
 #ifdef IFACE_HANG_FORCE_DEV_CLOSE
 	/*
-	 * For HW2, dev_close need to be done to recover
-	 * from upper layer after hang. For Interposer skip
-	 * dev_close so that dhd iovars can be used to take
-	 * socramdump after crash, also skip for HW4 as
-	 * handling of hang event is different
+	 * In case of wif scan only mode, upper layer doesn't handle hang
+	 * So dev_close need to be called explicitly
 	 */
+#ifdef HANG_DELAY_BEFORE_DEV_CLOSE
+	{
+		int wait_cnt = WAIT_FOR_DEV_CLOSE_MAX;
+		while (dev && (dev->flags & IFF_UP) && (wait_cnt > 0)) {
+			wait_cnt--;
+			OSL_SLEEP(10);
+		}
+		DHD_ERROR(("dev->name : %s wait for interface down done, wait_cnt:%d\n",
+			((dev == NULL) ? "null" : dev->name), wait_cnt));
+	}
+#endif /* HANG_DELAY_BEFORE_DEV_CLOSE */
 
 	rtnl_lock();
-	for (i = 0; i < DHD_MAX_IFS; i++) {
+	for (i = 0; i < DHD_MAX_IFS && dhd; i++) {
 		ndev = dhd->iflist[i] ? dhd->iflist[i]->net : NULL;
 		if (ndev && (ndev->flags & IFF_UP)) {
 			DHD_ERROR(("ndev->name : %s dev close\n",
@@ -23741,3 +23779,44 @@ bool dhd_get_napi_sched_cnt(dhd_pub_t * dhdp,
 	return TRUE;
 }
 #endif /* TPUT_DEBUG_DUMP */
+
+#if defined(CONFIG_SOC_EXYNOS2100) || defined(CONFIG_SOC_EXYNOS1000)
+#if IS_ENABLED(CONFIG_EXYNOS_S2MPU)
+/*
+ * return
+ * S2MPUFD_NOTIFY_BAD : watchdog reset
+ * S2MPUFD_NOTIFY_OK  : No watchdog reset
+ */
+int s2mpufd_notifier_callback(struct s2mpufd_notifier_block *block,
+		struct s2mpufd_notifier_info *info)
+{
+	int ret = S2MPUFD_NOTIFY_OK;
+
+	DHD_ERROR(("%s: fault_addr:0x%lx, rw:%d, len:%d, type:%d \n",
+			__FUNCTION__, info->fault_addr, info->fault_rw,
+			info->fault_len, info->fault_type));
+	dhd_smmu_fault_handler(0, info->fault_addr);
+
+	DHD_ERROR(("%s: return : %d\n", __FUNCTION__, ret));
+
+	return ret;
+}
+
+static void dhd_module_s2mpu_register(struct device *dev)
+{
+	struct s2mpufd_notifier_block *s2mpu_nb = NULL;
+
+	DHD_ERROR(("%s: Enter\n", __FUNCTION__));
+
+	s2mpu_nb = devm_kzalloc(dev, sizeof(struct s2mpufd_notifier_block), GFP_KERNEL);
+	if (!s2mpu_nb) {
+		DHD_ERROR(("%s: devm_kzalloc fail\n", __FUNCTION__));
+		return;
+	}
+
+	s2mpu_nb->subsystem = "PCIE_GEN2";
+	s2mpu_nb->notifier_call = s2mpufd_notifier_callback;
+	s2mpufd_notifier_call_register(s2mpu_nb);
+}
+#endif /* CONFIG_EXYNOS_S2MPU */
+#endif /* CONFIG_SOC_EXYNOS2100 || CONFIG_SOC_EXYNOS1000 */

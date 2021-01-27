@@ -64,6 +64,7 @@
 #if defined(CONFIG_EXYNOS_DISPLAYPORT)
 #include "displayport.h"
 #endif
+#define PROFILE_DECON_DISABLE
 
 #if defined(CONFIG_SEC_DISPLAYPORT_LOGGER)
 #include <linux/dp_logger.h>
@@ -863,6 +864,14 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 	struct decon_mode_info psr;
 	int ret = 0;
 	int idle_status = 0;
+#ifdef PROFILE_DECON_DISABLE
+	u32 frames;
+	ktime_t s_time;
+	s64 diff_time;
+
+	s_time = ktime_get();
+	frames = atomic_read(&decon->up.remaining_frame);
+#endif
 
 	if (IS_DECON_OFF_STATE(decon)) {
 		decon_warn("%s decon-%d already off (%s)\n", __func__,
@@ -881,6 +890,11 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 	if (atomic_read(&decon->up.remaining_frame))
 		kthread_flush_worker(&decon->up.worker);
 
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s: elapsed time to flush decon-%d thread: %lldusec, remaining_frame: %d\n",
+		__func__, decon->id, diff_time, frames);
+#endif
 #if defined(CONFIG_EXYNOS_DISPLAYPORT)
 	if (decon->dt.out_type == DECON_OUT_DP) {
 		decon_info("decon2 disable: flush worker done %d\n", decon2_event_count);
@@ -902,10 +916,20 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 		decon->eint_status = 0;
 	}
 
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s elapsed time to disable interrupt: %lldusec\n", __func__, diff_time);
+#endif
+
 	ret = decon_reg_stop(decon->id, decon->dt.out_idx[0], &psr, true,
 			decon->lcd_info->fps);
 	if (ret < 0)
 		decon_dump(decon, REQ_DSI_DUMP);
+
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s: elapsed time to stop decon reg: %lldusec\n", __func__, diff_time);
+#endif
 
 	/* DMA protection disable must be happen on dpp domain is alive */
 #if defined(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)
@@ -913,6 +937,11 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 #endif
 	decon->cur_using_dpp = 0;
 	decon_dpp_stop(decon, false);
+
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s: elapsed time to stop dpp: %lldusec\n", __func__, diff_time);
+#endif
 
 #if defined(CONFIG_EXYNOS_BTS)
 	decon->bts.ops->bts_release_bw(decon);
@@ -923,6 +952,11 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 		decon_err("%s decon-%d failed to set subdev %s state\n",
 				__func__, decon->id, decon_state_names[state]);
 	}
+
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s: elapsed time to disable dsim: %lldusec\n", __func__, diff_time);
+#endif
 
 	pm_relax(decon->dev);
 	dev_warn(decon->dev, "pm_relax");
@@ -948,6 +982,12 @@ int _decon_disable(struct decon_device *decon, enum decon_state state)
 			decon_info("decon%d %s off\n", decon->id,
 				decon->dt.pd_name);
 	}
+#endif
+#ifdef PROFILE_DECON_DISABLE
+	diff_time = ktime_to_us(ktime_sub(ktime_get(), s_time));
+	decon_info("%s: totol elapsed time: %lldusec\n", __func__, diff_time);
+	if (diff_time >= 10000000)
+		BUG();
 #endif
 
 	return ret;
@@ -2933,7 +2973,6 @@ static int decon_set_win_config(struct decon_device *decon,
 			sizeof(struct decon_rect));
 
 	if (num_of_window) {
-		fd_install(win_data->retire_fence, sync_file->file);
 		decon_create_release_fences(decon, win_data, sync_file);
 #if !defined(CONFIG_SUPPORT_LEGACY_FENCE)
 		regs->retire_fence = dma_fence_get(sync_file->fence);
@@ -2949,6 +2988,12 @@ static int decon_set_win_config(struct decon_device *decon,
 #endif
 	list_add_tail(&regs->list, &decon->up.list);
 	atomic_inc(&decon->up.remaining_frame);
+	win_data->extra.remained_frames =
+		        atomic_read(&decon->up.remaining_frame);
+	if (atomic_read(&decon->up.remaining_frame) >= 20)
+		decon_warn("%s: decon-%d fps:%d remaining_frame:%d\n",
+				__func__, decon->id, decon->lcd_info->fps,
+				atomic_read(&decon->up.remaining_frame));
 	mutex_unlock(&decon->up.lock);
 
 #ifndef CONFIG_DYNAMIC_FREQ
@@ -2965,6 +3010,18 @@ static int decon_set_win_config(struct decon_device *decon,
 #endif
 
 	kthread_queue_work(&decon->up.worker, &decon->up.work);
+
+	/**
+	 * The code is moved here because the DPU driver may get a wrong fd
+	 * through the released file pointer,
+	 * if the user(HWC) closes the fd and releases the file pointer.
+	 *
+	 * Since the user land can use fd from this point/time,
+	 * it can be guaranteed to use an unreleased file pointer
+	 * when creating a rel_fence in decon_create_release_fences(...)
+	 */
+	if (num_of_window)
+		fd_install(win_data->retire_fence, sync_file->file);
 
 	mutex_unlock(&decon->lock);
 	decon_systrace(decon, 'C', "decon_win_config", 0);
@@ -2987,6 +3044,7 @@ err_prepare:
 		put_unused_fd(win_data->retire_fence);
 	}
 	win_data->retire_fence = -1;
+	win_data->extra.remained_frames = -1;
 
 	for (i = 0; i < decon->dt.max_win; i++)
 		for (j = 0; j < regs->plane_cnt[i]; ++j)
@@ -3172,7 +3230,6 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 	struct decon_hdr_capabilities hdr_capa;
 	struct decon_hdr_capabilities_info hdr_capa_info;
 	struct decon_user_window user_window;	/* cursor async */
-	struct decon_win_config_data __user *argp;
 	struct decon_disp_info __user *argp_info;
 	struct dpp_restrictions_info __user *argp_res;
 	struct decon_color_mode_info cm_info;
@@ -3210,13 +3267,11 @@ static int decon_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = decon_set_vsync_int(info, active);
 		break;
 
+	case S3CFB_WIN_CONFIG_OLD:
 	case S3CFB_WIN_CONFIG:
-		argp = (struct decon_win_config_data __user *)arg;
 		DPU_EVENT_LOG(DPU_EVT_WIN_CONFIG, &decon->sd, ktime_set(0, 0));
 		decon_systrace(decon, 'C', "decon_win_config", 1);
-		if (copy_from_user(&win_data,
-				   (struct decon_win_config_data __user *)arg,
-				   sizeof(struct decon_win_config_data))) {
+		if (copy_from_user(&win_data, (void __user *)arg, _IOC_SIZE(cmd))) {
 			ret = -EFAULT;
 			break;
 		}

@@ -14761,6 +14761,9 @@ static void wl_deinit_priv(struct bcm_cfg80211 *cfg)
 	wl_destroy_event_handler(cfg);
 	wl_flush_eq(cfg);
 	wl_link_down(cfg);
+#ifdef WL_SCHED_SCAN
+	cancel_delayed_work_sync(&cfg->sched_scan_stop_work);
+#endif /* WL_SCHED_SCAN */
 	del_timer_sync(&cfg->scan_timeout);
 #ifdef DHD_LOSSLESS_ROAMING
 	del_timer_sync(&cfg->roam_timeout);
@@ -14998,7 +15001,7 @@ s32 wl_cfg80211_attach(struct net_device *ndev, void *context)
 #endif /* WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT */
 
 #ifdef WL_SCHED_SCAN
-	INIT_WORK(&cfg->sched_scan_stop_work, wl_cfgscan_sched_scan_stop_work);
+	INIT_DELAYED_WORK(&cfg->sched_scan_stop_work, wl_cfgscan_sched_scan_stop_work);
 #endif /* WL_SCHED_SCAN */
 	INIT_DELAYED_WORK(&cfg->pm_enable_work, wl_cfg80211_work_handler);
 	INIT_DELAYED_WORK(&cfg->loc.work, wl_cfgscan_listen_complete_work);
@@ -16446,7 +16449,7 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	}
 
 #ifdef WL_SCHED_SCAN
-	cancel_work_sync(&cfg->sched_scan_stop_work);
+	cancel_delayed_work(&cfg->sched_scan_stop_work);
 #endif /* WL_SCHED_SCAN */
 #ifdef WL_SAR_TX_POWER
 	cfg->wifi_tx_power_mode = WIFI_POWER_SCENARIO_INVALID;

@@ -5454,16 +5454,17 @@ int wl_cfg80211_set_he_mode(struct net_device *dev, struct bcm_cfg80211 *cfg,
 	he_xtlv_v32 v32;
 	u32 he_feature = 0;
 	s32 err = 0;
+	uint8 iovar_buf[WLC_IOCTL_SMLEN];
 
 	read_he_xtlv.id = WL_HE_CMD_FEATURES;
 	read_he_xtlv.len = 0;
 	err = wldev_iovar_getbuf_bsscfg(dev, "he", &read_he_xtlv, sizeof(read_he_xtlv),
-			cfg->ioctl_buf, WLC_IOCTL_SMLEN, bssidx, NULL);
+			iovar_buf, WLC_IOCTL_SMLEN, bssidx, NULL);
 	if (err < 0) {
 		WL_ERR(("HE get failed. error=%d\n", err));
 		return err;
 	} else {
-		he_feature =  *(int*)cfg->ioctl_buf;
+		he_feature = *(int*)iovar_buf;
 		he_feature = dtoh32(he_feature);
 	}
 

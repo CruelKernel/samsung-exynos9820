@@ -1201,11 +1201,10 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 			intstatus = dhdpcie_bus_cfg_read_dword(bus, PCI_INT_STATUS, 4);
 
 			if (intstatus == (uint32)-1) {
-				DHD_ERROR(("%s : Invalid intstatus for cto recovery\n",
-					__FUNCTION__));
+				DHD_ERROR(("%s: Invalid cfg intstatus(0x%x):0x%x, pcie link down\n",
+					__FUNCTION__, PCI_INT_STATUS, intstatus));
 				bus->is_linkdown = 1;
 				dhdpcie_disable_irq_nosync(bus);
-				dhd_prot_debug_info_print(bus->dhd);
 				break;
 			}
 

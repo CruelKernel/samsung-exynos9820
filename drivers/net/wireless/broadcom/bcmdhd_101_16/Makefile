@@ -687,6 +687,7 @@ endif
   DHDCFLAGS += -DWL_BCNRECV
 # Iface force dev close
   DHDCFLAGS += -DIFACE_HANG_FORCE_DEV_CLOSE
+  DHDCFLAGS += -DHANG_DELAY_BEFORE_DEV_CLOSE
 
 # Basic types and constants relating to 802.11ax
   DHDCFLAGS += -DWL11AX
@@ -961,6 +962,9 @@ endif
   DHDCFLAGS += -DWL_CAC_TS
 # FAKEAP
   DHDCFLAGS += -DWL_BCNRECV
+# Iface force dev close
+  DHDCFLAGS += -DIFACE_HANG_FORCE_DEV_CLOSE
+  DHDCFLAGS += -DHANG_DELAY_BEFORE_DEV_CLOSE
 
 # Basic types and constants relating to 802.11ax
   DHDCFLAGS += -DWL11AX
