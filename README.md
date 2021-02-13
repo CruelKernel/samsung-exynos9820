@@ -291,6 +291,9 @@ $ sudo apt-get install build-essential libncurses-dev libtinfo5 bc bison flex li
 # If you use Fedora:
 $ sudo dnf group install "Development Tools"
 $ sudo dnf install ncurses-devel ncurses-compat-libs bc bison flex elfutils-libelf-devel openssl-devel heimdall android-tools curl p7zip
+# If you use Arch/Manjaro (from ..::M::..):
+$ sudo pacman -Sy base-devel ncurses bc bison flex openssl libelf heimdall android-tools curl p7zip --needed
+$ sudo link /lib/libtinfo.so.6 /lib/libtinfo.so.5
 
 # Install avbtool
 $ wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/master.tar.gz -O - | tar xzf - avbtool.py
