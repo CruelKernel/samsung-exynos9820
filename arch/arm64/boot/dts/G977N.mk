@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0
-dtbo-y += samsung/exynos9820-beyondx_kor_08.dtbo
-dtbo-y += samsung/exynos9820-beyondx_kor_02.dtbo
-dtbo-y += samsung/exynos9820-beyondx_kor_05.dtbo
-dtbo-y += samsung/exynos9820-beyondx_kor_00.dtbo
-dtbo-y += samsung/exynos9820-beyondx_kor_04.dtbo
-dtbo-y += samsung/exynos9820-beyondx_kor_03.dtbo
 dtbo-y += samsung/exynos9820-beyondx_kor_01.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_02.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_08.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_03.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_04.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_05.dtbo
 dtbo-y += samsung/exynos9820-beyondx_kor_06.dtbo
 dtbo-y += samsung/exynos9820-beyondx_kor_07.dtbo
+dtbo-y += samsung/exynos9820-beyondx_kor_00.dtbo
 dtb-y += exynos/exynos9820.dtb
 
 targets += dtbs
