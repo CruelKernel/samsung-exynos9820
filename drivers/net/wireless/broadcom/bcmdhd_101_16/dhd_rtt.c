@@ -1571,7 +1571,7 @@ static int
 dhd_rtt_get_version(dhd_pub_t *dhd, int *out_version)
 {
 	int ret;
-	ftm_subcmd_info_t subcmd_info;
+	ftm_subcmd_info_t subcmd_info = {};
 	subcmd_info.name = "ver";
 	subcmd_info.cmdid = WL_PROXD_CMD_GET_VERSION;
 	subcmd_info.handler = NULL;
