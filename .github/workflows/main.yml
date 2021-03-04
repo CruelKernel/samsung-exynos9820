@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "N976B" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -21,7 +21,8 @@ jobs:
         set -e -o pipefail
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="Cruel-V3.9"         \
+                     os_patch_level=2020-12     \
+                     name="Cruel-V3.9-New-Magisk"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
