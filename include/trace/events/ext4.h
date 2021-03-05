@@ -879,6 +879,7 @@ TRACE_EVENT(ext4_free_blocks,
 		  show_free_flags(__entry->flags))
 );
 
+/* @fs.sec -- 84802e246d0781e97b5b13c60ae460dc346ba707 -- */
 TRACE_EVENT(ext4_sync_file_enter,
 	TP_PROTO(struct file *file, int datasync),
 

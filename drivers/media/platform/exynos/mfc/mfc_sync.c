@@ -305,7 +305,8 @@ static int __mfc_enc_ctx_ready(struct mfc_ctx *ctx)
 		return 1;
 
 	/* context is ready to encode remain frames */
-	if (ctx->state == MFCINST_FINISHING && dst_buf_queue_greater_than_0)
+	if (ctx->state == MFCINST_FINISHING &&
+		src_buf_queue_greater_than_0 && dst_buf_queue_greater_than_0)
 		return 1;
 
 	mfc_perf_cancel_drv_margin(dev);

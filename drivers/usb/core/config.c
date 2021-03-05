@@ -916,12 +916,6 @@ int usb_get_configuration(struct usb_device *dev)
 		if (dev->quirks & USB_QUIRK_DELAY_INIT)
 			msleep(200);
 
-		dev->do_remote_wakeup =
-			(desc->bmAttributes & USB_CONFIG_ATT_WAKEUP) ? 1 : 0;
-		if (dev->do_remote_wakeup == 1) {
-			device_init_wakeup(ddev, 1);
-		}
-
 		result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno,
 		    bigbuffer, length);
 		if (result < 0) {

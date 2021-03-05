@@ -477,6 +477,7 @@ static void sensor_3j1_cis_set_paf_stat_enable(u32 mode, cis_shared_data *cis_da
 	case SENSOR_3J1_3968X2232_30FPS:
 	case SENSOR_3J1_3968X1880_30FPS:
 	case SENSOR_3J1_2944X2208_30FPS:
+	case SENSOR_3J1_3216X2208_30FPS:
 	case SENSOR_3J1_3216X1808_30FPS:
 	case SENSOR_3J1_3216X1528_30FPS:
 	case SENSOR_3J1_2208X2208_30FPS:

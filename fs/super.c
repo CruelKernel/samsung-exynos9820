@@ -1344,25 +1344,20 @@ out:
 	return ERR_PTR(error);
 }
 
-/*
- * Setup private BDI for given superblock. It gets automatically cleaned up
- * in generic_shutdown_super().
- */
-int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
+static int __super_setup_bdi_name(struct super_block *sb,
+				  struct backing_dev_info *(*bdi_alloc_func)(gfp_t),
+				  char *fmt, va_list args)
 {
 	struct backing_dev_info *bdi;
 	int err;
-	va_list args;
 
-	bdi = bdi_alloc(GFP_KERNEL);
+	bdi = bdi_alloc_func(GFP_KERNEL);
 	if (!bdi)
 		return -ENOMEM;
 
 	bdi->name = sb->s_type->name;
 
-	va_start(args, fmt);
 	err = bdi_register_va(bdi, fmt, args);
-	va_end(args);
 	if (err) {
 		bdi_put(bdi);
 		return err;
@@ -1372,7 +1367,40 @@ int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
 
 	return 0;
 }
+
+/*
+ * Setup private BDI for given superblock. It gets automatically cleaned up
+ * in generic_shutdown_super().
+ */
+int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, fmt);
+	ret =  __super_setup_bdi_name(sb, bdi_alloc, fmt, args);
+	va_end(args);
+
+	return ret;
+}
 EXPORT_SYMBOL(super_setup_bdi_name);
+
+/*
+ * Setup private SEC_BDI for given superblock. It gets automatically cleaned up
+ * in generic_shutdown_super().
+ */
+int sec_super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, fmt);
+	ret =  __super_setup_bdi_name(sb, sec_bdi_alloc, fmt, args);
+	va_end(args);
+
+	return ret;
+}
+EXPORT_SYMBOL(sec_super_setup_bdi_name);
 
 /*
  * Setup private BDI for given superblock. I gets automatically cleaned up

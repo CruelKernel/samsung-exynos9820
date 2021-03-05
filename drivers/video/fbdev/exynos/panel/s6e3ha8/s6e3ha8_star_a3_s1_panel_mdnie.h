@@ -61,6 +61,8 @@
 #define S6E3HA8_STAR_A3_S1_COEFF_Q4_G    (-996)
 #define S6E3HA8_STAR_A3_S1_COEFF_Q4_H    (-913)
 
+#define S6E3HA8_STAR_MAX_NIHGT_LEVEL	 (11)
+
 /* ############################################# XXX_MODE ############################################# */
 /*
 static unsigned char star_a3_s1_mdnie_xxx_table[MODE_MAX][S6E3HA8_MDNIE_LEN] = {
@@ -1552,7 +1554,7 @@ static unsigned char star_a3_s1_sensor_rgb_table[][3] = {
 	{ 0xff, 0xff, 0xff },
 };
 
-static unsigned char star_a3_s1_night_mode_table[MAX_NIGHT_LEVEL][S6E3HA8_NIGHT_MODE_LEN] = {
+static unsigned char star_a3_s1_night_mode_table[S6E3HA8_STAR_MAX_NIHGT_LEVEL][S6E3HA8_NIGHT_MODE_LEN] = {
 	{ 0x00, 0xff, 0xf7, 0x00, 0xef, 0x00, 0xff, 0x00, 0x00, 0xf7, 0xef, 0x00, 0xff, 0x00, 0xf7, 0x00, 0x00, 0xef, 0xff, 0x00, 0xf7, 0x00, 0xef, 0x00 }, /* 6500K */
 	{ 0x00, 0xff, 0xf8, 0x00, 0xea, 0x00, 0xff, 0x00, 0x00, 0xf8, 0xea, 0x00, 0xff, 0x00, 0xf8, 0x00, 0x00, 0xea, 0xff, 0x00, 0xf8, 0x00, 0xea, 0x00 }, /* 6100K */
 	{ 0x00, 0xff, 0xf5, 0x00, 0xe2, 0x00, 0xff, 0x00, 0x00, 0xf5, 0xe2, 0x00, 0xff, 0x00, 0xf5, 0x00, 0x00, 0xe2, 0xff, 0x00, 0xf5, 0x00, 0xe2, 0x00 }, /* 5700K */
@@ -2166,9 +2168,9 @@ static struct mdnie_tune s6e3ha8_star_a3_s1_mdnie_tune = {
 			[CCRD_PT_9] = { 0xff, 0xfe, 0xf6 }, /* Tune_9 */
 		},
 	},
-	.num_ldu_mode = 5,
-	.num_night_level = 10,
-	.num_color_lens_color = 11,
-	.num_color_lens_level = 8,
+	.num_ldu_mode = MAX_LDU_MODE,
+	.num_night_level = S6E3HA8_STAR_MAX_NIHGT_LEVEL,
+	.num_color_lens_color = COLOR_LENS_COLOR_MAX,
+	.num_color_lens_level = COLOR_LENS_LEVEL_MAX,
 };
 #endif /* __S6E3HA8_STAR_A3_S1_PANEL_MDNIE_H__ */

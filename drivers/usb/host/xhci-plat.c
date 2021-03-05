@@ -535,6 +535,9 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	device_enable_async_suspend(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
 
+	device_set_wakeup_enable(&xhci->main_hcd->self.root_hub->dev, 1);
+	device_set_wakeup_enable(&xhci->shared_hcd->self.root_hub->dev, 1);
+
 	/*
 	 * Prevent runtime pm from being on as default, users should enable
 	 * runtime pm using power/control in sysfs.

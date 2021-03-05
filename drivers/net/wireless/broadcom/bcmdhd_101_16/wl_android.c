@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Android related functions
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -4915,11 +4915,11 @@ exit:
 	return ret;
 }
 
-int wl_android_wifi_off(struct net_device *dev, bool on_failure)
+int wl_android_wifi_off(struct net_device *dev, bool force_off)
 {
 	int ret = 0;
 
-	DHD_ERROR(("%s g_wifi_on=%d on_failure=%d\n", __FUNCTION__, g_wifi_on, on_failure));
+	DHD_ERROR(("%s g_wifi_on=%d force_off=%d\n", __FUNCTION__, g_wifi_on, force_off));
 	if (!dev) {
 		DHD_TRACE(("wl_android_wifi_off: dev is null\n"));
 		return -EINVAL;
@@ -4933,7 +4933,7 @@ int wl_android_wifi_off(struct net_device *dev, bool on_failure)
 	}
 #endif	/* BCMPCIE && DHD_DEBUG_UART */
 	dhd_net_if_lock(dev);
-	if (g_wifi_on || on_failure) {
+	if (g_wifi_on || force_off) {
 #if defined(BCMSDIO) || defined(BCMPCIE)
 		ret = dhd_net_bus_devreset(dev, TRUE);
 #ifdef BCMSDIO

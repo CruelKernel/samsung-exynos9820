@@ -1874,7 +1874,8 @@ int copy_sensor_ctl(struct fimc_is_sensor_interface *itf,
 
 		if (shot->uctl.isModeUd.wdr_mode == CAMERA_WDR_ON ||
 				shot->uctl.isModeUd.wdr_mode == CAMERA_WDR_AUTO ||
-				shot->uctl.isModeUd.wdr_mode == CAMERA_WDR_AUTO_LIKE)
+				shot->uctl.isModeUd.wdr_mode == CAMERA_WDR_AUTO_LIKE ||
+				shot->uctl.isModeUd.wdr_mode == CAMERA_WDR_AUTO_3P)
 			itf->cis_mode = ITF_CIS_SMIA_WDR;
 		else
 			itf->cis_mode = ITF_CIS_SMIA;

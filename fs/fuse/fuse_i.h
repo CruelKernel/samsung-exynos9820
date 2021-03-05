@@ -28,6 +28,12 @@
 #include <linux/refcount.h>
 #include <linux/freezer.h>
 
+#ifdef CONFIG_FUSE_SUPPORT_STLOG
+#include <linux/fslog.h>
+#else
+#define ST_LOG(fmt, ...)
+#endif
+
 /** Max number of pages that can be used in a single read request */
 #define FUSE_MAX_PAGES_PER_REQ 32
 
@@ -118,6 +124,8 @@ enum {
 	FUSE_I_INIT_RDPLUS,
 	/** An operation changing file size is in progress  */
 	FUSE_I_SIZE_UNSTABLE,
+	/** Can be filled in by open, to use direct I/O on this file. */
+	FUSE_I_ATTR_FORCE_SYNC,
 };
 
 struct fuse_conn;

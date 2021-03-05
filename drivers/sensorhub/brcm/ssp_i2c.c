@@ -51,7 +51,7 @@ int ssp_spi_sync(struct ssp_data *data, struct ssp_msg *msg, int timeout)
 	int status = 0;
 
 	if (msg->length == 0) {
-		pr_err("[SSP]: %s length must not be 0\n", __func__);
+		pr_err("[SSP] : %s length must not be 0\n", __func__);
 		clean_msg(msg);
 		return status;
 	}
@@ -223,6 +223,12 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 	if ((!(data->uSensorState & (1ULL << uSensorType)))
 		&& (uInst <= CHANGE_DELAY)) {
 		pr_err("[SSP]: %s - Bypass Inst Skip! - %u\n",
+			__func__, uSensorType);
+		return FAIL;
+	}
+
+	if (uSensorType >= SENSOR_MAX && (uInst == ADD_SENSOR || uInst == CHANGE_DELAY)){
+		pr_err("[SSP]: %s - Invalid SensorType! - %u\n",
 			__func__, uSensorType);
 		return FAIL;
 	}

@@ -220,7 +220,7 @@ static int jsqz_buffer_map(struct jsqz_ctx *ctx,
 	//use iommu to map and get the virtual memory address
 	ret = jsqz_dma_addr_map(ctx->jsqz_dev->dev, dma_buffer, dir);
 	if (ret) {
-		dev_dbg(ctx->jsqz_dev->dev, "%s: mapping FAILED!\n", __func__);
+		dev_info(ctx->jsqz_dev->dev, "%s: mapping FAILED!\n", __func__);
 		jsqz_unmap_dma_attachment(ctx->jsqz_dev->dev,
 				   &dma_buffer->plane, dir);
 		return ret;
@@ -526,6 +526,7 @@ void jsqz_task_schedule(struct jsqz_task *task)
 				task->user_task.buf_q[i] = init_q_table[i];
 			}
 			dev_info(jsqz_device->dev, "%s: jsqz device time out!!\n", __func__);
+			jsqz_print_all_regs(jsqz_device);
 		}
 		else {
 			jsqz_get_output_regs(jsqz_device->regs, task->user_task.buf_q);
@@ -542,70 +543,6 @@ err:
 	}
 	dev_dbg(jsqz_device->dev, "%s: END\n", __func__);
 	return;
-
-#if 0
-next_task:
-	spin_lock_irqsave(&jsqz_device->lock_task, flags);
-
-	if (list_empty(&jsqz_device->tasks)) {
-		/* No task to run */
-		dev_dbg(jsqz_device->dev
-			, "%s: no tasks to run! Returning...\n", __func__);
-		goto err;
-	}
-
-	dev_dbg(jsqz_device->dev
-		, "%s: INTERRUPT FIRED AND WAITING TO BE HANDLED? %u\n"
-		, __func__, jsqz_hw_get_int_status(jsqz_device->regs));
-	dev_dbg(jsqz_device->dev, "%s: ENCODING STATUS? %d\n"
-		, __func__, get_hw_enc_status(jsqz_device->regs));
-
-	if (jsqz_device->current_task) {
-		/* H/W is working */
-		dev_dbg(jsqz_device->dev
-			, "%s: hw is already processing a task! Returning...\n"
-			, __func__);
-
-		goto err;
-	}
-
-	if (jsqz_hw_is_enc_running(jsqz_device->regs)) {
-		dev_dbg(jsqz_device->dev
-			, "%s: hw is still processing! Returning...\n"
-			, __func__);
-		goto err;
-	}
-
-	dev_dbg(jsqz_device->dev
-		, "%s: popping first task from queue...\n", __func__);
-
-	task = list_first_entry(&jsqz_device->tasks,
-				struct jsqz_task, task_node);
-	list_del(&task->task_node);
-
-	jsqz_device->current_task = task;
-
-	spin_unlock_irqrestore(&jsqz_device->lock_task, flags);
-
-	task->state = jsqz_BUFSTATE_PROCESSING;
-	dev_dbg(jsqz_device->dev, "%s: about to run the task\n", __func__);
-
-	if (jsqz_device_run(task->ctx, task)) {
-		task->state = jsqz_BUFSTATE_ERROR;
-
-		spin_lock_irqsave(&jsqz_device->lock_task, flags);
-		jsqz_device->current_task = NULL;
-		spin_unlock_irqrestore(&jsqz_device->lock_task, flags);
-
-		complete(&task->complete);
-
-		goto next_task;
-	}
-
-	dev_dbg(jsqz_device->dev, "%s: END\n", __func__);
-	return;
-#endif
-
 }
 
 static void jsqz_task_schedule_work(struct work_struct *work)
@@ -946,7 +883,7 @@ static int jsqz_buffer_setup(struct jsqz_ctx *ctx,
 		, __func__, dma_buffer, dir == DMA_TO_DEVICE);
 
 	/* the callback function should fill 'dma_addr' field */
-	ret = jsqz_buffer_map(ctx, dma_buffer, dir == DMA_TO_DEVICE);
+	ret = jsqz_buffer_map(ctx, dma_buffer, dir);
 	if (ret) {
 		dev_err(jsqz_device->dev, "%s: Failed to prepare plane"
 			, __func__);
@@ -1244,83 +1181,6 @@ static int jsqz_process(struct jsqz_ctx *ctx,
 	task->ctx = ctx;
 	task->state = JSQZ_BUFSTATE_READY;
 
-#if 0
-	spin_lock_irqsave(&jsqz_device->slock, flags);
-	if (test_bit(DEV_RUN, &jsqz_device->state)) {
-		/* this will happen when multiple processes encode at the same
-		 * time. They all get different contexts because they use
-		 * different FDs, so they can get inside this section which is
-		 * locked by a context-specific mutex, but when they get here
-		 * they discover another process is already using the device.
-		 */
-		dev_dbg(jsqz_device->dev
-			 , "%s: device state is marked as running before a task is run (ctx %p task %p)\n"
-			 , __func__, ctx, task);
-	}
-
-	set_bit(DEV_RUN, &jsqz_device->state);
-	spin_unlock_irqrestore(&jsqz_device->slock, flags);
-
-	ret = enable_jsqz(jsqz_device);
-	if (ret) {
-		spin_lock_irqsave(&jsqz_device->slock, flags);
-		set_bit(DEV_SUSPEND, &jsqz_device->state);
-		spin_unlock_irqrestore(&jsqz_device->slock, flags);
-
-		goto err_power;
-	}
-
-	spin_lock_irqsave(&jsqz_device->lock_task, flags);
-	dev_dbg(jsqz_device->dev, "%s: adding task %p to list (ctx %p)\n"
-		, __func__, task, ctx);
-	list_add_tail(&task->task_node, &jsqz_device->tasks);
-	spin_unlock_irqrestore(&jsqz_device->lock_task, flags);
-
-	HWJSQZ_PROFILE(jsqz_task_schedule(jsqz_device),
-		       "SCHEDULE TIME", jsqz_device->dev);
-
-	if (jsqz_device->timeout_jiffies != -1) {
-		unsigned long elapsed;
-
-		dev_dbg(jsqz_device->dev
-			, "%s: waiting for task to complete before timeout\n"
-			, __func__);
-
-		//perform an uninterruptible wait (i.e. ignore signals)
-		//NOTE: this call can sleep, so it cannot be used in IRQ context
-		elapsed = wait_for_completion_timeout(&task->complete,
-						      jsqz_device->timeout_jiffies);
-		if (!elapsed) { /* timed out */
-			jsqz_task_cancel(jsqz_device, task,
-					 jsqz_BUFSTATE_TIMEDOUT);
-
-			jsqz_task_timeout(ctx, task);
-
-			dev_notice(jsqz_device->dev, "%s: %u msecs timed out\n",
-				   __func__,
-				   jiffies_to_msecs(jsqz_device->timeout_jiffies));
-			ret = -ETIMEDOUT;
-		}
-	} else {
-		dev_dbg(jsqz_device->dev
-			, "%s: waiting for task to complete, no timeout\n"
-			, __func__);
-
-		//perform an uninterruptible wait (i.e. ignore signals)
-		//NOTE: this call can sleep, so it cannot be used in IRQ context
-		wait_for_completion(&task->complete);
-	}
-
-	if (task->state == jsqz_BUFSTATE_READY) {
-		dev_err(jsqz_device->dev
-			, "%s: invalid task state after task completion\n"
-			, __func__);
-	}
-
-	pm_runtime_mark_last_busy(jsqz_device->dev);
-
-	HWJSQZ_PROFILE(disable_jsqz(jsqz_device), "DISABLE jsqz", jsqz_device->dev);
-#else
 	//INIT_WORK(&task->work, jsqz_task_schedule_work);
 	INIT_WORK_ONSTACK(&task->work, jsqz_task_schedule_work);
 
@@ -1344,7 +1204,6 @@ static int jsqz_process(struct jsqz_ctx *ctx,
 			, "%s: invalid task state after task completion\n"
 			, __func__);
 	}
-#endif
 
 	HWJSQZ_PROFILE(jsqz_task_teardown(jsqz_device, ctx, task),
 		       "TASK TEARDOWN TIME",
@@ -1750,16 +1609,22 @@ static int jsqz_sysmmu_fault_handler(struct iommu_domain *domain,
 				     unsigned long fault_addr,
 				     int fault_flags, void *p)
 {
-	dev_dbg(dev, "%s: sysmmu fault!\n", __func__);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct jsqz_dev *jsqz = platform_get_drvdata(pdev);
 
-	/* Dump BUS errors */
+	dev_info(jsqz->dev, "%s: sysmmu fault!\n", __func__);
+
+	if (test_bit(DEV_RUN, &jsqz->state)) {
+		dev_info(jsqz->dev, "System MMU fault at %#lx\n", fault_addr);
+		jsqz_print_all_regs(jsqz);
+	}
+
 	return 0;
 }
 
-
 static irqreturn_t jsqz_irq_handler(int irq, void *priv)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	unsigned int int_status;
 	struct jsqz_dev *jsqz = priv;
 	struct jsqz_task *task;

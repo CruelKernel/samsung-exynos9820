@@ -152,6 +152,7 @@ static struct fuse_req *__fuse_get_req(struct fuse_conn *fc, unsigned npages,
 
 	if (fuse_block_alloc(fc, for_background)) {
 		err = -EINTR;
+		/* @fs.sec -- 9992f9e9ebd25b0dcc80951a9e4f4fc2e71a08c6 -- */
 		if (fuse_wait_event_killable_exclusive(fc->blocked_waitq,
 				!fuse_block_alloc(fc, for_background)))
 			goto out;
@@ -2126,6 +2127,10 @@ static void end_polls(struct fuse_conn *fc)
 void fuse_abort_conn(struct fuse_conn *fc)
 {
 	struct fuse_iqueue *fiq = &fc->iq;
+
+	/* @fs.sec -- d7bd5cc97a05d48e04defc719fbaffefdd4e6f22 -- */
+	ST_LOG("<%s> dev = %u:%u  fuse abort all requests",
+			__func__, MAJOR(fc->dev), MINOR(fc->dev));
 
 	spin_lock(&fc->lock);
 	if (fc->connected) {

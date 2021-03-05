@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -1644,6 +1644,16 @@ typedef struct wl_roamoff_info {
 	uint roam_enable_rsn;
 } wl_roamoff_info_t;
 #endif /* DEBUG_SETROAMMODE */
+
+#ifdef CONFIG_COMPAT
+typedef struct compat_buf_data {
+	u32 ver; /* version of struct */
+	u32 len; /* Total len */
+	/* size of each buffer in case of split buffers (0 - single buffer). */
+	u32 buf_threshold;
+	u32 data_buf; /* array of user space buffer pointers. */
+} compat_buf_data_t;
+#endif /* CONFIG_COMPAT */
 
 /* private data of cfg80211 interface */
 struct bcm_cfg80211 {

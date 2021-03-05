@@ -578,6 +578,8 @@ typedef u32 base_jd_core_req;
  */
 #define BASE_JD_REQ_END_RENDERPASS ((base_jd_core_req)1 << 19)
 
+#define BASE_JD_REQ_LIMITED_CORE_MASK ((base_jd_core_req)1 << 20)
+
 /* These requirement bits are currently unused in base_jd_core_req
  */
 #define BASEP_JD_REQ_RESERVED \

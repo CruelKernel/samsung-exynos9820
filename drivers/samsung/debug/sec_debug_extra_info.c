@@ -28,6 +28,7 @@
 #define EXTRA_VERSION	"RI25"
 
 #include "sec_debug_extra_info_keys.c"
+#include "sec_debug_internal.h"
 
 static bool exin_ready;
 
@@ -1159,6 +1160,11 @@ static int set_debug_reset_rwc_proc_show(struct seq_file *m, void *v)
 	char *rstcnt;
 
 	rstcnt = get_bk_item_val("RSTCNT");
+	if (!rstcnt)
+		seq_printf(m, "%d", secdbg_rere_get_rstcnt_from_cmdline());
+	else
+		seq_printf(m, "%s", rstcnt);
+
 	seq_printf(m, "%s", rstcnt);
 
 	return 0;

@@ -180,7 +180,6 @@ struct defex_context {
 	int syscall_no;
 	struct task_struct *task;
 	struct file *process_file;
-	struct cred cred;
 	struct file *target_file;
 	const struct path *process_dpath;
 	const struct path *target_dpath;
@@ -188,6 +187,7 @@ struct defex_context {
 	char *target_name;
 	char *target_name_buff;
 	char *process_name_buff;
+	struct cred cred;
 };
 
 extern const char unknown_file[];

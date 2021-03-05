@@ -4,7 +4,7 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -2177,6 +2177,7 @@ extern int dhd_keep_alive_onoff(dhd_pub_t *dhd);
 #endif /* KEEP_ALIVE */
 
 #if defined(DHD_FW_COREDUMP)
+extern bool dhd_memdump_is_scheduled(dhd_pub_t *dhdp);
 void dhd_schedule_memdump(dhd_pub_t *dhdp, uint8 *buf, uint32 size);
 #endif /* DHD_FW_COREDUMP */
 
@@ -2241,6 +2242,7 @@ extern int dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd, int *dtim_period, int *bc
 #else
 extern int dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd);
 #endif /* OEM_ANDROID && BCMPCIE */
+extern int dhd_set_suspend_bcn_li_dtim(dhd_pub_t *dhd, bool set_suspend);
 
 extern bool dhd_support_sta_mode(dhd_pub_t *dhd);
 extern int write_to_file(dhd_pub_t *dhd, uint8 *buf, int size);

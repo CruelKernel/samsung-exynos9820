@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver scan related code
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -3861,8 +3861,13 @@ static void wl_scan_timeout(unsigned long data)
 
 		bi = next_bss(bss_list, bi);
 		for_each_bss(bss_list, bi, i) {
-			channel = wf_chspec_ctlchan(wl_chspec_driver_to_host(bi->chanspec));
-			WL_ERR(("SSID :%s  Channel :%d\n", bi->SSID, channel));
+			if (wf_chspec_valid(bi->chanspec)) {
+				channel = wf_chspec_ctlchan(wl_chspec_driver_to_host(bi->chanspec));
+				WL_ERR(("SSID :%s  Channel :%d\n", bi->SSID, channel));
+			} else {
+				WL_ERR(("SSID :%s Invalid chanspec :0x%x\n",
+					bi->SSID, bi->chanspec));
+			}
 		}
 	}
 

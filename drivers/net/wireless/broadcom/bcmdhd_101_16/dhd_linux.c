@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface.
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -948,9 +948,11 @@ static int dhd_pm_callback(struct notifier_block *nfb, unsigned long action, voi
 	}
 #endif /* defined(SUPPORT_P2P_GO_PS) && defined(PROP_TXSTATUS) */
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
+	KERNEL_VERSION(2, 6, 39))
 	dhd_mmc_suspend = suspend;
 	smp_mb();
-
+#endif
 	return ret;
 }
 
@@ -1801,7 +1803,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 	int power_mode = PM_MAX;
 #endif /* SUPPORT_PM2_ONLY */
 	/* wl_pkt_filter_enable_t	enable_parm; */
-	int bcn_li_dtim = 0; /* Default bcn_li_dtim in resume mode is 0 */
 	int ret = 0;
 #ifdef DHD_USE_EARLYSUSPEND
 #ifdef CUSTOM_ROAM_TIME_THRESH_IN_SUSPEND
@@ -1810,9 +1811,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 #ifndef ENABLE_FW_ROAM_SUSPEND
 	uint roamvar = 1;
 #endif /* ENABLE_FW_ROAM_SUSPEND */
-#ifdef ENABLE_BCN_LI_BCN_WAKEUP
-	int bcn_li_bcn = 1;
-#endif /* ENABLE_BCN_LI_BCN_WAKEUP */
 	uint nd_ra_filter = 0;
 #ifdef ENABLE_IPMCAST_FILTER
 	int ipmcast_l2filter;
@@ -1837,13 +1835,8 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 	/* CUSTOM_BCN_TIMEOUT_IN_SUSPEND in suspend, otherwise CUSTOM_BCN_TIMEOUT */
 	int bcn_timeout = CUSTOM_BCN_TIMEOUT;
 #endif /* DHD_BCN_TIMEOUT_IN_SUSPEND && DHD_USE_EARLYSUSPEND */
-#if defined(BCMPCIE)
-	int lpas = 0;
-	int dtim_period = 0;
-	int bcn_interval = 0;
-	int bcn_to_dly = 0;
-#endif /* OEM_ANDROID && BCMPCIE */
 
+	BCM_REFERENCE(ret);
 	if (!dhd)
 		return -ENODEV;
 
@@ -1886,7 +1879,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					dhd_arp_offload_enable(dhd, TRUE);
 				}
 #endif /* ARP_OFFLOAD_SUPPORT */
-
 #ifdef PASS_ALL_MCAST_PKTS
 				allmulti = 0;
 				for (i = 0; i < DHD_MAX_IFS; i++) {
@@ -1906,66 +1898,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				 * each third DTIM for better power savings.  Note that
 				 * one side effect is a chance to miss BC/MC packet.
 				 */
-#ifdef WLTDLS
-				/* Do not set bcn_li_ditm on WFD mode */
-				if (dhd->tdls_mode) {
-					bcn_li_dtim = 0;
-				} else
-#endif /* WLTDLS */
-#if defined(BCMPCIE)
-				bcn_li_dtim = dhd_get_suspend_bcn_li_dtim(dhd, &dtim_period,
-						&bcn_interval);
-				ret = dhd_iovar(dhd, 0, "bcn_li_dtim", (char *)&bcn_li_dtim,
-						sizeof(bcn_li_dtim), NULL, 0, TRUE);
-				if (ret < 0) {
-					DHD_ERROR(("%s bcn_li_dtim failed %d\n",
-							__FUNCTION__, ret));
-				}
-				if ((bcn_li_dtim * dtim_period * bcn_interval) >=
-					MIN_DTIM_FOR_ROAM_THRES_EXTEND) {
-					/*
-					 * Increase max roaming threshold from 2 secs to 8 secs
-					 * the real roam threshold is MIN(max_roam_threshold,
-					 * bcn_timeout/2)
-					 */
-					lpas = 1;
-					ret = dhd_iovar(dhd, 0, "lpas", (char *)&lpas, sizeof(lpas),
-							NULL, 0, TRUE);
-					if (ret < 0) {
-						if (ret == BCME_UNSUPPORTED) {
-							DHD_ERROR(("%s lpas, UNSUPPORTED\n",
-								__FUNCTION__));
-						} else {
-							DHD_ERROR(("%s set lpas failed %d\n",
-								__FUNCTION__, ret));
-						}
-					}
-					bcn_to_dly = 1;
-					/*
-					 * if bcn_to_dly is 1, the real roam threshold is
-					 * MIN(max_roam_threshold, bcn_timeout -1);
-					 * notify link down event after roaming procedure complete
-					 * if we hit bcn_timeout while we are in roaming progress.
-					 */
-					ret = dhd_iovar(dhd, 0, "bcn_to_dly", (char *)&bcn_to_dly,
-							sizeof(bcn_to_dly), NULL, 0, TRUE);
-					if (ret < 0) {
-						if (ret == BCME_UNSUPPORTED) {
-							DHD_ERROR(("%s bcn_to_dly, UNSUPPORTED\n",
-								__FUNCTION__));
-						} else {
-							DHD_ERROR(("%s set bcn_to_dly failed %d\n",
-								__FUNCTION__, ret));
-						}
-					}
-				}
-#else
-				bcn_li_dtim = dhd_get_suspend_bcn_li_dtim(dhd);
-				if (dhd_iovar(dhd, 0, "bcn_li_dtim", (char *)&bcn_li_dtim,
-						sizeof(bcn_li_dtim), NULL, 0, TRUE) < 0)
-					DHD_ERROR(("%s: set dtim failed\n", __FUNCTION__));
-#endif /* OEM_ANDROID && BCMPCIE */
-
+				dhd_set_suspend_bcn_li_dtim(dhd, TRUE);
 #ifdef DHD_USE_EARLYSUSPEND
 #ifdef DHD_BCN_TIMEOUT_IN_SUSPEND
 				bcn_timeout = CUSTOM_BCN_TIMEOUT_IN_SUSPEND;
@@ -1997,16 +1930,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				ROAMOFF_DBG_SAVE(dhd_linux_get_primary_netdev(dhd),
 					SET_ROAM_DHD_SUSPEND, roamvar);
 #endif /* ENABLE_FW_ROAM_SUSPEND */
-#ifdef ENABLE_BCN_LI_BCN_WAKEUP
-				if (bcn_li_dtim) {
-					bcn_li_bcn = 0;
-				}
-				ret = dhd_iovar(dhd, 0, "bcn_li_bcn", (char *)&bcn_li_bcn,
-						sizeof(bcn_li_bcn), NULL, 0, TRUE);
-				if (ret < 0) {
-					DHD_ERROR(("%s bcn_li_bcn failed %d\n", __FUNCTION__, ret));
-				}
-#endif /* ENABLE_BCN_LI_BCN_WAKEUP */
 #if defined(WL_CFG80211) && defined(WL_BCNRECV)
 				ret = wl_android_bcnrecv_suspend(dhd_linux_get_primary_netdev(dhd));
 				if (ret != BCME_OK) {
@@ -2132,43 +2055,8 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					}
 				}
 #endif /* PASS_ALL_MCAST_PKTS */
-#if defined(BCMPCIE)
-				/* restore pre-suspend setting */
-				ret = dhd_iovar(dhd, 0, "bcn_li_dtim", (char *)&bcn_li_dtim,
-						sizeof(bcn_li_dtim), NULL, 0, TRUE);
-				if (ret < 0) {
-					DHD_ERROR(("%s:bcn_li_ditm failed:%d\n",
-							__FUNCTION__, ret));
-				}
-				ret = dhd_iovar(dhd, 0, "lpas", (char *)&lpas, sizeof(lpas), NULL,
-						0, TRUE);
-				if (ret < 0) {
-					if (ret == BCME_UNSUPPORTED) {
-						DHD_ERROR(("%s lpas, UNSUPPORTED\n", __FUNCTION__));
-					 } else {
-						DHD_ERROR(("%s set lpas failed %d\n",
-							__FUNCTION__, ret));
-					 }
-				}
-				ret = dhd_iovar(dhd, 0, "bcn_to_dly", (char *)&bcn_to_dly,
-						sizeof(bcn_to_dly), NULL, 0, TRUE);
-				if (ret < 0) {
-					if (ret == BCME_UNSUPPORTED) {
-						DHD_ERROR(("%s bcn_to_dly UNSUPPORTED\n",
-							__FUNCTION__));
-					} else {
-						DHD_ERROR(("%s set bcn_to_dly failed %d\n",
-							__FUNCTION__, ret));
-					}
-				}
-#else
 				/* restore pre-suspend setting for dtim_skip */
-				ret = dhd_iovar(dhd, 0, "bcn_li_dtim", (char *)&bcn_li_dtim,
-						sizeof(bcn_li_dtim), NULL, 0, TRUE);
-				if (ret < 0) {
-					DHD_ERROR(("%s:bcn_li_ditm fail:%d\n", __FUNCTION__, ret));
-				}
-#endif /* OEM_ANDROID && BCMPCIE */
+				dhd_set_suspend_bcn_li_dtim(dhd, FALSE);
 #ifdef DHD_USE_EARLYSUSPEND
 #ifdef DHD_BCN_TIMEOUT_IN_SUSPEND
 				bcn_timeout = CUSTOM_BCN_TIMEOUT;
@@ -2200,14 +2088,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				ROAMOFF_DBG_SAVE(dhd_linux_get_primary_netdev(dhd),
 					SET_ROAM_DHD_SUSPEND, roamvar);
 #endif /* ENABLE_FW_ROAM_SUSPEND */
-#ifdef ENABLE_BCN_LI_BCN_WAKEUP
-				ret = dhd_iovar(dhd, 0, "bcn_li_bcn", (char *)&bcn_li_bcn,
-						sizeof(bcn_li_bcn), NULL, 0, TRUE);
-				if (ret < 0) {
-					DHD_ERROR(("%s: bcn_li_bcn failed:%d\n",
-						__FUNCTION__, ret));
-				}
-#endif /* ENABLE_BCN_LI_BCN_WAKEUP */
 #ifdef NDO_CONFIG_SUPPORT
 				if (dhd->ndo_enable) {
 					/* Disable ND offload on resume */
@@ -4333,6 +4213,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			len, NULL, NULL, FALSE, pkt_wake, TRUE);
 #if defined(DHD_WAKE_STATUS) && defined(DHD_WAKEPKT_DUMP)
 		if (pkt_wake) {
+			DHD_ERROR(("##### dhdpcie_host_wake caused by packets\n"));
 			dhd_prhex("[wakepkt_dump]", (char*)dump_data, MIN(len, 64), DHD_ERROR_VAL);
 			DHD_ERROR(("config check in_suspend: %d ", dhdp->in_suspend));
 #ifdef ARP_OFFLOAD_SUPPORT
@@ -4359,10 +4240,10 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #ifdef ENABLE_WAKEUP_PKT_DUMP
 		if (dhd_mmc_wake) {
 			DHD_INFO(("wake_pkt %s(%d)\n", __FUNCTION__, __LINE__));
-			if (DHD_INFO_ON()) {
-				prhex("wake_pkt", (char*) eth, MIN(len, 48));
-			}
+			prhex("wake_pkt", (char*) eth, MIN(len, 48));
 			update_wake_pkt_info(skb);
+			DHD_ERROR(("wake_pkt %s(%d), raw_info=0x%016llx\n",
+				__FUNCTION__, __LINE__, temp_raw));
 #ifdef CONFIG_IRQ_HISTORY
 			add_irq_history(0, "WIFI");
 #endif
@@ -11303,6 +11184,7 @@ dhd_legacy_preinit_ioctls(dhd_pub_t *dhd)
 		dhd->info->rxthread_enabled = TRUE;
 #endif
 
+#ifndef CONFIG_WLAN_MERLOT
 #if defined(CUSTOM_COUNTRY_CODE_XZ)
 	/* Set initial country code to XZ */
 	strlcpy(dhd->dhd_cspec.country_abbrev, "XZ", WLC_CNTRY_BUF_SZ);
@@ -11316,6 +11198,7 @@ dhd_legacy_preinit_ioctls(dhd_pub_t *dhd)
 		if (ret < 0)
 			DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
 	}
+#endif /* CONFIG_WLAN_MERLOT */
 
 	/* Set Listen Interval */
 	ret = dhd_iovar(dhd, 0, "assoc_listen", (char *)&listen_interval, sizeof(listen_interval),
@@ -14089,8 +13972,16 @@ exit:
 int
 dhd_os_get_img_fwreq(const struct firmware **fw, char *file_path)
 {
-	return request_firmware(fw, file_path,
-		dhd_bus_to_dev(g_dhd_pub->bus));
+	int ret = BCME_ERROR;
+
+	ret = request_firmware(fw, file_path, dhd_bus_to_dev(g_dhd_pub->bus));
+	if (ret < 0) {
+		DHD_ERROR(("%s: request_firmware err: %d\n", __FUNCTION__, ret));
+		/* convert to BCME_NOTFOUND error for error handling */
+		ret = BCME_NOTFOUND;
+	}
+
+	return ret;
 }
 
 void
@@ -14564,6 +14455,12 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 		dhd->pub.scan_busy_occurred = 0;
 	}
 
+	if ((ret == BCME_NOMEM) || (ret == BCME_NOTFOUND)) {
+		DHD_ERROR(("%s: skip collect dump in case of BCME_NOMEM or BCME_NOTFOUND\n",
+				__FUNCTION__));
+		return BCME_ERROR;
+	}
+
 	if (ret) {
 		DHD_ERROR(("%s: dhd_bus_devreset: %d\n", __FUNCTION__, ret));
 	}
@@ -14620,19 +14517,27 @@ int net_os_set_suspend(struct net_device *dev, int val, int force)
 int net_os_set_suspend_bcn_li_dtim(struct net_device *dev, int val)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	dhd_pub_t *dhdp = &dhd->pub;
 
 	if (dhd) {
 		DHD_ERROR(("%s: Set bcn_li_dtim in suspend %d\n",
 			__FUNCTION__, val));
 		dhd->pub.suspend_bcn_li_dtim = val;
+	} else {
+		return BCME_ERROR;
 	}
 
-	return 0;
+	if (dhdp->in_suspend) {
+		dhd_set_suspend_bcn_li_dtim(dhdp, TRUE);
+	}
+
+	return BCME_OK;
 }
 
 int net_os_set_max_dtim_enable(struct net_device *dev, int val)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	dhd_pub_t *dhdp = &dhd->pub;
 
 	if (dhd) {
 		DHD_ERROR(("%s: use MAX bcn_li_dtim in suspend %s\n",
@@ -14643,16 +14548,21 @@ int net_os_set_max_dtim_enable(struct net_device *dev, int val)
 			dhd->pub.max_dtim_enable = FALSE;
 		}
 	} else {
-		return -1;
+		return BCME_ERROR;
 	}
 
-	return 0;
+	if (dhdp->in_suspend) {
+		dhd_set_suspend_bcn_li_dtim(dhdp, TRUE);
+	}
+
+	return BCME_OK;
 }
 
 #ifdef DISABLE_DTIM_IN_SUSPEND
 int net_os_set_disable_dtim_in_suspend(struct net_device *dev, int val)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	dhd_pub_t *dhdp = &dhd->pub;
 
 	if (dhd) {
 		DHD_ERROR(("%s: Disable bcn_li_dtim in suspend %s\n",
@@ -14666,9 +14576,87 @@ int net_os_set_disable_dtim_in_suspend(struct net_device *dev, int val)
 		return BCME_ERROR;
 	}
 
+	if (dhdp->in_suspend) {
+		dhd_set_suspend_bcn_li_dtim(dhdp, TRUE);
+	}
+
 	return BCME_OK;
 }
 #endif /* DISABLE_DTIM_IN_SUSPEND */
+
+int
+dhd_set_suspend_bcn_li_dtim(dhd_pub_t *dhd, bool set_suspend)
+{
+	int ret = BCME_OK;
+	int bcn_li_dtim = 0; /* Default bcn_li_dtim in resume mode is 0 */
+#if defined(BCMPCIE)
+	int lpas = 0;
+	int dtim_period = 0;
+	int bcn_interval = 0;
+	int bcn_to_dly = 0;
+#endif /* OEM_ANDROID && BCMPCIE */
+#ifdef ENABLE_BCN_LI_BCN_WAKEUP
+	int bcn_li_bcn = 1;
+#endif /* ENABLE_BCN_LI_BCN_WAKEUP */
+
+	if (set_suspend) {
+#ifdef WLTDLS
+		/* Do not set bcn_li_ditm on WFD mode */
+		if (dhd->tdls_mode) {
+			return 0;
+		}
+#endif /* WLTDLS */
+#if defined(BCMPCIE)
+		bcn_li_dtim = dhd_get_suspend_bcn_li_dtim(dhd, &dtim_period, &bcn_interval);
+		if ((bcn_li_dtim * dtim_period * bcn_interval) >= MIN_DTIM_FOR_ROAM_THRES_EXTEND) {
+			/*
+			 * Increase max roaming threshold from 2 secs to 8 secs
+			 * the real roam threshold is MIN(max_roam_threshold,
+			 * bcn_timeout/2)
+			 */
+			lpas = 1;
+			bcn_to_dly = 1;
+			/*
+			 * if bcn_to_dly is 1, the real roam threshold is
+			 * MIN(max_roam_threshold, bcn_timeout -1);
+			 * notify link down event after roaming procedure complete
+			 * if we hit bcn_timeout while we are in roaming progress.
+			 */
+		}
+#else
+		bcn_li_dtim = dhd_get_suspend_bcn_li_dtim(dhd);
+#endif /* OEM_ANDROID && BCMPCIE */
+	}
+
+	ret = dhd_iovar(dhd, 0, "bcn_li_dtim", (char *)&bcn_li_dtim, sizeof(bcn_li_dtim),
+		NULL, 0, TRUE);
+	if (ret < 0) {
+		DHD_ERROR(("%s set bcn_li_ditm failed %d\n", __FUNCTION__, ret));
+	}
+#if defined(BCMPCIE)
+	ret = dhd_iovar(dhd, 0, "lpas", (char *)&lpas, sizeof(lpas), NULL, 0, TRUE);
+	if (ret < 0) {
+		DHD_ERROR(("%s set lpas failed %d\n", __FUNCTION__, ret));
+	}
+	ret = dhd_iovar(dhd, 0, "bcn_to_dly", (char *)&bcn_to_dly, sizeof(bcn_to_dly),
+		NULL, 0, TRUE);
+	if (ret < 0) {
+		DHD_ERROR(("%s set bcn_to_dly failed %d\n", __FUNCTION__, ret));
+	}
+#endif /* OEM_ANDROID && BCMPCIE */
+#ifdef ENABLE_BCN_LI_BCN_WAKEUP
+	if (bcn_li_dtim) {
+		bcn_li_bcn = 0;
+	}
+	ret = dhd_iovar(dhd, 0, "bcn_li_bcn", (char *)&bcn_li_bcn, sizeof(bcn_li_bcn),
+		NULL, 0, TRUE);
+	if (ret < 0) {
+		DHD_ERROR(("%s set bcn_li_bcn failed %d\n", __FUNCTION__, ret));
+	}
+#endif /* ENABLE_BCN_LI_BCN_WAKEUP */
+
+	return 0;
+}
 
 #ifdef PKT_FILTER_SUPPORT
 int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
@@ -17991,6 +17979,11 @@ dhd_log_flush(dhd_pub_t *dhdp, log_dump_type_t *type)
 #endif /* DHD_LOG_DUMP */
 
 #ifdef DHD_FW_COREDUMP
+bool dhd_memdump_is_scheduled(dhd_pub_t *dhdp)
+{
+	return dhdp->info->scheduled_memdump;
+}
+
 void dhd_schedule_memdump(dhd_pub_t *dhdp, uint8 *buf, uint32 size)
 {
 	dhd_dump_t *dump = NULL;
@@ -23396,6 +23389,12 @@ dhd_cto_recovery_handler(void *handle, void *event_info, u8 event)
 void
 dhd_schedule_cto_recovery(dhd_pub_t *dhdp)
 {
+	if (dhdp->up == FALSE) {
+		DHD_ERROR(("%s : skip scheduling cto because dhd is not up\n",
+				__FUNCTION__));
+		return;
+	}
+
 	DHD_ERROR(("%s: scheduling cto recovery.. \n", __FUNCTION__));
 	dhd_deferred_schedule_work(dhdp->info->dhd_deferred_wq,
 		NULL, DHD_WQ_WORK_CTO_RECOVERY,

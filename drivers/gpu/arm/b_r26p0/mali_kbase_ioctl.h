@@ -777,6 +777,19 @@ struct kbase_ioctl_tlstream_stats {
  *         _IOWR(KBASE_IOCTL_EXTRA_TYPE, 0, struct my_ioctl_args)
  */
 
+/* MALI_SEC_INTEGRATION */
+/**
+ * struct kbase_ioctl_mem_usage_add - Provide gpu memory usage information to kernel
+ * @gl_mem_usage: gpu memory used
+ *
+ * The data provided is accessible through a sysfs file
+ */
+struct kbase_ioctl_slsi_mem_usage_add {
+	__u64 gl_mem_usage;
+};
+
+#define KBASE_IOCTL_SLSI_MEM_USAGE_ADD \
+   _IOW(KBASE_IOCTL_EXTRA_TYPE, 3, struct kbase_ioctl_slsi_mem_usage_add)
 
 /**********************************
  * Definitions for GPU properties *

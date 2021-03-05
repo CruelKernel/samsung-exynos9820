@@ -1893,10 +1893,10 @@ static ssize_t show_kernel_sysfs_gpu_memory(struct kobject *kobj, struct kobj_at
 			buffer_full = true;
 			break;
 		}
-		/* output the total memory usage and cap for this device */
-		ret += scnprintf(buf + ret, buf_size - ret, "%-16s  %10u\n",
-				kbdev->devname,
-				atomic_read(&(kbdev->memdev.used_pages)));
+
+		ret += scnprintf(buf + ret, buf_size - ret, "%10s%10s%20s\n",
+				"tgid", "pid", "mem_used(bytes)");
+
 		mutex_lock(&kbdev->kctx_list_lock);
 		list_for_each_entry(kctx, &kbdev->kctx_list, kctx_list_link) {
 			if (ret + padding > buf_size) {
@@ -1906,10 +1906,10 @@ static ssize_t show_kernel_sysfs_gpu_memory(struct kobject *kobj, struct kobj_at
 
 			/* output the memory usage and cap for each kctx
 			* opened on this device */
-			ret += snprintf(buf + ret, buf_size - ret, "  %s-0x%p %10u\n",
-				"kctx",
-				kctx,
-				atomic_read(&(kctx->used_pages)));
+			ret += snprintf(buf + ret, buf_size - ret, "%10d%10d%20llu\n",
+				kctx->tgid,
+				kctx->pid,
+				kctx->mem_usage);
 		}
 		mutex_unlock(&kbdev->kctx_list_lock);
 	}

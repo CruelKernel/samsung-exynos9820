@@ -4,7 +4,7 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -201,7 +201,7 @@ extern void dhd_prot_dma_indx_free(dhd_pub_t *dhd);
 
 #ifdef EWP_EDL
 int dhd_prot_init_edl_rings(dhd_pub_t *dhd);
-bool dhd_prot_process_msgbuf_edl(dhd_pub_t *dhd);
+bool dhd_prot_process_msgbuf_edl(dhd_pub_t *dhd, uint32 *edl_itmes);
 int dhd_prot_process_edl_complete(dhd_pub_t *dhd, void *evt_decode_data);
 #endif /* EWP_EDL  */
 

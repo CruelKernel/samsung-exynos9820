@@ -1,13 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *  Host notify class driver
  *
- * Copyright (C) 2011-2020 Samsung, Inc.
+ * Copyright (C) 2011-2017 Samsung, Inc.
  * Author: Dongrak Shin <dongrak.shin@samsung.com>
  *
-*/
+ */
 
- /* usb notify layer v3.5 */
+ /* usb notify layer v3.2 */
 
 #ifndef __LINUX_HOST_NOTIFY_H__
 #define __LINUX_HOST_NOTIFY_H__
@@ -20,14 +19,6 @@ enum host_uevent_state {
 	NOTIFY_HOST_LOWBATT,
 	NOTIFY_HOST_BLOCK,
 	NOTIFY_HOST_UNKNOWN,
-	NOTIFY_HOST_SOURCE,
-	NOTIFY_HOST_SINK,
-};
-
-enum host_uevent_type {
-	NOTIFY_UNKNOWN_STATE,
-	NOTIFY_HOST_STATE,
-	NOTIFY_POWER_STATE,
 };
 
 enum otg_hostnotify_mode {
@@ -51,14 +42,11 @@ struct host_notify_dev {
 	const char *name;
 	struct device *dev;
 	int index;
-	int host_state;
-	int host_change;
-	int power_state;
-	int power_change;
+	int state;
 	int mode;
 	int booster;
-	int (*set_mode)(bool on);
-	int (*set_booster)(bool on);
+	int (*set_mode)(bool);
+	int (*set_booster)(bool);
 };
 
 #ifdef CONFIG_USB_HOST_NOTIFY

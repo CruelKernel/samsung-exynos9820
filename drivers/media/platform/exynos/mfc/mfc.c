@@ -1278,7 +1278,7 @@ err_ioremap_cmu_mif1:
 err_ioremap_cmu_mif0:
 	if (cmu)
 		iounmap(dev->cmu_busc_base);
-err_ioremap_cmu_busc:	
+err_ioremap_cmu_busc:
 	if (dev->has_mmcache)
 		iounmap(dev->mmcache.base);
 err_ioremap_mmcache:

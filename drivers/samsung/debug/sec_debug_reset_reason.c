@@ -25,8 +25,10 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 
+#include "sec_debug_internal.h"
+
 unsigned int reset_reason = RR_N;
-#define PWRSRC_RS_SIZE	16
+#define PWRSRC_RS_SIZE	20
 static char pwrsrc_rs[PWRSRC_RS_SIZE + 1];
 
 
@@ -141,6 +143,15 @@ static const struct file_operations sec_debug_reset_reason_store_lastkmsg_proc_f
 	.llseek = seq_lseek,
 	.release = single_release,
 };
+
+int secdbg_rere_get_rstcnt_from_cmdline(void)
+{
+	long long_pwrsrc_rs;
+
+	kstrtol(pwrsrc_rs, 16, &long_pwrsrc_rs);
+
+	return long_pwrsrc_rs >> 48;
+}
 
 static void parse_pwrsrc_rs(struct outbuf *buf)
 {

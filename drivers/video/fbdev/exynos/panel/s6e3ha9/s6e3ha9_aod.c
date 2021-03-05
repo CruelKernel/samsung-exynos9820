@@ -142,6 +142,8 @@ void s6e3ha9_copy_timer_rate(struct maptbl *tbl, u8 *dst)
 	/* in case of analog set comp_en */
 	if ((props->analog.en) && (props->first_clk_update == 0))
 		dst[2] |= 0x10;
+	else
+		dst[2] &= ~0x10;
 
 	switch (props->cur_time.interval) {
 	case ALG_INTERVAL_100m:

@@ -976,10 +976,7 @@ static int __mfc_enc_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 					mfc_debug(5, "[CTRLS] Control value "
 							"is not up to date: "
 							"0x%08x\n", ctrl->id);
-					if (ctrl->id == V4L2_CID_MPEG_MFC51_VIDEO_FRAME_TAG)
-						ctrl->value = IGNORE_TAG;
-					else
-						return -EINVAL;
+					return -EINVAL;
 				}
 
 				found = 1;

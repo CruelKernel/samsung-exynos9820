@@ -1151,6 +1151,12 @@ int dwc3_core_init(struct dwc3 *dwc)
 		dwc3_writel(dwc->regs, DWC3_GUCTL1, reg);
 	}
 
+	if (dwc->revision >= DWC3_USB31_REVISION_170A) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUCTL3);
+		reg |= DWC3_GUCTL3_USB20_RETRY_DISABLE;
+		dwc3_writel(dwc->regs, DWC3_GUCTL3, reg);
+	}
+
         dwc3_core_config(dwc);
 
 	reg = dwc3_readl(dwc->regs, DWC3_GFLADJ);

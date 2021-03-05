@@ -431,6 +431,15 @@ static int dwc3_otg_start_host(struct otg_fsm *fsm, int on)
 							msecs_to_jiffies(5000));
 		}
 
+#ifdef CONFIG_SND_EXYNOS_USB_AUDIO
+		if (usb_audio->usb_audio_state !=
+		    USB_AUDIO_DISCONNECT) {
+			pr_info("%s: wait audio disconnect\n", __func__);
+			ret1 = wait_for_completion_timeout(&usb_audio
+						->discon_done,
+						msecs_to_jiffies(1000));
+		}
+#endif
 		platform_device_del(dwc->xhci);
 err2:
 		ret = dwc3_otg_phy_enable(fsm, 0, on);

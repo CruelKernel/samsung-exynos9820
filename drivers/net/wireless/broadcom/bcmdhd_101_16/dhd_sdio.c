@@ -1,7 +1,7 @@
 /*
  * DHD Bus Module for SDIO
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -1871,7 +1871,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 			}
 		} else {
 			err = dhdsdio_clk_devsleep_iovar(bus, FALSE /* wake */);
-#ifdef BT_OVER_SDIO
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 			if (err < 0) {
 				struct net_device *net = NULL;
 				dhd_pub_t *dhd = bus->dhd;
@@ -1885,7 +1885,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 					DHD_ERROR(("<< WIFI HANG Fail because net is NULL\n"));
 				}
 			}
-#endif /* BT_OVER_SDIO */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27) && OEM_ANDROID */
 		}
 
 		if (err == 0) {
@@ -8728,6 +8728,68 @@ void dhd_bus_unreg_sdio_notify(void)
 }
 #endif /* defined(BCMLXSDMMC) */
 
+#ifdef DHD_LINUX_STD_FW_API
+static int
+dhdsdio_download_code_file(struct dhd_bus *bus, char *pfw_path)
+{
+	int bcmerror = BCME_ERROR;
+	int offset = 0;
+	int len = 0;
+	bool store_reset;
+	int offset_end = bus->ramsize;
+	const struct firmware *fw = NULL;
+	int buf_offset = 0, residual_len = 0;
+
+	DHD_ERROR(("%s: download firmware %s\n", __FUNCTION__, pfw_path));
+
+	bcmerror = dhd_os_get_img_fwreq(&fw, bus->fw_path);
+	if (bcmerror < 0) {
+		DHD_ERROR(("dhd_os_get_img(Request Firmware API) error : %d\n",
+			bcmerror));
+		goto err;
+	}
+	DHD_ERROR(("dhd_os_get_img(Request Firmware API) success\n"));
+	residual_len = fw->size;
+	while (residual_len) {
+		len = MIN(residual_len, MEMBLOCK);
+
+		/* if address is 0, store the reset instruction to be written in 0 */
+		if (store_reset) {
+			ASSERT(offset == 0);
+			bus->resetinstr = *(((uint32*)fw->data + buf_offset));
+			/* Add start of RAM address to the address given by user */
+			offset += bus->dongle_ram_base;
+			offset_end += offset;
+			store_reset = FALSE;
+		}
+
+		bcmerror = dhdsdio_membytes(bus, TRUE, offset,
+				(uint8 *)fw->data + buf_offset, len);
+		if (bcmerror) {
+			DHD_ERROR(("%s: error %d on writing %d membytes at 0x%08x\n",
+				__FUNCTION__, bcmerror, MEMBLOCK, offset));
+			goto err;
+		}
+		offset += MEMBLOCK;
+
+		if (offset >= offset_end) {
+			DHD_ERROR(("%s: invalid address access to %x (offset end: %x)\n",
+				__FUNCTION__, offset, offset_end));
+			bcmerror = BCME_ERROR;
+			goto err;
+		}
+		residual_len -= len;
+		buf_offset += len;
+	}
+err:
+	if (fw) {
+		dhd_os_close_img_fwreq(fw);
+	}
+	return bcmerror;
+} /* dhdpcie_download_code_file */
+
+#else
+
 static int
 dhdsdio_download_code_file(struct dhd_bus *bus, char *pfw_path)
 {
@@ -8815,6 +8877,7 @@ err:
 
 	return bcmerror;
 }
+#endif /* DHD_LINUX_STD_FW_API */
 
 #ifdef DHD_UCODE_DOWNLOAD
 /* Currently supported only for the chips in which ucode RAM is AXI addressable */
@@ -8946,6 +9009,94 @@ dhd_bus_ucode_download(struct dhd_bus *bus)
 
 #endif /* DHD_UCODE_DOWNLOAD */
 
+#ifdef DHD_LINUX_STD_FW_API
+#ifdef CUSTOMER_HW4_DEBUG
+#define MIN_NVRAMVARS_SIZE 128
+#endif /* CUSTOMER_HW4_DEBUG */
+
+static int
+dhdsdio_download_nvram(struct dhd_bus *bus)
+{
+	int bcmerror = -1;
+	uint len;
+	char * memblock = NULL;
+	char *bufp;
+	char *pnv_path;
+	bool nvram_file_exists;
+	bool nvram_uefi_exists = FALSE;
+	bool local_alloc = FALSE;
+
+	pnv_path = bus->nv_path;
+
+	nvram_file_exists = ((pnv_path != NULL) && (pnv_path[0] != '\0'));
+
+	len = MAX_NVRAMBUF_SIZE;
+	dhd_get_download_buffer(bus->dhd, NULL, NVRAM, &memblock, (int *)&len);
+
+	/* If UEFI empty, then read from file system */
+	if ((len <= 0) || (memblock == NULL)) {
+
+		if (nvram_file_exists) {
+			len = MAX_NVRAMBUF_SIZE;
+			dhd_get_download_buffer(bus->dhd, pnv_path, NVRAM, &memblock, (int *)&len);
+			if ((len <= 0 || len > MAX_NVRAMBUF_SIZE)) {
+				goto err;
+			}
+		}
+		else {
+			/* For SROM OTP no external file or UEFI required */
+			bcmerror = BCME_OK;
+		}
+	} else {
+		nvram_uefi_exists = TRUE;
+	}
+
+	if (len > 0 && len < MAX_NVRAMBUF_SIZE && memblock != NULL) {
+		bufp = (char *) memblock;
+
+		{
+			bufp[len-1] = 0;
+			if (nvram_uefi_exists || nvram_file_exists) {
+				len = process_nvram_vars(bufp, len);
+			}
+		}
+
+#ifdef CUSTOMER_HW4_DEBUG
+		if (len < MIN_NVRAMVARS_SIZE) {
+			DHD_ERROR(("%s: invalid nvram size in process_nvram_vars \n",
+				__FUNCTION__));
+			bcmerror = BCME_ERROR;
+			goto err;
+		}
+#endif /* CUSTOMER_HW4_DEBUG */
+
+		if (len % 4) {
+			len += 4 - (len % 4);
+		}
+		bufp += len;
+		*bufp++ = 0;
+		if (len)
+			bcmerror = dhdsdio_downloadvars(bus, memblock, len + 1);
+		if (bcmerror) {
+			DHD_ERROR(("%s: error downloading vars: %d\n",
+				__FUNCTION__, bcmerror));
+		}
+	}
+
+err:
+	if (memblock) {
+		if (local_alloc) {
+			MFREE(bus->dhd->osh, memblock, MAX_NVRAMBUF_SIZE);
+		} else {
+			dhd_free_download_buffer(bus->dhd, memblock, MAX_NVRAMBUF_SIZE);
+		}
+	}
+
+	return bcmerror;
+}
+
+#else
+
 static int
 dhdsdio_download_nvram(struct dhd_bus *bus)
 {
@@ -9005,6 +9156,7 @@ err:
 
 	return bcmerror;
 }
+#endif /* DHD_LINUX_STD_FW_API */
 
 static int
 _dhdsdio_download_firmware(struct dhd_bus *bus)

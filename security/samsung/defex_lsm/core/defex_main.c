@@ -43,7 +43,7 @@
 
 #ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
 bool boot_state_unlocked __ro_after_init;
-static int __init verifiedboot_state_setup(char *str)
+__visible_for_testing int __init verifiedboot_state_setup(char *str)
 {
 	static const char unlocked[] = "orange";
 
@@ -58,7 +58,7 @@ static int __init verifiedboot_state_setup(char *str)
 __setup("androidboot.verifiedbootstate=", verifiedboot_state_setup);
 
 int warranty_bit __ro_after_init;
-static int __init get_warranty_bit(char *str)
+__visible_for_testing int __init get_warranty_bit(char *str)
 {
 	get_option(&str, &warranty_bit);
 
@@ -89,7 +89,7 @@ __visible_for_testing struct task_struct *get_parent_task(const struct task_stru
 #	define MESSAGE_BUFFER_SIZE 200
 #	define STORED_CREDS_SIZE 100
 
-static void defex_report_violation(const char *violation, uint64_t counter, struct defex_context *dc,
+__visible_for_testing void defex_report_violation(const char *violation, uint64_t counter, struct defex_context *dc,
 	uid_t stored_uid, uid_t stored_fsuid, uid_t stored_egid, int case_num)
 {
 	int usermode_result;

@@ -1,7 +1,7 @@
 /*
  * DHD debugability support
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -959,7 +959,7 @@ dhd_dbg_msgtrace_log_parser(dhd_pub_t *dhdp, void *event_data,
 		DHD_ERROR(("%s logset: %d max: %d out of range queried: %d\n",
 			__FUNCTION__, logset, event_log_max_sets, event_log_max_sets_queried));
 #ifdef DHD_FW_COREDUMP
-		if (event_log_max_sets_queried) {
+		if (event_log_max_sets_queried && !dhd_memdump_is_scheduled(dhdp)) {
 			DHD_ERROR(("%s: collect socram for DUMP_TYPE_LOGSET_BEYOND_RANGE\n",
 				__FUNCTION__));
 			dhdp->memdump_type = DUMP_TYPE_LOGSET_BEYOND_RANGE;

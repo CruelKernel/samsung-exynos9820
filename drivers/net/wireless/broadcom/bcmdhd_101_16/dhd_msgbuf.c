@@ -3,7 +3,7 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -914,6 +914,13 @@ dhd_prot_check_pending_ctrl_cmpls(dhd_pub_t *dhd)
 	bool ret;
 
 	dhd_bus_cmn_readshared(dhd->bus, &tcm_wr, RING_WR_UPD, ring->idx);
+
+	if (tcm_wr > ring->max_items) {
+		DHD_ERROR(("%s(): ring %p, ring->name %s, tcm_wr %d ring->max_items %d\n",
+			__FUNCTION__, ring, ring->name, tcm_wr, ring->max_items));
+		return FALSE;
+	}
+
 	host_rd = ring->rd;
 	/* Consider the ring as processed if host rd and tcm wr are same */
 	ret = (host_rd != tcm_wr) ? TRUE : FALSE;
@@ -5240,7 +5247,7 @@ BCMFASTPATH(dhd_prot_process_msgbuf_infocpl)(dhd_pub_t *dhd, uint bound)
 
 #ifdef EWP_EDL
 bool
-dhd_prot_process_msgbuf_edl(dhd_pub_t *dhd)
+dhd_prot_process_msgbuf_edl(dhd_pub_t *dhd, uint32 *edl_itmes)
 {
 	dhd_prot_t *prot = dhd->prot;
 	msgbuf_ring_t *ring = prot->d2hring_edl;
@@ -5286,6 +5293,7 @@ dhd_prot_process_msgbuf_edl(dhd_pub_t *dhd)
 	depth = ring->max_items;
 	/* check for avail space, in number of ring items */
 	items = READ_AVAIL_SPACE(ring->wr, rd, depth);
+	*edl_itmes = items;
 	if (items == 0) {
 		/* no work items in edl ring */
 		return FALSE;
@@ -7800,7 +7808,7 @@ dhd_msgbuf_wait_ioctl_cmplt(dhd_pub_t *dhd, uint32 len, void *buf)
 		uint32 intstatus = si_corereg(dhd->bus->sih,
 			dhd->bus->sih->buscoreidx, dhd->bus->pcie_mailbox_int, 0, 0);
 		int host_irq_disbled = dhdpcie_irq_disabled(dhd->bus);
-		if ((intstatus != (uint32)-1) &&
+		if ((intstatus) && (intstatus != (uint32)-1) &&
 			(timeleft == 0) && (!dhd_query_bus_erros(dhd))) {
 			DHD_ERROR(("%s: resumed on timeout for IOVAR happened. intstatus=%x"
 				" host_irq_disabled=%d\n",

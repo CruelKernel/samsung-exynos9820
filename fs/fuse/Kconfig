@@ -26,3 +26,8 @@ config CUSE
 
 	  If you want to develop or use a userspace character device
 	  based on CUSE, answer Y or M.
+
+config FUSE_SUPPORT_STLOG
+	bool "Enable storage log"
+	default y
+	depends on FUSE_FS && PROC_STLOG

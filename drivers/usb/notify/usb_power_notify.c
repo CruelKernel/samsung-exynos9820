@@ -40,6 +40,7 @@ static int check_usb3_hub(struct usb_device *dev, bool on)
 	int usb3_hub_detect = 0;
 	int usb2_detect = 0;
 	int port;
+	int bInterfaceClass = 0;
 
 	if (udev->bus->root_hub == udev) {
 		pr_info("this dev is a root hub\n");
@@ -68,6 +69,26 @@ static int check_usb3_hub(struct usb_device *dev, bool on)
 	for (port = 1; port <= hdev->maxchild; port++) {
 		udev = hub->ports[port-1]->child;
 		if (udev && udev->state != USB_STATE_NOTATTACHED) {
+			if (udev->config->interface[0] == NULL)
+				continue;
+			bInterfaceClass	= udev->config->interface[0]
+					->cur_altsetting->desc.bInterfaceClass;
+			if (on) {
+#ifdef CONFIG_USB_HOST_SAMSUNG_FEATURE
+				if (bInterfaceClass == USB_CLASS_AUDIO) {
+#else
+				if ((bInterfaceClass == USB_CLASS_HID) ||
+						(bInterfaceClass == USB_CLASS_AUDIO)) {
+#endif
+					udev->do_remote_wakeup =
+						(udev->config->desc.bmAttributes &
+						 USB_CONFIG_ATT_WAKEUP) ? 1 : 0;
+					if (udev->do_remote_wakeup == 1) {
+						device_init_wakeup(&udev->dev, 1);
+						usb_enable_autosuspend(dev);
+					}
+				}
+			}
 			if (udev->descriptor.bDeviceClass == USB_CLASS_HUB) {
 				port_state = PORT_HUB;
 				usb3_hub_detect = 1;

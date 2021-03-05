@@ -187,6 +187,37 @@ struct backing_dev_info {
 #endif
 };
 
+#define BDI_BDP_DEBUG_ENTRY 20
+struct bdi_sec_bdp_entry {
+	unsigned long start_time;
+	unsigned long elapsed_ms;
+	unsigned long global_thresh;
+	unsigned long global_dirty;
+	unsigned long wb_thresh;
+	unsigned long wb_dirty;
+	unsigned long wb_avg_write_bandwidth;
+	unsigned long wb_timelist_dirty;
+	unsigned long wb_timelist_inodes;
+};
+
+struct bdi_sec_bdp_dbg {
+	spinlock_t lock;
+	unsigned long total;
+	bool initialized;
+	struct bdi_sec_bdp_entry entry[BDI_BDP_DEBUG_ENTRY];
+	struct bdi_sec_bdp_entry max_entry;
+};
+
+struct sec_backing_dev_info {
+	struct backing_dev_info bdi;
+	struct bdi_sec_bdp_dbg bdp_debug;
+};
+
+static inline struct sec_backing_dev_info *SEC_BDI(struct backing_dev_info *bdi)
+{
+	return container_of(bdi, struct sec_backing_dev_info, bdi);
+}
+
 enum {
 	BLK_RW_ASYNC	= 0,
 	BLK_RW_SYNC	= 1,

@@ -726,28 +726,30 @@ enum sec_battery_temp_check {
 /* SEC_FUELGAUGE_CAPACITY_TYPE_RAW
   * use capacity information from fuel gauge directly
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_RAW		1
+#define SEC_FUELGAUGE_CAPACITY_TYPE_RAW		0x1
 /* SEC_FUELGAUGE_CAPACITY_TYPE_SCALE
   * rescale capacity by scaling, need min and max value for scaling
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_SCALE	2
+#define SEC_FUELGAUGE_CAPACITY_TYPE_SCALE	0x2
 /* SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE
   * change only maximum capacity dynamically
   * to keep time for every SOC unit
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE	4
+#define SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE	0x4
 /* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC
   * change capacity value by only -1 or +1
   * no sudden change of capacity
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	8
+#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	0x8
 /* SEC_FUELGAUGE_CAPACITY_TYPE_SKIP_ABNORMAL
   * skip current capacity value
   * if it is abnormal value
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_SKIP_ABNORMAL	16
+#define SEC_FUELGAUGE_CAPACITY_TYPE_SKIP_ABNORMAL	0x10
 
-#define SEC_FUELGAUGE_CAPACITY_TYPE_CAPACITY_POINT	32
+#define SEC_FUELGAUGE_CAPACITY_TYPE_CAPACITY_POINT	0x20
+
+#define SEC_FUELGAUGE_CAPACITY_TYPE_LOST_SOC	0x40
 
 /* charger function settings (can be used overlapped) */
 #define sec_charger_functions_t unsigned int

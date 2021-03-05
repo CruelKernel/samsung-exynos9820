@@ -94,16 +94,13 @@ void init_defex_context(struct defex_context *dc, int syscall, struct task_struc
 {
 	const struct cred *cred_ptr;
 
+	memset(dc, 0, sizeof(struct defex_context) - sizeof(struct cred));
+	if (!IS_ERR_OR_NULL(f)) {
+		get_file(f);
+		dc->target_file = f;
+	}
 	dc->syscall_no = syscall;
 	dc->task = p;
-	dc->process_file = NULL;
-	dc->process_dpath = NULL;
-	dc->process_name = NULL;
-	dc->target_file = f;
-	dc->target_dpath = NULL;
-	dc->target_name = NULL;
-	dc->process_name_buff = NULL;
-	dc->target_name_buff = NULL;
 	if (p == current)
 		cred_ptr = get_current_cred();
 	else
@@ -116,6 +113,8 @@ void release_defex_context(struct defex_context *dc)
 {
 	kfree(dc->process_name_buff);
 	kfree(dc->target_name_buff);
+	if (dc->target_file)
+		fput(dc->target_file);
 #ifndef DEFEX_CACHES_ENABLE
 	if (dc->process_file)
 		fput(dc->process_file);
@@ -172,7 +171,7 @@ const struct path *get_dc_target_dpath(struct defex_context *dc)
 	if (dc->target_dpath)
 		return dc->target_dpath;
 
-	if (!IS_ERR_OR_NULL(dc->target_file)) {
+	if (dc->target_file) {
 		dpath = &(dc->target_file->f_path);
 		if (dpath->dentry && dpath->dentry->d_inode) {
 			dc->target_dpath = dpath;

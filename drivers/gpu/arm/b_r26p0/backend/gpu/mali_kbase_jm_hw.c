@@ -80,6 +80,10 @@ static u64 kbase_job_write_affinity(struct kbase_device *kbdev,
 				kbdev->pm.debug_core_mask[js];
 	}
 
+	if (core_req & BASE_JD_REQ_LIMITED_CORE_MASK) {
+		affinity &= 0x7;
+	}
+
 	if (unlikely(!affinity)) {
 #ifdef CONFIG_MALI_DEBUG
 		u64 shaders_ready =

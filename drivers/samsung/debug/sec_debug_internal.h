@@ -36,4 +36,6 @@ extern void set_dload_mode(int on);
 #include <linux/utsname.h>
 extern struct uts_namespace init_uts_ns;
 
+/* sec_debug_reset_reason.c */
+extern int secdbg_rere_get_rstcnt_from_cmdline(void);
 #endif /* __SEC_DEBUG_INTERNAL_H__ */

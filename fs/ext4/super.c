@@ -419,6 +419,7 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
 	spin_unlock(&sbi->s_md_lock);
 }
 
+/* @fs.sec -- ed6287f38b4c758f36cd7864940cdbd81e26efee -- */
 extern int ignore_fs_panic;
 
 /* Deal with the reporting of failure conditions on a filesystem such as
@@ -436,6 +437,7 @@ extern int ignore_fs_panic;
  * that error until we've noted it down and cleared it.
  */
 
+/* @fs.sec -- 10e386db3959e3c02220744400a053e7807e07ad -- */
 static void ext4_handle_error(struct super_block *sb, char *buf)
 {
 	if (sb_rdonly(sb) || ignore_fs_panic)

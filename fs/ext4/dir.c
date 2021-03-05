@@ -82,6 +82,7 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
 	else
 		return 0;
 
+	/* @fs.sec -- e5c3ce7f01257fd22ad1329270d5fe928a3f9dc4 -- */
 	print_bh(dir->i_sb, bh, 0, EXT4_BLOCK_SIZE(dir->i_sb));
 
 	if (filp)

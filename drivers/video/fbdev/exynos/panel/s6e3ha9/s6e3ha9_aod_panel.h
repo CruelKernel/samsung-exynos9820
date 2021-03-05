@@ -38,6 +38,7 @@ static DEFINE_STATIC_PACKET(s6e3ha9_aod_l3_key_disable, DSI_PKT_TYPE_WR, S6E3HA9
 
 static DEFINE_PANEL_UDELAY(s6e3ha9_aod_self_mask_checksum_1frame_delay, 16700);
 static DEFINE_PANEL_UDELAY(s6e3ha9_aod_self_mask_checksum_2frame_delay, 33400);
+static DEFINE_PANEL_MDELAY(s6e3ha9_aod_set_timer_delay, 34);
 
 static DEFINE_PANEL_KEY(s6e3ha9_aod_l1_key_enable, CMD_LEVEL_1,
 	KEY_ENABLE, &PKTINFO(s6e3ha9_aod_l1_key_enable));
@@ -598,6 +599,7 @@ static void *s6e3ha9_aod_set_time_cmdtbl[] = {
 	&PKTINFO(s6e3ha9_aod_timer_rate),
 	&PKTINFO(s6e3ha9_aod_timer_en),
 	&PKTINFO(s6e3ha9_aod_update_time_ctrl),
+	&DLYINFO(s6e3ha9_aod_set_timer_delay),
 	&KEYINFO(s6e3ha9_aod_l2_key_disable),
 };
 

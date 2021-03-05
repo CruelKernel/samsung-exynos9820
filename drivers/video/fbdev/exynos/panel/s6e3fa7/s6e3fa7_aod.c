@@ -189,6 +189,9 @@ void s6e3fa7_copy_set_time_ctrl(struct maptbl *tbl, u8 *dst)
 		props->first_clk_update = 0;
 	}
 
+	if (props->analog.en == 0)
+		sc_inc_step &= ~(0x10);
+
 	if (props->digital.en)
 		sc_inc_step &= ~(0x10);
 

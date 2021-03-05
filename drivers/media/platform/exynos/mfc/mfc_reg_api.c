@@ -363,16 +363,14 @@ int mfc_set_enc_stream_buffer(struct mfc_ctx *ctx,
 		struct mfc_buf *mfc_buf)
 {
 	struct mfc_dev *dev = ctx->dev;
-	dma_addr_t addr = 0;
-	unsigned int size = 0, offset = 0, index = -1;
+	dma_addr_t addr;
+	unsigned int size, offset, index;
 
-	if (mfc_buf) {
-		index = mfc_buf->vb.vb2_buf.index;
-		addr = mfc_buf->addr[0][0];
-		offset = mfc_buf->vb.vb2_buf.planes[0].data_offset;
-		size = (unsigned int)vb2_plane_size(&mfc_buf->vb.vb2_buf, 0);
-		size = ALIGN(size, 512);
-	}
+	index = mfc_buf->vb.vb2_buf.index;
+	addr = mfc_buf->addr[0][0];
+	offset = mfc_buf->vb.vb2_buf.planes[0].data_offset;
+	size = (unsigned int)vb2_plane_size(&mfc_buf->vb.vb2_buf, 0);
+	size = ALIGN(size, 512);
 
 	MFC_WRITEL(addr, MFC_REG_E_STREAM_BUFFER_ADDR); /* 16B align */
 	MFC_WRITEL(size, MFC_REG_E_STREAM_BUFFER_SIZE);

@@ -1,4 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+
+/* @fs.sec -- d315380a99f81d98b0c3718617b5da5a -- */
+/* @fs.sec -- 0aada64b546ebb65e2ae266910f5b40a -- */
+/* @fs.sec -- fafc95ecfe8e741015d6cc26a6a3af41 -- */
+
 #ifndef _FAT_H
 #define _FAT_H
 

@@ -15,12 +15,15 @@
 #include <linux/types.h>
 
 enum exynos_video_info_type {
-	VIDEO_INFO_TYPE_INVALID         = 0,
-	VIDEO_INFO_TYPE_HDR_STATIC      = 0x1 << 0,
-	VIDEO_INFO_TYPE_COLOR_ASPECTS   = 0x1 << 1,
-	VIDEO_INFO_TYPE_INTERLACED      = 0x1 << 2,
-	VIDEO_INFO_TYPE_YSUM_DATA       = 0x1 << 3,
-	VIDEO_INFO_TYPE_HDR_DYNAMIC     = 0x1 << 4,
+	VIDEO_INFO_TYPE_INVALID			= 0,
+	VIDEO_INFO_TYPE_HDR_STATIC		= 0x1 << 0,
+	VIDEO_INFO_TYPE_COLOR_ASPECTS		= 0x1 << 1,
+	VIDEO_INFO_TYPE_INTERLACED		= 0x1 << 2,
+	VIDEO_INFO_TYPE_YSUM_DATA		= 0x1 << 3,
+	VIDEO_INFO_TYPE_HDR_DYNAMIC		= 0x1 << 4,
+	VIDEO_INFO_TYPE_CHECK_PIXEL_FORMAT	= 0x1 << 5,
+	VIDEO_INFO_TYPE_GDC_OTF			= 0x1 << 6,
+	VIDEO_INFO_TYPE_ROI_INFO		= 0x1 << 7,
 };
 
 struct exynos_video_ysum_data {
@@ -58,13 +61,24 @@ struct exynos_hdr_static_info {
 	};
 };
 
+#define MAX_ROIINFO_SIZE 32400
+struct exynos_video_roi_data {
+	int n_upper_qp_offset;
+	int n_lower_qp_offset;
+	int b_use_roi_info;
+	int n_roi_mb_info_size;
+	char p_roi_mb_info[MAX_ROIINFO_SIZE];
+};
+
 struct exynos_video_dec_data {
 	int ninterlaced_type;
 };
 
 struct exynos_video_enc_data {
 	struct exynos_video_ysum_data sysum_data;
-	int nUseGdcOTF;
+	unsigned long long p_roi_data;	/* for fixing byte alignemnt on 64x32 problem */
+	int n_use_gdc_otf;
+	int n_is_gdc_otf;
 };
 
 struct exynoshdrdynamicinfo {

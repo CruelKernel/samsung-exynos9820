@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -166,8 +166,22 @@ void dhd_select_cpu_candidacy(dhd_info_t *dhd)
 		 * cpumask_next returns >= nr_cpu_ids
 		 */
 		tx_cpu = cpumask_next(napi_cpu, dhd->cpumask_primary_new);
-		if (tx_cpu >= nr_cpu_ids)
-			tx_cpu = 0;
+		if (tx_cpu >= nr_cpu_ids) {
+			/* If no CPU is available for tx processing in primary CPUs,
+			 * choose the same CPU with net_tx_cpu
+			 * in case net_tx_cpu is in primary CPUs.
+			 */
+			cpumask_and(dhd->cpumask_primary_new, dhd->cpumask_primary,
+					dhd->cpumask_curr_avail);
+
+			if (cpumask_test_cpu(net_tx_cpu, dhd->cpumask_primary_new)) {
+				tx_cpu = net_tx_cpu;
+				DHD_INFO(("%s If no CPU is for tx cpu, use net_tx_cpu %d\n",
+					__FUNCTION__, net_tx_cpu));
+			} else {
+				tx_cpu = 0;
+			}
+		}
 	}
 
 	DHD_INFO(("%s After primary CPU check napi_cpu %d tx_cpu %d\n",
@@ -211,6 +225,13 @@ void dhd_select_cpu_candidacy(dhd_info_t *dhd)
 
 	ASSERT(napi_cpu < nr_cpu_ids);
 	ASSERT(tx_cpu < nr_cpu_ids);
+
+	if (!cpu_online(napi_cpu)) {
+		napi_cpu = 0;
+	}
+	if (!cpu_online(tx_cpu)) {
+		tx_cpu = 0;
+	}
 
 	atomic_set(&dhd->rx_napi_cpu, napi_cpu);
 	atomic_set(&dhd->tx_cpu, tx_cpu);

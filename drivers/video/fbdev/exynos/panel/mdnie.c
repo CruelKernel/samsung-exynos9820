@@ -977,7 +977,7 @@ static ssize_t night_mode_store(struct device *dev,
 	if (ret != 2)
 		return -EINVAL;
 
-	if (level < 0 || level >= MAX_NIGHT_LEVEL)
+	if (level < 0 || level >= mdnie->props.num_night_level)
 		return -EINVAL;
 
 	dev_info(dev, "%s: night_mode %s level %d\n",

@@ -34,7 +34,7 @@ void fat_uevent_ro_remount(struct super_block *sb)
 {
 	struct block_device *bdev = sb->s_bdev;
 	dev_t bd_dev = bdev ? bdev->bd_dev : 0;
-	
+
 	char major[16], minor[16];
 	char *envp[] = { major, minor, NULL };
 
@@ -71,7 +71,7 @@ void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 		printk(KERN_ERR "FAT-fs (%s[%d:%d]): error, %pV\n",
 				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
 
-		if (opts->errors == FAT_ERRORS_RO && !(sb->s_flags & MS_RDONLY))
+		if (opts->errors == FAT_ERRORS_RO && !sb_rdonly(sb))
 				ST_LOG("FAT-fs (%s[%d:%d]): error, %pV\n",
 				sb->s_id, MAJOR(bd_dev), MINOR(bd_dev), &vaf);
 		va_end(args);

@@ -25,6 +25,7 @@
 
 struct sec_param_data_s {
 	struct work_struct sec_param_work;
+	struct completion work;
 	unsigned long offset;
 	char val;
 };
@@ -74,6 +75,7 @@ static void sec_param_update(struct work_struct *work)
 	fp = filp_open(SEC_PARAM_NAME, O_WRONLY | O_SYNC, 0);
 	if (IS_ERR(fp)) {
 		pr_err("%s: filp_open error %ld\n", __func__, PTR_ERR(fp));
+		complete(&param_data->work);
 		return;
 	}
 	pr_info("%s: set param %c at %lu\n", __func__,
@@ -90,6 +92,7 @@ static void sec_param_update(struct work_struct *work)
 
 close_fp_out:
 	filp_close(fp, NULL);
+	complete(&param_data->work);
 	pr_info("%s: exit %d\n", __func__, ret);
 }
 
@@ -247,6 +250,7 @@ set_param:
 	sec_param_data.val = val;
 
 	schedule_work(&sec_param_data.sec_param_work);
+	wait_for_completion_timeout(&sec_param_data.work, msecs_to_jiffies(HZ));
 
 	/* how to determine to return success or fail ? */
 	ret = 0;
@@ -375,6 +379,7 @@ static int __init sec_param_work_init(void)
 	sec_param_data_u32.val = 0;
 	sec_param_data_u32.direction = 0;
 
+	init_completion(&sec_param_data.work);
 	INIT_WORK(&sec_param_data.sec_param_work, sec_param_update);
 	init_completion(&sec_param_data_u32.work);
 	INIT_WORK(&sec_param_data_u32.sec_param_work_u32, sec_param_update_u32);

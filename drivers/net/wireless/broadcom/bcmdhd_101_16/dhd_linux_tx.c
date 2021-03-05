@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD),
  * Linux-specific network interface for transmit(tx) path
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -772,6 +772,11 @@ done:
 static void
 __dhd_txflowcontrol(dhd_pub_t *dhdp, struct net_device *net, bool state)
 {
+
+	if (net->reg_state != NETREG_REGISTERED) {
+		return;
+	}
+
 	if (state == ON) {
 		if (!netif_queue_stopped(net)) {
 			DHD_ERROR(("%s: Stop Netif Queue\n", __FUNCTION__));

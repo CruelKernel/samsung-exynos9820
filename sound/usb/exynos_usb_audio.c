@@ -606,7 +606,6 @@ int exynos_usb_audio_conn(int is_conn)
 		if (usb_audio->is_audio) {
 			usb_audio->is_audio = 0;
 			usb_audio->usb_audio_state = USB_AUDIO_REMOVING;
-			reinit_completion(&usb_audio->discon_done);
 			ret = abox_start_ipc_transaction(dev, msg.ipcid, &msg, sizeof(msg), 0, 0);
 			if (ret) {
 				pr_err("erap usb dis_conn control failed\n");
@@ -622,6 +621,7 @@ int exynos_usb_audio_conn(int is_conn)
 		usb_audio->fb_indeq_map_done = 0;
 		usb_audio->fb_outdeq_map_done = 0;
 		usb_audio->pcm_open_done = 0;
+		reinit_completion(&usb_audio->discon_done);
 		ret = abox_start_ipc_transaction(dev, msg.ipcid, &msg, sizeof(msg), 0, 1);
 		if (ret) {
 			pr_err("erap usb conn control failed\n");

@@ -1208,7 +1208,7 @@ static int __mfc_handle_seq_enc(struct mfc_ctx *ctx)
 	struct mfc_enc *enc = ctx->enc_priv;
 	struct mfc_enc_params *p = &enc->params;
 	struct mfc_buf *dst_mb;
-	int ret, index;
+	int ret;
 
 	enc->header_size = mfc_get_enc_strm_size();
 	mfc_debug(2, "[STREAM] encoded slice type: %d, header size: %d, display order: %d\n",
@@ -1240,13 +1240,6 @@ static int __mfc_handle_seq_enc(struct mfc_ctx *ctx)
 			}
 
 			vb2_set_plane_payload(&dst_mb->vb.vb2_buf, 0, mfc_get_enc_strm_size());
-
-			index = dst_mb->vb.vb2_buf.index;
-			if (call_cop(ctx, get_buf_ctrls_val, ctx, &ctx->dst_ctrls[index]) < 0)
-				mfc_err_ctx("failed in get_buf_ctrls_val\n");
-			call_cop(ctx, get_buf_update_val, ctx, &ctx->dst_ctrls[index],
-				V4L2_CID_MPEG_MFC51_VIDEO_FRAME_TAG, HEADER_TAG);
-
 			vb2_buffer_done(&dst_mb->vb.vb2_buf, VB2_BUF_STATE_DONE);
 
 			/* encoder dst buffer CFW UNPROT */

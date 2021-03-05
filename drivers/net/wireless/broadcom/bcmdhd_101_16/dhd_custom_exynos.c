@@ -1,7 +1,7 @@
 /*
  * Platform Dependent file for Samsung Exynos
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -72,9 +72,10 @@
 #endif /* CONFIG_SEC_SYSFS */
 #endif /* BCMDHD_MODULAR */
 
-#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE)
+#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE) || \
+	defined(CONFIG_WLAN_MERLOT)
 #define PINCTL_DELAY 150
-#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE */
+#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
 #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
 extern void dhd_exit_wlan_mem(void);
@@ -90,9 +91,10 @@ static int wlan_host_wake_irq = 0;
 static unsigned int wlan_host_wake_up = -1;
 #endif /* CONFIG_BCMDHD_OOB_HOST_WAKE */
 
-#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE)
+#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE) || \
+	defined(CONFIG_WLAN_MERLOT)
 extern struct device *mmc_dev_for_wlan;
-#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE */
+#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
 #ifdef CONFIG_BCMDHD_PCIE
 extern int pcie_ch_num;
@@ -108,20 +110,22 @@ extern void mmc_ctrl_power(struct mmc_host *host, bool onoff);
 static int
 dhd_wlan_power(int onoff)
 {
-#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE)
+#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE) || \
+	defined(CONFIG_WLAN_MERLOT)
 	struct pinctrl *pinctrl = NULL;
-#endif /* CONFIG_MACH_A7LTE || ONFIG_NOBLESSE */
+#endif /* CONFIG_MACH_A7LTE || ONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
 	printk(KERN_INFO"%s Enter: power %s\n", __FUNCTION__, onoff ? "on" : "off");
 
-#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE)
+#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE) || \
+	defined(CONFIG_WLAN_MERLOT)
 	if (onoff) {
 		pinctrl = devm_pinctrl_get_select(mmc_dev_for_wlan, "sdio_wifi_on");
 		if (IS_ERR(pinctrl))
 			printk(KERN_INFO "%s WLAN SDIO GPIO control error\n", __FUNCTION__);
 		msleep(PINCTL_DELAY);
 	}
-#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE */
+#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
 	if (gpio_direction_output(wlan_pwr_on, onoff)) {
 		printk(KERN_ERR "%s failed to control WLAN_REG_ON to %s\n",
@@ -129,13 +133,14 @@ dhd_wlan_power(int onoff)
 		return -EIO;
 	}
 
-#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE)
+#if defined(CONFIG_MACH_A7LTE) || defined(CONFIG_NOBLESSE) || \
+	defined(CONFIG_WLAN_MERLOT)
 	if (!onoff) {
 		pinctrl = devm_pinctrl_get_select(mmc_dev_for_wlan, "sdio_wifi_off");
 		if (IS_ERR(pinctrl))
 			printk(KERN_INFO "%s WLAN SDIO GPIO control error\n", __FUNCTION__);
 	}
-#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE */
+#endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
 #if defined(CONFIG_SOC_EXYNOS7870) || defined(CONFIG_SOC_EXYNOS9110)
 	if (wlan_mmc)

@@ -2218,6 +2218,7 @@ extern int thaw_super(struct super_block *super);
 extern bool our_mnt(struct vfsmount *mnt);
 extern __printf(2, 3)
 int super_setup_bdi_name(struct super_block *sb, char *fmt, ...);
+int sec_super_setup_bdi_name(struct super_block *sb, char *fmt, ...);
 extern int super_setup_bdi(struct super_block *sb);
 
 extern int current_umask(void);

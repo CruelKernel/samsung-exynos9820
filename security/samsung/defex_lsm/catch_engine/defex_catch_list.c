@@ -16,6 +16,12 @@
 #include <linux/unistd.h>
 #include "include/defex_catch_list.h"
 
+#ifdef DEFEX_KUNIT_ENABLED
+#ifndef __NR_syscalls
+#define __NR_syscalls   436
+#endif
+#endif
+
 #define DEFEX_CATCH_COUNT	__NR_syscalls
 const int defex_nr_syscalls = DEFEX_CATCH_COUNT;
 

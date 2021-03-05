@@ -1581,6 +1581,54 @@ static inline void wb_dirty_limits(struct dirty_throttle_control *dtc)
 	}
 }
 
+static inline void bdi_fill_sec_debug_bdp(struct backing_dev_info *bdi,
+		unsigned long start_time,
+		struct dirty_throttle_control *dtc) {
+	struct sec_backing_dev_info *sec_bdi = SEC_BDI(bdi);
+	struct bdi_sec_bdp_dbg *bdp_debug = &sec_bdi->bdp_debug;
+	struct bdi_writeback *wb = dtc->wb;
+	struct inode *inode;
+	unsigned long elapsed_ms = (jiffies - start_time) * 1000 / HZ;
+	unsigned int idx;
+	struct bdi_sec_bdp_entry *entry;
+	unsigned long nr_dirty_pages_in_timelist = 0;  /* # of dirty pages in b_dirty_time list */
+	unsigned long nr_dirty_inodes_in_timelist = 0; /* # of dirty inodes in b_dirty_time list */
+
+	// fuse bdi balance_dirty_pages debug timeout : 1 sec
+	if (!(bdi->capabilities & BDI_CAP_SEC_DEBUG) || elapsed_ms < 1000)
+		return;
+
+	spin_lock(&wb->list_lock);
+	list_for_each_entry(inode, &wb->b_dirty_time, i_io_list) {
+		if (inode->i_state & I_DIRTY) {
+			spin_lock(&inode->i_lock);
+			if (inode->i_state & I_DIRTY) {
+				nr_dirty_inodes_in_timelist++;
+			}
+			spin_unlock(&inode->i_lock);
+		}
+	}
+	spin_unlock(&wb->list_lock);
+
+	spin_lock(&bdp_debug->lock);
+	idx = bdp_debug->total++ % BDI_BDP_DEBUG_ENTRY;
+	entry = bdp_debug->entry + idx;
+
+	entry->start_time = start_time;
+	entry->elapsed_ms = elapsed_ms;
+	entry->global_thresh = dtc->thresh;
+	entry->global_dirty = dtc->dirty;
+	entry->wb_thresh = dtc->wb_thresh;
+	entry->wb_dirty = dtc->wb_dirty;
+	entry->wb_avg_write_bandwidth = dtc->wb->avg_write_bandwidth;
+	entry->wb_timelist_dirty = nr_dirty_pages_in_timelist;
+	entry->wb_timelist_inodes = nr_dirty_inodes_in_timelist;
+
+	if (bdp_debug->max_entry.elapsed_ms <= elapsed_ms)
+		memcpy(&bdp_debug->max_entry, entry, sizeof(struct bdi_sec_bdp_entry));
+	spin_unlock(&bdp_debug->lock);
+}
+
 /*
  * balance_dirty_pages() must be called by processes which are generating dirty
  * data.  It looks at the number of dirty pages in the machine and will force
@@ -1613,6 +1661,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	struct backing_dev_info *bdi = wb->bdi;
 	bool strictlimit = bdi->capabilities & BDI_CAP_STRICTLIMIT;
 	unsigned long start_time = jiffies;
+	unsigned long logtime_stamp = jiffies;
 
 	for (;;) {
 		unsigned long now = jiffies;
@@ -1695,6 +1744,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 			if (mdtc)
 				m_intv = dirty_poll_interval(m_dirty, m_thresh);
 			current->nr_dirtied_pause = min(intv, m_intv);
+			bdi_fill_sec_debug_bdp(bdi, start_time, mdtc ? mdtc : gdtc);
 			break;
 		}
 
@@ -1788,6 +1838,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 				current->nr_dirtied = 0;
 			} else if (current->nr_dirtied_pause <= pages_dirtied)
 				current->nr_dirtied_pause += pages_dirtied;
+			bdi_fill_sec_debug_bdp(bdi, start_time, sdtc);
 			break;
 		}
 		if (unlikely(pause > max_pause)) {
@@ -1809,6 +1860,37 @@ pause:
 					  period,
 					  pause,
 					  start_time);
+
+		/* @fs.sec -- b73d2f65ec1a7a5621f2f682a666bae75da7f61e -- */
+		if (bdi->capabilities & BDI_CAP_SEC_DEBUG && pause == max_pause) {
+			unsigned long nr_dirty_pages_in_timelist = 0;  /* # of dirty pages in b_dirty_time list */
+			unsigned long nr_dirty_inodes_in_timelist = 0; /* # of dirty inodes in b_dirty_time list */
+			struct inode *inode;
+
+			logtime_stamp = jiffies;
+			spin_lock(&wb->list_lock);
+			list_for_each_entry(inode, &wb->b_dirty_time, i_io_list) {
+				if (inode->i_state & I_DIRTY) {
+					spin_lock(&inode->i_lock);
+					if (inode->i_state & I_DIRTY) {
+						nr_dirty_inodes_in_timelist++;
+					}
+					spin_unlock(&inode->i_lock);
+				}
+			}
+			spin_unlock(&wb->list_lock);
+			printk_ratelimited(KERN_WARNING "dev: %s, paused %lu, g-thresh %lu, g-dirty %lu, bdi-thresh %lu, bdi-dirty %lu,"
+				" bdi-bw %lu timelist_dirty %lu, timelist_inodes %lu\n",
+				bdi->dev ? dev_name(bdi->dev) : "(unknown)",
+				(unsigned long) (jiffies - start_time) * 1000 / HZ,
+				(unsigned long) gdtc->thresh,
+				(unsigned long) gdtc->dirty,
+				(unsigned long) gdtc->wb_thresh,
+				(unsigned long) gdtc->wb_dirty,
+				(unsigned long) gdtc->wb->avg_write_bandwidth,
+				(unsigned long) nr_dirty_pages_in_timelist,
+				(unsigned long) nr_dirty_inodes_in_timelist);
+		}
 
 		/* IOPP-prevent_infinite_writeback-v1.0.4.4 */
 		/* Do not sleep if the backing device is removed */

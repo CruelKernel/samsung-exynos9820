@@ -146,26 +146,25 @@ static inline void jsqz_get_output_regs(void __iomem *base, u32 * output_qt)
     }
 }
 
-#ifdef DEBUG
 static inline void jsqz_print_all_regs(struct jsqz_dev *jsqz)
 {
 	int i;
 	void __iomem *base = jsqz->regs;
-	dev_dbg(jsqz->dev, "%s: BEGIN\n", __func__);
+	dev_info(jsqz->dev, "%s: BEGIN\n", __func__);
 	for (i = 0; i < 4; i++)
 	{
-		dev_dbg(jsqz->dev, "%s: 0x%08x : %08x\n", __func__, (i*0x4), readl(base + (i*0x4)));
+		dev_info(jsqz->dev, "%s: 0x%08x : %08x\n", __func__, (i*0x4), readl(base + (i*0x4)));
 	}
 	for (i = 0; i < 4; i++)
 	{
-		dev_dbg(jsqz->dev, "%s: 0x%08x : %08x\n", __func__, (REG_36_SW_RESET + (i*0x4)), readl(base + REG_36_SW_RESET + (i*0x4)));
+		dev_info(jsqz->dev, "%s: 0x%08x : %08x\n", __func__,
+			(REG_36_SW_RESET + (i*0x4)), readl(base + REG_36_SW_RESET + (i*0x4)));
 	}
-	dev_dbg(jsqz->dev, "%s: 0x00000100 : %08x\n", __func__, readl(base + REG_40_JSQZ_HW_DONE));
-	dev_dbg(jsqz->dev, "%s: 0x00000104 : %08x\n", __func__, readl(base + 0x104));
-	dev_dbg(jsqz->dev, "%s: 0x00000108 : %08x\n", __func__, readl(base + REG_42_BUS_CONFIG));
-	dev_dbg(jsqz->dev, "%s: END\n", __func__);
+	dev_info(jsqz->dev, "%s: 0x00000100 : %08x\n", __func__, readl(base + REG_40_JSQZ_HW_DONE));
+	dev_info(jsqz->dev, "%s: 0x00000104 : %08x\n", __func__, readl(base + 0x104));
+	dev_info(jsqz->dev, "%s: 0x00000108 : %08x\n", __func__, readl(base + REG_42_BUS_CONFIG));
+	dev_info(jsqz->dev, "%s: END\n", __func__);
 }
-#endif
 
 
 

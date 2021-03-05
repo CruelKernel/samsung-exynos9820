@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 2020, Broadcom.
+ * Copyright (C) 2021, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -1151,8 +1151,8 @@ set_proptx(struct dhd_info *dev, const char *buf, size_t count)
 	}
 
 	proptx = onoff;
-	DHD_ERROR(("[WIFI_SEC] %s: FRAMEBURST On/Off from sysfs = %u\n",
-		__FUNCTION__, txbf));
+	DHD_ERROR(("[WIFI_SEC] %s: proptx from sysfs = %u\n",
+		__FUNCTION__, proptx));
 	return count;
 }
 

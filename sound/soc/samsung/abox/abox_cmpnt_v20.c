@@ -2614,6 +2614,12 @@ static int asrc_update_tick(struct abox_data *data, int stream, int id)
 
 	dev_dbg(dev, "%s(%d, %d, %ulHz)\n", __func__, stream, id, aclk);
 
+	if (idx < 0) {
+		dev_err(dev, "%s(%d, %d): invalid idx: %d\n", __func__,
+				stream, id, idx);
+		return -EINVAL;
+	}
+
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		reg = ABOX_SPUS_ASRC_CTRL(id);
 		itick = spus_asrc_is[idx];
