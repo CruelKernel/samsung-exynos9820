@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: arter97
+  TOOLCHAIN: cruel
   INSTALLER: yes
 
 jobs:
