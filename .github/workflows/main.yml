@@ -39,16 +39,6 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
-                       +magisk                   \
-                       +nohardening              \
-                       +ttl                      \
-                       +wireguard                \
-                       +cifs                     \
-                       +sdfat                    \
-                       +ntfs                     \
-                       +force_dex_wqhd           \
-                       +morosound                \
-                       +boeffla_wl_blocker       \
                        +nodebug                   \
                        +noaudit              \
                        +noksm                      \
