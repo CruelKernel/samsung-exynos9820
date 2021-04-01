@@ -28,7 +28,7 @@ jobs:
                        model=${{ matrix.model }} \
                        name="VN-KERNEL-v4.0"         \
                        toolchain=$TOOLCHAIN      \
-                       os_patch_level="2099-12"      \
+                       os_patch_level="2099-12"	\
                        +magisk                   \
                        +nohardening              \
                        +ttl                      \
@@ -40,13 +40,13 @@ jobs:
                        +morosound                \
                        +boeffla_wl_blocker       \
                        +nodebug                   \
-                       +noaudit              \
-                       +noksm                      \
-                       +nomodules                \
-                       +usb_serial                     \
-                       +sched_powersave                    \
-                       +sched_performance                     \
-                       +fake_config           \	
+                       +noaudit	\
+                       +noksm	\
+                       +nomodules	\
+                       +usb_serial	\
+                       +sched_powersave	\
+                       +sched_performance	\
+                       +fake_config	\	
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
