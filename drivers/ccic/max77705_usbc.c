@@ -3164,10 +3164,9 @@ static int pdic_handle_usb_external_notifier_notification(struct notifier_block 
 		}
 		break;
 	case EXTERNAL_NOTIFY_MDMBLOCK_PRE:
-		if (enable) {
+		if (enable && usbpd_data->dp_is_connect) {
 			usbpd_data->mdm_block = 1;
-			if (usbpd_data->dp_is_connect)
-				max77705_dp_detach(usbpd_data);
+			max77705_dp_detach(usbpd_data);
 		}
 		break;
 	default:

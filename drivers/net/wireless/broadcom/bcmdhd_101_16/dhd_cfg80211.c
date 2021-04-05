@@ -52,6 +52,10 @@ static int dhd_dongle_up = FALSE;
 #include <brcm_nl80211.h>
 #include <dhd_cfg80211.h>
 
+#if !defined(PCIE_FULL_DONGLE) && defined(P2P_IF_STATE_EVENT_CTRL)
+#include <dhd_wlfc.h>
+#endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
+
 static s32 wl_dongle_up(struct net_device *ndev);
 static s32 wl_dongle_down(struct net_device *ndev);
 
@@ -93,6 +97,10 @@ s32 dhd_cfg80211_set_p2p_info(struct bcm_cfg80211 *cfg, int val)
 	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
 	dhd->op_mode |= val;
 	WL_ERR(("Set : op_mode=0x%04x\n", dhd->op_mode));
+
+#if !defined(PCIE_FULL_DONGLE) && defined(P2P_IF_STATE_EVENT_CTRL)
+	dhd_reset_p2p_interface_event(dhd);
+#endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
 
 	return 0;
 }

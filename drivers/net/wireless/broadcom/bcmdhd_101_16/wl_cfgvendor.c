@@ -7569,6 +7569,18 @@ wl_cfgvendor_dbg_file_dump(struct wiphy *wiphy,
 					buf->data_buf[0], NULL, (uint32)buf->len,
 					DLD_BUF_TYPE_SPECIAL, &pos);
 				break;
+#ifdef DHD_MAP_PKTID_LOGGING
+			case DUMP_BUF_ATTR_PKTID_MAP_LOG:
+				ret = dhd_print_pktid_map_log_data(bcmcfg_to_prmry_ndev(cfg), NULL,
+					buf->data_buf[0], NULL, (uint32)buf->len, &pos, TRUE);
+				break;
+
+			case DUMP_BUF_ATTR_PKTID_UNMAP_LOG:
+				ret = dhd_print_pktid_map_log_data(bcmcfg_to_prmry_ndev(cfg), NULL,
+					buf->data_buf[0], NULL, (uint32)buf->len, &pos, FALSE);
+				break;
+#endif /* DHD_MAP_PKTID_LOGGIN */
+
 #ifdef DHD_SSSR_DUMP
 #ifdef DHD_SSSR_DUMP_BEFORE_SR
 			case DUMP_BUF_ATTR_SSSR_C0_D11_BEFORE :
@@ -8298,6 +8310,25 @@ static int wl_cfgvendor_nla_put_debug_dump_data(struct sk_buff *skb,
 		}
 	}
 #endif /* EWP_RTT_LOGGING */
+#ifdef  DHD_MAP_PKTID_LOGGING
+	len = dhd_get_pktid_map_logging_len(ndev, NULL, TRUE);
+	if (len) {
+		ret = nla_put_u32(skb, DUMP_LEN_ATTR_PKTID_MAP_LOG, len);
+		if (unlikely(ret)) {
+			WL_ERR(("Failed to nla put pktid log lenght, ret=%d", ret));
+			goto exit;
+		}
+	}
+
+	len = dhd_get_pktid_map_logging_len(ndev, NULL, FALSE);
+	if (len) {
+		ret = nla_put_u32(skb, DUMP_LEN_ATTR_PKTID_UNMAP_LOG, len);
+		if (unlikely(ret)) {
+			WL_ERR(("Failed to nla put pktid log lenght, ret=%d", ret));
+			goto exit;
+		}
+	}
+#endif /* DHD_MAP_PKTID_LOGGING */
 exit:
 	return ret;
 }
@@ -8729,6 +8760,11 @@ static int wl_cfgvendor_start_mkeep_alive(struct wiphy *wiphy, struct wireless_d
 	if (ret < 0) {
 		WL_ERR(("start_mkeep_alive is failed ret: %d\n", ret));
 	}
+#ifdef DHD_CLEANUP_KEEP_ALIVE
+	else if (ret == BCME_OK) {
+		setbit(&cfg->mkeep_alive_avail, mkeep_alive_id);
+	}
+#endif /* DHD_CLEANUP_KEEP_ALIVE */
 
 exit:
 	if (ip_pkt) {
@@ -8763,6 +8799,11 @@ static int wl_cfgvendor_stop_mkeep_alive(struct wiphy *wiphy, struct wireless_de
 	if (ret < 0) {
 		WL_ERR(("stop_mkeep_alive is failed ret: %d\n", ret));
 	}
+#ifdef DHD_CLEANUP_KEEP_ALIVE
+	else if (ret == BCME_OK) {
+		clrbit(&cfg->mkeep_alive_avail, mkeep_alive_id);
+	}
+#endif /* DHD_CLEANUP_KEEP_ALIVE */
 
 	return ret;
 }
@@ -9433,6 +9474,8 @@ const struct nla_policy dump_buf_policy[DUMP_BUF_ATTR_MAX] = {
 	[DUMP_BUF_ATTR_STATUS_LOG] = { .type = NLA_BINARY },
 	[DUMP_BUF_ATTR_AXI_ERROR] = { .type = NLA_BINARY },
 	[DUMP_BUF_ATTR_RTT_LOG] = { .type = NLA_BINARY },
+	[DUMP_BUF_ATTR_PKTID_MAP_LOG] = { .type = NLA_BINARY },
+	[DUMP_BUF_ATTR_PKTID_UNMAP_LOG] = { .type = NLA_BINARY },
 };
 
 const struct nla_policy andr_dbg_policy[DEBUG_ATTRIBUTE_MAX] = {

@@ -762,6 +762,11 @@ static s32 wl_bcnrecv_aborted_event_handler(struct bcm_cfg80211 *cfg, bcm_struct
 		const wl_event_msg_t *e, void *data);
 #endif /* WL_BCNRECV */
 
+#if defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE)
+#define KEEP_ALIVE_ID_MAX	8
+void wl_cleanup_keep_alive(struct bcm_cfg80211 *cfg);
+#endif /* defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE) */
+
 #ifdef WL_CAC_TS
 static s32 wl_cfg80211_cac_event_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		const wl_event_msg_t *e, void *data);
@@ -11434,6 +11439,12 @@ wl_post_linkdown_ops(struct bcm_cfg80211 *cfg,
 	}
 #endif /* WL_NAN */
 
+#if defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE)
+	if (ndev == bcmcfg_to_prmry_ndev(cfg) && cfg->mkeep_alive_avail) {
+		wl_cleanup_keep_alive(cfg);
+	}
+#endif /* defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE) */
+
 	return ret;
 }
 
@@ -12362,7 +12373,12 @@ wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	BCM_REFERENCE(sec);
 
 	if (status == WLC_E_STATUS_SUCCESS && reason != WLC_E_REASON_INITIAL_ASSOC) {
+#ifndef WES_SUPPORT
 		WL_ERR(("Attempting roam with reason code : %d\n", reason));
+#else
+		WL_ERR(("Attempting roam with reason code : %d, Current %s mode\n",
+			reason, (cfg->ncho_mode ? "NCHO" : "Legacy Roam")));
+#endif /* WES_SUPPORT */
 	}
 
 #ifdef CONFIG_SILENT_ROAM
@@ -12694,6 +12710,7 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 #endif /* LINUX_VERSION > 2.6.39 || WL_COMPAT_WIRELESS */
 #endif /* BCM4359 CHIP */
 
+	wl_update_prof(cfg, ndev, NULL, (const void *)(e->addr.octet), WL_PROF_BSSID);
 	if ((err = wl_get_assoc_ies(cfg, ndev)) != BCME_OK) {
 		DHD_STATLOG_CTRL(dhdp, ST(DISASSOC_INT_START),
 			dhd_net2idx(dhdp->info, ndev), WLAN_REASON_DEAUTH_LEAVING);
@@ -12713,7 +12730,6 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		goto fail;
 	}
 
-	wl_update_prof(cfg, ndev, NULL, (const void *)(e->addr.octet), WL_PROF_BSSID);
 	curbssid = wl_read_prof(cfg, ndev, WL_PROF_BSSID);
 	if ((err = wl_update_bss_info(cfg, ndev, true)) != BCME_OK) {
 		WL_ERR(("failed to update bss info, err=%d\n", err));
@@ -21245,3 +21261,25 @@ wl_android_roamoff_dbg_dump(struct bcm_cfg80211 *cfg)
 	return;
 }
 #endif /* DEBUG_SETROAMMODE */
+
+#if defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE)
+void
+wl_cleanup_keep_alive(struct bcm_cfg80211 *cfg)
+{
+	int mkeep_alive_id;
+
+	for (mkeep_alive_id = 1; mkeep_alive_id < KEEP_ALIVE_ID_MAX; mkeep_alive_id++) {
+		if (isset(&cfg->mkeep_alive_avail, mkeep_alive_id)) {
+			if (wl_cfg80211_stop_mkeep_alive(cfg, mkeep_alive_id) == BCME_OK) {
+				clrbit(&cfg->mkeep_alive_avail, mkeep_alive_id);
+			}
+		}
+		if (!cfg->mkeep_alive_avail) {
+			WL_INFORM(("Stopped for all keep alive id.\n"));
+			break;
+		}
+	}
+
+	return;
+}
+#endif /* defined(KEEP_ALIVE) && defined(DHD_CLEANUP_KEEP_ALIVE) */

@@ -538,7 +538,8 @@ enum dhd_dongledump_type {
 	DUMP_TYPE_INBAND_DEVICE_WAKE_FAILURE	= 30,
 	DUMP_TYPE_PKTID_POOL_DEPLETED		= 31,
 	DUMP_TYPE_ESCAN_SYNCID_MISMATCH		= 32,
-	DUMP_TYPE_INVALID_SHINFO_NRFRAGS	= 33
+	DUMP_TYPE_INVALID_SHINFO_NRFRAGS	= 33,
+	DUMP_TYPE_P2P_DISC_BUSY			= 34
 };
 
 enum dhd_hang_reason {
@@ -563,6 +564,7 @@ enum dhd_hang_reason {
 	HANG_REASON_ESCAN_SYNCID_MISMATCH		= 0x8013,
 	HANG_REASON_SCAN_TIMEOUT			= 0x8014,
 	HANG_REASON_SCAN_TIMEOUT_SCHED_ERROR		= 0x8015,
+	HANG_REASON_P2P_DISC_BUSY			= 0x8016,
 	HANG_REASON_PCIE_LINK_DOWN_RC_DETECT		= 0x8805,
 	HANG_REASON_INVALID_EVENT_OR_DATA		= 0x8806,
 	HANG_REASON_UNKNOWN				= 0x8807,
@@ -811,7 +813,9 @@ typedef enum {
 	LOG_DUMP_SECTION_RING,
 	LOG_DUMP_SECTION_STATUS,
 	LOG_DUMP_SECTION_RTT,
-	LOG_DUMP_SECTION_BCM_TRACE
+	LOG_DUMP_SECTION_BCM_TRACE,
+	LOG_DUMP_SECTION_PKTID_MAP_LOG,
+	LOG_DUMP_SECTION_PKTID_UNMAP_LOG
 } log_dump_section_type_t;
 
 /* Each section in the debug_dump log file shall begin with a header */
@@ -1163,6 +1167,7 @@ typedef struct dhd_pub {
 	bool	is_bt_recovery_required;
 #endif
 	bool	smmu_fault_occurred;	/* flag to indicate SMMU Fault */
+	bool	p2p_disc_busy_occurred;
 /*
  * Add any new variables to track Bus errors above
  * this line. Also ensure that the variable is
@@ -1461,6 +1466,9 @@ typedef struct dhd_pub {
 #ifdef DHD_STATUS_LOGGING
 	void *statlog;
 #endif /* DHD_STATUS_LOGGING */
+#ifdef DHD_MAP_PKTID_LOGGING
+	bool enable_pktid_log_dump;
+#endif /* DHD_MAP_PKTID_LOGGING */
 #ifdef DHD_DB0TS
 	bool db0ts_capable;
 #endif /* DHD_DB0TS */
@@ -3485,6 +3493,14 @@ extern int dhd_print_status_log_data(void *dev, dhd_pub_t *dhdp,
 	const void *user_buf, void *fp, uint32 len, void *pos);
 extern uint32 dhd_get_status_log_len(void *ndev, dhd_pub_t *dhdp);
 #endif /* DHD_STATUS_LOGGING */
+#ifdef DHD_MAP_PKTID_LOGGING
+extern uint32 dhd_pktid_buf_len(dhd_pub_t *dhd, bool is_map);
+extern int dhd_print_pktid_map_log_data(void *dev, dhd_pub_t *dhdp,
+	const void *user_buf, void *fp, uint32 len, void *pos, bool is_map);
+extern int dhd_write_pktid_log_dump(dhd_pub_t *dhdp, const void *user_buf,
+	void *fp, uint32 len, unsigned long *pos, bool is_map);
+extern uint32 dhd_get_pktid_map_logging_len(void *ndev, dhd_pub_t *dhdp, bool is_map);
+#endif /* DHD_MAP_PKTID_LOGGING */
 int dhd_print_ecntrs_data(void *dev, dhd_pub_t *dhdp, const void *user_buf,
 	void *fp, uint32 len, void *pos);
 int dhd_print_rtt_data(void *dev, dhd_pub_t *dhdp, const void *user_buf,
@@ -3663,6 +3679,7 @@ extern void dhd_dump_file_manage_enqueue(dhd_pub_t *dhd, char *dump_path, char *
 
 #if !defined(PCIE_FULL_DONGLE) && defined(P2P_IF_STATE_EVENT_CTRL)
 int dhd_throttle_p2p_interface_event(void *handle, bool onoff);
+void dhd_reset_p2p_interface_event(void *handle);
 #endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
 
 #ifdef DNGL_AXI_ERROR_LOGGING

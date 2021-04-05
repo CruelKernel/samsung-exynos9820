@@ -412,8 +412,10 @@ wl_cfgp2p_set_firm_p2p(struct bcm_cfg80211 *cfg)
 	 * After Initializing firmware, we have to set current mac address to
 	 * firmware for P2P device address
 	 */
+	CFGP2P_INFO(("p2p dev addr : "MACDBG"\n", MAC2STRDBG(p2p_dev_addr->octet)));
 	ret = wldev_iovar_setbuf_bsscfg(ndev, "p2p_da_override", p2p_dev_addr,
-		sizeof(*p2p_dev_addr), cfg->ioctl_buf, WLC_IOCTL_MAXLEN, 0, &cfg->ioctl_buf_sync);
+			sizeof(*p2p_dev_addr), cfg->ioctl_buf, WLC_IOCTL_MAXLEN, 0,
+			&cfg->ioctl_buf_sync);
 	if (ret && ret != BCME_UNSUPPORTED) {
 		CFGP2P_ERR(("failed to update device address ret %d\n", ret));
 	}
@@ -571,6 +573,51 @@ wl_cfgp2p_ifidx(struct bcm_cfg80211 *cfg, struct ether_addr *mac, s32 *index)
 	return ret;
 }
 
+#define DISCOVERY_EBUSY_RETRY_LIMIT 5
+static void
+wl_cfgp2p_handle_discovery_busy(struct bcm_cfg80211 *cfg, s32 err)
+{
+	static u32 busy_count = 0;
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
+
+	if (err != BCME_BUSY) {
+		busy_count = 0;
+		return;
+	}
+
+	busy_count++;
+
+	if (busy_count >= DISCOVERY_EBUSY_RETRY_LIMIT) {
+		struct ether_addr *p2p_dev_addr = wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_DEVICE);
+
+		CFGP2P_ERR(("p2p disc busy!!!\n"));
+
+		if (ETHER_ISNULLADDR(p2p_dev_addr)) {
+			CFGP2P_ERR(("NULL p2p_dev_addr\n"));
+		} else {
+			CFGP2P_ERR(("p2p disc mac : "MACDBG"\n", MAC2STRDBG(p2p_dev_addr->octet)));
+		}
+
+		if (dhd_query_bus_erros(dhdp)) {
+			CFGP2P_ERR(("bus error\n"));
+			return;
+		}
+
+		dhdp->p2p_disc_busy_occurred = TRUE;
+		busy_count = 0;
+
+#if defined(DHD_DEBUG) && defined(DHD_FW_COREDUMP)
+		if (dhdp->memdump_enabled) {
+			dhdp->memdump_type = DUMP_TYPE_P2P_DISC_BUSY;
+			dhd_bus_mem_dump(dhdp);
+		}
+#endif /* DHD_DEBUG && DHD_FW_COREDUMP */
+
+		dhdp->hang_reason = HANG_REASON_P2P_DISC_BUSY;
+		dhd_os_send_hang_message(dhdp);
+	}
+}
+
 static s32
 wl_cfgp2p_set_discovery(struct bcm_cfg80211 *cfg, s32 on)
 {
@@ -582,6 +629,10 @@ wl_cfgp2p_set_discovery(struct bcm_cfg80211 *cfg, s32 on)
 
 	if (unlikely(ret < 0)) {
 		CFGP2P_ERR(("p2p_disc %d error %d\n", on, ret));
+
+		if (on) {
+			wl_cfgp2p_handle_discovery_busy(cfg, ret);
+		}
 	}
 
 	return ret;
@@ -1855,7 +1906,7 @@ wl_cfgp2p_generate_bss_mac(struct bcm_cfg80211 *cfg, struct ether_addr *primary_
 
 	(void)memcpy_s(mac_addr, ETH_ALEN, bcmcfg_to_prmry_ndev(cfg)->perm_addr, ETH_ALEN);
 	mac_addr->octet[0] |= 0x02;
-	WL_DBG(("P2P Discovery address:"MACDBG "\n", MAC2STRDBG(mac_addr->octet)));
+	CFGP2P_INFO(("P2P Discovery address:"MACDBG "\n", MAC2STRDBG(mac_addr->octet)));
 
 	int_addr = wl_to_p2p_bss_macaddr(cfg, P2PAPI_BSSCFG_CONNECTION1);
 	memcpy(int_addr, mac_addr, sizeof(struct ether_addr));

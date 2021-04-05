@@ -4643,6 +4643,9 @@ dhd_watchdog_thread(void *data)
 					    min(msecs_to_jiffies(dhd_watchdog_ms), time_lapse));
 				}
 				DHD_GENERAL_UNLOCK(&dhd->pub, flags);
+#if !defined(PCIE_FULL_DONGLE) && defined(P2P_IF_STATE_EVENT_CTRL)
+				dhd_throttle_p2p_interface_event(dhd, true);
+#endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
 			}
 #ifdef BCMPCIE
 			DHD_OS_WD_WAKE_UNLOCK(&dhd->pub);
@@ -6665,6 +6668,7 @@ dhd_open(struct net_device *net)
 	dhd->pub.iface_op_failed = 0;
 	dhd->pub.scan_timeout_occurred = 0;
 	dhd->pub.scan_busy_occurred = 0;
+	dhd->pub.p2p_disc_busy_occurred = 0;
 	dhd->pub.smmu_fault_occurred = 0;
 #ifdef DHD_LOSSLESS_ROAMING
 	dhd->pub.dequeue_prec_map = ALLPRIO;
@@ -7646,6 +7650,12 @@ dhd_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock)
 #endif /* WL_STATIC_IF */
 		if (ifp->net != NULL) {
 			DHD_ERROR(("deleting interface '%s' idx %d\n", ifp->net->name, ifp->idx));
+
+#if !defined(PCIE_FULL_DONGLE) && defined(P2P_IF_STATE_EVENT_CTRL)
+			if (wl_cfgp2p_vif_created(wl_get_cfg(ifp->net))) {
+				dhd_reset_p2p_interface_event(dhdpub);
+			}
+#endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
 
 			DHD_GENERAL_LOCK(dhdpub, flags);
 			ifp->del_in_progress = true;
@@ -9176,11 +9186,15 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	dhd->pub.iface_op_failed = 0;
 	dhd->pub.scan_timeout_occurred = 0;
 	dhd->pub.scan_busy_occurred = 0;
+	dhd->pub.p2p_disc_busy_occurred = 0;
 	/* Retain BH induced errors and clear induced error during initialize */
 	if (dhd->pub.dhd_induce_error) {
 		dhd->pub.dhd_induce_bh_error = dhd->pub.dhd_induce_error;
 	}
 	dhd->pub.dhd_induce_error = DHD_INDUCE_ERROR_CLEAR;
+#ifdef DHD_MAP_PKTID_LOGGING
+	dhd->pub.enable_pktid_log_dump = FALSE;
+#endif /* DHD_MAP_PKTID_LOGGING */
 	dhd->pub.tput_test_done = FALSE;
 
 	/* try to download image and nvram to the dongle */
@@ -14453,6 +14467,7 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 		dhd->pub.iface_op_failed = 0;
 		dhd->pub.scan_timeout_occurred = 0;
 		dhd->pub.scan_busy_occurred = 0;
+		dhd->pub.p2p_disc_busy_occurred = 0;
 	}
 
 	if ((ret == BCME_NOMEM) || (ret == BCME_NOTFOUND)) {
@@ -20024,6 +20039,45 @@ dhd_get_rtt_len(void *ndev, dhd_pub_t *dhdp)
 }
 #endif /* EWP_RTT_LOGGING */
 
+#ifdef DHD_MAP_PKTID_LOGGING
+uint32
+dhd_get_pktid_map_logging_len(void *ndev, dhd_pub_t *dhdp, bool is_map)
+{
+	dhd_info_t *dhd_info;
+	log_dump_section_hdr_t sec_hdr;
+	uint32 length = 0;
+
+	if (ndev) {
+		dhd_info = *(dhd_info_t **)netdev_priv((struct net_device *)ndev);
+		dhdp = &dhd_info->pub;
+	}
+
+	if (!dhdp || !dhdp->enable_pktid_log_dump)
+		return length;
+
+	length = dhd_pktid_buf_len(dhdp, is_map) + sizeof(sec_hdr);
+	return length;
+}
+
+int
+dhd_print_pktid_map_log_data(void *dev, dhd_pub_t *dhdp, const void *user_buf,
+	void *fp, uint32 len, void *pos, bool is_map)
+{
+	dhd_info_t *dhd_info;
+
+	if (dev) {
+		dhd_info = *(dhd_info_t **)netdev_priv((struct net_device *)dev);
+		dhdp = &dhd_info->pub;
+	}
+
+	if (!dhdp) {
+		return BCME_ERROR;
+	}
+
+	return dhd_write_pktid_log_dump(dhdp, user_buf, fp, len, pos, is_map);
+}
+#endif /* DHD_MAP_PKTID_LOGGING */
+
 int
 dhd_os_get_version(struct net_device *dev, bool dhd_ver, char **buf, uint32 size)
 {
@@ -23682,9 +23736,56 @@ static void dhd_p2p_interface_event_ctrl_fn(struct work_struct * work)
 	}
 }
 
-static bool dhd_is_p2p_connected(dhd_info_t *dhd)
+#define P2P_NOA_CONTINUOUS 255
+static bool dhd_is_noa_enabled(dhd_pub_t *dhd_pub, int ifidx)
+{
+	int iov_len = 0;
+	char iovbuf[128];
+	wl_p2p_sched_t dongle_noa[2];
+	wl_p2p_sched_t *noa;
+	int rc;
+
+	if (dhd_pub == NULL) {
+		return false;
+	}
+
+	iov_len = bcm_mkiovar("p2p_noa", (char *)dongle_noa,
+		sizeof(dongle_noa), iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return false;
+	}
+
+	rc = dhd_wl_ioctl_cmd(dhd_pub, WLC_GET_VAR, iovbuf, iov_len, FALSE, ifidx);
+
+	if (rc) {
+		DHD_ERROR(("%s: failed to get p2p_noa info, retcode = %d\n",
+			__FUNCTION__, rc));
+
+		return false;
+	}
+
+	noa = (wl_p2p_sched_t *)iovbuf;
+	DHD_INFO(("%s, ifidx=%d noa type=%d, st=%d, interval=%d, dur=%d, cnt=%d\n",
+		__FUNCTION__, ifidx, noa->type, noa->desc[0].start,
+		noa->desc[0].interval, noa->desc[0].duration, noa->desc[0].count));
+
+	if ((noa->type == WL_P2P_SCHED_TYPE_ABS) &&
+		(noa->desc[0].duration != 0) && (noa->desc[0].count == P2P_NOA_CONTINUOUS)) {
+		return true;
+	}
+
+	return false;
+}
+
+static bool dhd_is_p2pgc_noa(dhd_info_t *dhd)
 {
 	dhd_pub_t *dhdp;
+	struct net_device *dev;
+	int idx, p2p_idx = -1;
+	bool p2pgc_connected = FALSE;
+	int connected_cnt = 0;
 
 	if (dhd == NULL) {
 		return false;
@@ -23696,7 +23797,29 @@ static bool dhd_is_p2p_connected(dhd_info_t *dhd)
 		return false;
 	}
 
-	return true;
+	for (idx = 0; idx < DHD_MAX_IFS; idx++) {
+		if (dhd->iflist[idx] != NULL) {
+			dev = dhd->iflist[idx]->net;
+			/* check if connected */
+			if (wl_get_drv_status(wl_get_cfg(dev), CONNECTED, dev)) {
+				connected_cnt++;
+				if (dev->ieee80211_ptr &&
+					dev->ieee80211_ptr->iftype == NL80211_IFTYPE_P2P_CLIENT) {
+					p2pgc_connected = true;
+					p2p_idx = idx;
+				}
+			}
+		}
+	}
+
+	/* check if only p2p is connected */
+	if (p2pgc_connected && (connected_cnt == 1)) {
+		if (dhd_is_noa_enabled(dhdp, p2p_idx)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 #define NO_TX_DURATION 5000
@@ -23706,23 +23829,24 @@ static bool dhd_is_p2p_connected(dhd_info_t *dhd)
 int dhd_throttle_p2p_interface_event(void *handle, bool onoff)
 {
 	dhd_info_t *dhd = handle;
-	uint32 cur, diff;
 
-	if (!dhd_is_p2p_connected(dhd)) {
-		return 0;
-	}
-
-	cur = OSL_SYSUPTIME();
-
-	DHD_INFO(("%s, onoff=%d, tx_time=%u, cur=%u p2p_close=%d\n",
-		__FUNCTION__, onoff, dhd->last_tx_time, cur, dhd-> p2p_if_event_close));
 	if (onoff) { /* on */
+		uint32 cur, diff;
 
-		if (dhd->p2p_if_event_close)
+		if (dhd->p2p_if_event_close) {
 			return 0;
+		}
+
+		cur = OSL_SYSUPTIME();
+		DHD_INFO(("%s, onoff=%d, tx_time=%u, cur=%u p2p_close=%d\n",
+			__FUNCTION__, onoff, dhd->last_tx_time, cur, dhd-> p2p_if_event_close));
 
 		diff = TIME_DIFF(cur, dhd->last_tx_time);
 		if ((dhd->last_tx_time != 0) && (diff > NO_TX_DURATION)) {
+			if (!dhd_is_p2pgc_noa(dhd)) {
+				return 0;
+			}
+
 			dhd->p2p_if_event_close = true;
 			schedule_work(&dhd->p2p_interface_event_ctrl_work);
 		}
@@ -23738,6 +23862,20 @@ int dhd_throttle_p2p_interface_event(void *handle, bool onoff)
 	}
 
 	return 0;
+}
+
+void dhd_reset_p2p_interface_event(void *handle)
+{
+	dhd_pub_t *dhdp = handle;
+
+	dhdp->info->p2p_if_event_close = false;
+	dhdp->info->last_tx_time = 0;
+
+	if (dhd_wlfc_ctrl_if_state_event(dhdp, false)) {
+		DHD_ERROR(("%s, iface event open failure\n", __FUNCTION__));
+	} else {
+		DHD_ERROR(("%s, iface event open success\n", __FUNCTION__));
+	}
 }
 #endif /* !PCIE_FULL_DONGLE & P2P_IF_STATE_EVENT_CTRL */
 #if defined(WLAN_ACCEL_BOOT)

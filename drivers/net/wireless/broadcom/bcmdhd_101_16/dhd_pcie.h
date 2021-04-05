@@ -736,6 +736,9 @@ extern void dhdpcie_oob_intr_set(dhd_bus_t *bus, bool enable);
 extern int dhdpcie_get_oob_irq_num(struct dhd_bus *bus);
 extern int dhdpcie_get_oob_irq_status(struct dhd_bus *bus);
 extern int dhdpcie_get_oob_irq_level(void);
+#ifdef PRINT_WAKEUP_GPIO_STATUS
+extern int dhdpcie_get_oob_gpio_number(void);
+#endif /* PRINT_WAKEUP_GPIO_STATUS */
 #endif /* BCMPCIE_OOB_HOST_WAKE */
 #if defined(PCIE_INB_DW)
 extern void dhd_bus_doorbell_timeout_reset(struct dhd_bus *bus);

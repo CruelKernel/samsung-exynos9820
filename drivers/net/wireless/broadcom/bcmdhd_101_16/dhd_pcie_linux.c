@@ -2581,6 +2581,9 @@ dhdpcie_bus_request_irq(struct dhd_bus *bus)
 #ifdef BCMPCIE_OOB_HOST_WAKE
 #ifdef CONFIG_BCMDHD_GET_OOB_STATE
 extern int dhd_get_wlan_oob_gpio(void);
+#ifdef PRINT_WAKEUP_GPIO_STATUS
+extern int dhd_get_wlan_oob_gpio_number(void);
+#endif /* PRINT_WAKEUP_GPIO_STATUS */
 #endif /* CONFIG_BCMDHD_GET_OOB_STATE */
 
 int dhdpcie_get_oob_irq_level(void)
@@ -2594,7 +2597,16 @@ int dhdpcie_get_oob_irq_level(void)
 #endif /* CONFIG_BCMDHD_GET_OOB_STATE */
 	return gpio_level;
 }
-
+#ifdef PRINT_WAKEUP_GPIO_STATUS
+int dhdpcie_get_oob_gpio_number(void)
+{
+	int gpio_number = BCME_UNSUPPORTED;
+#ifdef CONFIG_BCMDHD_GET_OOB_STATE
+	gpio_number = dhd_get_wlan_oob_gpio_number();
+#endif /* CONFIG_BCMDHD_GET_OOB_STATE */
+	return gpio_number;
+}
+#endif /* PRINT_WAKEUP_GPIO_STATUS */
 int dhdpcie_get_oob_irq_status(struct dhd_bus *bus)
 {
 	dhdpcie_info_t *pch;

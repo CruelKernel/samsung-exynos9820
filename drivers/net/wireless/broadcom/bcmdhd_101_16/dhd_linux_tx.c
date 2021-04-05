@@ -561,8 +561,10 @@ BCMFASTPATH(dhd_start_xmit)(struct sk_buff *skb, struct net_device *net)
 			__FUNCTION__, dhd->pub.busstate, dhd->pub.dhd_bus_busy_state));
 		DHD_BUS_BUSY_CLEAR_IN_TX(&dhd->pub);
 #ifdef PCIE_FULL_DONGLE
-		/* Stop tx queues if suspend is in progress */
-		if (DHD_BUS_CHECK_ANY_SUSPEND_IN_PROGRESS(&dhd->pub)) {
+		/* Stop tx queues if suspend is in progress or suspended */
+		if (DHD_BUS_CHECK_ANY_SUSPEND_IN_PROGRESS(&dhd->pub) ||
+			(dhd->pub.busstate == DHD_BUS_SUSPEND &&
+			!DHD_BUS_BUSY_CHECK_RESUME_IN_PROGRESS(&dhd->pub))) {
 			dhd_bus_stop_queue(dhd->pub.bus);
 		}
 #endif /* PCIE_FULL_DONGLE */

@@ -56,6 +56,9 @@ extern void dhd_log_dump_write(int type, char *binary_data,
 #define RTT_LOG_HDR "\n-------------------- RTT log --------------------------\n"
 #define BCM_TRACE_LOG_HDR "\n-------------------- BCM Trace log --------------------------\n"
 #define COOKIE_LOG_HDR "\n-------------------- Cookie List ----------------------------\n"
+#define DHD_PKTID_MAP_LOG_HDR "\n---------------- PKTID MAP log -----------------------\n"
+#define DHD_PKTID_UNMAP_LOG_HDR "\n------------------ PKTID UNMAP log -----------------------\n"
+#define PKTID_LOG_DUMP_FMT "\nIndex(Current=%d) Timestamp Pktaddr(PA) Pktid Size\n"
 #endif /* DHD_LOG_DUMP */
 
 #if defined(DHD_DEBUG)

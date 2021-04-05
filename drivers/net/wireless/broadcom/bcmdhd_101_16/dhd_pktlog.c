@@ -370,6 +370,14 @@ dhd_pktlog_ring_add_pkts(dhd_pub_t *dhdp, void *pkt, void *pktdata, uint32 pktid
 	rem_nsec = do_div(ts_nsec, NSEC_PER_SEC);
 
 	pkts->info.pkt = PKTDUP(dhdp->osh, pkt);
+	/*
+	 * skb clone can be NULL, but pktlog feature assume it alway can be cloned
+	 * The dummy pkt info will be added in the list to fit pktcount & list items
+	 * and handled in the dhd_pktlog_dump_write() with ignoring info.pkt
+	 */
+	if (pkts->info.pkt == NULL) {
+		DHD_ERROR(("%s : skb clone returns NULL \n", __FUNCTION__));
+	}
 	pkts->info.pkt_len = PKTLEN(dhdp->osh, pkt);
 	pkts->info.driver_ts_sec = (uint32)ts_nsec;
 	pkts->info.driver_ts_usec = (uint32)(rem_nsec/NSEC_PER_USEC);
@@ -1148,6 +1156,11 @@ dhd_pktlog_dump_write(dhd_pub_t *dhdp, void *file, const void *user_buf, uint32 
 			(len + dhd_pktlog_get_item_length(report_ptr) > size)) {
 			DHD_ERROR(("overflowed pkt logs are dropped\n"));
 			break;
+		}
+
+		if (report_ptr->info.pkt == NULL) {
+			DHD_ERROR(("%s : pkt isn't located skip it\n", __FUNCTION__));
+			continue;
 		}
 
 		ret = dhd_export_debug_data((char*)&report_ptr->info.driver_ts_sec, file,

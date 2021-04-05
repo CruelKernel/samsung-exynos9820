@@ -1170,5 +1170,9 @@ struct mfc_charger_data {
 	int i2c_error_count;
 	unsigned long gear_start_time;
 	int wpc_en_flag;
+
+	struct mutex fw_lock;
+	unsigned long fw_size;
+	u8 *fw_img;
 };
 #endif /* __WIRELESS_CHARGER_MFC_S2MIW04_H */

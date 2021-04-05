@@ -1082,7 +1082,8 @@ enum aa_enable_dynamicshot {
 
 enum aa_night_timelaps_mode {
 	AA_NIGHT_TIMELAPS_MODE_OFF = 0,
-	AA_NIGHT_TIMELAPS_MODE_ON,
+	AA_NIGHT_TIMELAPS_MODE_ON_45X,
+	AA_NIGHT_TIMELAPS_MODE_ON_15X,
 };
 
 struct camera2_video_output_size {
