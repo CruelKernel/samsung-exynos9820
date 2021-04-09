@@ -3,102 +3,143 @@
 #
 
 comment "USB Notify features"
+
 config USB_HOST_NOTIFY
-	boolean "USB Host notify Driver"
+	bool "USB Host notify Driver"
 	depends on USB_NOTIFY_LAYER
 	help
-	  Android framework needs uevents for usb host operation.
-	  Host notify Driver serves uevent format
-	  that is used by usb host or otg.
+	 Android framework needs uevents for usb host operation.
+	 Host notify Driver serves uevent format
+	 that is used by usb host or otg.
+	 The uevent include host connect, disconnect, source, sink.
 
 config USB_NOTIFY_LAYER
-	boolean "USB notify layer"
+	tristate "USB notify layer"
 	depends on USB
 	help
-	  Added usb notify layer on gadget,host,otg drivers.
-          The usb notify layer controls otg mode and vbus draw
-          and vbus detect irq.
+	 Added usb notify layer on gadget,host,otg drivers.
+	 The usb notify layer controls otg mode and vbus draw
+	 and vbus detect irq.
+	 It is made by samsung.
 
 config USB_NOTIFIER
-	boolean "USB notifier"
+	tristate "USB notifier"
 	depends on USB_NOTIFY_LAYER
 	help
-	  Added platform driver to call usb notify.
-	  The usb_notifier.c can be fixed for each models.
+	 Added platform driver to call usb notify.
+	 The usb_notifier.c can be fixed for each models.
+	 It is not common code.
+	 It may be different for each ap vendor.
 
 config USB_DEBUG_DETAILED_LOG
-	boolean "USB detailed log for debugging"
+	bool "USB detailed log for debugging"
 	depends on USB
 	help
-	  Add detailed log for debugging.
+	 Add detailed log for debugging.
+	 It is made by samsung.
+	 It is feature for usb host class drivers.
+	 ..
 
 config USB_STORAGE_DETECT
-	boolean "USB storage detect function"
+	bool "USB storage detect function"
 	depends on USB && SCSI
 	depends on USB_STORAGE
 	help
-	  This feature enables to detect inserting or removing
-          sd card in sd reader device.
-          This must to be defined in /usb/storage/Kconfig 
-          directory originally. But this feature is defined
-          in this Kconfig to gather samsung feature about usb host.
+	 This feature enables to detect inserting or removing
+	 sd card in sd reader device.
+	 This must to be defined in /usb/storage/Kconfig
+	 directory originally. But this feature is defined
+	 in this Kconfig to gather samsung feature about usb host.
 
 config USB_HMT_SAMSUNG_INPUT
-	boolean "USB HMT inputs for samsung hmt devices"
+	bool "USB HMT inputs for samsung hmt devices"
 	depends on HID
 	help
-	  Some samsung smart phones support gear vr.
-          The samsung gear vr need some special hid input codes.
-          This feature enables special hid input codes.
+	 Some samsung smart phones support gear vr.
+	 The samsung gear vr need some special hid input codes.
+	 This feature enables special hid input codes.
+	 ..
 
 config USB_EXTERNAL_NOTIFY
-	boolean "USB external notify"
+	bool "USB external notify"
 	depends on USB_NOTIFY_LAYER
 	help
-	  Added usb external notify.
-	  The usb external notify broadcast special situation
-	  to muic and charger.
+	 Added usb external notify.
+	 The usb external notify broadcast special situation
+	 to muic and charger.
+	 And broadcasting to out of usb notify layer.
 
 config USB_NOTIFY_PROC_LOG
-	boolean "USB proc log"
+	bool "USB proc log"
 	depends on USB_NOTIFY_LAYER
 	depends on USB_HOST_NOTIFY
 	help
-	  Added proc usblog.
-	  The USB STATE, The USB MODE, Cable event 
-	  are saved in usblog heap.
+	 Added proc usblog.
+	 The USB STATE, The USB MODE, Cable event
+	 are saved in usblog heap.
+	 It is remained in dumpdate.
 
 config USB_HOST_SAMSUNG_FEATURE
-	boolean "USB Host Samsung Feature"
+	bool "USB Host Samsung Feature"
 	depends on USB
 	help
-	  USB Host Samsung Feature.
-	  It is different from LSI BSP code.
+	 USB Host Samsung Feature.
+	 It is different from LSI BSP code.
+	 If samsung engineer changes kernel code,
+	 use this feature,
 
 config USB_HW_PARAM
-    	boolean "USB H/W Parameter"
+    	bool "USB H/W Parameter"
     	depends on USB_NOTIFY_LAYER
     	help
-      	  Added USB H/W Parameter for DQA Agent.
-          You need more works for USB PDIC driver.
-
-config USB_PORT_POWER_OPTIMIZATION
-	default n
-	bool "USB3.0 Link port power optimization"
+	 Added USB H/W Parameter for DQA Agent.
+	 You need more works for USB PDIC driver.
+	 It is made by samsung.
+	 ..
 
 config USB_INTERFACE_LPM_LIST
-        boolean "USB interface class lpm Feature"
-        depends on USB
-        help
-          The device needs to support L1 for audio class devices
-          But L1 mode has some issues. 
-	  So we will apply L1 mode to the device that has specific interface classes
+	bool "USB interface class lpm Feature"
+	depends on USB
+	help
+	 The device needs to support L1 for audio class devices
+	 But L1 mode has some issues.
+	 So we will apply L1 mode to the device that has specific interface classes
+	 Now, It is only enabled for audio class.
+
+config USB_CCIC_NOTIFIER_USING_QC
+	bool "USB CCIC Notifier using QC PMIC"
+	depends on USB_NOTIFY_LAYER
+	help
+	 When USB type C model uses QC PMIC without IFPMIC,
+	 add to get notification from QC PMIC.
+	 ..
+	 ..
 
 config USB_AUDIO_ENHANCED_DETECT_TIME
 	bool "USB audio enhanced detect time"
 	depends on USB_NOTIFY_LAYER
+	depends on !SEC_FACTORY
 	help
-	  Added uevent for usb audio device(bundle)
-	  uevent includes path, card number, vid, pid
-	  The usb framework gets this uevent.
-	  It is made by samsung.
+	 Added uevent for usb audio device(bundle)
+	 uevent includes path, card number, vid, pid
+	 The usb framework gets this uevent.
+	 It is made by samsung.
+
+config USB_HOST_CERTI
+	bool "USB Embedded host certification"
+	depends on USB_NOTIFY_LAYER
+	depends on !SEC_FACTORY
+	help
+	 Added uevent for usb embedded host certification
+	 uevent includes information of notification
+	 The usb framework gets this uevent.
+	 It is made by samsung.
+
+config GKI_USB
+	bool "Test feature for GKI"
+	help
+	 If GKI_USB feature is enabled, build for GKI TEST
+
+config USB_PORT_POWER_OPTIMIZATION
+	default n
+	bool "USB3.0 Link port power optimization"
