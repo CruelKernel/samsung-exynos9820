@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        model: [ "G973F" ]
+        model: [ "G970F" ]
 
     steps:
     - uses: actions/checkout@v2
@@ -43,9 +43,9 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="CRUEL-V3.7"         \
+                     name="CruelKernel-V3.7_for_Magisk-V22.1-3"         \
                      toolchain=$TOOLCHAIN      \
-                     +magisk                   \
+                     +magisk=canary                   \
                      +nohardening              \
                      +ttl                      \
                      +wireguard                \
