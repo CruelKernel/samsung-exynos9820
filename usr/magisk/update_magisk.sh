@@ -9,7 +9,7 @@ ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 if [ "x$1" = "xcanary" ]
 then
 	nver="canary"
-	magisk_link="https://github.com/topjohnwu/magisk_files/raw/${nver}/app-debug.apk"
+	magisk_link="https://github.com/topjohnwu/magisk-files/raw/${nver}/app-debug.apk"
 else
 	if [ "x$1" = "x" ]; then
 		nver="$(curl -s https://github.com/topjohnwu/Magisk/releases | fgrep -m 1 'Magisk v' | cut -d '>' -f 2 | cut -d '<' -f 1 | cut -d ' ' -f 2)"
@@ -19,7 +19,7 @@ else
 	magisk_link="https://github.com/topjohnwu/Magisk/releases/download/${nver}/Magisk-${nver}.apk"
 fi
 
-if [ \( -n "$nver" \) -a \( "$nver" != "$ver" \) -o ! \( -f "$DIR/arm/magiskinit64" \) -o \( "$nver" = "canary" \) ]
+if [ \( -n "$nver" \) -a \( "$nver" != "$ver" \) -o ! \( -f "$DIR/magiskinit" \) -o \( "$nver" = "canary" \) ]
 then
 	echo "Updating Magisk from $ver to $nver"
 	curl -s --output "$DIR/magisk.zip" -L "$magisk_link"
