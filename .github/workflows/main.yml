@@ -26,18 +26,50 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-v4.2"         \
-                       toolchain=$TOOLCHAIN      \
-                       +magisk                   \
-                       +nohardening              \
-                       +ttl                      \
-                       +wireguard                \
-                       +cifs                     \
+                       name="TIMW.5.5.2021"      \
+                       toolchain=proton          \
+                       +magisk=Canary            \
+                       dtb                       \
+                       empty_vbmeta              \
+                       always_permit             \
+                       +force_dex_wqhd           \
+                       1000hz                    \
+                       fp_boost                  \
+                       noatime                   \
+                       simple_lmk                \
+                       io_bfq                    \
+                       io_maple                  \
+                       io_fiops                  \
+                       io_sio                    \
+                       io_zen                    \
+                       io_anxiety                \
+                       io_noop                   \
+                       io_cfq                    \
                        +sdfat                    \
                        +ntfs                     \
-                       +force_dex_wqhd           \
+                       +cifs                     \
+                       tcp_cubic                 \
+                       tcp_westwood              \
+                       tcp_htcp                  \
+                       tcp_bbr                   \
+                       tcp_bic                   \
+                       sched_...                 \
+                       ttl                       \
+                       mass_storage              \
+                       +wireguard                \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +nohardening              \
+                       size                      \
+                       performance               \
+                       +nodebug                  \
+                       noksm                     \
+                       nomodules                 \
+                       noaudit                   \
+                       noswap                    \
+                       nozram                    \
+                       usb_serial                \
+                       fake_config
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
