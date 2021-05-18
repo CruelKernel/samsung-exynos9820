@@ -1731,6 +1731,7 @@ struct common_panel_info s6e3fa7_davinci1_a3_s0_default_panel_info = {
 	.rev = 0,
 	.ddi_props = {
 		.gpara = (DDI_SUPPORT_WRITE_GPARA | DDI_SUPPORT_READ_GPARA),
+		.ssd_off_lpm_to_normal = true,
 	},
 	.maptbl = davinci1_a3_s0_maptbl,
 	.nr_maptbl = ARRAY_SIZE(davinci1_a3_s0_maptbl),

@@ -10455,6 +10455,7 @@ _wl_android_bcnrecv_start(struct bcm_cfg80211 *cfg, struct net_device *ndev, boo
 {
 	s32 err = BCME_OK;
 	struct net_device *pdev = bcmcfg_to_prmry_ndev(cfg);
+	dhd_pub_t *dhd = cfg->pub;
 
 	/* check any scan is in progress before beacon recv scan trigger IOVAR */
 	if (wl_get_drv_status_all(cfg, SCANNING)) {
@@ -10495,6 +10496,17 @@ _wl_android_bcnrecv_start(struct bcm_cfg80211 *cfg, struct net_device *ndev, boo
 		goto exit;
 	}
 #endif /* WL_NAN */
+
+	if (dhd->early_suspended) {
+		/* Set BEACON_RECV in suspend mode */
+		WL_INFORM_MEM(("Already suspend mode, Aborting beacon recv start\n"));
+		cfg->bcnrecv_info.bcnrecv_state = BEACON_RECV_SUSPENDED;
+		if ((err = wl_android_bcnrecv_event(pdev, BCNRECV_ATTR_STATUS,
+			WL_BCNRECV_SUSPENDED, WL_BCNRECV_SUSPEND, NULL, 0)) != BCME_OK) {
+			WL_ERR(("failed to send bcnrecv event, error:%d\n", err));
+		}
+		goto exit;
+	}
 
 	/* Triggering an sendup_bcn iovar */
 	err = wldev_iovar_setint(pdev, "sendup_bcn", 1);

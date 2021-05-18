@@ -28,7 +28,7 @@
 
 #define KERNEL_THREAD_RETURN_TYPE int
 
-typedef int (*f_commitpkt_t)(void* ctx, void* p);
+typedef int (*f_commitpkt_t)(struct dhd_bus *bus, void* p);
 typedef bool (*f_processpkt_t)(void* p, void* arg);
 
 #define WLFC_UNSUPPORTED -9999

@@ -445,7 +445,9 @@ dhd_query_bus_erros(dhd_pub_t *dhdp)
 		DHD_ERROR_RLMT(("%s: FW TRAP has occurred, cannot proceed\n",
 			__FUNCTION__));
 		ret = TRUE;
-		dhdp->hang_reason = HANG_REASON_DONGLE_TRAP;
+		if (dhdp->hang_reason == 0) {
+			dhdp->hang_reason = HANG_REASON_DONGLE_TRAP;
+		}
 		dhd_os_send_hang_message(dhdp);
 	}
 

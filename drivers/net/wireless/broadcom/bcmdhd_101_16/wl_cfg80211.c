@@ -21231,6 +21231,16 @@ wl_android_roamoff_dbg_dump(struct bcm_cfg80211 *cfg)
 		return;
 	}
 
+#ifdef DHD_PM_CONTROL_FROM_FILE
+	{
+		extern bool g_pm_control;
+		if (g_pm_control == TRUE) {
+			WL_ERR(("Enabled RF test mode\n"));
+			return;
+		}
+	}
+#endif /* DHD_PM_CONTROL_FROM_FILE */
+
 	/* Dump roaminfo */
 	WL_INFORM_MEM(("Last ROAM Disable(%02d) "SEC_USEC_FMT"\n",
 		roamoff_info->roam_disable_rsn,

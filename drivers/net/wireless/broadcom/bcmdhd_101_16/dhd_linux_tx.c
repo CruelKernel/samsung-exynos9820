@@ -113,11 +113,11 @@
 #include <linux/compat.h>
 #endif
 
-#ifdef CONFIG_ARCH_EXYNOS
+#if defined(CONFIG_ARCH_EXYNOS) && !defined(CONFIG_SOC_S5E5515)
 #ifndef SUPPORT_EXYNOS7420
 #include <linux/exynos-pci-ctrl.h>
 #endif /* SUPPORT_EXYNOS7420 */
-#endif /* CONFIG_ARCH_EXYNOS */
+#endif /* defined(CONFIG_ARCH_EXYNOS) && !defined(CONFIG_SOC_S5E5515) */
 
 #ifdef DHD_L2_FILTER
 #include <bcmicmp.h>

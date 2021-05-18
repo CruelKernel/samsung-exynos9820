@@ -723,6 +723,14 @@ static int dhdpcie_pm_resume(struct device *dev)
 	dhd_os_busbusy_wake(bus->dhd);
 	DHD_GENERAL_UNLOCK(bus->dhd, flags);
 
+#if defined(CUSTOMER_HW4_DEBUG)
+	if (ret == BCME_OK) {
+		uint32 pm_dur = 0;
+		dhd_iovar(bus->dhd, 0, "pm_dur", NULL, 0, (char *)&pm_dur, sizeof(pm_dur), FALSE);
+		DHD_ERROR(("%s: PM duration(%d)\n", __FUNCTION__, pm_dur));
+	}
+#endif /* CUSTOMER_HW4_DEBUG */
+
 	return ret;
 }
 

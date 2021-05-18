@@ -290,8 +290,8 @@ config WLAN_ANQP_RMAC_BACKPORTED
 	Support backported kernel ANQP Random MAC Feature
 
 config WLAN_MERLOT
-	bool "Merlot WearOS"
+	bool "Merlot"
 	depends on BCM43013
 	default n
 	---help---
-	Support Merlot WearOS
+	Support Merlot

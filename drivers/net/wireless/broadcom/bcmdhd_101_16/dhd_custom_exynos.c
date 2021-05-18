@@ -102,10 +102,11 @@ extern int exynos_pcie_pm_resume(int);
 extern void exynos_pcie_pm_suspend(int);
 #endif /* CONFIG_BCMDHD_PCIE */
 
-#if defined(CONFIG_SOC_EXYNOS7870) || defined(CONFIG_SOC_EXYNOS9110)
+#if defined(CONFIG_SOC_EXYNOS7870) || defined(CONFIG_SOC_EXYNOS9110) || \
+	defined(CONFIG_SOC_S5E5515)
 extern struct mmc_host *wlan_mmc;
 extern void mmc_ctrl_power(struct mmc_host *host, bool onoff);
-#endif /* SOC_EXYNOS7870 || CONFIG_SOC_EXYNOS9110 */
+#endif /* SOC_EXYNOS7870 || CONFIG_SOC_EXYNOS9110 || CONFIG_SOC_S5E5515 */
 
 static int
 dhd_wlan_power(int onoff)
@@ -142,10 +143,11 @@ dhd_wlan_power(int onoff)
 	}
 #endif /* CONFIG_MACH_A7LTE || CONFIG_NOBLESSE || CONFIG_WLAN_MERLOT */
 
-#if defined(CONFIG_SOC_EXYNOS7870) || defined(CONFIG_SOC_EXYNOS9110)
+#if defined(CONFIG_SOC_EXYNOS7870) || defined(CONFIG_SOC_EXYNOS9110) || \
+	defined(CONFIG_SOC_S5E5515)
 	if (wlan_mmc)
 		mmc_ctrl_power(wlan_mmc, onoff);
-#endif /* SOC_EXYNOS7870 || CONFIG_SOC_EXYNOS9110 */
+#endif /* SOC_EXYNOS7870 || CONFIG_SOC_EXYNOS9110 || CONFIG_SOC_S5E5515 */
 	return 0;
 }
 

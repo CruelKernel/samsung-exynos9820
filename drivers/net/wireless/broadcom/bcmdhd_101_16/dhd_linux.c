@@ -112,11 +112,11 @@
 #include <linux/compat.h>
 #endif
 
-#ifdef CONFIG_ARCH_EXYNOS
+#if defined(CONFIG_ARCH_EXYNOS) && !defined(CONFIG_SOC_S5E5515)
 #ifndef SUPPORT_EXYNOS7420
 #include <linux/exynos-pci-ctrl.h>
 #endif /* SUPPORT_EXYNOS7420 */
-#endif /* CONFIG_ARCH_EXYNOS */
+#endif /* defined(CONFIG_ARCH_EXYNOS) && !defined(CONFIG_SOC_S5E5515) */
 
 #ifdef DHD_L2_FILTER
 #include <bcmicmp.h>
@@ -18771,8 +18771,8 @@ void dhd_schedule_log_dump(dhd_pub_t *dhdp, void *type)
 static void
 dhd_print_buf_addr(dhd_pub_t *dhdp, char *name, void *buf, unsigned int size)
 {
-	if ((dhdp->memdump_enabled == DUMP_MEMONLY) ||
-		(dhdp->memdump_enabled == DUMP_MEMFILE_BUGON) ||
+	if (((dhdp->memdump_enabled > DUMP_DISABLED) &&
+		(dhdp->memdump_enabled < DUMP_MEMFILE_MAX)) ||
 		(dhdp->memdump_type == DUMP_TYPE_SMMU_FAULT) ||
 #ifdef DHD_DETECT_CONSECUTIVE_MFG_HANG
 		(dhdp->op_mode & DHD_FLAG_MFG_MODE &&

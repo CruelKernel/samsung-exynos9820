@@ -10895,12 +10895,66 @@ copy_hang_info_etd_base64(dhd_pub_t *dhd, char *dest, int *bytes_written, int *c
 }
 #endif /* DHD_EWPR_VER2 */
 
+int
+get_ext_trap_hc_module_id(dhd_pub_t *dhd)
+{
+	uint32 *ext_data = dhd->extended_trap_data;
+	hnd_ext_trap_hdr_t *hdr;
+	bcm_tlv_t *tlv;
+	bcm_xtlv_t *wl_hc;
+	bcm_dngl_socramind_t *socramind_ptr;
+	bcm_dngl_healthcheck_t *dngl_hc;
+	uint16 tag;
+	int ret = BCME_ERROR;
+
+	/* First word is original trap_data */
+	ext_data++;
+
+	/* Followed by the extended trap data header */
+	hdr = (hnd_ext_trap_hdr_t *)ext_data;
+
+	tlv = bcm_parse_tlvs(hdr->data, hdr->len, TAG_TRAP_HC_DATA);
+	if (tlv) {
+		socramind_ptr = (bcm_dngl_socramind_t *)((uint8 *)tlv->data);
+		tag =  ltoh32(socramind_ptr->tag);
+
+		switch (tag) {
+			case SOCRAM_IND_TAG_HEALTH_CHECK:
+				dngl_hc = (bcm_dngl_healthcheck_t *)((uint8 *)socramind_ptr->value);
+				switch (ltoh32(dngl_hc->top_module_tag)) {
+					case HCHK_SW_ENTITY_WL_PRIMARY:
+					case HCHK_SW_ENTITY_WL_SECONDARY:
+						wl_hc = (bcm_xtlv_t*)((uint8 *)dngl_hc->value);
+
+						if (ltoh32(dngl_hc->top_module_len)
+								< sizeof(bcm_xtlv_t)) {
+							DHD_ERROR(("WL SW HC Wrong length:%d\n",
+								ltoh32(dngl_hc->top_module_len)));
+							return BCME_ERROR;
+						}
+						DHD_ERROR(("WL SW HC type %d len %d\n",
+							ltoh16(wl_hc->id), ltoh16(wl_hc->len)));
+						ret = ltoh16(wl_hc->id);
+						break;
+					default:
+						break;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	return ret;
+}
+
 void
 copy_hang_info_trap(dhd_pub_t *dhd)
 {
 	trap_t tr;
 	int bytes_written;
 	int trap_subtype = 0;
+	int ext_trap_hc_module_id;
 
 	if (!dhd || !dhd->hang_info) {
 		DHD_ERROR(("%s dhd=%p hang_info=%p\n", __FUNCTION__,
@@ -10920,6 +10974,19 @@ copy_hang_info_trap(dhd_pub_t *dhd)
 
 	hang_info_trap_tbl[HANG_INFO_TRAP_T_REASON_IDX].offset = HANG_REASON_DONGLE_TRAP;
 	hang_info_trap_tbl[HANG_INFO_TRAP_T_SUBTYPE_IDX].offset = trap_subtype;
+
+	if (trap_subtype == TAG_TRAP_HC_DATA) {
+		DHD_ERROR(("trap_subtype is TAG_TRAP_HC_DATA\n"));
+		ext_trap_hc_module_id = get_ext_trap_hc_module_id(dhd);
+		if (ext_trap_hc_module_id != BCME_ERROR) {
+			if (ext_trap_hc_module_id == WL_HC_DD_RX_DMA_STALL) {
+				hang_info_trap_tbl[HANG_INFO_TRAP_T_REASON_IDX].offset =
+					HANG_REASON_DONGLE_TRAP_HC_DD_RX_DMA_STALL;
+				dhd->hang_reason = HANG_REASON_DONGLE_TRAP_HC_DD_RX_DMA_STALL;
+				DHD_ERROR(("HC_DD_RX_DMA_STALL raises HC trap\n"));
+			}
+		}
+	}
 
 	bytes_written = 0;
 	dhd->hang_info_cnt = 0;
