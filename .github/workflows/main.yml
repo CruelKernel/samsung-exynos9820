@@ -26,10 +26,11 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-v4.2"         \
-                       toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       name="CruelJun4"         \
+                       toolchain=proton          \
+                       +magisk=canary            \
                        +nohardening              \
+                       +nodebug
                        +ttl                      \
                        +wireguard                \
                        +cifs                     \
@@ -38,6 +39,7 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +1000hz                   \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
