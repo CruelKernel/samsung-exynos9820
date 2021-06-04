@@ -26,11 +26,11 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="CruelJun4"         \
+                       name="CruelJun4"          \
                        toolchain=proton          \
                        +magisk=canary            \
                        +nohardening              \
-                       +nodebug
+                       +nodebug                  \
                        +ttl                      \
                        +wireguard                \
                        +cifs                     \
