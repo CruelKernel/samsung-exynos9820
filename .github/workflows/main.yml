@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Clang11-300hz"      \
+                       name="Clang11-300hz-v2"      \
                        toolchain=$TOOLCHAIN      \
                        +nohardening              \
                        +ttl                      \
@@ -46,7 +46,6 @@ jobs:
                        +io_cfq                   \
                        +io_fiops                 \
                        +io_noop                  \
-                       +io_none                  \
                        +usb_serial               \
                        +300hz                    \
                        +tcp_westwood             \
