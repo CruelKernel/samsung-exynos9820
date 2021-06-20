@@ -27,35 +27,28 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Samsung-1000hz"      \
+                       name="Samsung-1000hz-BFQ"      \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
                        +nohardening              \
                        +ttl                      \
-                       +wireguard                \
+                       -wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
-                       +force_dex_wqhd           \
-                       +morosound                \
+                       -force_dex_wqhd           \
+                       -morosound                \
                        +boeffla_wl_blocker       \
                        +noaudit                  \
                        +noksm                    \
                        +nomodules                \
                        +fake_config              \
                        +nodebug                  \
-                       +io_cfq                   \
-                       +io_fiops                 \
-                       +io_noop                  \
+                       +io_bfq                   \
                        +usb_serial               \
                        +1000hz                    \
                        +tcp_westwood             \
                        +noswap                   \
-                       +sched_ondemand           \
-                       +sched_powersave          \
-                       +sched_conservative       \
-                       +sched_performance        \
-                       +sched_userspace          \
                        +dtb                      \
                        +fp_boost                 \
                        +always_permit            \
