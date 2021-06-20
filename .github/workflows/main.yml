@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: system-clang
+  TOOLCHAIN: proton
   INSTALLER: yes
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Clang-11-BFQ-300hz" \
+                       name="Proton-11-BFQ-300hz" \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary            \
                        +nohardening              \
