@@ -56,8 +56,7 @@ jobs:
                        +dtb                      \ 
                        +fp_boost                 \
                        +performance              \
-                       +always_permit                     
-                                            
+                       +always_permit            \         
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
