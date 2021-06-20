@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Clang-12"         \
+                       name="Clang-BFQ-300hz"   \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary            \
                        +nohardening              \
@@ -38,24 +38,23 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
-                       +size \
-                       +noaudit \
-                       +noksm \
-                       +nomodules \
-                       +fake_config \
-                       +nodebug \
-                       +io_bfq \
-                       +300hz \
-                       +tcp_westwood 
-                       +noswap \
-                       +sched_ondemand \
-                       +sched_performance \
-                       +sched_powersave \
-                       +sched_conservative \
-                       +sched_userspace \
-                       +dtb \
-                       +fp_boost \
-                       +performance \
+                       +noaudit                  \
+                       +noksm                    \
+                       +fake_config              \
+                       +nodebug                  \
+                       +io_bfq                   \
+                       +300hz                    \
+                       +tcp_westwood             \
+                       +noswap                   \
+                       +sched_ondemand           \
+                       +sched_powersave          \
+                       +sched_conservative       \
+                       +sched_performance        \
+                       +sched_userspace          \
+                       +dtb                      \
+                       +fp_boost                 \
+                       +performance              \
+                       +always_permit            \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
