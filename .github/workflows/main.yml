@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: system-clang
+  TOOLCHAIN: proton
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Clang12-300hz-v2"      \
+                       name="Proton12-300hz-v2"      \
                        toolchain=$TOOLCHAIN      \
                        +nohardening              \
                        +ttl                      \
