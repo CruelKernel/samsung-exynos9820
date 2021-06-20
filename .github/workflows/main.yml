@@ -29,15 +29,6 @@ jobs:
                        name="Proton-BFQ-100hz"         \
                        os_patch_level=2021-06
                        toolchain=$TOOLCHAIN      \
-                       +nohardening              \
-                       +ttl                      \
-                       +wireguard                \
-                       +cifs                     \
-                       +sdfat                    \
-                       +ntfs                     \
-                       +force_dex_wqhd           \
-                       +morosound                \
-                       +boeffla_wl_blocker       \
                        +noaudit \
                        +noksm \
                        +nomodules \
@@ -48,9 +39,7 @@ jobs:
                        +tcp_westwood \
                        +noswap \
                        +sched_ondemand \
-                       +sched_powersave \
                        +sched_conservative \
-                       +sched_performance \
                        +sched_userspace \
                        +dtb \ 
                        +fp_boost \
