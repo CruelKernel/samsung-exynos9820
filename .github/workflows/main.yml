@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Samsung-300hz-CFQ"      \
+                       name="Samsung-1000hz-CFQ"      \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
                        +nohardening              \
@@ -48,7 +48,7 @@ jobs:
                        +io_fiops                 \
                        +io_noop                  \
                        +usb_serial               \
-                       +300hz                    \
+                       +1000hz                    \
                        +tcp_westwood             \
                        +noswap                   \
                        +dtb                      \
