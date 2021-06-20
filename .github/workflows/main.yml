@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: arter97
+  TOOLCHAIN: system-clang
   INSTALLER: yes
 
 jobs:
@@ -25,10 +25,11 @@ jobs:
         run: |
           set -e -o pipefail
           ./cruelbuild config                    \
+                       os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Arter97-BFQ-300hz"    \
+                       name="Clang11-v2-BFQ-300hz"    \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=canary            \
+                       +magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
@@ -40,9 +41,14 @@ jobs:
                        +boeffla_wl_blocker       \
                        +noaudit                  \
                        +noksm                    \
+                       +nomodules                \
                        +fake_config              \
                        +nodebug                  \
                        +io_bfq                   \
+                       +io_cfq                   \
+                       +io_fiops                 \
+                       +io_noop                  \
+                       +usb_serial               \
                        +300hz                    \
                        +tcp_westwood             \
                        +noswap                   \
@@ -53,7 +59,6 @@ jobs:
                        +sched_userspace          \
                        +dtb                      \
                        +fp_boost                 \
-                       +performance              \
                        +always_permit            \
           2>&1 | tee config.info
 
@@ -66,7 +71,7 @@ jobs:
         if: env.TOOLCHAIN == 'system-clang'
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: sudo apt-get install -y -qq llvm-12 lld clang-11
+        run: sudo apt-get install -y -qq llvm-11 lld clang-11
       - name: Deploy Toolchain
         if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
         run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
