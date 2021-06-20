@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: proton
+  TOOLCHAIN: google
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Proton-BFQ-50hz"    \
+                       name="Clang-BFQ-300hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary            \
                        +nohardening              \
@@ -44,7 +44,7 @@ jobs:
                        +fake_config              \
                        +nodebug                  \
                        +io_bfq                   \
-                       +50hz                     \
+                       +300hz                    \
                        +tcp_westwood             \
                        +noswap                   \
                        +sched_ondemand           \
