@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: proton
+  TOOLCHAIN: cruel
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Proton11-300hz-v2"      \
+                       name="Cruel-300hz-v2"      \
                        toolchain=$TOOLCHAIN      \
                        +nohardening              \
                        +ttl                      \
@@ -71,7 +71,7 @@ jobs:
         if: env.TOOLCHAIN == 'system-clang'
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: sudo apt-get install -y -qq llvm-11 lld clang-11
+        run: sudo apt-get install -y -qq llvm lld clang
       - name: Deploy Toolchain
         if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
         run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
