@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: arter97
+  TOOLCHAIN: system-clang
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Arter97-BFQ-300hz"  \
+                       name="Clang-BFQ-100hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
@@ -44,7 +44,7 @@ jobs:
                        +fake_config              \
                        +nodebug                  \
                        +io_bfq                   \
-                       +300hz                    \
+                       +100hz                    \
                        +tcp_westwood             \
                        +noswap                   \
                        +sched_ondemand           \
@@ -56,6 +56,7 @@ jobs:
                        +fp_boost                 \
                        +performance              \
                        +always_permit            \
+                       +size                     \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
