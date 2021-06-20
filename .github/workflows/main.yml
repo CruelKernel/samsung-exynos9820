@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: clang
+  TOOLCHAIN: system-clang-12
   INSTALLER: yes
 
 jobs:
