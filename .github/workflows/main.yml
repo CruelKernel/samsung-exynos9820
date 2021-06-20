@@ -29,7 +29,7 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Arter97-BFQ-300hz"  \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=canary            \
+                       +magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
