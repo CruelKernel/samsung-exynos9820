@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Proton-BFQ-300hz"         \
+                       name="Proton-BFQ-100hz"         \
                        os_patch_level=2021-06
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
@@ -45,7 +45,7 @@ jobs:
                        +fake_config \
                        +nodebug \
                        +io_bfq \
-                       +300hz \
+                       +100hz \
                        +tcp_westwood \
                        +noswap \
                        +sched_ondemand \
