@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: arter97
+  TOOLCHAIN: samsung
   INSTALLER: yes
 
 jobs:
@@ -27,8 +27,9 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Arter97-300hz"      \
+                       name="Samsung-300hz"      \
                        toolchain=$TOOLCHAIN      \
+                       +magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
