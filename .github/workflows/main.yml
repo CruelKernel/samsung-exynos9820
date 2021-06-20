@@ -29,7 +29,6 @@ jobs:
                        name="Proton-BFQ-100hz"         \
                        os_patch_level=2021-06
                        toolchain=$TOOLCHAIN      \
-                       +noaudit \
                        +noksm \
                        +nomodules \
                        +fake_config \
