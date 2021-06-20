@@ -25,6 +25,7 @@ jobs:
         run: |
           set -e -o pipefail
           ./cruelbuild config                    \
+                       os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
                        name="Proton-BFQ-300hz"   \
                        toolchain=$TOOLCHAIN      \
@@ -51,7 +52,7 @@ jobs:
                        +sched_conservative       \
                        +sched_performance        \
                        +sched_userspace          \
-                       +dtb                      \ 
+                       +dtb                      \
                        +fp_boost                 \
                        +performance              \
                        +always_permit            \
