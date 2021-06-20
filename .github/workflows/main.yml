@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: system-gcc
+  TOOLCHAIN: cruel
   INSTALLER: yes
 
 jobs:
@@ -27,8 +27,9 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="GCC-BFQ-100hz"    \
+                       name="Cruel-BFQ-300hz"    \
                        toolchain=$TOOLCHAIN      \
+                       +magisk=canary            \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
@@ -43,7 +44,7 @@ jobs:
                        +fake_config              \
                        +nodebug                  \
                        +io_bfq                   \
-                       +100hz                    \
+                       +300hz                    \
                        +tcp_westwood             \
                        +noswap                   \
                        +sched_ondemand           \
