@@ -28,7 +28,7 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Clang-12"         \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=canary                   \
+                       +magisk=canary            \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
