@@ -27,7 +27,6 @@ jobs:
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
                        name="Proton-BFQ-300hz"         \
-                       os_patch_level=2021-06 \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
                        +nohardening              \
