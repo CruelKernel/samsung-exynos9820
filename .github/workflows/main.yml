@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: clang-12
+  TOOLCHAIN: clang
   INSTALLER: yes
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
         if: env.TOOLCHAIN == 'system-clang'
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: sudo apt-get install -y -qq llvm-12 lld clang clang-11 clang-12
+        run: sudo apt-get install -y -qq llvm-12 lld clang-12
       - name: Deploy Toolchain
         if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
         run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
