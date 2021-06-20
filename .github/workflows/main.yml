@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: samsung
+  TOOLCHAIN: system-gcc
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Samsung-BFQ-100hz"    \
+                       name="GCC-BFQ-100hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
