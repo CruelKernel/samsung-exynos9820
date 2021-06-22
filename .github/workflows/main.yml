@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: google
+  TOOLCHAIN: proton
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="clang12-1000hz-BFQ"      \
+                       name="proton-1000hz-BFQ"      \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
                        +nohardening              \
