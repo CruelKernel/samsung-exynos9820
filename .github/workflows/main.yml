@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: system 
+  TOOLCHAIN: google
   INSTALLER: yes
 
 jobs:
@@ -27,27 +27,23 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="Samsung-1000hz-CFQ"      \
+                       name="clang12-1000hz-BFQ"      \
                        toolchain=$TOOLCHAIN      \
                        +magisk=canary                   \
                        +nohardening              \
                        +ttl                      \
-                       -wireguard                \
+                       +wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
-                       -force_dex_wqhd           \
-                       -morosound                \
+                       +morosound                \
                        +boeffla_wl_blocker       \
                        +noaudit                  \
                        +noksm                    \
                        +nomodules                \
                        +fake_config              \
                        +nodebug                  \
-                       +io_cfq                   \
-                       +io_fiops                 \
-                       +io_noop                  \
-                       +usb_serial               \
+                       +io_bfq                   \
                        +1000hz                    \
                        +tcp_westwood             \
                        +noswap                   \
@@ -55,7 +51,7 @@ jobs:
                        +fp_boost                 \
                        +always_permit            \
                        +performance              \
-                       +size                     \
+                       +noatime                   \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
@@ -67,7 +63,7 @@ jobs:
         if: env.TOOLCHAIN == 'system-clang'
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: sudo apt-get install -y -qq llvm-r416183
+        run: sudo apt-get install -y -qq clang-12
       - name: Deploy Toolchain
         if: env.TOOLCHAIN != 'system-gcc' && env.TOOLCHAIN != 'system-clang'
         run: git clone --depth 1 -j $(nproc) --branch $TOOLCHAIN --single-branch https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
