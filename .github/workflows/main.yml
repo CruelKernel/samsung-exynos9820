@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: google
+  TOOLCHAIN: samsung
   INSTALLER: yes
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="clang-222hz-BFQ"      \
+                       name="Samsung-222hz-BFQ"      \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
