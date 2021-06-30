@@ -4,7 +4,7 @@
 
 choice
 	prompt "Timer frequency"
-	default HZ_250
+	default HZ_222
 	help
 	 Allows the configuration of the timer frequency. It is customary
 	 to have the timer interrupt run at 1000 Hz but 100 Hz may be more
@@ -27,7 +27,8 @@ choice
 	  100 Hz is a typical choice for servers, SMP and NUMA systems
 	  with lots of processors that may show reduced performance if
 	  too many timer interrupts are occurring.
-
+	config HZ_222
+		bool "222 HZ"
 	config HZ_250
 		bool "250 HZ"
 	help
@@ -38,6 +39,10 @@ choice
 
 	config HZ_300
 		bool "300 HZ"
+	config HZ_512
+		bool "512 HZ"
+	config HZ_768
+		bool "768 HZ"
 	help
 	 300 Hz is a good compromise choice allowing server performance
 	 while also showing good interactive responsiveness even
@@ -57,8 +62,11 @@ config HZ
 	default 25 if HZ_25
 	default 50 if HZ_50
 	default 100 if HZ_100
+	default 222 if HZ_222
 	default 250 if HZ_250
 	default 300 if HZ_300
+	default 512 if HZ_512
+	default 768 if HZ_768
 	default 1000 if HZ_1000
 
 config SCHED_HRTICK
