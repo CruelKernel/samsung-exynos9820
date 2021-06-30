@@ -51,7 +51,7 @@ jobs:
                        +fp_boost                 \
                        +always_permit            \
                        +performance              \
-                       +noatime                   \
+                       +noatime                  \
                        +sched_ts_schedutil       \
           2>&1 | tee config.info
 
