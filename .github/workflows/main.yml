@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: proton
+  TOOLCHAIN: google
   INSTALLER: yes
 
 jobs:
@@ -27,9 +27,9 @@ jobs:
           ./cruelbuild config                    \
                        os_patch_level=2021-06    \
                        model=${{ matrix.model }} \
-                       name="proton-1000hz-BFQ"      \
+                       name="clang-222hz-BFQ"      \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=canary                   \
+                       +magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
@@ -44,7 +44,7 @@ jobs:
                        +fake_config              \
                        +nodebug                  \
                        +io_bfq                   \
-                       +1000hz                    \
+                       +222hz                    \
                        +tcp_westwood             \
                        +noswap                   \
                        +dtb                      \
@@ -52,6 +52,7 @@ jobs:
                        +always_permit            \
                        +performance              \
                        +noatime                   \
+                       +sched_ts_schedutil       \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
