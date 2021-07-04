@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Samsung Deadline LTO 200hz"    \
+                       name="Samsung Deadline 200hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
@@ -51,8 +51,7 @@ jobs:
                        +noatime \
                        +io_deadline \
                        +tcp_westwood \
-                       +lto \
-                      2>&1 | tee config.info
+                     2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
         if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
