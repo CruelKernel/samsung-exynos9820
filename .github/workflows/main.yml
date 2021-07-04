@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel BFQ 200hz"    \
+                       name="Cruel Deadline 200hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
@@ -49,7 +49,7 @@ jobs:
                        +dtb \
                        +fp_boost \
                        +noatime \
-                       +io_bfq \
+                       +io_deadline \
                        +tcp_westwood \
                       2>&1 | tee config.info
 
