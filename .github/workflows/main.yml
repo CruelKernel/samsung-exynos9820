@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: samsung
+  TOOLCHAIN: system-clang
   INSTALLER: yes
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Samsung Deadline 200hz"    \
+                       name="Clang 12 Deadline 200hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
