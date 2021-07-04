@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Samsung BFQ 200hz"    \
+                       name="Samsung BFQ LTO 200hz"    \
                        toolchain=$TOOLCHAIN      \
                        +magisk                   \
                        +nohardening              \
@@ -51,6 +51,7 @@ jobs:
                        +noatime \
                        +io_bfq \
                        +tcp_westwood \
+                       +lto \
                      2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
