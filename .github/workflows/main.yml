@@ -51,6 +51,7 @@ jobs:
                        +noatime \
                        +io_deadline \
                        +tcp_westwood \
+                       +lto \
                      2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
