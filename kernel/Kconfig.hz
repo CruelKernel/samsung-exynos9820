@@ -23,11 +23,14 @@ choice
 
 	config HZ_100
 		bool "100 HZ"
+	config HZ_150
+		bool "150 HZ"
 	help
 	  100 Hz is a typical choice for servers, SMP and NUMA systems
 	  with lots of processors that may show reduced performance if
 	  too many timer interrupts are occurring.
-
+	config HZ_200
+		bool "200 HZ"
 	config HZ_250
 		bool "250 HZ"
 	help
@@ -38,6 +41,10 @@ choice
 
 	config HZ_300
 		bool "300 HZ"
+	config HZ_512
+		bool "512 HZ"
+	config HZ_768
+		bool "768 HZ"
 	help
 	 300 Hz is a good compromise choice allowing server performance
 	 while also showing good interactive responsiveness even
@@ -57,8 +64,12 @@ config HZ
 	default 25 if HZ_25
 	default 50 if HZ_50
 	default 100 if HZ_100
+	default 150 if HZ_150
+	default 200 if HZ_200
 	default 250 if HZ_250
 	default 300 if HZ_300
+	default 512 if HZ_512
+	default 768 if HZ_768
 	default 1000 if HZ_1000
 
 config SCHED_HRTICK
