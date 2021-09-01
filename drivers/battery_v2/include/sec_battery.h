@@ -199,7 +199,7 @@ struct sec_bat_pdic_info {
 };
 
 struct sec_bat_pdic_list {
-	struct sec_bat_pdic_info pd_info[8]; /* 5V ~ 12V */
+	struct sec_bat_pdic_info pd_info[MAX_PDO_NUM]; /* 5V ~ 12V */
 	unsigned int now_pd_index;
 	unsigned int max_pd_count;
 #if defined(CONFIG_PDIC_PD30)
