@@ -50,6 +50,11 @@ int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 void mfc_mem_cleanup_user_shared_handle(struct mfc_ctx *ctx,
 		struct mfc_user_shared_handle *handle);
 
+void mfc_put_iovmm(struct mfc_ctx *ctx, int num_planes, int index, int spare);
+void mfc_get_iovmm(struct mfc_ctx *ctx, struct vb2_buffer *vb);
+void mfc_move_iovmm_to_spare(struct mfc_ctx *ctx, int num_planes, int index);
+void mfc_cleanup_assigned_iovmm(struct mfc_ctx *ctx);
+
 int mfc_mem_ion_alloc(struct mfc_dev *dev,
 		struct mfc_special_buf *special_buf);
 void mfc_mem_ion_free(struct mfc_dev *dev,

@@ -1202,11 +1202,13 @@ bool max77705_fg_init(struct max77705_fuelgauge_data *fuelgauge)
 	fuelgauge->info.fullcap_check_interval = ts.tv_sec;
 	fuelgauge->info.is_first_check = true;
 
-	/* Init parameters to prevent wrong compensation. */
-	fuelgauge->info.previous_fullcap =
-	    max77705_read_word(fuelgauge->i2c, FULLCAP_REG);
-	fuelgauge->info.previous_vffullcap =
-	    max77705_read_word(fuelgauge->i2c, FULLCAP_NOM_REG);
+	if (max77705_bulk_read(fuelgauge->i2c, CONFIG2_REG, 2, data) < 0) {
+		pr_err("%s: Failed to read CONFIG2_REG\n", __func__);
+	} else if ((data[0] & 0x0F) != 0x05) {
+		data[0] &= ~0x2F;
+		data[0] |= (0x5 & 0xF); /* ISysNCurr: 11.25 */
+		max77705_bulk_write(fuelgauge->i2c, CONFIG2_REG, 2, data);
+	}
 
 	if (fuelgauge->pdata->jig_gpio) {
 		int ret;

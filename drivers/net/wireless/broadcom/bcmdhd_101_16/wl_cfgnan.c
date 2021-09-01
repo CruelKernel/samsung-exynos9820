@@ -3268,9 +3268,8 @@ wl_cfgnan_delayed_disable(struct work_struct *work)
 	} else {
 		WL_INFORM_MEM(("nan is in disabled state\n"));
 	}
-	rtnl_unlock();
-
 	DHD_NAN_WAKE_UNLOCK(cfg->pub);
+	rtnl_unlock();
 
 	return;
 }
@@ -3560,6 +3559,8 @@ wl_cfgnan_config_handler(struct net_device *ndev, struct bcm_cfg80211 *cfg,
 				goto fail;
 			}
 
+			WL_INFORM_MEM(("Cluster merge : %s\n", merge_enable ? "Enabled" : "Disabled"));
+
 			lwt_mode_enable = !!(cmd_data->nmi_rand_intvl &
 					NAN_NMI_RAND_AUTODAM_LWT_MODE_ENAB);
 
@@ -3577,6 +3578,8 @@ wl_cfgnan_config_handler(struct net_device *ndev, struct bcm_cfg80211 *cfg,
 				}
 				goto fail;
 			}
+
+			WL_INFORM_MEM(("LWT mode : %s\n", lwt_mode_enable ? "Enabled" : "Disabled"));
 
 			/* reset pvt merge enable bits */
 			cmd_data->nmi_rand_intvl &= ~(NAN_NMI_RAND_PVT_CMD_VENDOR |
@@ -6210,10 +6213,13 @@ wl_cfgnan_get_capablities_handler(struct net_device *ndev,
 
 	NAN_DBG_ENTER();
 
+	RETURN_EIO_IF_NOT_UP(cfg);
+
 	/* Do not query fw about nan if feature is not supported */
 	if (!FW_SUPPORTED(dhdp, nan)) {
 		WL_DBG(("NAN is not supported\n"));
-		return ret;
+		ret = BCME_NOTUP;
+		goto fail;
 	}
 
 	if (cfg->nancfg->nan_init_state) {
@@ -9324,7 +9330,7 @@ wl_nan_print_avail_stats(const uint8 *data)
 	int s_chan = 0;
 	char pbuf[NAN_IOCTL_BUF_SIZE_MED];
 	const wl_nan_stats_sched_t *sched = (const wl_nan_stats_sched_t *)data;
-#define SLOT_PRINT_SIZE 4
+#define SLOT_PRINT_SIZE 6
 
 	char *buf = pbuf;
 	int remained_len = 0, bytes_written = 0;
@@ -9352,8 +9358,10 @@ wl_nan_print_avail_stats(const uint8 *data)
 
 		buf += bytes_written;
 		remained_len -= bytes_written;
-		bytes_written = snprintf(buf, remained_len, "%03d|", s_chan);
-
+		bytes_written = snprintf(buf, remained_len, "%3u%c|",
+				s_chan, ((s_chan) &&
+				(slot->info & WL_NAN_SCHED_STAT_SLOT_COMM)) ? 'C' :
+				' ');	/* Committed */
 	}
 	WL_INFORM_MEM(("%s\n", pbuf));
 exit:

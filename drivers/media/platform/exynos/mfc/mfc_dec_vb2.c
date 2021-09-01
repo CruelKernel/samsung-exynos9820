@@ -345,6 +345,8 @@ static void __mfc_dec_dst_stop_streaming(struct mfc_ctx *ctx)
 	struct mfc_dev *dev = ctx->dev;
 	int index = 0;
 
+	mfc_cleanup_assigned_iovmm(ctx);
+
 	mfc_cleanup_assigned_fd(ctx);
 	mfc_cleanup_queue(&ctx->buf_queue_lock, &ctx->ref_buf_queue);
 
@@ -463,8 +465,6 @@ static void mfc_dec_buf_queue(struct vb2_buffer *vb)
 			mfc_info_ctx("[TS] framerate: %ld, timestamp: %lld\n",
 					ctx->framerate, buf->vb.vb2_buf.timestamp);
 
-		MFC_TRACE_CTX("Q src[%d] fd: %d, %#llx\n",
-				vb->index, vb->planes[0].m.fd, buf->addr[0][0]);
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		for (i = 0; i < ctx->dst_fmt->mem_planes; i++)
 			mfc_debug(2, "[BUFINFO] ctx[%d] add dst index: %d, addr[%d]: 0x%08llx\n",

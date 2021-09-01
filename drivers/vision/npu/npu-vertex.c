@@ -139,9 +139,13 @@ static int npu_vertex_s_graph(struct file *file, struct vs4l_graph *sinfo)
 	}
 
 	vctx->state |= BIT(NPU_VERTEX_GRAPH);
+	mutex_unlock(lock);
+	profile_point1(PROBE_ID_DD_NW_VS4L_RET, 0, 0, NPU_NW_CMD_LOAD);
+	return ret;
 
 p_err:
 	mutex_unlock(lock);
+	vctx->state &= (~BIT(NPU_VERTEX_GRAPH));
 	profile_point1(PROBE_ID_DD_NW_VS4L_RET, 0, 0, NPU_NW_CMD_LOAD);
 	return ret;
 }
@@ -374,7 +378,7 @@ static int npu_vertex_s_format(struct file *file, struct vs4l_format_list *flist
 		return -ERESTARTSYS;
 	}
 
-	if (!(vctx->state & (BIT(NPU_VERTEX_GRAPH) | BIT(NPU_VERTEX_FORMAT)))) {
+	if (!(vctx->state & BIT(NPU_VERTEX_GRAPH))) {
 		npu_ierr("invalid state(%X)\n", vctx, vctx->state);
 		ret = -EINVAL;
 		goto p_err;

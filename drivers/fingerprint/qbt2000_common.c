@@ -225,9 +225,10 @@ static int qbt2000_noise_control(struct qbt2000_drvdata *drvdata, int control)
 	int rc = 0;
 
 	if (control == QBT2000_NOISE_UNBLOCK) {
-		drvdata->noise_onoff_flag = QBT2000_NOISE_UNBLOCK;
-		rc = set_wacom_ble_charge_mode(true);
-		pr_info("%d, rc:%d\n", control, rc);
+		rc = set_wacom_ble_charge_mode(true); /* 0:pass, etc:fail */
+		if (rc == 0)
+			drvdata->noise_onoff_flag = QBT2000_NOISE_UNBLOCK;
+		pr_info("%d, rc:%d, flag:%d\n", control, rc, drvdata->noise_onoff_flag);
 	} else if ((control == QBT2000_NOISE_BLOCK) && (drvdata->noise_onoff_flag == QBT2000_NOISE_UNBLOCK)) {
 		drvdata->noise_onoff_flag = QBT2000_NOISE_BLOCK;
 		while (retry--) {

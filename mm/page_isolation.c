@@ -48,12 +48,14 @@ static int set_migratetype_isolate(struct page *page,
 	notifier_ret = notifier_to_errno(notifier_ret);
 	if (notifier_ret)
 		goto out;
+#if !defined(CONFIG_HPA)
 	/*
 	 * FIXME: Now, memory hotplug doesn't call shrink_slab() by itself.
 	 * We just check MOVABLE pages.
 	 */
 	if (!has_unmovable_pages(zone, page, arg.pages_found,
 				 skip_hwpoisoned_pages))
+#endif
 		ret = 0;
 
 	/*

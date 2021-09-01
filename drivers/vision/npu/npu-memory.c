@@ -134,7 +134,7 @@ int npu_memory_map(struct npu_memory *memory, struct npu_memory_buffer *buffer)
 	buffer->daddr = daddr;
 
 	vaddr = dma_buf_vmap(buffer->dma_buf);
-	if (IS_ERR(vaddr)) {
+	if (IS_ERR_OR_NULL(vaddr)) {
 		npu_err("Failed to get vaddr (err %pK)\n", vaddr);
 		ret = -EFAULT;
 		goto p_err;
@@ -262,7 +262,7 @@ int npu_memory_alloc(struct npu_memory *memory, struct npu_memory_buffer *buffer
 	buffer->daddr = daddr;
 
 	vaddr = dma_buf_vmap(dma_buf);
-	if (IS_ERR(vaddr)) {
+	if (IS_ERR_OR_NULL(vaddr)) {
 		npu_err("fail(err %pK) in dma_buf_vmap\n", vaddr);
 		ret = -EFAULT;
 		goto p_err;

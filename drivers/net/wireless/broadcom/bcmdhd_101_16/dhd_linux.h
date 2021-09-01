@@ -513,4 +513,9 @@ extern void dhd_reset_tcpsync_info_by_dev(struct net_device *dev);
 extern void dhd_net_del_flowrings_sta(dhd_pub_t * dhd, struct net_device * ndev);
 #endif /* PCIE_FULL_DONGLE */
 int dhd_get_fw_capabilities(dhd_pub_t * dhd);
+#ifdef DHD_PERIODIC_CNTRS
+#define DHD_ECNT_INTERVAL 3000
+extern void dhd_dbg_periodic_cntrs_start(dhd_pub_t * dhdp);
+extern void dhd_dbg_periodic_cntrs_stop(dhd_pub_t * dhdp);
+#endif /* DHD_PERIODIC_CNTRS */
 #endif /* __DHD_LINUX_H__ */

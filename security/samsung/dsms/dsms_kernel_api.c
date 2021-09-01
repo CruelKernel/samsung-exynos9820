@@ -17,56 +17,18 @@
 #include "dsms_access_control.h"
 #include "dsms_init.h"
 #include "dsms_kernel_api.h"
-#include "dsms_message_list.h"
+#include "dsms_netlink.h"
+#include "dsms_preboot_buffer.h"
 #include "dsms_rate_limit.h"
 #include "dsms_test.h"
-
-__visible_for_testing struct dsms_message *create_message(const char *feature_code,
-		const char *detail,
-		int64_t value)
-{
-	int len_detail = 0;
-	struct dsms_message *message;
-
-	message = kmalloc(sizeof(struct dsms_message), GFP_KERNEL);
-	if (!message) {
-		DSMS_LOG_ERROR("It was not possible to allocate memory for message.");
-		return NULL;
-	}
-
-	message->feature_code = kmalloc_array(FEATURE_CODE_LENGTH + 1,
-					sizeof(char), GFP_KERNEL);
-	if (!message->feature_code) {
-		DSMS_LOG_ERROR("It was not possible to allocate memory for feature code.");
-		kfree(message);
-		return NULL;
-	}
-	strncpy(message->feature_code, feature_code, sizeof(char) *
-						     FEATURE_CODE_LENGTH);
-	message->feature_code[FEATURE_CODE_LENGTH] = '\0';
-
-	len_detail = strnlen(detail, MAX_ALLOWED_DETAIL_LENGTH) + 1;
-	message->detail = kmalloc_array(len_detail, sizeof(char), GFP_KERNEL);
-	if (!message->detail) {
-		DSMS_LOG_ERROR("It was not possible to allocate memory for detail.");
-		kfree(message->feature_code);
-		kfree(message);
-		return NULL;
-	}
-	strncpy(message->detail, detail, len_detail);
-	message->detail[len_detail - 1] = '\0';
-	message->value = value;
-	return message;
-}
 
 noinline int dsms_send_message(const char *feature_code,
 		const char *detail,
 		int64_t value)
 {
-	void *address;
-	int ret = DSMS_DENY;
+	int ret;
 	size_t len;
-	struct dsms_message *message;
+	void *address;
 
 	if (!feature_code) {
 		DSMS_LOG_ERROR("Invalid feature code.");
@@ -87,10 +49,6 @@ noinline int dsms_send_message(const char *feature_code,
 		goto exit_send;
 	}
 
-	ret = dsms_check_message_list_limit();
-	if (ret != DSMS_SUCCESS)
-		goto exit_send;
-
 	ret = dsms_check_message_rate_limit();
 	if (ret != DSMS_SUCCESS)
 		goto exit_send;
@@ -100,16 +58,10 @@ noinline int dsms_send_message(const char *feature_code,
 	if (ret != DSMS_SUCCESS)
 		goto exit_send;
 
-	message = create_message(feature_code, detail, value);
-	if (message == NULL)
-		goto exit_send;
-
-	ret = process_dsms_message(message);
-
-	if (ret != 0) {
-		kfree(message->detail);
-		kfree(message->feature_code);
-		kfree(message);
+	if (dsms_daemon_ready()) {
+		ret = dsms_send_netlink_message(feature_code, detail, value);
+	} else {
+		ret = dsms_preboot_buffer_add(feature_code, detail, value);
 	}
 
 exit_send:

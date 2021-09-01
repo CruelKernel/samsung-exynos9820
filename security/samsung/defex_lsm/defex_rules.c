@@ -195,6 +195,7 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/system/bin/showmap"},
 	{feature_safeplace_path,"/product/bin/dmabuf_dump"},
 	{feature_safeplace_path,"/apex/com.android.runtime/bin/spqr"},
+	{feature_safeplace_path,"/system/bin/perfetto"},
 	{feature_safeplace_path,"/tmp/update_binary"},
 	{feature_safeplace_path,"/tmp/update-binary"},
 	{feature_safeplace_path,"/system/bin/install-recovery.sh"},	/* DEFAULT */

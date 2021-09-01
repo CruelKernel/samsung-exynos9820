@@ -3257,20 +3257,21 @@ wl_cfg80211_start_ap(
 		if (err) {
 			WL_ERR(("Disabling NDO Failed %d\n", err));
 		}
-		/* Disable packet filter */
-		if (dhd->early_suspended) {
-			WL_ERR(("Disable pkt_filter\n"));
-#ifdef PKT_FILTER_SUPPORT
-			dhd_enable_packet_filter(0, dhd);
-#endif /* PKT_FILTER_SUPPORT */
-#ifdef APF
-			dhd_dev_apf_disable_filter(dhd_linux_get_primary_netdev(dhd));
-#endif /* APF */
-		}
 	} else {
 		/* only AP or GO role need to be handled here. */
 		err = -EINVAL;
 		goto fail;
+	}
+
+	/* Disable packet filter */
+	if (dhd->early_suspended) {
+		WL_ERR(("Disable pkt_filter\n"));
+#ifdef PKT_FILTER_SUPPORT
+		dhd_enable_packet_filter(0, dhd);
+#endif /* PKT_FILTER_SUPPORT */
+#ifdef APF
+		dhd_dev_apf_disable_filter(dhd_linux_get_primary_netdev(dhd));
+#endif /* APF */
 	}
 
 	/* disable TDLS */
@@ -3381,20 +3382,21 @@ fail:
 		wl_cfg80211_stop_ap(wiphy, dev);
 		if (dev_role == NL80211_IFTYPE_AP) {
 			dhd->op_mode &= ~DHD_FLAG_HOSTAP_MODE;
-			/* Enable packet filter */
-			if (dhd->early_suspended) {
-				WL_ERR(("Enable pkt_filter\n"));
-#ifdef PKT_FILTER_SUPPORT
-				dhd_enable_packet_filter(1, dhd);
-#endif /* PKT_FILTER_SUPPORT */
-#ifdef APF
-				dhd_dev_apf_enable_filter(dhd_linux_get_primary_netdev(dhd));
-#endif /* APF */
-			}
 #ifdef DISABLE_WL_FRAMEBURST_SOFTAP
 			wl_cfg80211_set_frameburst(cfg, TRUE);
 #endif /* DISABLE_WL_FRAMEBURST_SOFTAP */
 		}
+		/* Enable packet filter */
+		if (dhd->early_suspended) {
+			WL_ERR(("Enable pkt_filter\n"));
+#ifdef PKT_FILTER_SUPPORT
+			dhd_enable_packet_filter(1, dhd);
+#endif /* PKT_FILTER_SUPPORT */
+#ifdef APF
+			dhd_dev_apf_enable_filter(dhd_linux_get_primary_netdev(dhd));
+#endif /* APF */
+		}
+
 #ifdef WLTDLS
 		if (bssidx == 0) {
 			/* Since AP creation failed, re-enable TDLS */
@@ -3479,6 +3481,17 @@ wl_cfg80211_stop_ap(
 		WL_ERR(("bss down error %d\n", err));
 	}
 
+	/* Enable packet filter */
+	if (dhd->early_suspended) {
+		WL_ERR(("Enable pkt_filter\n"));
+#ifdef PKT_FILTER_SUPPORT
+		dhd_enable_packet_filter(1, dhd);
+#endif /* PKT_FILTER_SUPPORT */
+#ifdef APF
+		dhd_dev_apf_enable_filter(dhd_linux_get_primary_netdev(dhd));
+#endif /* APF */
+	}
+
 	if (dev_role == NL80211_IFTYPE_AP) {
 #ifdef CUSTOMER_HW4
 #ifdef DHD_PCIE_RUNTIMEPM
@@ -3499,16 +3512,6 @@ wl_cfg80211_stop_ap(
 #ifdef DISABLE_WL_FRAMEBURST_SOFTAP
 		wl_cfg80211_set_frameburst(cfg, TRUE);
 #endif /* DISABLE_WL_FRAMEBURST_SOFTAP */
-		/* Enable packet filter */
-		if (dhd->early_suspended) {
-			WL_ERR(("Enable pkt_filter\n"));
-#ifdef PKT_FILTER_SUPPORT
-			dhd_enable_packet_filter(1, dhd);
-#endif /* PKT_FILTER_SUPPORT */
-#ifdef APF
-			dhd_dev_apf_enable_filter(dhd_linux_get_primary_netdev(dhd));
-#endif /* APF */
-		}
 
 		if (is_rsdb_supported == 0) {
 			/* For non-rsdb chips, we use stand alone AP. Do wl down on stop AP */

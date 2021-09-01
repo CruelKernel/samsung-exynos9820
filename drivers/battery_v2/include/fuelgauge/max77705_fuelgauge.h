@@ -66,8 +66,6 @@ struct sec_fg_info {
 	int pr_cnt;
 	/* full charge comp */
 	struct delayed_work	full_comp_work;
-	u32 previous_fullcap;
-	u32 previous_vffullcap;
 
 	/* battery info */
 	u32 soc;

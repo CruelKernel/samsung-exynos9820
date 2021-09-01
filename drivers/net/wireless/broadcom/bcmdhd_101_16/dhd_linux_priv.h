@@ -398,6 +398,11 @@ typedef struct dhd_info {
 	pkt_pool_t rx_pkt_pool;
 	tsk_ctl_t rx_pktpool_thread;
 #endif /* RX_PKT_POOL */
+#ifdef DHD_PERIODIC_CNTRS
+	timer_list_compat_t dhd_periodic_cntrs_timer;
+	bool dhd_periodic_cntrs_tmr_valid;
+	tsk_ctl_t thr_periodic_cntrs_ctl;
+#endif /* DHD_PERIODIC_CNTRS */
 } dhd_info_t;
 
 /** priv_link is the link between netdev and the dhdif and dhd_info structs. */

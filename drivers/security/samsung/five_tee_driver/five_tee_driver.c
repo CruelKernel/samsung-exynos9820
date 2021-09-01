@@ -326,27 +326,6 @@ static int send_cmd_with_retry(unsigned int cmd,
 	return rc;
 }
 
-static int send_cmd_kthread_vec(struct tee_msg *cmd_iovec, const size_t iovcnt)
-{
-	int rc = 0;
-	struct completion cmd_sent;
-	size_t i;
-
-	init_completion(&cmd_sent);
-	cmd_iovec[iovcnt - 1].comp = &cmd_sent;
-
-	for (i = 0; i < iovcnt; ++i) {
-		spin_lock(&tee_msg_lock);
-		list_add_tail(&cmd_iovec[i].queue, &tee_msg_queue);
-		spin_unlock(&tee_msg_lock);
-	}
-
-	wake_up_process(tee_msg_task);
-	wait_for_completion(&cmd_sent);
-
-	return rc;
-}
-
 static int verify_hmac(const struct tee_iovec *verify_args)
 {
 	return send_cmd_kthread(CMD_VERIFY, verify_args->algo,
@@ -356,39 +335,6 @@ static int verify_hmac(const struct tee_iovec *verify_args)
 				(size_t *)&verify_args->signature_len);
 }
 
-static int verify_hmac_vec(struct tee_iovec *verify_iovec,
-			   const size_t verify_iovcnt)
-{
-	int rc = 0;
-	struct tee_msg *cmd_vec;
-	size_t i;
-
-	cmd_vec = kcalloc(verify_iovcnt, sizeof(*cmd_vec), GFP_KERNEL);
-	if (!cmd_vec)
-		return -ENOMEM;
-
-	for (i = 0; i < verify_iovcnt; ++i) {
-		cmd_vec[i].cmd = CMD_VERIFY;
-		cmd_vec[i].algo = verify_iovec[i].algo;
-		cmd_vec[i].hash = verify_iovec[i].hash;
-		cmd_vec[i].hash_len = verify_iovec[i].hash_len;
-		cmd_vec[i].label = verify_iovec[i].label;
-		cmd_vec[i].label_len = verify_iovec[i].label_len;
-		cmd_vec[i].signature = (void *)verify_iovec[i].signature;
-		cmd_vec[i].signature_len =
-				(size_t *)&verify_iovec[i].signature_len;
-		cmd_vec[i].rc = -EBADMSG;
-	}
-
-	rc = send_cmd_kthread_vec(cmd_vec, verify_iovcnt);
-
-	for (i = 0; i < verify_iovcnt; ++i)
-		verify_iovec[i].rc = cmd_vec[i].rc;
-
-	kfree(cmd_vec);
-	return rc;
-}
-
 static int sign_hmac(struct tee_iovec *sign_args)
 {
 	return send_cmd_kthread(CMD_SIGN, sign_args->algo,
@@ -396,38 +342,6 @@ static int sign_hmac(struct tee_iovec *sign_args)
 				sign_args->label, sign_args->label_len,
 				sign_args->signature,
 				&sign_args->signature_len);
-}
-
-static int sign_hmac_vec(struct tee_iovec *sign_iovec,
-			 const size_t iovcnt)
-{
-	int rc = 0;
-	struct tee_msg *cmd_vec;
-	size_t i;
-
-	cmd_vec = kcalloc(iovcnt, sizeof(*cmd_vec), GFP_KERNEL);
-	if (!cmd_vec)
-		return -ENOMEM;
-
-	for (i = 0; i < iovcnt; ++i) {
-		cmd_vec[i].cmd = CMD_SIGN;
-		cmd_vec[i].algo = sign_iovec[i].algo;
-		cmd_vec[i].hash = sign_iovec[i].hash;
-		cmd_vec[i].hash_len = sign_iovec[i].hash_len;
-		cmd_vec[i].label = sign_iovec[i].label;
-		cmd_vec[i].label_len = sign_iovec[i].label_len;
-		cmd_vec[i].signature = sign_iovec[i].signature;
-		cmd_vec[i].signature_len = &sign_iovec[i].signature_len;
-		cmd_vec[i].rc = -EBADMSG;
-	}
-
-	rc = send_cmd_kthread_vec(cmd_vec, iovcnt);
-
-	for (i = 0; i < iovcnt; ++i)
-		sign_iovec[i].rc = cmd_vec[i].rc;
-
-	kfree(cmd_vec);
-	return rc;
 }
 
 static int load_trusted_app(void)
@@ -479,9 +393,7 @@ static int register_tee_driver(void)
 {
 	struct five_tee_driver_fns fn = {
 		.verify_hmac = verify_hmac,
-		.verify_hmac_vec = verify_hmac_vec,
 		.sign_hmac = sign_hmac,
-		.sign_hmac_vec = sign_hmac_vec,
 	};
 
 	return register_five_tee_driver(&fn);
@@ -506,90 +418,6 @@ static void unload_trusted_app(void)
 }
 
 #ifdef CONFIG_TEE_DRIVER_DEBUG
-
-static int sign_hmac_vec_test(void)
-{
-	uint8_t hash[SHA1_DIGEST_SIZE][3];
-	uint8_t signature[SHA1_DIGEST_SIZE][3];
-	size_t signature_len[3] = {
-		SHA1_DIGEST_SIZE,
-		SHA1_DIGEST_SIZE,
-		SHA1_DIGEST_SIZE
-	};
-	struct tee_iovec sign_iovec[] = {
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[0],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[0],
-			.signature_len = signature_len[0],
-			.label_len = sizeof("label 1"),
-			.label = "label 1",
-		},
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[1],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[1],
-			.signature_len = signature_len[1],
-			.label_len = sizeof("label 2 xxxxx"),
-			.label = "label 2 xxxxx",
-		},
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[2],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[2],
-			.signature_len = signature_len[2],
-			.label_len = sizeof("label 3 zxzxzzzz"),
-			.label = "label 3 zxzxzzzz",
-		},
-	};
-
-	return sign_hmac_vec(sign_iovec, ARRAY_SIZE(sign_iovec));
-}
-
-static int verify_hmac_vec_test(void)
-{
-	uint8_t hash[SHA1_DIGEST_SIZE][3];
-	uint8_t signature[SHA1_DIGEST_SIZE][3];
-	size_t signature_len[3] = {
-		SHA1_DIGEST_SIZE,
-		SHA1_DIGEST_SIZE,
-		SHA1_DIGEST_SIZE
-	};
-	struct tee_iovec verify_iovec[] = {
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[0],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[0],
-			.signature_len = signature_len[0],
-			.label_len = sizeof("label 1"),
-			.label = "label 1",
-		},
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[1],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[1],
-			.signature_len = signature_len[1],
-			.label_len = sizeof("label 2 xxxxx"),
-			.label = "label 2 xxxxx",
-		},
-		{
-			.algo = HASH_ALGO_SHA1,
-			.hash = hash[2],
-			.hash_len = SHA1_DIGEST_SIZE,
-			.signature = signature[2],
-			.signature_len = signature_len[2],
-			.label_len = sizeof("label 3 zxzxzzzz"),
-			.label = "label 3 zxzxzzzz",
-		},
-	};
-
-	return verify_hmac_vec(verify_iovec, ARRAY_SIZE(verify_iovec));
-}
 
 static ssize_t tee_driver_write(
 		struct file *file, const char __user *buf,
@@ -641,12 +469,6 @@ static ssize_t tee_driver_write(
 		mutex_lock(&itee_driver_lock);
 		unload_trusted_app();
 		mutex_unlock(&itee_driver_lock);
-		break;
-	case '5':
-		pr_info("sign_hmac_vec: %d\n", sign_hmac_vec_test());
-		break;
-	case '6':
-		pr_info("verify_hmac_vec: %d\n", verify_hmac_vec_test());
 		break;
 	default:
 		pr_err("FIVE: %s: unknown cmd: %hhx\n", __func__, command);

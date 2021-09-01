@@ -38,7 +38,7 @@ config SND_SOC_SAMSUNG_ABOX_V2
 config SND_SOC_SAMSUNG_ABOX_DRAM_SIZE
 	hex "Size of DRAM for ABOX firmware"
 	default 0x1200000 if SND_SOC_SAMSUNG_ABOX_V1
-	default 0x1A00000 if SND_SOC_SAMSUNG_ABOX_V2
+	default 0x1C00000 if SND_SOC_SAMSUNG_ABOX_V2
 
 config SEC_SND_ADAPTATION
 	tristate "Samsung ABOX Adaptation for Audio"

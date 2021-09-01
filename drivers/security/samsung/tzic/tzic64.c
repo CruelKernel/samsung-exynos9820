@@ -373,7 +373,7 @@ static int gotoAllCpu(void)
 }
 #endif
 
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Samsung TZIC Driver");
 MODULE_VERSION("1.00");
 

@@ -1035,6 +1035,9 @@ void send_usb_err_uevent(int err_type, int mode)
 	switch (err_type) {
 	case USB_ERR_ABNORMAL_RESET:
 		words = "WORDS=abnormal_reset";
+		if (mode)
+			inc_hw_param(o_notify,
+				USB_CLIENT_ANDROID_AUTO_RESET_POPUP_COUNT);
 		break;
 	default:
 		pr_err("%s invalid input\n", __func__);

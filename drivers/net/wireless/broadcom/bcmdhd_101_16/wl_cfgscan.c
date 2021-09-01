@@ -3634,7 +3634,7 @@ wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 		if (cfg->sched_scan_running && wl_get_drv_status(cfg, SCANNING, dev)) {
 			/* If targetted escan for PNO is running, abort it */
 			WL_INFORM_MEM(("abort targetted escan\n"));
-			wl_cfgscan_scan_abort(cfg);
+			_wl_cfgscan_cancel_scan(cfg);
 			wl_clr_drv_status(cfg, SCANNING, dev);
 		} else {
 			WL_INFORM_MEM(("pno escan state:%d\n",
@@ -3892,7 +3892,13 @@ static void wl_scan_timeout(unsigned long data)
 #ifdef DHD_FW_COREDUMP
 	if (!dhd_bus_get_linkdown(dhdp) && dhdp->memdump_enabled) {
 		dhdp->memdump_type = DUMP_TYPE_SCAN_TIMEOUT;
+#ifdef BCMPCIE
 		dhd_bus_mem_dump(dhdp);
+#else
+		if (dhd_schedule_socram_dump(dhdp)) {
+			WL_ERR(("%s: socram dump failed\n", __FUNCTION__));
+		}
+#endif /* BCMPCIE */
 	}
 	/*
 	 * For the memdump sanity, blocking bus transactions for a while

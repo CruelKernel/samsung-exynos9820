@@ -256,6 +256,7 @@ int sensor_3p9_cis_init(struct v4l2_subdev *subdev)
 	cis->cis_data->low_expo_start = 33000;
 	cis->need_mode_change = false;
 	cis->cis_data->dual_slave = false;
+	cis->long_term_mode.sen_strm_off_on_step = 0;
 	cis->long_term_mode.sen_strm_off_on_enable = false;
 
 	sensor_3p9_cis_data_calculation(sensor_3p9_pllinfos[setfile_index], cis->cis_data);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Samsung Electronics Co., Ltd. All Rights Reserved
+ * Copyright (c) 2020-2021 Samsung Electronics Co., Ltd. All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2
@@ -7,25 +7,22 @@
  */
 
 #include <linux/delay.h>
+#include <linux/dsms.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
-#include <linux/kthread.h>
-#include <linux/mutex.h>
 #include <linux/string.h>
+#include <linux/version.h>
+#include <net/genetlink.h>
 #include "dsms_kernel_api.h"
-#include "dsms_message_list.h"
 #include "dsms_netlink.h"
+#include "dsms_netlink_protocol.h"
+#include "dsms_preboot_buffer.h"
+#include "dsms_test.h"
 
-static struct dsms_message *current_message;
-static struct task_struct *dsms_sender_thread;
+__visible_for_testing int dsms_daemon_callback(struct sk_buff *skb,
+					       struct genl_info *info);
+__visible_for_testing atomic_t daemon_ready = ATOMIC_INIT(0);
 
-static DEFINE_MUTEX(dsms_wait_daemon_mutex);
-
-static int dsms_start_sender_thread(struct sk_buff *skb, struct genl_info *info);
-
-/*
- * DSMS netlink policy creation for the possible fields for the communication.
- */
 static struct nla_policy dsms_netlink_policy[DSMS_ATTR_COUNT + 1] = {
 	[DSMS_VALUE] = { .type = NLA_U64 },
 	[DSMS_FEATURE_CODE] = { .type = NLA_STRING, .len = FEATURE_CODE_LENGTH + 1},
@@ -33,15 +30,10 @@ static struct nla_policy dsms_netlink_policy[DSMS_ATTR_COUNT + 1] = {
 	[DSMS_DAEMON_READY] = { .type = NLA_U32 },
 };
 
-/*
- * Definition of the netlink operations handled by the dsms kernel and
- * the daemon of dsms, for this case the DSMS_MSG_CMD operation will be handled
- * dsms_start_sender_thread function.
- */
 static const struct genl_ops dsms_kernel_ops[] = {
 	{
 		.cmd = DSMS_MSG_CMD,
-		.doit = dsms_start_sender_thread,
+		.doit = dsms_daemon_callback,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
 		.policy = dsms_netlink_policy,
 #endif
@@ -54,9 +46,6 @@ struct genl_multicast_group dsms_group[] = {
 	},
 };
 
-/*
- * Descriptor of DSMS Generic Netlink family
- */
 static struct genl_family dsms_family = {
 	.name = DSMS_FAMILY,
 	.version = 1,
@@ -71,114 +60,96 @@ static struct genl_family dsms_family = {
 	.n_ops = ARRAY_SIZE(dsms_kernel_ops),
 };
 
-int prepare_userspace_communication(void)
+int __kunit_init dsms_netlink_init(void)
 {
-	current_message = NULL;
-	dsms_sender_thread = NULL;
-	return genl_register_family(&dsms_family);
+	int ret;
+
+	ret = genl_register_family(&dsms_family);
+	if (ret != 0)
+		DSMS_LOG_ERROR("Netlink register failed: %d.", ret);
+
+	return ret;
 }
 
-int remove_userspace_communication(void)
+void __kunit_exit dsms_netlink_exit(void)
 {
-	if (mutex_is_locked(&dsms_wait_daemon_mutex))
-		mutex_unlock(&dsms_wait_daemon_mutex);
-	kthread_stop(dsms_sender_thread);
-	return genl_unregister_family(&dsms_family);
+	int ret;
+
+	ret = genl_unregister_family(&dsms_family);
+	if (ret != 0)
+		DSMS_LOG_ERROR("Netlink unregister failed: %d.", ret);
 }
 
-noinline int dsms_send_netlink_message(struct dsms_message *message)
+__visible_for_testing int dsms_daemon_callback(struct sk_buff *skb,
+					       struct genl_info *info)
 {
-	struct sk_buff *skb;
+	if (atomic_add_unless(&daemon_ready, 1, 1)) {
+		DSMS_LOG_DEBUG("Netlink daemon ready.");
+		wakeup_preboot_sender();
+	}
+
+	return 0;
+}
+
+int dsms_daemon_ready(void)
+{
+	return atomic_read(&daemon_ready);
+}
+
+int dsms_send_netlink_message(const char *feature_code,
+			      const char *detail,
+			      int64_t value)
+{
+	int ret;
 	void *msg_head;
-	int ret = 0;
-	int detail_len;
+	size_t detail_len;
+	struct sk_buff *skb;
 
-	skb = genlmsg_new(NLMSG_GOODSIZE, GFP_KERNEL);
+	DSMS_LOG_DEBUG("Sending netlink message.");
+
+	skb = genlmsg_new(NLMSG_GOODSIZE, GFP_ATOMIC);
 	if (skb == NULL) {
-		DSMS_LOG_DEBUG("It was not possible to allocate memory for the message.");
+		DSMS_LOG_ERROR("genlmsg_new error.");
 		return -ENOMEM;
 	}
 
-	// Creation of the message header
 	msg_head = genlmsg_put(skb, 0, 0,
 			       &dsms_family, 0, DSMS_MSG_CMD);
 	if (msg_head == NULL) {
-		DSMS_LOG_DEBUG("It was not possible to create the message head.");
+		DSMS_LOG_ERROR("genlmsg_put error.");
+		nlmsg_free(skb);
 		return -ENOMEM;
 	}
 
-	ret = nla_put(skb, DSMS_VALUE, sizeof(message->value), &message->value);
+	ret = nla_put(skb, DSMS_VALUE, sizeof(value), &value);
 	if (ret) {
-		DSMS_LOG_DEBUG("It was not possible to add field DSMS_VALUE to the message.");
+		DSMS_LOG_ERROR("nla_put value error.");
+		nlmsg_free(skb);
 		return ret;
 	}
 
 	ret = nla_put(skb, DSMS_FEATURE_CODE,
-		      FEATURE_CODE_LENGTH + 1, message->feature_code);
+		      FEATURE_CODE_LENGTH + 1, feature_code);
 	if (ret) {
-		DSMS_LOG_DEBUG("It was not possible to add field DSMS_FEATURE_CODE to the message.");
+		DSMS_LOG_ERROR("nla_put feature error.");
+		nlmsg_free(skb);
 		return ret;
 	}
 
-	detail_len = strnlen(message->detail, MAX_ALLOWED_DETAIL_LENGTH);
-	ret = nla_put(skb, DSMS_DETAIL, detail_len + 1, message->detail);
+	detail_len = strnlen(detail, MAX_ALLOWED_DETAIL_LENGTH);
+	ret = nla_put(skb, DSMS_DETAIL, detail_len + 1, detail);
 	if (ret) {
-		DSMS_LOG_DEBUG("It was not possible to add field DSMS_DETAIL to the message.");
+		DSMS_LOG_ERROR("nla_put detail error.");
+		nlmsg_free(skb);
 		return ret;
 	}
 
 	genlmsg_end(skb, msg_head);
-	ret = genlmsg_multicast(&dsms_family, skb, 0, 0, GFP_KERNEL);
+	ret = genlmsg_multicast(&dsms_family, skb, 0, 0, GFP_ATOMIC);
 	if (ret) {
-		DSMS_LOG_DEBUG("It was not possible to send the message.");
+		DSMS_LOG_ERROR("genlmsg_multicast error.");
 		return ret;
 	}
 
-	return 0;
-}
-
-static int dsms_send_messages_thread(void *unused)
-{
-	int ret;
-
-	msleep(2000);
-	while (1) {
-		if (!current_message && !kthread_should_stop())
-			current_message = get_dsms_message();
-
-		if (kthread_should_stop())
-			do_exit(0);
-
-		if (!current_message) {
-			DSMS_LOG_DEBUG("There is no message in the list.");
-			continue;
-		}
-
-		ret = dsms_send_netlink_message(current_message);
-		if (ret < 0) {
-			DSMS_LOG_ERROR("Error while send a message? %d.", ret);
-			mutex_lock(&dsms_wait_daemon_mutex);
-			msleep(2000);
-			continue;
-		}
-
-		kfree(current_message->feature_code);
-		kfree(current_message->detail);
-		kfree(current_message);
-		current_message = NULL;
-	}
-	return 0;
-}
-
-static int dsms_start_sender_thread(struct sk_buff *skb, struct genl_info *info)
-{
-	if (!dsms_sender_thread) {
-		dsms_sender_thread = kthread_run(dsms_send_messages_thread, NULL, "dsms_kthread");
-		if (!dsms_sender_thread)
-			DSMS_LOG_ERROR("It was not possible to create the dsms thread.");
-	} else {
-		if (mutex_is_locked(&dsms_wait_daemon_mutex))
-			mutex_unlock(&dsms_wait_daemon_mutex);
-	}
-	return 0;
+	return DSMS_SUCCESS;
 }

@@ -21,7 +21,6 @@
  * <<Broadcom-WL-IPTag/Dual:>>
  */
 
-#ifdef TPUT_DEBUG_DUMP
 #include <typedefs.h>
 #include <linuxver.h>
 #include <osl.h>
@@ -64,6 +63,11 @@
 #include <wl_cfgvendor.h>
 #include <brcm_nl80211.h>
 
+#ifdef DHD_PERIODIC_CNTRS
+#include <dhd_linux.h>
+#endif /* DHD_PERIODIC_CNTRS */
+
+#ifdef TPUT_DEBUG_DUMP
 enum tput_debug_mode_cmd {
 	TPUT_DEBUG_DUMP_CMD_INVALID = 0,
 	TPUT_DEBUG_DUMP_CMD_START = 1,
@@ -575,3 +579,348 @@ void wl_cfgdbg_tput_debug_mode(struct net_device *ndev, bool enable)
 	}
 }
 #endif /* TPUT_DEBUG_DUMP */
+
+#ifdef DHD_PERIODIC_CNTRS
+#define	DHD_EWP_CNT_VAL(src, name) compact_cntrs->name = dtoh32(src->name)
+#define CNTRS_MOVE_NEXT_POS(pointer, size) pointer += size
+#define CNTRS_ADD_BUF_LEN(current_length, size) current_length += size
+
+typedef struct evt_front_header {
+	uint16 length;
+	uint16 block_count;
+	uint16 set;
+	uint16 pad;
+} evt_front_header_t;
+
+#ifdef PERIODIC_CNTRS_DBG_DUMP
+void wl_cfgdbg_cntrs_dump(wl_periodic_compact_cntrs_v3_t *compact_cntrs)
+{
+	WL_INFORM(("txfail:%u txallfrm:%u txrtsfrm:%u txctsfrm:%u txback:%u\n",
+		compact_cntrs->txfail, compact_cntrs->txallfrm, compact_cntrs->txrtsfrm,
+		compact_cntrs->txctsfrm, compact_cntrs->txback));
+
+	WL_INFORM(("txucast:%u txnoack:%u txframe:%u txretrans:%u txpspoll:%u\n",
+		compact_cntrs->txucast, compact_cntrs->txnoack, compact_cntrs->txframe,
+		compact_cntrs->txretrans, compact_cntrs->txpspoll));
+
+	WL_INFORM(("rxrsptmout:%u txrtsfail:%u rxstrt:%u rxbadplcp:%u rxcrsglitch:%u\n",
+		compact_cntrs->rxrsptmout, compact_cntrs->txrtsfail, compact_cntrs->rxstrt,
+		compact_cntrs->rxbadplcp, compact_cntrs->rxcrsglitch));
+
+	WL_INFORM(("rxnodelim:%u bphy_badplcp:%u bphy_badplcp:%u rxbadfcs:%u rxf0ovfl:%u\n",
+		compact_cntrs->rxnodelim, compact_cntrs->bphy_badplcp, compact_cntrs->bphy_badplcp,
+		compact_cntrs->rxbadfcs, compact_cntrs->rxf0ovfl));
+
+	WL_INFORM(("rxf1ovfl:%u rxrtsucast:%u rxctsucast:%u rxackucast:%u rxback:%u\n",
+		compact_cntrs->rxf1ovfl, compact_cntrs->rxrtsucast, compact_cntrs->rxctsucast,
+		compact_cntrs->rxackucast, compact_cntrs->rxback));
+
+	WL_INFORM(("rxbeaconmbss:%u rxdtucastmbss:%u rxbeaconobss:%u rxdtucastobss:%u\n",
+		compact_cntrs->rxbeaconmbss, compact_cntrs->rxdtucastmbss,
+		compact_cntrs->rxbeaconobss, compact_cntrs->rxdtucastobss));
+
+	WL_INFORM(("rxrtsocast:%u rxctsocast:%u rxdtmcast:%u rxmpdu_mu:%u rxtoolate:%u\n",
+		compact_cntrs->rxrtsocast, compact_cntrs->rxctsocast, compact_cntrs->rxdtmcast,
+		compact_cntrs->rxmpdu_mu, compact_cntrs->rxtoolate));
+
+	WL_INFORM(("rxframe:%u tx_toss_cnt:%u rx_toss_cnt:%u last_tx_toss_rsn:%u\n",
+		compact_cntrs->rxframe, compact_cntrs->tx_toss_cnt, compact_cntrs->rx_toss_cnt,
+		compact_cntrs->last_tx_toss_rsn));
+
+	WL_INFORM(("last_rx_toss_rsn:%u txbcnfrm:%u rxretry:%u rxdtocast:%u\n",
+		compact_cntrs->last_rx_toss_rsn, compact_cntrs->txbcnfrm, compact_cntrs->rxretry,
+		compact_cntrs->rxdtocast));
+
+	WL_INFORM(("slice_index:%d\n", compact_cntrs->pad));
+}
+#endif /* PERIODIC_CNTRS_DBG_DUMP */
+
+bool
+wl_cfgdbg_get_cntrs(struct net_device *ndev, char* ioctl_buffer,
+	wl_periodic_compact_cntrs_v3_t *compact_cntrs)
+{
+	int err = BCME_ERROR;
+	uint8 *slice_idx = NULL;
+	const wl_cnt_wlc_t* wlc_cnt = NULL;
+	wl_cnt_ge80mcst_v1_t* mac_cnt = NULL;
+
+	err = wldev_iovar_getbuf(ndev, "counters", NULL, 0,
+		ioctl_buffer, WLC_IOCTL_MAXLEN, NULL);
+
+	if (err < 0) {
+		WL_ERR(("Failed to get counters"));
+		goto exit;
+	}
+
+	/* Convert counters buffer to xtlv format */
+	err  = wl_cntbuf_to_xtlv_format(NULL, ioctl_buffer, WL_CNTBUF_MAX_SIZE, 0);
+	if (err != BCME_OK) {
+		WL_ERR(("wl_cntbuf_to_xtlv_format ERR %d\n", err));
+
+	}
+
+	/* Get wl_cnt from xtlv */
+	wlc_cnt = (const wl_cnt_wlc_t*) bcm_get_data_from_xtlv_buf(
+				((const wl_cnt_info_t *)ioctl_buffer)->data,
+				((const wl_cnt_info_t *)ioctl_buffer)->datalen,
+				WL_CNT_XTLV_WLC, NULL, BCM_XTLV_OPTION_ALIGN32);
+
+	if (!wlc_cnt) {
+		WL_ERR(("wlc_cnt is NULL\n"));
+		err = BCME_ERROR;
+		goto exit;
+	}
+
+	/* Get mac_cnt from xtlv */
+	mac_cnt = (wl_cnt_ge80mcst_v1_t *)bcm_get_data_from_xtlv_buf(
+			((const wl_cnt_info_t *)ioctl_buffer)->data,
+			((const wl_cnt_info_t *)ioctl_buffer)->datalen,
+			WL_CNT_XTLV_GE80_UCODE_V1, NULL, BCM_XTLV_OPTION_ALIGN32);
+
+	if (!mac_cnt) {
+		WL_ERR(("macstat is NULL\n"));
+		err = BCME_ERROR;
+		goto exit;
+	}
+
+	/* Get slice index from xtlv */
+	slice_idx = (uint8 *)bcm_get_data_from_xtlv_buf(
+			((const wl_cnt_info_t *)ioctl_buffer)->data,
+			((const wl_cnt_info_t *)ioctl_buffer)->datalen,
+			WL_CNT_XTLV_SLICE_IDX, NULL, BCM_XTLV_OPTION_ALIGN32);
+
+	if (!slice_idx) {
+		WL_ERR(("slice_index is NULL\n"));
+		err = BCME_ERROR;
+		goto exit;
+	}
+	compact_cntrs->pad = (uint16) *slice_idx;
+
+	/* Not adding pm_dur, lqcm_report, chswitch_cnt, rxholes */
+	compact_cntrs->version = WL_PERIODIC_COMPACT_CNTRS_VER_3;
+	DHD_EWP_CNT_VAL(wlc_cnt, txfail);
+	DHD_EWP_CNT_VAL(mac_cnt, txallfrm);
+	DHD_EWP_CNT_VAL(mac_cnt, txrtsfrm);
+	DHD_EWP_CNT_VAL(mac_cnt, txctsfrm);
+	DHD_EWP_CNT_VAL(mac_cnt, txback);
+	DHD_EWP_CNT_VAL(mac_cnt, txucast);
+	DHD_EWP_CNT_VAL(wlc_cnt, txnoack);
+	DHD_EWP_CNT_VAL(wlc_cnt, txframe);
+	DHD_EWP_CNT_VAL(wlc_cnt, txretrans);
+	DHD_EWP_CNT_VAL(wlc_cnt, txpspoll);
+	DHD_EWP_CNT_VAL(mac_cnt, rxrsptmout);
+	DHD_EWP_CNT_VAL(mac_cnt, txrtsfail);
+	DHD_EWP_CNT_VAL(mac_cnt, rxstrt);
+	DHD_EWP_CNT_VAL(mac_cnt, rxbadplcp);
+	DHD_EWP_CNT_VAL(mac_cnt, rxcrsglitch);
+	DHD_EWP_CNT_VAL(mac_cnt, rxnodelim);
+	DHD_EWP_CNT_VAL(mac_cnt, bphy_badplcp);
+	DHD_EWP_CNT_VAL(mac_cnt, bphy_rxcrsglitch);
+	DHD_EWP_CNT_VAL(mac_cnt, rxbadfcs);
+	DHD_EWP_CNT_VAL(mac_cnt, rxf0ovfl);
+	DHD_EWP_CNT_VAL(mac_cnt, rxf1ovfl);
+	DHD_EWP_CNT_VAL(mac_cnt, rxrtsucast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxctsucast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxackucast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxback);
+	DHD_EWP_CNT_VAL(mac_cnt, rxbeaconmbss);
+	DHD_EWP_CNT_VAL(mac_cnt, rxdtucastmbss);
+	DHD_EWP_CNT_VAL(mac_cnt, rxbeaconobss);
+	DHD_EWP_CNT_VAL(mac_cnt, rxdtucastobss);
+	DHD_EWP_CNT_VAL(mac_cnt, rxdtocast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxrtsocast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxctsocast);
+	DHD_EWP_CNT_VAL(mac_cnt, rxdtmcast);
+	DHD_EWP_CNT_VAL(wlc_cnt, rxmpdu_mu);
+	DHD_EWP_CNT_VAL(mac_cnt, rxtoolate);
+	DHD_EWP_CNT_VAL(wlc_cnt, rxframe);
+	DHD_EWP_CNT_VAL(wlc_cnt, tx_toss_cnt);
+	DHD_EWP_CNT_VAL(wlc_cnt, rx_toss_cnt);
+	DHD_EWP_CNT_VAL(wlc_cnt, last_tx_toss_rsn);
+	DHD_EWP_CNT_VAL(wlc_cnt, last_rx_toss_rsn);
+	DHD_EWP_CNT_VAL(mac_cnt, txbcnfrm);
+	compact_cntrs->rxretry = wlc_cnt->rxrtry;
+
+#ifdef PERIODIC_CNTRS_DBG_DUMP
+	wl_cfgdbg_cntrs_dump(compact_cntrs);
+#endif /* PERIODIC_CNTRS_DBG_DUMP */
+	err = BCME_OK;
+exit:
+	return err;
+}
+
+uint32
+wl_cfgdbg_current_timestamp(void)
+{
+	uint64 timestamp_u64 = 0;
+	uint32 timestamp_u32 = 0;
+
+	timestamp_u64 = local_clock();
+	timestamp_u32 = (uint32) DIV_U64_BY_U32(timestamp_u64, NSEC_PER_MSEC);
+
+	return timestamp_u32;
+}
+
+void
+wl_cfgdbg_init_xtlv_buf(bcm_xtlvbuf_t* xtlvbuf, uint8* data, uint8 size)
+{
+	xtlvbuf->buf  = data;
+	xtlvbuf->head = data;
+	xtlvbuf->size = size;
+}
+
+int
+wl_cfgdbg_fill_xtlv(xtlv_desc_t *xtlv_desc,
+	struct bcm_xtlvbuf *xtlvbuf, uint16 type, uint16 *written_len)
+{
+	int err = BCME_ERROR;
+	uint16 rlen = 0;
+	struct bcm_xtlvbuf local_xtlvbuf;
+
+	rlen = bcm_xtlv_buf_rlen(xtlvbuf);
+
+	/* [Container: Type][data:xtlv_desc->type] */
+
+	if (rlen <= BCM_XTLV_HDR_SIZE) {
+		*written_len = 0;
+		return BCME_BUFTOOSHORT;
+	} else {
+		*written_len = BCM_XTLV_HDR_SIZE;
+	}
+
+	bcm_xtlv_buf_init(&local_xtlvbuf, (uint8 *) (bcm_xtlv_buf(xtlvbuf) + BCM_XTLV_HDR_SIZE),
+		(rlen - BCM_XTLV_HDR_SIZE), BCM_XTLV_OPTION_ALIGN32);
+
+	/* Write data in the allocated buffer */
+	err = bcm_xtlv_put_data(&local_xtlvbuf, xtlv_desc->type,
+		(const uint8 *) xtlv_desc->ptr, xtlv_desc->len);
+
+	if (err == BCME_OK) {
+		*written_len += BCM_XTLV_HDR_SIZE + xtlv_desc->len;
+		err = bcm_xtlv_put_data(xtlvbuf, type,
+			NULL, bcm_xtlv_buf_len(&local_xtlvbuf));
+	}
+
+	return err;
+}
+
+int
+wl_cfgdbg_cntrs_xtlv(wl_periodic_compact_cntrs_v3_t* compact_cntrs,
+	uint8* ewp_data, uint16 size, uint16 *written_len)
+{
+	int err = BCME_ERROR;
+	bcm_xtlvbuf_t xtlvbuf = {0};
+	xtlv_desc_t xtlv_desc_ecnt;
+
+	xtlv_desc_ecnt.type = WL_STATE_COMPACT_COUNTERS;
+	xtlv_desc_ecnt.len  = sizeof(wl_periodic_compact_cntrs_v3_t);
+	xtlv_desc_ecnt.ptr  = compact_cntrs;
+
+	wl_cfgdbg_init_xtlv_buf(&xtlvbuf, ewp_data, size);
+	err = wl_cfgdbg_fill_xtlv(&xtlv_desc_ecnt,
+		&xtlvbuf, WL_SLICESTATS_XTLV_PERIODIC_STATE, written_len);
+	if (err != BCME_OK) {
+		WL_ERR(("Failed to pack counters err=%d\n", err));
+	}
+
+	return err;
+}
+
+void
+wl_cfgdbg_periodic_cntrs(struct net_device *ndev, struct bcm_cfg80211 *cfg)
+{
+	int err = BCME_ERROR;
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
+	uint8* buffer = NULL;
+	uint8* debug_msg = NULL;
+	static uint32 seq_number = 1;
+	wl_periodic_compact_cntrs_v3_t compact_cntrs = {0};
+	evt_front_header_t *front_header = NULL;
+	event_log_hdr_t* evt_log_hdr = NULL;
+	uint16 xtlv_length = 0, total_length = 0, xtlv_buf_size = 0;
+	uint32* kernel_timestamp = NULL;
+	uint32 current_time = 0;
+
+	if (dhdp->dongle_reset|| !dhdp->up) {
+		return;
+	}
+
+	if (!wl_get_drv_status(cfg, CONNECTED, ndev)) {
+		return;
+	}
+
+	if (FW_SUPPORTED(dhdp, ecounters)) {
+		/* Not required DHD periodic conters */
+		return;
+	}
+
+	current_time = wl_cfgdbg_current_timestamp();
+	if ((current_time - dhdp->dhd_periodic_cntrs_last_time) < DHD_ECNT_INTERVAL) {
+		return;
+	}
+	WL_INFORM(("In\n"));
+
+	dhdp->dhd_periodic_cntrs_last_time = current_time;
+
+	buffer = (char *)MALLOCZ(dhdp->osh, WLC_IOCTL_MAXLEN);
+	if (!buffer) {
+		WL_ERR(("Malloc failed\n"));
+		return;
+	}
+
+	err = wl_cfgdbg_get_cntrs(ndev, buffer, &compact_cntrs);
+	if (err != BCME_OK) {
+		WL_ERR(("Failed to get counters, err=%d\n", err));
+		goto exit;
+	}
+
+	/* clear buffer memory to set ecounter message */
+	memset(buffer, 0x0, WLC_IOCTL_MAXLEN);
+
+	/* [Front header][EWP payload][timestamp][event log header] */
+	debug_msg = buffer;
+	front_header = (evt_front_header_t *) debug_msg;
+	front_header->block_count = 0;
+	front_header->pad = 0;
+	front_header->set = EVENT_LOG_SET_ECOUNTERS;
+	/* front header length assign again after adding all field */
+	front_header->length = 0;
+
+	CNTRS_MOVE_NEXT_POS(debug_msg, sizeof(evt_front_header_t));
+	CNTRS_ADD_BUF_LEN(total_length, sizeof(evt_front_header_t));
+
+	/* Pack counters data */
+	xtlv_buf_size = WLC_IOCTL_MAXLEN - total_length;
+	err = wl_cfgdbg_cntrs_xtlv(&compact_cntrs, debug_msg, xtlv_buf_size, &xtlv_length);
+	if (err != BCME_OK) {
+		WL_ERR(("Failed to pack counters:%d\n", err));
+		goto exit;
+	}
+
+	CNTRS_MOVE_NEXT_POS(debug_msg, xtlv_length);
+	CNTRS_ADD_BUF_LEN(total_length, xtlv_length);
+
+	/* Adding current timestamp */
+	kernel_timestamp = (uint32*) debug_msg;
+	*kernel_timestamp = wl_cfgdbg_current_timestamp();
+	CNTRS_MOVE_NEXT_POS(debug_msg, sizeof(uint32));
+	CNTRS_ADD_BUF_LEN(total_length, sizeof(uint32));
+
+	/* Fill up event log header */
+	evt_log_hdr = (event_log_hdr_t*) debug_msg;
+	evt_log_hdr->count	= (total_length - sizeof(evt_front_header_t))/4;
+	evt_log_hdr->tag	= EVENT_LOG_TAG_STATS;
+	evt_log_hdr->fmt_num = 0xffff;
+
+	CNTRS_ADD_BUF_LEN(total_length, sizeof(event_log_hdr_t));
+
+	/* Update payload size in front header */
+	front_header->length = total_length - sizeof(evt_front_header_t);
+
+	/* Push Ecounters data */
+	dhd_dbg_msgtrace_log_parser(dhdp, front_header, NULL, total_length, FALSE, seq_number++);
+
+exit:
+	MFREE(dhdp->osh, buffer, WLC_IOCTL_MAXLEN);
+}
+#endif /* DHD_PERIODIC_CNTRS */

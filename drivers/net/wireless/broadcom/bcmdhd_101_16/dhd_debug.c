@@ -1108,7 +1108,11 @@ dhd_dbg_msgtrace_log_parser(dhd_pub_t *dhdp, void *event_data,
 #endif /* EWP_BCM_TRACE */
 
 #if defined(DHD_EVENT_LOG_FILTER)
-		if (plog_hdr->tag == EVENT_LOG_TAG_STATS) {
+		if (plog_hdr->tag == EVENT_LOG_TAG_STATS &&
+#ifdef DHD_PERIODIC_CNTRS
+			FW_SUPPORTED(dhdp, ecounters) &&
+#endif /* DHD_PERIODIC_CNTRS */
+			TRUE) {
 			dhd_event_log_filter_event_handler(dhdp, plog_hdr, plog_hdr->log_ptr);
 		}
 #endif /* DHD_EVENT_LOG_FILTER */

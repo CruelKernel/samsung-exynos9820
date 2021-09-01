@@ -37,14 +37,7 @@ struct tee_iovec {
 
 struct five_tee_driver_fns {
 	int (*verify_hmac)(const struct tee_iovec *verify_args);
-
-	int (*verify_hmac_vec)(struct tee_iovec *verify_iovec,
-			       const size_t verify_iovcnt);
-
 	int (*sign_hmac)(struct tee_iovec *sign_args);
-
-	int (*sign_hmac_vec)(struct tee_iovec *sign_iovec,
-			     const size_t sign_iovcnt);
 };
 
 int register_five_tee_driver(

@@ -18,7 +18,12 @@
 
 #include <linux/printk.h>
 #include <linux/types.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 #include <soc/qcom/scm.h>
+#else
+#include <soc/qcom/qseecom_scm.h>
+#endif
 #include "tzic.h"
 
 #ifndef SCM_SVC_FUSE
@@ -36,8 +41,13 @@ static int set_tamper_fuse_qsee(uint32_t index)
 	desc.args[0] = fuse_id = index;
 	desc.arginfo = SCM_ARGS(1);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 	return scm_call2(SCM_SIP_FNID(SCM_SVC_FUSE, SCM_BLOW_SW_FUSE_ID),
 			&desc);
+#else
+	return qcom_scm_qseecom_call(SCM_SIP_FNID(SCM_SVC_FUSE, SCM_BLOW_SW_FUSE_ID),
+			&desc);
+#endif
 }
 
 static int get_tamper_fuse_qsee(uint32_t index)
@@ -53,8 +63,13 @@ static int get_tamper_fuse_qsee(uint32_t index)
 	desc.args[0] = fuse_id = index;
 	desc.arginfo = SCM_ARGS(1);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 	ret = scm_call2(SCM_SIP_FNID(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID),
 		&desc);
+#else
+	ret = qcom_scm_qseecom_call(SCM_SIP_FNID(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID),
+		&desc);
+#endif
 	resp_buf = desc.ret[0];
 
 	if (ret) {

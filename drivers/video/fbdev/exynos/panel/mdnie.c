@@ -146,14 +146,14 @@ int mdnie_current_state(struct mdnie_info *mdnie)
 		mdnie_mode = MDNIE_ACCESSIBILITY_MODE;
 	else if (IS_COLOR_LENS_MODE(mdnie))
 		mdnie_mode = MDNIE_COLOR_LENS_MODE;
-	else if (IS_HDR_MODE(mdnie))
-		mdnie_mode = MDNIE_HDR_MODE;
 	else if (IS_HMD_MODE(mdnie))
 		mdnie_mode = MDNIE_HMD_MODE;
 	else if (IS_NIGHT_MODE(mdnie))
 		mdnie_mode = MDNIE_NIGHT_MODE;
 	else if (IS_HBM_MODE(mdnie))
 		mdnie_mode = MDNIE_HBM_MODE;
+	else if (IS_HDR_MODE(mdnie))
+		mdnie_mode = MDNIE_HDR_MODE;
 #if defined(CONFIG_TDMB)
 	else if (IS_DMB_MODE(mdnie))
 		mdnie_mode = MDNIE_DMB_MODE;

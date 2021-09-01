@@ -1318,6 +1318,11 @@ int npu_session_format(struct npu_queue *queue, struct vs4l_format_list *flist)
 	BUG_ON(!vctx);
 	BUG_ON(!session);
 
+	if (session->ncp_mem_buf == NULL) {
+		ret = -EFAULT;
+		goto p_err;
+	}
+
 	ncp_vaddr = (char *)session->ncp_mem_buf->vaddr;
 	ncp = (struct ncp_header *)ncp_vaddr;
 

@@ -2758,6 +2758,7 @@ extern s32 wl_cfg80211_set_p2p_resp_ap_chn(struct net_device *net, s32 enable);
 /* btcoex functions */
 void* wl_cfg80211_btcoex_init(struct net_device *ndev);
 void wl_cfg80211_btcoex_deinit(void);
+void wl_cfg80211_btcoex_kill_handler(void);
 
 extern chanspec_t wl_chspec_from_legacy(chanspec_t legacy_chspec);
 extern chanspec_t wl_chspec_driver_to_host(chanspec_t chanspec);
@@ -3009,7 +3010,7 @@ extern int wl_cfg80211_handle_hang_event(struct net_device *ndev,
 bool wl_cfg80211_is_dpp_frame(void *frame, u32 frame_len);
 const char *get_dpp_pa_ftype(enum wl_dpp_ftype ftype);
 bool wl_cfg80211_is_dpp_gas_action(void *frame, u32 frame_len);
-extern bool wl_cfg80211_find_gas_subtype(u8 subtype, u16 adv_id, u8* data, u32 len);
+extern bool wl_cfg80211_find_gas_subtype(u8 subtype, u16 adv_id, u8* data, s32 len);
 #ifdef ESCAN_CHANNEL_CACHE
 extern void update_roam_cache(struct bcm_cfg80211 *cfg, int ioctl_ver);
 #endif /* ESCAN_CHANNEL_CACHE */
@@ -3132,4 +3133,8 @@ extern void wl_android_roamoff_dbg_dump(struct bcm_cfg80211 *cfg);
 #define ROAMOFF_DBG_SAVE(dev, rsn, var)
 #define ROAMOFF_DBG_DUMP(cfg)
 #endif /* DEBUG_SETROAMMODE */
+#ifdef DHD_PERIODIC_CNTRS
+extern void wl_cfgdbg_periodic_cntrs(struct net_device *ndev, struct bcm_cfg80211 *cfg);
+extern uint32 wl_cfgdbg_current_timestamp(void);
+#endif /* DHD_PERIODIC_CNTRS */
 #endif /* _wl_cfg80211_h_ */

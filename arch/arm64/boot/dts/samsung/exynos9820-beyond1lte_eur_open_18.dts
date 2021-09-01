@@ -6816,7 +6816,7 @@
 
 			ext-bin@10 {
 				status = "okay";
-				samsung,name = "APDVTX_AUDIO_SLSI.bin";
+				samsung,name = "APTV_AUDIO_SLSI.bin";
 				samsung,area = <0x1>;
 				samsung,offset = <0x7b6000>;
 				linux,phandle = <0xcd>;
@@ -6830,6 +6830,15 @@
 				samsung,offset = <0x7bc000>;
 				linux,phandle = <0xce>;
 				phandle = <0xce>;
+			};
+
+			ext-bin@12 {
+				status = "okay";
+				samsung,name = "txse3.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x1800000>;
+				linux,phandle = <0xcf>;
+				phandle = <0xcf>;
 			};
 		};
 	};
@@ -8052,6 +8061,7 @@
 		ext_bin_15 = "/fragment@98/__overlay__/ext-bin@f";
 		ext_bin_16 = "/fragment@98/__overlay__/ext-bin@10";
 		ext_bin_17 = "/fragment@98/__overlay__/ext-bin@11";
+		ext_bin_18 = "/fragment@98/__overlay__/ext-bin@12";
 		btp_ipc = "/fragment@100/__overlay__/btp-ipc";
 		btp_wuhb = "/fragment@100/__overlay__/btp-wuhb";
 		btp_ldo = "/fragment@101/__overlay__/btp-ldo";

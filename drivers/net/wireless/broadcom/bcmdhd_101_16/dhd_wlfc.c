@@ -3567,14 +3567,21 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 	if (pktbuf) {
 		int ac = DHD_PKTTAG_FIFO(PKTTAG(pktbuf));
 		ASSERT(ac <= AC_COUNT);
-		DHD_PKTTAG_WLFCPKT_SET(PKTTAG(pktbuf), 1);
-		/* en-queue the packets to respective queue. */
-		rc = _dhd_wlfc_enque_delayq(ctx, pktbuf, ac);
-		if (rc) {
-			_dhd_wlfc_prec_drop(ctx->dhdp, (ac << 1), pktbuf, FALSE);
+		if (ac <= AC_COUNT) {
+			DHD_PKTTAG_WLFCPKT_SET(PKTTAG(pktbuf), 1);
+			/* en-queue the packets to respective queue. */
+			rc = _dhd_wlfc_enque_delayq(ctx, pktbuf, ac);
+			if (rc) {
+				_dhd_wlfc_prec_drop(ctx->dhdp, (ac << 1), pktbuf, FALSE);
+			} else {
+				ctx->stats.pktin++;
+				ctx->pkt_cnt_in_drv[DHD_PKTTAG_IF(PKTTAG(pktbuf))][ac]++;
+			}
 		} else {
-			ctx->stats.pktin++;
-			ctx->pkt_cnt_in_drv[DHD_PKTTAG_IF(PKTTAG(pktbuf))][ac]++;
+			DHD_ERROR(("Error: %s():%d, unsupported ac:%d\n",
+				__FUNCTION__, __LINE__, ac));
+			rc =  WLFC_UNSUPPORTED;
+			goto exit;
 		}
 	}
 
@@ -4685,20 +4692,27 @@ int dhd_wlfc_set_rxpkt_chk(dhd_pub_t *dhd, int val)
 int dhd_txpkt_log_and_dump(dhd_pub_t *dhdp, void* pkt, uint16 *pktfate_status)
 {
 	uint32 pktid;
-	uint32 pktlen = PKTLEN(dhdp->osh, pkt);
-	uint8 *pktdata = PKTDATA(dhdp->osh, pkt);
+	uint32 pktlen;
+	uint8 *pktdata;
 #ifdef BDC
 	struct bdc_header *bdch;
 	uint32 bdc_len;
 #endif /* BDC */
-	uint8 ifidx = DHD_PKTTAG_IF(PKTTAG(pkt));
-	uint8 hcnt = WL_TXSTATUS_GET_FREERUNCTR(DHD_PKTTAG_H2DTAG(PKTTAG(pkt)));
-	uint8 fifo_id = DHD_PKTTAG_FIFO(PKTTAG(pkt));
+	uint8 ifidx;
+	uint8 hcnt;
+	uint8 fifo_id;
 
-	if (!pkt) {
+	if (pkt == NULL || dhdp == NULL) {
 		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
 		return BCME_BADARG;
 	}
+
+	pktlen = PKTLEN(dhdp->osh, pkt);
+	pktdata = PKTDATA(dhdp->osh, pkt);
+	ifidx = DHD_PKTTAG_IF(PKTTAG(pkt));
+	hcnt = WL_TXSTATUS_GET_FREERUNCTR(DHD_PKTTAG_H2DTAG(PKTTAG(pkt)));
+	fifo_id = DHD_PKTTAG_FIFO(PKTTAG(pkt));
+
 	pktid = (ifidx << DHD_PKTID_IF_SHIFT) | (fifo_id << DHD_PKTID_FIFO_SHIFT) | hcnt;
 #ifdef BDC
 	bdch = (struct bdc_header *)pktdata;

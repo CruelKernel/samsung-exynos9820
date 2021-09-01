@@ -784,7 +784,7 @@ uint32 sec_save_wlinfo(char *firm_ver, char *dhd_ver, char *nvram_p, char *clm_v
 		}
 #else
 		bzero(temp_buf, sizeof(temp_buf));
-		(void)memcpy_s(temp_buf, sizeof(temp_buf), nvram_p, sizeof(temp_buf));
+		(void)memcpy_s(temp_buf, sizeof(temp_buf), nvram_p, sizeof(temp_buf) - 1);
 		DHD_INFO(("[WIFI_SEC] NVRAM version_info exits\n"));
 #endif /* DHD_SUPPORT_VFS_CALL */
 

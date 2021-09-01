@@ -39,24 +39,27 @@ int oem_flags_set(enum oemflag_id index)
 	if (name > OEMFLAG_MIN_FLAG && name < OEMFLAG_NUM_OF_FLAG) {
 		if (check_flags(name)) {
 			pr_info("[oemflag]flag is already set. %u\n", name);
-			return 0;
+			return OEMFLAG_SUCCESS;
 		}
 
 		pr_info("[oemflag]set_fuse_name : %u\n", name);
 
 		ret = set_tamper_fuse(name);
-		if (ret)
+		if (ret) {
 			pr_err("set_tamper_fuse error: ret=%d\n", ret);
+			return OEMFLAG_FAIL;
+		}
 		ret = get_tamper_fuse(name);
-		if (!ret)
+		if (!ret) {
 			pr_err("get_tamper_fuse error: ret=%d\n", ret);
+			return OEMFLAG_FAIL;
+		}
 		oem_flags_check[name] = 1;
 	} else {
 		pr_info("[oemflag]param name is wrong\n");
-		ret = -EINVAL;
+		return -EINVAL;
 	}
-
-	return ret;
+	return OEMFLAG_SUCCESS;
 }
 
 int oem_flags_get(enum oemflag_id index)

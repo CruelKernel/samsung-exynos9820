@@ -102,7 +102,7 @@ int five_digsig_verify(struct five_cert *cert,
 			    const char *digest, int digestlen);
 int five_reboot_notifier(struct notifier_block *nb,
 			       unsigned long action, void *unused);
-void __init five_load_built_x509(void);
+int __init five_load_built_x509(void);
 int __init five_keyring_init(void);
 
 const char *five_get_string_fn(enum five_hooks fn);

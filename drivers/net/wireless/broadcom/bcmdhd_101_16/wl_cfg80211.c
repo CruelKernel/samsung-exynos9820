@@ -6243,6 +6243,9 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 		}
 	}
 
+	/* Kill CMD_BTCOEXMODE timer/handler if those are enabled */
+	wl_cfg80211_btcoex_kill_handler();
+
 #ifdef CUSTOM_SET_CPUCORE
 	/* set default cpucore */
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
@@ -7197,6 +7200,10 @@ wl_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
 	if (cfg80211_to_wl_iftype(dev->ieee80211_ptr->iftype, &wl_iftype, &wl_mode) < 0) {
 		return -EINVAL;
 	}
+
+#ifdef DHD_PERIODIC_CNTRS
+	wl_cfgdbg_periodic_cntrs(dev, cfg);
+#endif /* DHD_PERIODIC_CNTRS */
 
 	buf = MALLOC(cfg->osh, WLC_IOCTL_MEDLEN);
 	if (buf == NULL) {
@@ -16370,6 +16377,8 @@ static s32 __wl_cfg80211_up(struct bcm_cfg80211 *cfg)
 	cfg->wifi_tx_power_mode = WIFI_POWER_SCENARIO_INVALID;
 #endif /* WL_SAR_TX_POWER */
 
+	cfg->scan_request = NULL;
+
 	INIT_DELAYED_WORK(&cfg->pm_enable_work, wl_cfg80211_work_handler);
 	wl_set_drv_status(cfg, READY, ndev);
 
@@ -16812,6 +16821,9 @@ s32 wl_cfg80211_down(struct net_device *dev)
 #ifdef TPUT_DEBUG_DUMP
 	wl_cfgdbg_tput_debug_mode(dev, FALSE);
 #endif /* TPUT_DEBUG_DUMP */
+	/* Kill CMD_BTCOEXMODE timer/handler if those are enabled */
+	wl_cfg80211_btcoex_kill_handler();
+
 	return err;
 }
 
@@ -20294,17 +20306,25 @@ get_dpp_pa_ftype(enum wl_dpp_ftype ftype)
 
 #define GAS_RESP_LEN        2
 #define DOUBLE_TLV_BODY_OFF 4
-bool wl_cfg80211_find_gas_subtype(u8 subtype, u16 adv_id, u8* data, u32 len)
+bool wl_cfg80211_find_gas_subtype(u8 subtype, u16 adv_id, u8* data, s32 len)
 {
 	const bcm_tlv_t *ie = (bcm_tlv_t *)data;
 	const u8 *frame = NULL;
 	u16 id, flen;
+
+	if (len <= 0) {
+		return false;
+	}
 
 	/* Skipped first ANQP Element, if frame has anqp elemnt */
 	ie = bcm_parse_tlvs(ie, len, DOT11_MNG_ADVERTISEMENT_ID);
 
 	if (ie == NULL)
 		return false;
+
+	if (len < (ie->len + TLV_HDR_LEN + GAS_RESP_LEN + DOUBLE_TLV_BODY_OFF)) {
+		return false;
+	}
 
 	frame = (const uint8 *)ie + ie->len + TLV_HDR_LEN + GAS_RESP_LEN;
 	id = ((u16) (((frame)[1] << 8) | (frame)[0]));

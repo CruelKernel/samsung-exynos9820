@@ -25,13 +25,9 @@
 int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		const void *signature, size_t signature_len);
-int verify_hash_vec(struct tee_iovec *verify_iovec,
-		    const size_t verify_iovcnt);
 int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		void *signature, size_t *signature_len);
-int sign_hash_vec(struct tee_iovec *sign_iovec,
-		  const size_t sign_iovcnt);
 #else
 int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
@@ -40,21 +36,9 @@ int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 	return -ENODEV;
 }
 
-int verify_hash_vec(struct tee_iovec *verify_iovec,
-		    const size_t verify_iovcnt)
-{
-	return -ENODEV;
-}
-
 int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		void *signature, size_t *signature_len)
-{
-	return -ENODEV;
-}
-
-int sign_hash_vec(struct tee_iovec *sign_iovec,
-		  const size_t sign_iovcnt)
 {
 	return -ENODEV;
 }

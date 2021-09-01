@@ -218,6 +218,7 @@ int asv_table_init(void)
 	for (i = 0; i < ID_INFO_ADDR_CNT; i++)
 		*(p_table + i) = (unsigned int)regs[i];
 
+#if !IS_ENABLED(CONFIG_SAMSUNG_PRODUCT_SHIP)
 	pr_info("asv_table_version : %d\n", asv_tbl.asv_table_version);
 	pr_info("  little cpu grp : %d\n", asv_tbl.littlecpu_asv_group);
 	pr_info("  mid cpu grp : %d\n", asv_tbl.midcpu_asv_group);
@@ -229,6 +230,7 @@ int asv_table_init(void)
 	pr_info("  cp grp : %d\n", asv_tbl.cp_asv_group);
 	pr_info("  product_line : %d\n", id_tbl.product_line);
 	pr_info("  asb_version : %d\n", id_tbl.asb_version);
+#endif
 
 	return asv_tbl.asv_table_version;
 }

@@ -267,18 +267,19 @@ void mcd_cm_sfr(struct mcd_hdr_device *hdr, const struct mcd_cm_params_info *par
                                                  (dst_gamma == INDEX_GAMMA_HLG   ) ? INDEX_TYPE_HLG :
                                                  INDEX_TYPE_SDR;
             //-------------------------------------------------------------------------------------------------
-            const unsigned int applyDither = (params->needDither && (o_type == INDEX_TYPE_SDR)) ? 1 : 0;
+            unsigned int *hdr10p_lut = (params->hdr10p_lut != NULL) ? (((*params->hdr10p_lut) == 1) ? (&params->hdr10p_lut[1]) : NULL) : NULL;
+            const unsigned int valid_hdr10 = ((src_gamma == INDEX_GAMMA_ST2084) && (src_gamut == INDEX_GAMUT_BT2020)) ? 1 : 0;
+            is_hdr10p = ((hdr->id == MCD_VGRFS) && (hdr10p_lut != NULL) && (valid_hdr10 == 1) && (o_type == INDEX_TYPE_SDR)) ? 1 : 0;
+            table_dm = (is_hdr10p) ? hdr10p_lut : NULL;
             //-------------------------------------------------------------------------------------------------
             {
-                unsigned int *hdr10p_lut = (params->hdr10p_lut != NULL) ? (((*params->hdr10p_lut) == 1) ? (&params->hdr10p_lut[1]) : NULL) : NULL;
-                const unsigned int valid_hdr10  = ((src_gamma == INDEX_GAMMA_ST2084) && (src_gamut == INDEX_GAMUT_BT2020)) ? 1 : 0;
-                is_hdr10p = ((hdr->id == MCD_VGRFS) && (hdr10p_lut != NULL) && (valid_hdr10 == 1) && (o_type == INDEX_TYPE_SDR)) ? 1 : 0;
-                table_dm = (is_hdr10p) ? hdr10p_lut : NULL;
+                const unsigned int dither_allow = ((is_hdr10p == 0) && (valid_hdr10) && (params->src_max_luminance > 3000)) ? 1 : 0;
+                const unsigned int applyDither = (params->needDither && (o_type == INDEX_TYPE_SDR) && dither_allow) ? 1 : 0;
+                //-------------------------------------------------------------------------------------------------
+                get_tables(&tables, is_hdr10p, src_gamma, src_gamut, params->src_max_luminance,
+                                               dst_gamma, dst_gamut, params->dst_max_luminance);
+                get_con(&sfr_con, &tables, params->isAlphaPremultiplied, applyDither, is_hdr10p);
             }
-            //-------------------------------------------------------------------------------------------------
-            get_tables(&tables, is_hdr10p, src_gamma, src_gamut, params->src_max_luminance,
-                                            dst_gamma, dst_gamut, params->dst_max_luminance);
-            get_con(&sfr_con, &tables, params->isAlphaPremultiplied, applyDither, is_hdr10p);
             //-------------------------------------------------------------------------------------------------
         }
         // sfr write

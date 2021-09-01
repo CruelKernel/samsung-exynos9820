@@ -1530,6 +1530,10 @@ typedef struct dhd_pub {
 #ifdef DHD_GRO_ENABLE_HOST_CTRL
 	bool permitted_gro;
 #endif /* DHD_GRO_ENABLE_HOST_CTRL */
+	bool stop_in_progress;
+#ifdef DHD_PERIODIC_CNTRS
+	uint32 dhd_periodic_cntrs_last_time;
+#endif /* DHD_PERIODIC_CNTRS */
 } dhd_pub_t;
 
 #if defined(__linux__)

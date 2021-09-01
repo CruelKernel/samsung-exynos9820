@@ -90,20 +90,6 @@ int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 	return rc;
 }
 
-int verify_hash_vec(struct tee_iovec *verify_iovec,
-		    const size_t verify_iovcnt)
-{
-	int rc = -ENODEV;
-
-	down_read(&usage_lock);
-	if (is_registered)
-		rc = g_tee_driver_fn->verify_hmac_vec(verify_iovec,
-						      verify_iovcnt);
-	up_read(&usage_lock);
-
-	return rc;
-}
-
 int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		void *signature, size_t *signature_len)
@@ -125,19 +111,6 @@ int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 	up_read(&usage_lock);
 
 	*signature_len = args.signature_len;
-
-	return rc;
-}
-
-int sign_hash_vec(struct tee_iovec *sign_iovec,
-		  const size_t sign_iovcnt)
-{
-	int rc = -ENODEV;
-
-	down_read(&usage_lock);
-	if (is_registered)
-		rc = g_tee_driver_fn->sign_hmac_vec(sign_iovec, sign_iovcnt);
-	up_read(&usage_lock);
 
 	return rc;
 }

@@ -1361,6 +1361,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 					(power_data->power < MAX_CHARGER_POWER) && (j++ < pcisd->power_count))
 				sprintf(temp_buf+strlen(temp_buf), ",\"%s%d\":\"%d\"",
 					POWER_JSON_STRING, power_data->power, power_data->count);
+
+			/* clear daily power data */
+			init_cisd_power_data(&battery->cisd);
+
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
 		}
 		break;

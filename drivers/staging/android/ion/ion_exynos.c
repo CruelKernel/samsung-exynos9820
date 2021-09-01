@@ -136,6 +136,9 @@ dma_addr_t ion_iovmm_map(struct dma_buf_attachment *attachment,
 	    (buffer->flags & ION_FLAG_PROTECTED)) {
 		struct ion_buffer_prot_info *prot = buffer->priv_virt;
 
+		if (!prot)
+			return -EINVAL;
+
 		iova = prot->dma_addr;
 	} else {
 		iova = __ion_iovmm_map(attachment, offset, size,
@@ -156,6 +159,9 @@ dma_addr_t ion_iovmm_map_attr(struct dma_buf_attachment *attachment,
 	if (IS_ENABLED(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION) &&
 	    (map_attr & IOMMU_EXYNOS_SECURE)) {
 		struct ion_buffer_prot_info *prot = buffer->priv_virt;
+
+		if (!prot)
+			return -EINVAL;
 
 		if (!(buffer->flags & ION_FLAG_PROTECTED))
 			perrfndev(attachment->dev,

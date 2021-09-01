@@ -169,11 +169,21 @@ __visible_for_testing long kill_process_group(struct task_struct *p, int tgid, i
 __visible_for_testing int task_defex_is_secured(struct defex_context *dc)
 {
 	struct file *exe_file = get_dc_process_file(dc);
+	struct task_struct *p = dc->task->group_leader;
 	char *proc_name = get_dc_process_name(dc);
 	int is_secured = 1;
 
 	if (!get_dc_process_dpath(dc))
 		return is_secured;
+
+	if (!strncmp(p->comm, "system_server",  strlen(p->comm))) {
+		return DEFEX_ALLOW;
+	}
+
+	if (!strncmp(p->comm, "ding:background", strlen(p->comm)) \
+		|| !strncmp(p->comm, "android.vending", strlen(p->comm))) {
+		return DEFEX_ALLOW;
+	}
 
 	is_secured = !rules_lookup2(proc_name, feature_ped_exception, exe_file);
 	return is_secured;

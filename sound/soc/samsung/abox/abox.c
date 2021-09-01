@@ -2218,17 +2218,18 @@ static void abox_request_extra_firmware(struct abox_data *data)
 			continue;
 
 		efw = abox_get_extra_firmware(data, name);
-		if (!efw)
+		if (!efw) {
+			dev_info(dev, "new extra firmware %s\n", name);
 			efw = devm_kzalloc(dev, sizeof(*efw), GFP_KERNEL);
+			list_add_tail(&efw->list, &data->firmware_extra);
+			efw->name = name;
+			efw->area = area;
+			efw->offset = offset;
+		}
 		if (!efw) {
 			dev_err(dev, "%s: no memory %s\n", __func__, name);
 			continue;
 		}
-
-		list_add_tail(&efw->list, &data->firmware_extra);
-		efw->name = name;
-		efw->area = area;
-		efw->offset = offset;
 
 		dev_dbg(dev, "%s: name=%s, area=%u, offset=%u\n", __func__,
 				efw->name, efw->area, efw->offset);

@@ -17,6 +17,9 @@
 #ifndef __OEM_FLAG_H
 #define __OEM_FLAG_H
 
+#define OEMFLAG_SUCCESS 0
+#define OEMFLAG_FAIL -1
+
 enum oemflag_id {
 	OEMFLAG_NONE = 0,
 	OEMFLAG_MIN_FLAG = 2,

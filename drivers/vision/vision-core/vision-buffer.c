@@ -303,7 +303,7 @@ static int __vb_map_dmabuf(
 	buffer->daddr = daddr;
 
 	vaddr = dma_buf_vmap(buffer->dma_buf);
-	if (IS_ERR(vaddr)) {
+	if (IS_ERR_OR_NULL(vaddr)) {
 		vision_err("Failed to get vaddr (err %pK)\n", vaddr);
 		ret = -EFAULT;
 		goto p_err;

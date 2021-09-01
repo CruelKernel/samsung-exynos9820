@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Samsung Electronics Co., Ltd. All Rights Reserved
+ * Copyright (c) 2018-2021 Samsung Electronics Co., Ltd. All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2
@@ -40,12 +40,13 @@ __visible_for_testing u64 dsms_get_time_ms(void)
 	return div_u64(ktime_get_ns(), NSEC_PER_MSEC);
 }
 
-void dsms_rate_limit_init(void)
+int __kunit_init dsms_rate_limit_init(void)
 {
 	dsms_message_count = 0;
 	dsms_round_start_ms = dsms_get_time_ms();
 	DSMS_LOG_DEBUG("[rate limit] INIT dsms_round_start_ms=%llu dsms_message_count=%d",
 		dsms_round_start_ms, dsms_message_count);
+	return 0;
 }
 
 int dsms_check_message_rate_limit(void)

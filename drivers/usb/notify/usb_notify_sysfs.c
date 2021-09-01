@@ -75,6 +75,7 @@ usb_hw_param_print[USB_CCIC_HW_PARAM_MAX][MAX_HWPARAM_STRING] = {
 	{"F_CNT"},
 	{"CC_KILLER"},
 	{"CC_FWERR"},
+	{"C_ARP"},
 	{"CC_VER"},
 };
 #endif
