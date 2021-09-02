@@ -65,6 +65,7 @@ jobs:
                      +tcp_htcp                 \
                      +tcp_bbr                  \
                      +tcp_bic                  \
+                     +nodebug                  \
         2>&1 | tee config.info
     - name: Kernel Build
       run: ./cruelbuild :build
