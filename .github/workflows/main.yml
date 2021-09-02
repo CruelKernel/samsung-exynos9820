@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: default
+  TOOLCHAIN: cruel
 
 jobs:
   build:
@@ -44,7 +44,7 @@ jobs:
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
                      name="CRUEL-v3.8_kai"     \
-                     toolchain=cruel           \
+                     toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
                      +ttl                      \
