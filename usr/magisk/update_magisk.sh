@@ -12,7 +12,7 @@ then
 	magisk_link="https://github.com/topjohnwu/magisk-files/raw/${nver}/app-debug.apk"
 else
 	if [ "x$1" = "x" ]; then
-		nver="$(curl -s https://github.com/topjohnwu/Magisk/releases | fgrep -m 1 'Magisk v' | cut -d '>' -f 2 | cut -d '<' -f 1 | cut -d ' ' -f 2)"
+		nver="$(curl -s https://github.com/topjohnwu/Magisk/releases | grep -m 1 -Poe 'Magisk v[\d\.]+' | cut -d ' ' -f 2)"
 	else
 		nver="$1"
 	fi
