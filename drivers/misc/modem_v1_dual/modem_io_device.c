@@ -894,13 +894,13 @@ static long misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 #ifdef CONFIG_SEC_SIPC_DUAL_MODEM_IF
 		if (check_cp_upload_cnt())
-			panic(buff);
+			panic("%s", buff);
 		else {
 			mif_info("Wait another IOCTL_MODEM_CP_UPLOAD\n");
 			return 1;
 		}
 #else
-		panic(buff);
+		panic("%s", buff);
 #endif
 		return 0;
 	}

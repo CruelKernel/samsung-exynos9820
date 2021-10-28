@@ -34,8 +34,8 @@ unsigned shm_get_vparam_base(void);
 unsigned shm_get_vparam_size(void);
 unsigned shm_get_acpm_size(void);
 unsigned shm_get_cp_size(void);
-unsigned long shm_get_security_param2(unsigned long mode, u32 bl_size);
-unsigned long shm_get_security_param3(unsigned long mode, u32 main_size);
+int shm_get_security_param2(unsigned long mode, u32 bl_size, unsigned long *param);
+int shm_get_security_param3(unsigned long mode, u32 main_size, unsigned long *param);
 
 void __iomem *shm_request_region(unsigned long sh_addr, unsigned size);
 void __iomem *shm_get_boot_region(void);

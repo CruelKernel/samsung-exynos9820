@@ -635,7 +635,7 @@ static inline void set_skb_priv(struct sbd_ring_buffer *rb, struct sk_buff *skb)
 
 	/* Record the IO device, the link device, etc. into &skb->cb */
 	if (sipc_ps_ch(rb->ch)) {
-		unsigned ch = (rb->size_v[out] >> 16) & 0xffff;
+		unsigned ch = (rb->size_v[out] >> 16) & 0xff;
 		skbpriv(skb)->iod = link_get_iod_with_channel(rb->ld, ch);
 		skbpriv(skb)->ld = rb->ld;
 		skbpriv(skb)->sipc_ch = ch;
@@ -651,6 +651,11 @@ struct sk_buff *sbd_pio_rx(struct sbd_ring_buffer *rb)
 	struct sk_buff *skb;
 	unsigned int qlen = rb->len;
 	unsigned int out = *rb->rp;
+
+	if (out >= qlen) {
+		mif_err("out value exceeds ring buffer size\n");
+		return NULL;
+	}
 
 	skb = recv_data(rb, out);
 	if (unlikely(!skb))
