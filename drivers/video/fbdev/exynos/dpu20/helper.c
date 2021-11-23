@@ -720,6 +720,10 @@ void dpu_dump_afbc_info(void)
 				continue;
 
 			v_addr[j] = dma_buf_vmap(afbc_info->dma_buf[j]);
+			if (IS_ERR_OR_NULL(v_addr[j])) {
+				decon_err("%s: Failed to get v_addr (err %pK)\n", __func__, v_addr[j]);
+				return;
+			}
 			size[j] = afbc_info->dma_buf[j]->size;
 			decon_info("\t[DMA%d] Base(0x%p), KV(0x%p), size(%d)\n",
 					j, (void *)afbc_info->dma_addr[j],
@@ -734,6 +738,10 @@ void dpu_dump_afbc_info(void)
 				continue;
 
 			v_addr[j] = dma_buf_vmap(afbc_info->dma_buf[j]);
+			if (IS_ERR_OR_NULL(v_addr[j])) {
+				decon_err("%s: Failed to get v_addr (err %pK)\n", __func__, v_addr[j]);
+				return;
+			}
 			size[j] = afbc_info->dma_buf[j]->size;
 			decon_info("\t[DMA%d] Base(0x%p), KV(0x%p), size(%d)\n",
 					j, (void *)afbc_info->dma_addr[j],
