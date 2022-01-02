@@ -43,11 +43,11 @@ jobs:
       run: |
         ./cruelbuild config                    \
                      model=${{ matrix.model }} \
-                     name="CRUEL-V3.7"         \
+                     name="Michaz-V1.0"         \
                      toolchain=$TOOLCHAIN      \
                      +magisk                   \
                      +nohardening              \
-                     +ttl                      \
+                     +mass_storage             \
                      +wireguard                \
                      +cifs                     \
                      +sdfat                    \
