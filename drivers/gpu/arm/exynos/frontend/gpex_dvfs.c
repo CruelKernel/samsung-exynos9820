@@ -85,7 +85,7 @@ static void gpex_dvfs_context_init(struct device **dev)
 	dvfs.polling_speed = gpexbe_devicetree_get_int(gpu_dvfs_polling_time);
 }
 
-static int gpu_dvfs_calculate_env_data()
+static int gpu_dvfs_calculate_env_data(void)
 {
 	unsigned long flags;
 	static int polling_period;
@@ -172,12 +172,12 @@ static void gpu_dvfs_timer_control(bool timer_state)
 	spin_unlock_irqrestore(&dvfs.spinlock, flags);
 }
 
-void gpex_dvfs_start()
+void gpex_dvfs_start(void)
 {
 	gpu_dvfs_timer_control(true);
 }
 
-void gpex_dvfs_stop()
+void gpex_dvfs_stop(void)
 {
 	gpu_dvfs_timer_control(false);
 }
@@ -220,17 +220,17 @@ static int gpu_dvfs_on_off(bool enable)
 	return 0;
 }
 
-int gpex_dvfs_enable()
+int gpex_dvfs_enable(void)
 {
 	return gpu_dvfs_on_off(true);
 }
 
-int gpex_dvfs_disable()
+int gpex_dvfs_disable(void)
 {
 	return gpu_dvfs_on_off(false);
 }
 
-static int gpu_dvfs_handler_init()
+static int gpu_dvfs_handler_init(void)
 {
 	if (!dvfs.status)
 		dvfs.status = true;
@@ -243,7 +243,7 @@ static int gpu_dvfs_handler_init()
 	return 0;
 }
 
-static int gpu_dvfs_handler_deinit()
+static int gpu_dvfs_handler_deinit(void)
 {
 	if (dvfs.status)
 		dvfs.status = false;
@@ -254,7 +254,7 @@ static int gpu_dvfs_handler_deinit()
 	return 0;
 }
 
-static int gpu_pm_metrics_init()
+static int gpu_pm_metrics_init(void)
 {
 	INIT_DELAYED_WORK(&dvfs.dvfs_work, dvfs_callback);
 	dvfs.dvfs_wq = create_workqueue("g3d_dvfs");
@@ -265,7 +265,7 @@ static int gpu_pm_metrics_init()
 	return 0;
 }
 
-static void gpu_pm_metrics_term()
+static void gpu_pm_metrics_term(void)
 {
 	cancel_delayed_work(&dvfs.dvfs_work);
 	flush_workqueue(dvfs.dvfs_wq);
@@ -293,7 +293,7 @@ int gpex_dvfs_init(struct device **dev)
 	return 0;
 }
 
-void gpex_dvfs_term()
+void gpex_dvfs_term(void)
 {
 	/* DVFS stuff */
 	gpu_pm_metrics_term();
@@ -301,7 +301,7 @@ void gpex_dvfs_term()
 	dvfs.kbdev = NULL;
 }
 
-int gpex_dvfs_get_status()
+int gpex_dvfs_get_status(void)
 {
 	return dvfs.status;
 }
