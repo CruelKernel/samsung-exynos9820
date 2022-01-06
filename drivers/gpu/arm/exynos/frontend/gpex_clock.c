@@ -37,31 +37,31 @@
 
 static struct _clock_info clk_info;
 
-int gpex_clock_get_boot_clock()
+int gpex_clock_get_boot_clock(void)
 {
 	return clk_info.boot_clock;
 }
-int gpex_clock_get_max_clock()
+int gpex_clock_get_max_clock(void)
 {
 	return clk_info.gpu_max_clock;
 }
-int gpex_clock_get_max_clock_limit()
+int gpex_clock_get_max_clock_limit(void)
 {
 	return clk_info.gpu_max_clock_limit;
 }
-int gpex_clock_get_min_clock()
+int gpex_clock_get_min_clock(void)
 {
 	return clk_info.gpu_min_clock;
 }
-int gpex_clock_get_cur_clock()
+int gpex_clock_get_cur_clock(void)
 {
 	return clk_info.cur_clock;
 }
-int gpex_clock_get_max_lock()
+int gpex_clock_get_max_lock(void)
 {
 	return clk_info.max_lock;
 }
-int gpex_clock_get_min_lock()
+int gpex_clock_get_min_lock(void)
 {
 	return clk_info.min_lock;
 }
@@ -80,7 +80,7 @@ u64 gpex_clock_get_time_busy(int level)
 /*******************************************
  * static helper functions
  ******************************************/
-static int gpex_clock_update_config_data_from_dt()
+static int gpex_clock_update_config_data_from_dt(void)
 {
 	int ret = 0;
 	struct freq_volt *fv_array;
