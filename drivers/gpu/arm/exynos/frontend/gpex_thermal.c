@@ -149,7 +149,7 @@ static ssize_t show_kernel_sysfs_gpu_temp(char *buf)
 }
 CREATE_SYSFS_KOBJECT_READ_FUNCTION(show_kernel_sysfs_gpu_temp);
 
-static void gpex_thermal_create_sysfs_file()
+static void gpex_thermal_create_sysfs_file(void)
 {
 	GPEX_UTILS_SYSFS_DEVICE_FILE_ADD(tmu, show_tmu, set_tmu_control);
 	GPEX_UTILS_SYSFS_KOBJECT_FILE_ADD_RO(gpu_tmu, show_kernel_sysfs_gpu_temp);
@@ -158,14 +158,14 @@ static void gpex_thermal_create_sysfs_file()
 /***********************************************************************
  * INIT, TERM FUNCTIONS
  ***********************************************************************/
-int gpex_thermal_init()
+int gpex_thermal_init(void)
 {
 	gpex_thermal_create_sysfs_file();
 
 	return 0;
 }
 
-void gpex_thermal_term()
+void gpex_thermal_term(void)
 {
 	thermal.tmu_enabled = false;
 
