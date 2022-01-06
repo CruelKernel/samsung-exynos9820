@@ -54,9 +54,9 @@ struct mem_cache_list {
 
 #ifdef DEFEX_PED_ENABLE
 DECLARE_HASHTABLE(creds_hash, 15);
-static DEFINE_SPINLOCK(creds_hash_update_lock);
+__visible_for_testing DEFINE_SPINLOCK(creds_hash_update_lock);
 static struct proc_cred_data *creds_fast_hash[MAX_PID_32 + 1];
-static struct mem_cache_list mem_cache[DEFEX_MEM_CACHE_COUNT];
+__visible_for_testing struct mem_cache_list mem_cache[DEFEX_MEM_CACHE_COUNT];
 static int creds_fast_hash_ready __ro_after_init;
 __visible_for_testing void mem_cache_alloc(void);
 

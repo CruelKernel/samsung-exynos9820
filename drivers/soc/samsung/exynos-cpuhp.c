@@ -419,49 +419,59 @@ static int cpuhp_control(bool enable)
  * #echo mask > /sys/power/cpuhp/set_online_cpu
  */
 #define STR_LEN 6
-#define attr_online_cpu(name)							\
-static ssize_t show_##name##_online_cpu(struct kobject *kobj,			\
-	struct kobj_attribute *attr, char *buf)					\
-{										\
-	unsigned int online_cpus;							\
-	online_cpus = *(unsigned int *)cpumask_bits(&cpuhp.sysfs_user.online_cpus);	\
-	return snprintf(buf, 30, #name " online cpu : 0x%x\n", online_cpus);	\
-}										\
-										\
-static ssize_t store_##name##_online_cpu(struct kobject *kobj,			\
-	struct kobj_attribute *attr, const char *buf,				\
-	size_t count)								\
-{										\
-	char str[STR_LEN];							\
-	int i;									\
-	struct cpumask online_cpus;						\
-										\
-	if (strlen(buf) >= STR_LEN)						\
-		return -EINVAL;							\
-										\
-	if (!sscanf(buf, "%s", str))						\
-		return -EINVAL;							\
-	if (str[0] == '0' && str[1] == 'x')					\
-		for (i = 0; i+2 < STR_LEN; i++) {				\
-			str[i] = str[i + 2];					\
-			str[i+2] = '\n';					\
-		}								\
-	cpumask_parse(str, &online_cpus);					\
-	if (!cpumask_test_cpu(0, &online_cpus)) {				\
-		pr_warn("wrong format\n");					\
-		return -EINVAL;							\
-	}									\
-	cpumask_copy(&cpuhp.sysfs_user.online_cpus, &online_cpus);		\
-	cpuhp_do(true);								\
-										\
-	return count;								\
-}										\
-										\
-static struct kobj_attribute cpuhp_##name##_online_cpu =			\
-__ATTR(name##_online_cpu, 0644,							\
-	show_##name##_online_cpu, store_##name##_online_cpu)
+static inline toupper(char ch)
+{
+	if ('a' <= ch && ch <= 'z')
+		ch += 'A' - 'a';
 
-attr_online_cpu(set);
+	return ch;
+}
+
+static ssize_t set_online_cpu_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned int online_cpus;
+
+	online_cpus = *(unsigned int *)cpumask_bits(&cpuhp.sysfs_user.online_cpus);
+
+	return snprintf(buf, 30, "set online cpu : 0x%x\n", online_cpus);
+}
+
+static ssize_t set_online_cpu_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct cpumask online_cpus;
+	char str[STR_LEN], re_str[STR_LEN];
+	unsigned int cpumask_value;
+
+	if (strlen(buf) >= STR_LEN)
+		return -EINVAL;
+
+	if (!sscanf(buf, "%5s", str))
+		return -EINVAL;
+
+	if (str[0] == '0' && toupper(str[1]) == 'X')
+		/* Move str pointer to remove "0x" */
+		cpumask_parse(str + 2, &online_cpus);
+	else {
+		if (!sscanf(str, "%d", &cpumask_value))
+			return -EINVAL;
+
+		snprintf(re_str, STR_LEN - 1, "%x", cpumask_value);
+		cpumask_parse(re_str, &online_cpus);
+	}
+
+	if (!cpumask_test_cpu(0, &online_cpus)) {
+		pr_warn("wrong format\n");
+		return -EINVAL;
+	}
+
+	cpumask_copy(&cpuhp.sysfs_user.online_cpus, &online_cpus);
+	cpuhp_do(false);
+
+	return count;
+}
+DEVICE_ATTR_RW(set_online_cpu);
 
 /*
  * It shows cpuhp driver requested online_cpu
@@ -567,7 +577,7 @@ __ATTR(users, 0444, show_users, NULL);
 
 static struct attribute *cpuhp_attrs[] = {
 	&cpuhp_online_cpu.attr,
-	&cpuhp_set_online_cpu.attr,
+	&dev_attr_set_online_cpu.attr,
 	&cpuhp_enabled.attr,
 	&cpuhp_debug.attr,
 	&cpuhp_users.attr,

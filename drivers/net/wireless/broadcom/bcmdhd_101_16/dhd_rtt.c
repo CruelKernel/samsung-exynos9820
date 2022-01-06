@@ -2780,6 +2780,7 @@ dhd_rtt_set_ftm_config_param(ftm_config_param_info_t *ftm_params,
 {
 	char eabuf[ETHER_ADDR_STR_LEN];
 	char chanbuf[CHANSPEC_STR_LEN];
+	uint32 num_ftm_pref = rtt_target->num_frames_per_burst;
 
 	switch (tlvid) {
 		case WL_PROXD_TLV_ID_CUR_ETHER_ADDR:
@@ -2824,16 +2825,20 @@ dhd_rtt_set_ftm_config_param(ftm_config_param_info_t *ftm_params,
 			break;
 		case WL_PROXD_TLV_ID_BURST_NUM_FTM:
 			/* number of frame per burst */
-			rtt_target->num_frames_per_burst = FTM_DEFAULT_CNT_80M;
+			/* get pref num_ftm based on chanspec */
 			if (CHSPEC_IS80(rtt_target->chanspec)) {
-				rtt_target->num_frames_per_burst = FTM_DEFAULT_CNT_80M;
+				num_ftm_pref = FTM_DEFAULT_CNT_80M;
 			} else if (CHSPEC_IS40(rtt_target->chanspec)) {
-				rtt_target->num_frames_per_burst = FTM_DEFAULT_CNT_40M;
+				num_ftm_pref = FTM_DEFAULT_CNT_40M;
 			} else if (CHSPEC_IS20(rtt_target->chanspec)) {
-				rtt_target->num_frames_per_burst = FTM_DEFAULT_CNT_20M;
+				num_ftm_pref = FTM_DEFAULT_CNT_20M;
 			}
-			ftm_params[*ftm_param_cnt].data16 =
-				htol16(rtt_target->num_frames_per_burst);
+
+			/* use max(user_cfg, pref) */
+			if (rtt_target->num_frames_per_burst > num_ftm_pref) {
+				num_ftm_pref = rtt_target->num_frames_per_burst;
+			}
+			ftm_params[*ftm_param_cnt].data16 = htol16(num_ftm_pref);
 			ftm_params[*ftm_param_cnt].tlvid =
 				WL_PROXD_TLV_ID_BURST_NUM_FTM;
 			*ftm_param_cnt = *ftm_param_cnt + 1;
@@ -3043,6 +3048,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 			ftm_configs[ftm_cfg_cnt].flags |= WL_PROXD_SESSION_FLAG_REQ_CIV;
 		}
 #endif /* WL_RTT_LCI */
+		DHD_RTT(("RTT flags for the session %x\n", ftm_configs[ftm_cfg_cnt].flags));
 		ftm_cfg_cnt++;
 		dhd_rtt_ftm_config(dhd, FTM_DEFAULT_SESSION, FTM_CONFIG_CAT_OPTIONS,
 				ftm_configs, ftm_cfg_cnt);

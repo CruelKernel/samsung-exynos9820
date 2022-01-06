@@ -538,6 +538,7 @@ static int verity_verify_io(struct dm_verity_io *io)
 	struct bvec_iter start;
 	unsigned b;
 	struct verity_result res;
+	struct bio *bio = dm_bio_from_per_bio_data(io, v->ti->per_io_data_size);
 
 	for (b = 0; b < io->n_blocks; b++) {
 		int r;
@@ -600,18 +601,25 @@ static int verity_verify_io(struct dm_verity_io *io)
 #endif
 			continue;
 		}
+		else {
+			if (bio->bi_status) {
+				/*
+				 * Error correction failed; Just return error
+				 */
+				return -EIO;
+			}
 #ifdef SEC_HEX_DEBUG
-		else if (verity_handle_err_hex_debug(v, DM_VERITY_BLOCK_TYPE_DATA,
-					   cur_block, io, &start)){
-		        add_corrupted_blks();
+			if (verity_handle_err_hex_debug(v, DM_VERITY_BLOCK_TYPE_DATA,
+					cur_block, io, &start)) {
+				add_corrupted_blks();
 #else
-		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
-					   cur_block)){
+			if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
+					cur_block)) {
 #endif
-			return -EIO;
+				return -EIO;
+			}
 		}
 	}
-
 	return 0;
 }
 

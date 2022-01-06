@@ -93,7 +93,12 @@ __attribute__((unused)) static int load_fw_utc_vector(struct npu_session *sess, 
 		ret = -EINVAL;
 		goto err_exit;
 	}
-	copy_from_user(vector_path, (__user void *)param->addr, param->size);
+	ret = copy_from_user(vector_path, (__user void *)param->addr, param->size);
+	if (ret) {
+		npu_err("copy_from_user failed(%d)\n", ret);
+		ret = -EFAULT;
+		goto err_exit;
+	}
 	vector_path[param->size] = '\0';
 	npu_dbg("Loading FW test vector from : %s\n", vector_path);
 
@@ -187,7 +192,7 @@ static int fw_utc_save_result_cb(struct npu_session *sess, struct nw_result resu
 
 static int execute_fw_utc_vector(struct npu_session *sess, struct vs4l_param *param)
 {
-	int				ret;
+	int				ret = 0;
 	struct npu_nw			nw;
 	int				test_result = 0;
 	struct npu_system		*system;

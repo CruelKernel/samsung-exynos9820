@@ -356,7 +356,7 @@ static size_t fslog_print_pid(const struct fslog_metadata *msg, char *buf)
 
 	if (msg->pid == msg->tgid)
 		return sprintf(buf, "[%15s, %5d] ", msg->comm, msg->pid);
-	
+
 	return sprintf(buf, "[%s(%d)|%s(%d)] ",
 			msg->comm, msg->pid, msg->tgid_comm, msg->tgid);
 }

@@ -316,15 +316,14 @@ err_exit:
 int npu_interface_close(struct npu_system *system)
 {
 	int wptr, rptr;
-	struct device *dev = &system->pdev->dev;
+	struct device *dev;
 
 	if (!system) {
 		npu_err("fail in %s\n", __func__);
 		return -EINVAL;
 	}
 
-	devm_free_irq(dev, system->irq0, NULL);
-	devm_free_irq(dev, system->irq1, NULL);
+	dev = &system->pdev->dev;
 
 	queue_work(wq, &work_report);
 	if ((wq) && (interface.mbox_hdr)) {
@@ -338,6 +337,9 @@ int npu_interface_close(struct npu_system *system)
 		destroy_workqueue(wq);
 		wq = NULL;
 	}
+
+	devm_free_irq(dev, system->irq0, NULL);
+	devm_free_irq(dev, system->irq1, NULL);
 
 	interface.addr = NULL;
 	interface.mbox_hdr = NULL;

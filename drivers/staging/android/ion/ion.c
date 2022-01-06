@@ -348,13 +348,33 @@ static void ion_dma_buf_release(struct dma_buf *dmabuf)
 static void *ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
+	void *vaddr;
 
-	return buffer->vaddr + offset * PAGE_SIZE;
+	if (!buffer->heap->ops->map_kernel) {
+		pr_err("%s: map kernel is not implemented by this heap.\n",
+		       __func__);
+		return ERR_PTR(-ENOTTY);
+	}
+	mutex_lock(&buffer->lock);
+	vaddr = ion_buffer_kmap_get(buffer);
+	mutex_unlock(&buffer->lock);
+
+	if (IS_ERR(vaddr))
+		return vaddr;
+
+	return vaddr + offset * PAGE_SIZE;
 }
 
 static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
 			       void *ptr)
 {
+	struct ion_buffer *buffer = dmabuf->priv;
+
+	if (buffer->heap->ops->map_kernel) {
+		mutex_lock(&buffer->lock);
+		ion_buffer_kmap_put(buffer);
+		mutex_unlock(&buffer->lock);
+	}
 }
 
 static void *ion_dma_buf_vmap(struct dma_buf *dmabuf)
@@ -386,17 +406,8 @@ static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 					enum dma_data_direction direction)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
-	void *vaddr;
 	struct dma_buf_attachment *att;
 
-	/*
-	 * TODO: Move this elsewhere because we don't always need a vaddr
-	 */
-	if (buffer->heap->ops->map_kernel) {
-		mutex_lock(&buffer->lock);
-		vaddr = ion_buffer_kmap_get(buffer);
-		mutex_unlock(&buffer->lock);
-	}
 
 	mutex_lock(&dmabuf->lock);
 	list_for_each_entry(att, &dmabuf->attachments, node) {
@@ -415,12 +426,6 @@ static int ion_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 {
 	struct ion_buffer *buffer = dmabuf->priv;
 	struct dma_buf_attachment *att;
-
-	if (buffer->heap->ops->map_kernel) {
-		mutex_lock(&buffer->lock);
-		ion_buffer_kmap_put(buffer);
-		mutex_unlock(&buffer->lock);
-	}
 
 	mutex_lock(&dmabuf->lock);
 	list_for_each_entry(att, &dmabuf->attachments, node) {

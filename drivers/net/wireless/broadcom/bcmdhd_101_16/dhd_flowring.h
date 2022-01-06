@@ -68,6 +68,10 @@
 	(flowid < ((pub)->htput_flow_ring_start + HTPUT_TOTAL_FLOW_RINGS)))
 #endif /* DHD_HTPUT_TUNABLES */
 
+#if defined(FLOW_RING_PREALLOC)
+#define MAX_FLOW_RINGS 40
+#endif /* FLOW_RING_PREALLOC */
+
 #define DHD_FLOWRING_RX_BUFPOST_PKTSZ	2048
 
 #define DHD_FLOWRING_RX_BUFPOST_PKTSZ_MAX 4096

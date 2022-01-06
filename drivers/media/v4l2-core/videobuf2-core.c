@@ -964,7 +964,8 @@ static void vb2_process_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state
 
 void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
 {
-	if (WARN_ON(vb->state != VB2_BUF_STATE_ACTIVE))
+	if (WARN_ON(vb->state != VB2_BUF_STATE_ACTIVE &&
+		    vb->state != VB2_BUF_STATE_ERROR))
 		return;
 
 	if (WARN_ON(state != VB2_BUF_STATE_DONE &&
@@ -1268,14 +1269,17 @@ static void __enqueue_in_driver(struct vb2_buffer *vb)
 		spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
 		return;
 	}
+
+	if (vb->state == VB2_BUF_STATE_ACTIVE) {
+		spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
+		return;
+	} else if (vb->state != VB2_BUF_STATE_ERROR) {
+		vb->state = VB2_BUF_STATE_ACTIVE;
+	}
 	spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
 
-	if (vb->state == VB2_BUF_STATE_ACTIVE ||
-			vb->state == VB2_BUF_STATE_ERROR)
-		return;
-
-	vb->state = VB2_BUF_STATE_ACTIVE;
-	atomic_inc(&q->owned_by_drv_count);
+	if (vb->state == VB2_BUF_STATE_ACTIVE)
+		atomic_inc(&q->owned_by_drv_count);
 
 	trace_vb2_buf_queue(q, vb);
 
@@ -1437,25 +1441,16 @@ static void __qbuf_work(struct work_struct *work)
 {
 	struct vb2_buffer *vb;
 	struct vb2_queue *q;
-
-	vb = container_of(work, struct vb2_buffer, qbuf_work);
-	q = vb->vb2_queue;
-
-	if (q->start_streaming_called && vb->state == VB2_BUF_STATE_QUEUED)
-		__enqueue_in_driver(vb);
-}
-
-static void vb2_qbuf_fence_cb(struct dma_fence *f, struct dma_fence_cb *cb)
-{
-	struct vb2_buffer *vb = container_of(cb, struct vb2_buffer, fence_cb);
 	unsigned long flags;
 
+	vb = container_of(work, struct vb2_buffer, qbuf_work);
+
 	spin_lock_irqsave(&vb->fence_cb_lock, flags);
-	del_timer(&vb->fence_timer);
 	if (!vb->in_fence) {
 		spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
 		return;
 	}
+	del_timer(&vb->fence_timer);
 	/*
 	 * If the fence signals with an error we mark the buffer as such
 	 * and avoid using it by setting it to VB2_BUF_STATE_ERROR and
@@ -1471,11 +1466,18 @@ static void vb2_qbuf_fence_cb(struct dma_fence *f, struct dma_fence_cb *cb)
 	dma_fence_put(vb->in_fence);
 	vb->in_fence = NULL;
 
-	if (vb->state == VB2_BUF_STATE_ERROR) {
-		spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
-		return;
-	}
 	spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
+
+	q = vb->vb2_queue;
+
+	if (q->start_streaming_called && (vb->state == VB2_BUF_STATE_QUEUED ||
+					  vb->state == VB2_BUF_STATE_ERROR))
+		__enqueue_in_driver(vb);
+}
+
+static void vb2_qbuf_fence_cb(struct dma_fence *f, struct dma_fence_cb *cb)
+{
+	struct vb2_buffer *vb = container_of(cb, struct vb2_buffer, fence_cb);
 
 	schedule_work(&vb->qbuf_work);
 }
@@ -1506,9 +1508,12 @@ static void vb2_fence_timeout_handler(unsigned long arg)
 				"signaled" : "active", fence->error);
 
 		dma_fence_remove_callback(vb->in_fence, &vb->fence_cb);
-		dma_fence_put(fence);
-		vb->in_fence = NULL;
-		vb->state = VB2_BUF_STATE_ERROR;
+		/*
+		 * set fence as error, then vb->state will become error
+		 * in __qbuf_work(). Remained process like dma_fence_put()
+		 * is also handled in __qbuf_work().
+		 */
+		dma_fence_set_error(vb->in_fence, -EFAULT);
 	}
 
 	fence = vb->out_fence;
@@ -1602,10 +1607,18 @@ int vb2_core_qbuf(struct vb2_queue *q, unsigned int index, void *pb,
 		struct vb2_buffer *b;
 
 		list_for_each_entry(b, &q->queued_list, queued_entry) {
-			if (b->state != VB2_BUF_STATE_QUEUED)
-				continue;
-			if (b->in_fence)
+			spin_lock_irqsave(&vb->fence_cb_lock, flags);
+			if (b->in_fence) {
+				spin_unlock_irqrestore(&vb->fence_cb_lock,
+						       flags);
 				break;
+			}
+			if (b->state != VB2_BUF_STATE_QUEUED) {
+				spin_unlock_irqrestore(&vb->fence_cb_lock,
+						       flags);
+				continue;
+			}
+			spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
 			__enqueue_in_driver(b);
 		}
 	}
@@ -1913,11 +1926,15 @@ static void __vb2_queue_cancel(struct vb2_queue *q)
 	list_for_each_entry(vb, &q->queued_list, queued_entry) {
 		spin_lock_irqsave(&vb->fence_cb_lock, flags);
 		if (vb->in_fence) {
+			del_timer(&vb->fence_timer);
 			dma_fence_remove_callback(vb->in_fence, &vb->fence_cb);
 			dma_fence_put(vb->in_fence);
 			vb->in_fence = NULL;
 		}
 		spin_unlock_irqrestore(&vb->fence_cb_lock, flags);
+
+		if (work_busy(&vb->qbuf_work))
+			cancel_work_sync(&vb->qbuf_work);
 	}
 
 	/*

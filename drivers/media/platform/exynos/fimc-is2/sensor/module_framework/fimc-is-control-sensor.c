@@ -590,6 +590,11 @@ void fimc_is_sensor_ctl_frame_evt(struct fimc_is_device_sensor *device)
 		if (ret < 0) {
 			err("[%s] frame number(%d) update gains fail\n", __func__, applied_frame_number);
 		}
+
+		ret = fimc_is_sensor_set_test_pattern(device, sensor_ctrl);
+		if (ret < 0)
+			err("[%s] frame number(%d) set test pattern fail\n", __func__, applied_frame_number);
+
 	} else {
 		if (module_ctl->alg_reset_flag == false) {
 			dbg_sensor(1, "[%s] frame number(%d)  alg_reset_flag (%d)\n", __func__,

@@ -194,6 +194,8 @@
 #endif /* PNO_SUPPORT */
 
 #define CMD_HAPD_SET_AX_MODE "HAPD_SET_AX_MODE"
+#define CMD_SET_HOTSPOT_ANTENNA_MODE "SET_HOTSPOT_ANTENNA_MODE"
+#define CMD_GET_HOTSPOT_ANTENNA_MODE "GET_HOTSPOT_ANTENNA_MODE"
 
 #define	CMD_HAPD_MAC_FILTER	"HAPD_MAC_FILTER"
 
@@ -297,6 +299,38 @@ typedef struct android_wifi_af_params {
 
 #define ANDROID_WIFI_AF_PARAMS_SIZE sizeof(struct android_wifi_af_params)
 #endif /* WES_SUPPORT */
+
+#define CMD_SETSCANDWELLTIME		"SET_DWELL_TIME"	/* Set Scan Dwell Times */
+/* Convert to wl_custom_scan_time_type for CUSTOMER_SCAN_TIMEOUT_SETTING */
+enum {
+	WL_CUSTOM_SET_DWELL_ASSOC_TIME = 0,
+	WL_CUSTOM_SET_DWELL_UNASSOC_TIME,
+	WL_CUSTOM_SET_DWELL_PASSIVE_TIME,
+	WL_CUSTOM_SET_DWELL_HOME_TIME,
+	WL_CUSTOM_SET_DWELL_HOME_AWAY_TIME,
+	WL_CUSTOM_SET_DWELL_MAX
+};
+
+typedef struct android_custom_dwell_time {
+	char cmd[64];
+	int param;		/* Default scan dwell time */
+	int type;
+} android_custom_dwell_time_t;
+
+static android_custom_dwell_time_t custom_scan_dwell[] =
+{
+	{"scan_passive_time", DHD_SCAN_PASSIVE_TIME, WL_CUSTOM_SET_DWELL_PASSIVE_TIME},
+	{"scan_home_time", DHD_SCAN_HOME_TIME, WL_CUSTOM_SET_DWELL_HOME_TIME},
+	{"scan_assoc_time", DHD_SCAN_ASSOC_ACTIVE_TIME, WL_CUSTOM_SET_DWELL_ASSOC_TIME},
+	{"scan_home_away_time", DHD_SCAN_HOME_AWAY_TIME, WL_CUSTOM_SET_DWELL_HOME_AWAY_TIME},
+	/* {"scan_unassoc_time", DHD_SCAN_UNASSOC_ACTIVE_TIME, WL_CUSTOM_SET_DWELL_UNASSOC_TIME}, */
+};
+
+/* wpa_cli DRIVER SET_DWELL_TIME W X Y Z */
+#define SET_DWELL_TIME_CNT	(4u)
+#define CUSTOM_SCAN_DWELL_LIST_CNT	\
+	(sizeof(custom_scan_dwell) / sizeof(android_custom_dwell_time_t))
+
 #ifdef SUPPORT_AMPDU_MPDU_CMD
 #define CMD_AMPDU_MPDU		"AMPDU_MPDU"
 #endif /* SUPPORT_AMPDU_MPDU_CMD */
@@ -1305,18 +1339,26 @@ static int wl_android_set_suspendmode(struct net_device *dev, char *command)
 {
 	int ret = 0;
 
-#if !defined(CONFIG_HAS_EARLYSUSPEND) || !defined(DHD_USE_EARLYSUSPEND)
+#if (!defined(CONFIG_HAS_EARLYSUSPEND) || !defined(DHD_USE_EARLYSUSPEND)) || \
+	defined(DHD_USE_PM_SLEEP)
 	int suspend_flag;
 
 	suspend_flag = *(command + strlen(CMD_SETSUSPENDMODE) + 1) - '0';
-	if (suspend_flag != 0)
+	if (suspend_flag != 0) {
 		suspend_flag = 1;
+#if defined(DHD_USE_PM_SLEEP)
+		/* The suspend setting is handled in linux pm_nofi callback. */
+		DHD_INFO(("wl_android_set_suspendmode: Suspend Mode %d doesn't set\n",
+				suspend_flag));
+		return ret;
+#endif /* DHD_USE_PM_SLEEP */
+	}
 
 	if (!(ret = net_os_set_suspend(dev, suspend_flag, 0)))
 		DHD_INFO(("wl_android_set_suspendmode: Suspend Mode %d\n", suspend_flag));
 	else
 		DHD_ERROR(("wl_android_set_suspendmode: failed %d\n", ret));
-#endif
+#endif /* (!CONFIG_HAS_EARLYSUSPEND || !DHD_USE_EARLYSUSPEND) || DHD_USE_PM_SLEEP */
 
 	return ret;
 }
@@ -3089,8 +3131,8 @@ wl_android_legacy_private_command(struct net_device *net, char *command, int tot
 		bytes_written = wl_android_set_scan_home_away_time(net, command);
 	}
 	else {
-		WL_ERR(("Unknown NCHO PRIVATE command %s - ignored\n", command));
-		bytes_written = scnprintf(command, sizeof("FAIL"), "FAIL");
+		WL_ERR(("Unknown Legacy PRIVATE command %s - ignored\n", command));
+		bytes_written = BCME_UNSUPPORTED;
 	}
 
 	return bytes_written;
@@ -3239,7 +3281,7 @@ wl_android_ncho_private_command(struct net_device *net, char *command, int total
 	}
 	else {
 		WL_ERR(("Unknown NCHO PRIVATE command %s - ignored\n", command));
-		bytes_written = scnprintf(command, sizeof("FAIL"), "FAIL");
+		bytes_written = BCME_UNSUPPORTED;
 	}
 
 	return bytes_written;
@@ -3282,6 +3324,91 @@ wl_android_default_set_scan_params(struct net_device *dev, char *command, int to
 	return error;
 }
 #endif /* SUPPORT_RESTORE_SCAN_PARAMS || WES_SUPPORT  */
+
+static int
+wl_android_set_scan_dwell_times(struct net_device *dev, char *command, int total_len)
+{
+	int error = BCME_OK;
+	int bytes_written = 0;
+	int i = 0, dwell_time = 0;
+	int dwell_times[SET_DWELL_TIME_CNT] = {0};
+
+	WL_DBG_MEM(("Enter. cmd:%s\n", command));
+	if (SET_DWELL_TIME_CNT != CUSTOM_SCAN_DWELL_LIST_CNT) {
+		WL_ERR(("Mismatch TIME_CNT %d, LIST_CNT %lu\n",
+			SET_DWELL_TIME_CNT, CUSTOM_SCAN_DWELL_LIST_CNT));
+		error = BCME_BADLEN;
+		goto exit;
+	}
+
+	if (strlen(command) == strlen(CMD_SETSCANDWELLTIME)) {
+		int buf_avail, len;
+
+		/* Get Scan dwell times */
+		for (i = 0; i < CUSTOM_SCAN_DWELL_LIST_CNT; i++) {
+			error = wldev_iovar_getint(dev, custom_scan_dwell[i].cmd, &dwell_time);
+			if (error) {
+				WL_ERR(("Failed to get %s, error = %d\n", custom_scan_dwell[i].cmd,
+					error));
+				goto exit;
+			}
+			dwell_times[i] = dwell_time;
+		}
+
+		/* Report Scan dwell times */
+		bytes_written = snprintf(command, total_len, "%s", command);
+		buf_avail = total_len - bytes_written;
+		for (i = 0; i < CUSTOM_SCAN_DWELL_LIST_CNT; i++) {
+			len = snprintf(command + bytes_written, buf_avail, " %d", dwell_times[i]);
+			if (len >= buf_avail) {
+				WL_ERR(("Insufficient memory, %d bytes\n", total_len));
+				bytes_written = -1;
+				break;
+			}
+			/* 'buf_avail' decremented by number of bytes written */
+			buf_avail -= len;
+			bytes_written += len;
+		}
+		WL_DBG_MEM(("%s\n", command));
+
+		return bytes_written;
+	} else {
+		char *token, *pos;
+
+		/* Parse Scan dwell times */
+		pos = command + sizeof(CMD_SETSCANDWELLTIME);
+		for (i = 0; i < CUSTOM_SCAN_DWELL_LIST_CNT; i++) {
+			token = strsep((char**)&pos, " ");
+			if (!token) {
+				WL_ERR(("Failed to parse %s\n", custom_scan_dwell[i].cmd));
+				error = -EINVAL;
+				goto exit;
+			}
+
+			/* Set Default scan dwell times if prame is 0 */
+			dwell_times[i] = (bcm_atoi(token) > 0) ? bcm_atoi(token) :
+				custom_scan_dwell[i].param;
+		}
+
+		/* Set scan dwell times */
+		for (i = 0; i < CUSTOM_SCAN_DWELL_LIST_CNT; i++) {
+			error = wldev_iovar_setint(dev, custom_scan_dwell[i].cmd, dwell_times[i]);
+			if (error) {
+				WL_ERR(("Failed to get %s, error = %d\n", custom_scan_dwell[i].cmd,
+					error));
+				goto exit;
+			}
+#ifdef CUSTOMER_SCAN_TIMEOUT_SETTING
+			wl_cfg80211_custom_scan_time(dev,
+				(enum wl_custom_scan_time_type)custom_scan_dwell[i].type,
+				dwell_times[i]);
+#endif /* CUSTOMER_SCAN_TIMEOUT_SETTING */
+		}
+	}
+
+exit:
+	return error;
+}
 
 #ifdef WLTDLS
 int wl_android_tdls_reset(struct net_device *dev)
@@ -6890,7 +7017,7 @@ wl_android_set_auto_channel(struct net_device *dev, const char* cmd_str,
 			acs_band = CHSPEC_BAND((chanspec_t)list->element[0]);
 			WL_INFORM_MEM(("chosen acs_chspec = 0x%x, channel =%d, acs_band =0x%x, "
 				"sta_channel =%d, sta_acs_band = 0x%x\n",
-				cfg->acs_chspec, channel, acs_band,
+				(chanspec_t)list->element[0], channel, acs_band,
 				sta_channel, sta_band));
 			goto done2;
 		}
@@ -10967,6 +11094,110 @@ wl_android_get_softap_elna_bypass(struct net_device *dev, char *command, int tot
 }
 #endif /* SUPPORT_SOFTAP_ELNA_BYPASS */
 
+#ifdef CUSTOM_SOFTAP_SET_ANT
+#define HOTSPOT_ANTENNA_MODE_MIMO  1
+#define HOTSPOT_ANTENNA_MODE_SISO  2
+
+static int
+wl_android_set_softap_antenna(struct net_device *dev, char *command)
+{
+	char *ifname = NULL;
+	char *pos, *token;
+	int err = BCME_OK;
+	int mimo_siso = 0;
+	int set_chain = 0;
+
+	/*
+	 * DRIVER SET_HOTSPOT_ANTENNA_MODE <ifname> <MIMO/SISO>
+	 * MIMO:1, SISO:2
+	 */
+	pos = command;
+
+	/* drop command */
+	token = bcmstrtok(&pos, " ", NULL);
+
+	/* get the interface name */
+	token = bcmstrtok(&pos, " ", NULL);
+	if (!token) {
+		WL_ERR(("%s: Invalid arguments about interface name\n", __FUNCTION__));
+		return -EINVAL;
+	}
+	ifname = token;
+
+	/* get mimo_siso value */
+	token = bcmstrtok(&pos, " ", NULL);
+	if (!token) {
+		WL_ERR(("%s: Invalid arguments about MIMO/SISO\n", __FUNCTION__));
+		return -EINVAL;
+	}
+	mimo_siso = bcm_atoi(token);
+
+	if (mimo_siso == HOTSPOT_ANTENNA_MODE_SISO) {
+		/* Set SISO mode */
+		set_chain = 1;
+	} else {
+		/* Set MIMO mode for other cases */
+		set_chain = 3;
+	}
+
+	WL_ERR(("[Test Mode] %s: Set Antenna for SoftAP [%d]\n", __FUNCTION__, set_chain));
+	err = wl_set_softap_antenna(dev, ifname, set_chain);
+	if (unlikely(err)) {
+		WL_ERR(("%s: Failed to set Antenna of SoftAP mode[%d], err=%d\n",
+			__FUNCTION__, mimo_siso, err));
+		return -EIO;
+	}
+
+	return err;
+}
+
+static int
+wl_android_get_softap_antenna(struct net_device *dev, char *command, int total_len)
+{
+	char *ifname = NULL;
+	char *pos, *token;
+	int err = BCME_OK;
+	int bytes_written = 0;
+	int mimo_siso = 0;
+	uint32 cur_rxchain;
+
+	/*
+	 * DRIVER GET_HOTSPOT_ANTENNA_MODE <ifname>
+	 */
+	pos = command;
+
+	/* drop command */
+	token = bcmstrtok(&pos, " ", NULL);
+
+	/* get the interface name */
+	token = bcmstrtok(&pos, " ", NULL);
+	if (!token) {
+		WL_ERR(("%s: Invalid arguments about interface name\n", __FUNCTION__));
+		return -EINVAL;
+	}
+	ifname = token;
+
+	err = wl_get_softap_antenna(dev, ifname, &cur_rxchain);
+	if (unlikely(err)) {
+		WL_ERR(("%s: Failed to get MIMO/SISO info of SoftAP mode, err=%d\n",
+			__FUNCTION__, err));
+		return -EIO;
+	} else {
+		if (cur_rxchain == 3) {
+			mimo_siso = HOTSPOT_ANTENNA_MODE_MIMO;
+		} else {
+			mimo_siso = HOTSPOT_ANTENNA_MODE_SISO;
+		}
+		WL_DBG(("[Test Mode] %s: SoftAP antenna status is %d\n",
+			__FUNCTION__, mimo_siso));
+		bytes_written = snprintf(command, total_len, "%s %d",
+			CMD_GET_HOTSPOT_ANTENNA_MODE, mimo_siso);
+	}
+
+	return bytes_written;
+}
+#endif /* CUSTOM_SOFTAP_SET_ANT */
+
 #ifdef WL_NAN
 int
 wl_android_get_nan_status(struct net_device *dev, char *command, int total_len)
@@ -12086,6 +12317,9 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 			priv_cmd.total_len);
 	}
 #endif /* SUPPORT_RESTORE_SCAN_PARAMS || WES_SUPPORT */
+	else if (strnicmp(command, CMD_SETSCANDWELLTIME, strlen(CMD_SETSCANDWELLTIME)) == 0) {
+		bytes_written = wl_android_set_scan_dwell_times(net, command, priv_cmd.total_len);
+	}
 #ifdef WLTDLS
 	else if (strnicmp(command, CMD_TDLS_RESET, strlen(CMD_TDLS_RESET)) == 0) {
 		bytes_written = wl_android_tdls_reset(net);
@@ -12761,6 +12995,16 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 			wl_android_get_softap_elna_bypass(net, command, priv_cmd.total_len);
 	}
 #endif /* SUPPORT_SOFTAP_ELNA_BYPASS */
+#ifdef CUSTOM_SOFTAP_SET_ANT
+	else if (strnicmp(command, CMD_SET_HOTSPOT_ANTENNA_MODE,
+			strlen(CMD_SET_HOTSPOT_ANTENNA_MODE)) == 0) {
+		bytes_written = wl_android_set_softap_antenna(net, command);
+	}
+	else if (strnicmp(command, CMD_GET_HOTSPOT_ANTENNA_MODE,
+			strlen(CMD_GET_HOTSPOT_ANTENNA_MODE)) == 0) {
+		bytes_written = wl_android_get_softap_antenna(net, command, priv_cmd.total_len);
+	}
+#endif /* CUSTOM_SOFTAP_SET_ANT */
 #ifdef WL_NAN
 	else if (strnicmp(command, CMD_GET_NAN_STATUS,
 			strlen(CMD_GET_NAN_STATUS)) == 0) {
@@ -12822,7 +13066,7 @@ wl_handle_private_cmd(struct net_device *net, char *command, u32 cmd_len)
 #endif /* CUSTOMER_HW4 */
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
-		bytes_written = scnprintf(command, sizeof("FAIL"), "FAIL");
+		bytes_written = BCME_UNSUPPORTED;
 	}
 
 	return bytes_written;

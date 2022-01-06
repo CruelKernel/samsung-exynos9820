@@ -371,7 +371,7 @@ err_exit:
 
 static int npu_fw_report_fops_open(struct inode *inode, struct file *file)
 {
-	int				ret;
+	int				ret = 0;
 	struct npu_store_log_read_obj	*robj;
 
 	robj = kzalloc(sizeof(*robj), GFP_ATOMIC);

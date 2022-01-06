@@ -627,6 +627,7 @@ static void max77705_set_charge_current(struct max77705_charger_data *charger,
 		return;
 	}
 #endif
+	mutex_lock(&charger->charger_mutex);
 
 	fast_charging_current =
 		(fast_charging_current > 3150) ? 3150 : fast_charging_current;
@@ -635,6 +636,8 @@ static void max77705_set_charge_current(struct max77705_charger_data *charger,
 
 	max77705_update_reg(charger->i2c, MAX77705_CHG_REG_CNFG_02,
 		reg_data, MAX77705_CHG_CC);
+
+	mutex_unlock(&charger->charger_mutex);
 
 	pr_info("[%s] REG(0x%02x) DATA(0x%02x), CURRENT(%d)\n", __func__,
 		MAX77705_CHG_REG_CNFG_02, reg_data, fast_charging_current);

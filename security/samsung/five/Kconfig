@@ -17,6 +17,20 @@ config FIVE
 	  to change the contents of an important system file
 	  being measured, we can tell.
 
+config FIVE_GKI_10
+	bool "GKI 1.0 compatible version of FIVE"
+	depends on FIVE
+	default n
+	help
+	 Build GKI 1.0 compatible version of FIVE
+
+config FIVE_GKI_20
+	bool "GKI 2.0 compatible version of FIVE"
+	depends on FIVE
+	default n
+	help
+	 Build GKI 2.0 compatible version of FIVE
+
 config FIVE_DEBUG
 	bool "FIVE Debug mode"
 	depends on FIVE

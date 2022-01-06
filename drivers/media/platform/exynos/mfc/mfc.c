@@ -172,8 +172,8 @@ static int __mfc_init_dec_ctx(struct mfc_ctx *ctx)
 
 	/* sh_handle: released dpb info */
 	dec->sh_handle_dpb.fd = -1;
-	dec->ref_info = kzalloc(
-		(sizeof(struct dec_dpb_ref_info) * MFC_MAX_DPBS), GFP_KERNEL);
+	dec->sh_handle_dpb.data_size = sizeof(struct dec_dpb_ref_info) * MFC_MAX_DPBS;
+	dec->ref_info = kzalloc(dec->sh_handle_dpb.data_size, GFP_KERNEL);
 	if (!dec->ref_info) {
 		mfc_err_dev("failed to allocate decoder information data\n");
 		ret = -ENOMEM;
@@ -184,8 +184,8 @@ static int __mfc_init_dec_ctx(struct mfc_ctx *ctx)
 
 	/* sh_handle: HDR10+ HEVC SEI meta */
 	dec->sh_handle_hdr.fd = -1;
-	dec->hdr10_plus_info = vmalloc(
-			(sizeof(struct hdr10_plus_meta) * MFC_MAX_DPBS));
+	dec->sh_handle_hdr.data_size = sizeof(struct hdr10_plus_meta) * MFC_MAX_DPBS;
+	dec->hdr10_plus_info = vmalloc(dec->sh_handle_hdr.data_size);
 	if (!dec->hdr10_plus_info)
 		mfc_err_dev("[HDR+] failed to allocate HDR10+ information data\n");
 
@@ -294,6 +294,9 @@ static int __mfc_init_enc_ctx(struct mfc_ctx *ctx)
 	enc->sh_handle_svc.fd = -1;
 	enc->sh_handle_roi.fd = -1;
 	enc->sh_handle_hdr.fd = -1;
+	enc->sh_handle_svc.data_size = sizeof(struct temporal_layer_info);
+	enc->sh_handle_roi.data_size = sizeof(struct mfc_enc_roi_info);
+	enc->sh_handle_hdr.data_size = sizeof(struct hdr10_plus_meta) * MFC_MAX_BUFFERS;
 
 	/* Init videobuf2 queue for OUTPUT */
 	ctx->vq_src.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;

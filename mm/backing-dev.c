@@ -145,8 +145,15 @@ static ssize_t read_ahead_kb_store(struct device *dev,
 	struct backing_dev_info *bdi = dev_get_drvdata(dev);
 	unsigned long read_ahead_kb;
 	ssize_t ret;
+	static const char temp[] = "temporary ";
+
+	if (strncmp(buf, temp, sizeof(temp) - 1) != 0)
+		return count;
+
+	buf += sizeof(temp) - 1;
 
 	ret = kstrtoul(buf, 10, &read_ahead_kb);
+
 	if (ret < 0)
 		return ret;
 

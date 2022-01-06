@@ -49,6 +49,7 @@
 
 #define DISPLAYID_EXT 0x70
 #define FEATURE_MANAGE_HMD_LIST
+#define FEATURE_DEX_ADAPTER_TWEAK
 
 extern int displayport_log_level;
 extern int forced_resolution;
@@ -716,6 +717,9 @@ struct displayport_device {
 	u8 dex_ver[2];
 	enum dex_support_type dex_adapter_type;
 	videoformat dex_video_pick;
+#ifdef FEATURE_DEX_ADAPTER_TWEAK
+	bool dex_skip_adapter_check;
+#endif
 
 	u8 edid_manufacturer[4];
 	u32 edid_product;

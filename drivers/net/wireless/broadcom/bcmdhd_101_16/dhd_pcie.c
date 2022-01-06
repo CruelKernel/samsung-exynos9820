@@ -3691,15 +3691,20 @@ dhdpcie_get_mem_dump(dhd_bus_t *bus)
 #ifdef BOARD_HIKEY
 	unsigned long flags_bus;
 #endif /* BOARD_HIKEY */
+#ifdef DHD_FILE_DUMP_EVENT
+	dhd_dongledump_status_t dump_status;
+#endif /* DHD_FILE_DUMP_EVENT */
 
 	if (!bus) {
 		DHD_ERROR(("%s: bus is NULL\n", __FUNCTION__));
-		return BCME_ERROR;
+		ret = BCME_ERROR;
+		goto exit;
 	}
 
 	if (!bus->dhd) {
 		DHD_ERROR(("%s: dhd is NULL\n", __FUNCTION__));
-		return BCME_ERROR;
+		ret = BCME_ERROR;
+		goto exit;
 	}
 
 	size = bus->ramsize; /* Full mem size */
@@ -3710,8 +3715,16 @@ dhdpcie_get_mem_dump(dhd_bus_t *bus)
 	if (!p_buf) {
 		DHD_ERROR(("%s: Out of memory (%d bytes)\n",
 			__FUNCTION__, size));
-		return BCME_ERROR;
+		ret = BCME_ERROR;
+		goto exit;
 	}
+
+#ifdef DHD_FILE_DUMP_EVENT
+	dump_status = dhd_get_dump_status(bus->dhd);
+	if (dump_status != DUMP_IN_PROGRESS) {
+		dhd_set_dump_status(bus->dhd, DUMP_IN_PROGRESS);
+	}
+#endif /* DHD_FILE_DUMP_EVENT */
 
 	/* Read mem content */
 	DHD_TRACE_HW4(("Dump dongle memory\n"));
@@ -3741,6 +3754,14 @@ dhdpcie_get_mem_dump(dhd_bus_t *bus)
 		start += read_size;
 		databuf += read_size;
 	}
+
+exit:
+#ifdef DHD_FILE_DUMP_EVENT
+	if (ret != BCME_OK) {
+		dhd_set_dump_status(bus->dhd, DUMP_FAILURE);
+	}
+#endif /* DHD_FILE_DUMP_EVENT */
+
 	return ret;
 }
 

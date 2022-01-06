@@ -15,7 +15,6 @@
 #include <linux/defex.h>
 #include "include/defex_internal.h"
 
-
 int defex_get_features(void)
 {
 	int features = 0;
@@ -23,9 +22,9 @@ int defex_get_features(void)
 #if !defined(DEFEX_PERMISSIVE_PED)
 	features |= GLOBAL_PED_STATUS;
 #else
-	if (global_privesc_obj->status != 0)
+	if (global_privesc_status != 0)
 		features |= FEATURE_CHECK_CREDS;
-	if (global_privesc_obj->status == 2)
+	if (global_privesc_status == 2)
 		features |= FEATURE_CHECK_CREDS_SOFT;
 #endif /* DEFEX_PERMISSIVE_PED */
 #endif /* DEFEX_PED_ENABLE */
@@ -34,9 +33,9 @@ int defex_get_features(void)
 #if !defined(DEFEX_PERMISSIVE_SP)
 	features |= GLOBAL_SAFEPLACE_STATUS;
 #else
-	if (global_safeplace_obj->status != 0)
+	if (global_safeplace_status != 0)
 		features |= FEATURE_SAFEPLACE;
-	if (global_safeplace_obj->status == 2)
+	if (global_safeplace_status == 2)
 		features |= FEATURE_SAFEPLACE_SOFT;
 #endif /* DEFEX_PERMISSIVE_SP */
 #endif /* DEFEX_SAFEPLACE_ENABLE */
@@ -45,9 +44,9 @@ int defex_get_features(void)
 #if !defined(DEFEX_PERMISSIVE_IM)
 	features |= GLOBAL_IMMUTABLE_STATUS;
 #else
-	if (global_immutable_obj->status != 0)
+	if (global_immutable_status != 0)
 		features |= FEATURE_IMMUTABLE;
-	if (global_immutable_obj->status == 2)
+	if (global_immutable_status == 2)
 		features |= FEATURE_IMMUTABLE_SOFT;
 #endif /* DEFEX_PERMISSIVE_IM */
 #endif /* DEFEX_IMMUTABLE_ENABLE */

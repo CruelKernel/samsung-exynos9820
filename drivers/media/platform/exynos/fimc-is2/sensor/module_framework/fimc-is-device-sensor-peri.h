@@ -494,6 +494,8 @@ int fimc_is_sensor_peri_s_digital_gain(struct fimc_is_device_sensor *device,
 				u32 long_digital_gain, u32 short_digital_gain);
 int fimc_is_sensor_peri_adj_ctrl(struct fimc_is_device_sensor *device,
 				u32 input, struct v4l2_control *ctrl);
+int fimc_is_sensor_set_test_pattern(struct fimc_is_device_sensor *device,
+				camera2_sensor_ctl_t *sensor_ctl);
 
 int fimc_is_sensor_peri_compensate_gain_for_ext_br(struct fimc_is_device_sensor *device,
 				u32 expo, u32 *again, u32 *dgain);

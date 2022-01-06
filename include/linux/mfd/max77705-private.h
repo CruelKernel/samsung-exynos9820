@@ -391,6 +391,9 @@ struct max77705_dev {
 	void (*check_pdmsg)(void *data, u8 pdmsg);
 	void *usbc_data;
 
+	int enable_nested_irq;
+	u8 usbc_irq;
+
 	struct max77705_platform_data *pdata;
 };
 

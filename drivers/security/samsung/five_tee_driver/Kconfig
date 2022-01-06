@@ -3,7 +3,7 @@
 #
 
 config FIVE_TEE_DRIVER
-    bool "Integrity TEE Driver"
+    tristate "Integrity TEE Driver"
     depends on FIVE
     default y
     ---help---

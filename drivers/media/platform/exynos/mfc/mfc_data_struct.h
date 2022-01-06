@@ -1301,6 +1301,7 @@ struct mfc_user_shared_handle {
 	int fd;
 	struct dma_buf *dma_buf;
 	void *vaddr;
+	size_t data_size;
 };
 
 struct mfc_raw_info {

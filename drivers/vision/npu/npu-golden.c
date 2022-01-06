@@ -193,7 +193,7 @@ static void destroy_golden_file(struct golden_file *obj)
 static int load_golden_file(struct golden_file *obj)
 {
 
-	int ret;
+	int ret = 0;
 	mm_segment_t old_fs = 0;
 	struct file *fp = NULL;
 	struct kstat st;

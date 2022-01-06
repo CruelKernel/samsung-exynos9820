@@ -136,6 +136,7 @@ extern chanspec_t wl_freq_to_chanspec(int freq);
 extern s32 wl_inform_single_bss(struct bcm_cfg80211 *cfg, wl_bss_info_t *bi, bool update_ssid);
 #ifdef WL_GET_RCC
 extern int wl_android_get_roam_scan_chanlist(struct bcm_cfg80211 *cfg);
+extern int wl_android_get_roam_scan_freqlist(struct bcm_cfg80211 *cfg);
 #endif /* WL_GET_RCC */
 extern s32 wl_get_assoc_channels(struct bcm_cfg80211 *cfg,
 	struct net_device *dev, wlcfg_assoc_info_t *info);

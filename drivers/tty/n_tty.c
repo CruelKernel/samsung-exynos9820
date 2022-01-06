@@ -61,8 +61,8 @@
  * unthrottling the TTY driver.  These watermarks are used for
  * controlling the space in the read buffer.
  */
-#define TTY_THRESHOLD_THROTTLE		128 /* now based on remaining room */
-#define TTY_THRESHOLD_UNTHROTTLE	128
+#define TTY_THRESHOLD_THROTTLE		512 /* now based on remaining room */
+#define TTY_THRESHOLD_UNTHROTTLE	512
 
 /*
  * Special byte codes used in the echo buffer to represent operations
@@ -86,6 +86,8 @@
 #else
 # define n_tty_trace(f, args...)
 #endif
+
+#define BLUETOOTH_UART_PORT_LINE 1
 
 struct n_tty_data {
 	/* producer-published */
@@ -2325,8 +2327,11 @@ static ssize_t n_tty_write(struct tty_struct *tty, struct file *file,
 	add_wait_queue(&tty->write_wait, &wait);
 	while (1) {
 		if (signal_pending(current)) {
-			retval = -ERESTARTSYS;
-			break;
+			pr_err("%s TTY-%d signal_pending\n", __func__, tty->index);
+			if (tty->index != BLUETOOTH_UART_PORT_LINE) {
+				retval = -ERESTARTSYS;
+				break;
+			}
 		}
 		if (tty_hung_up_p(file) || (tty->link && !tty->link->count)) {
 			retval = -EIO;

@@ -50,6 +50,7 @@ struct usb_notify_dev {
 	struct device *dev;
 	struct otg_notify *o_notify;
 	int index;
+	unsigned long usb_data_enabled;
 	unsigned long disable_state;
 	char disable_state_cmd[MAX_DISABLE_STR_LEN];
 	int (*set_disable)(struct usb_notify_dev *udev, int param);

@@ -25,6 +25,14 @@ static const TEEC_UUID five_ta_uuid = {
 	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x46, 0x49, 0x56, 0x45},
 };
 #elif defined(CONFIG_FIVE_USE_QSEE)
+#ifdef CONFIG_ARCH_LAHAINA
+static const TEEC_UUID five_ta_uuid = {
+	.timeLow = 0x66697665,
+	.timeMid = 0x5f61,
+	.timeHiAndVersion = 0x7070,
+	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+};
+#else
 #ifdef CONFIG_ARCH_MSM8917
 static const TEEC_UUID five_ta_uuid = {
 	.timeLow = 0x6d736d38,
@@ -40,6 +48,7 @@ static const TEEC_UUID five_ta_uuid = {
 	.clockSeqAndNode = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 };
 #endif // CONFIG_ARCH_MSM8917
+#endif // CONFIG_ARCH_LAHAINA
 #elif defined(CONFIG_FIVE_USE_TRUSTONIC)
 static const TEEC_UUID five_ta_uuid = {
 	.timeLow = 0xffffffff,

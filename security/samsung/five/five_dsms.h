@@ -18,7 +18,7 @@
 #ifndef __LINUX_FIVE_DSMS_H
 #define __LINUX_FIVE_DSMS_H
 
-#ifdef CONFIG_SECURITY_DSMS
+#ifdef CONFIG_FIVE_DSMS
 void five_dsms_sign_err(const char *app, int result);
 void five_dsms_reset_integrity(const char *task_name, int result,
 				const char *file_name);

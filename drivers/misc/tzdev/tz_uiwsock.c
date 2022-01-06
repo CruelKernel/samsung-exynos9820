@@ -315,8 +315,11 @@ static unsigned int tz_uiwsock_poll(struct file *filp, poll_table *wait)
 			if (!circ_buf_is_full(&sd->write_buf))
 				mask |= POLLOUT | POLLWRNORM;
 
-			if (!circ_buf_is_full(&sd->oob_buf))
-				mask |= POLLOUT | POLLWRBAND;
+			if (sd->state != TZ_SK_LISTENING) {
+				if (!circ_buf_is_full(&sd->oob_buf))
+					mask |= POLLOUT | POLLWRBAND;
+			}
+
 			break;
 		}
 		break;

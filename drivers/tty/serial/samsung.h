@@ -102,6 +102,9 @@ struct s3c24xx_uart_port {
 	unsigned int dbg_mode;
 	unsigned int			uart_logging;
 	struct uart_local_buf		uart_local_buf;
+
+	unsigned int wake_peer_en;
+	unsigned int wake_peer_pended;
 };
 
 /* conversion functions */

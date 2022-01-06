@@ -19,10 +19,12 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include "five_porting.h"
+#include "five_testing.h"
 
 static struct kmem_cache *task_integrity_cache;
 
-static void init_once(void *foo)
+__visible_for_testing
+void init_once(void *foo)
 {
 	struct task_integrity *intg = foo;
 
@@ -99,7 +101,8 @@ void task_integrity_clear(struct task_integrity *tint)
 	}
 }
 
-static int copy_label(struct task_integrity *from, struct task_integrity *to)
+__visible_for_testing
+int copy_label(struct task_integrity *from, struct task_integrity *to)
 {
 	int ret = 0;
 	struct integrity_label *l = NULL;

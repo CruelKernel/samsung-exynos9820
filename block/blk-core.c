@@ -2898,7 +2898,6 @@ void blk_account_io_done(struct request *req)
 
 	if (req->rq_flags & RQF_FLUSH_SEQ)
 		req->q->flush_ios++;
-
 }
 
 #ifdef CONFIG_PM

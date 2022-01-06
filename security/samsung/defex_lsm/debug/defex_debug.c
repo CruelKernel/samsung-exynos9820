@@ -19,6 +19,45 @@
 
 static int last_cmd;
 
+void blob(const char *buffer, const size_t bufLen, const int lineSize)
+{
+	size_t i = 0, line;
+	size_t j = 0, len = bufLen;
+	int offset = 0;
+	char c, stringToPrint[MAX_DATA_LEN];
+
+	do {
+		line = (len > lineSize)?lineSize:len;
+		offset  = 0;
+		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "| 0x%08lX | ", i);
+
+		for (j = 0; j < line; j++)
+			offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "%02X ",
+							   (unsigned char)buffer[i + j]);
+		if (line < lineSize) {
+			for (j = 0; j < lineSize - line; j++)
+				offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "   ");
+		}
+		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "| ");
+
+		for (j = 0; j < line; j++) {
+			c = buffer[i + j];
+			c = (c < 0x20) || (c >= 0x7F)?'.':c;
+			offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "%c", c);
+		}
+		if (line < lineSize) {
+			for (j = 0; j < lineSize - line; j++)
+				offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " ");
+		}
+
+		snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " |");
+		pr_info("%s\n", stringToPrint);
+		memset(stringToPrint, 0, MAX_DATA_LEN);
+		i += line;
+		len -= line;
+	} while (len);
+}
+
 __visible_for_testing int set_user(struct cred *new_cred)
 {
 	struct user_struct *new_user;
@@ -95,7 +134,10 @@ __visible_for_testing ssize_t debug_store(struct kobject *kobj, struct kobj_attr
 	static const char *prefix[] = {
 		"uid=",
 		"fsuid=",
-		"gid="
+		"gid=",
+		"pe_status=",
+		"im_status=",
+		"sp_status="
 	};
 
 	if (!buf || !p)
@@ -115,6 +157,15 @@ __visible_for_testing ssize_t debug_store(struct kobject *kobj, struct kobj_attr
 		if (ret != 0)
 			return -EINVAL;
 		ret = set_cred(i, new_val);
+		break;
+	case DBG_SET_PE_STATUS:
+		privesc_status_store(buf + l);
+		break;
+	case DBG_SET_IM_STATUS:
+		immutable_status_store(buf + l);
+		break;
+	case DBG_SET_SP_STATUS:
+		safeplace_status_store(buf + l);
 		break;
 	default:
 		break;

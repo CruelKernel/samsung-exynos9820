@@ -65,6 +65,7 @@ typedef struct dhd_prot {
 	uint8 bus_header[BUS_HEADER_LEN];
 	cdc_ioctl_t msg;
 	unsigned char buf[WLC_IOCTL_MAXLEN + ROUND_UP_MARGIN];
+	dhd_ioctl_recieved_status_t ioctl_received;
 } dhd_prot_t;
 
 uint16
@@ -72,6 +73,20 @@ dhd_prot_get_ioctl_trans_id(dhd_pub_t *dhdp)
 {
 	/* SDIO does not have ioctl_trans_id yet, so return -1 */
 	return -1;
+}
+
+static int
+dhdcdc_dump_iovar(dhd_pub_t *dhd, uint32 iovar_len)
+{
+	int ret = BCME_OK;
+	dhd_prot_t *prot = dhd->prot;
+	unsigned char *ioctl_buf = prot->buf;
+
+	DHD_ERROR(("cmd = %4d, flags = 0x%08x\n",
+		prot->msg.cmd, prot->msg.flags));
+	prhex("IOCTL REQBUF DUMP ", (const uchar *)ioctl_buf, iovar_len);
+
+	return ret;
 }
 
 static int
@@ -117,6 +132,10 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 	/* update ret to len on success */
 	if (ret == cdc_len) {
 		ret = len;
+	}
+
+	if (ret == -ETIMEDOUT) {
+		dhdcdc_dump_iovar(dhd, len);
 	}
 
 	return ret;
@@ -353,6 +372,7 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 		goto done;
 	}
 
+	prot->ioctl_received = IOCTL_WAIT;
 	prot->pending = TRUE;
 	prot->lastcmd = ioc->cmd;
 	action = ioc->set;
@@ -893,4 +913,27 @@ dhd_process_pkt_reorder_info(dhd_pub_t *dhd, uchar *reorder_info_buf, uint reord
 		ptr->exp_idx = exp_idx;
 	}
 	return 0;
+}
+
+INLINE void
+dhd_wakeup_ioctl_event(dhd_pub_t *dhd, dhd_ioctl_recieved_status_t reason)
+{
+	/* To synchronize with the previous memory operations call wmb() */
+	OSL_SMP_WMB();
+	dhd->prot->ioctl_received = reason;
+	/* Call another wmb() to make sure before waking up the other event value gets updated */
+	OSL_SMP_WMB();
+	dhd_os_ioctl_resp_wake(dhd);
+}
+
+int
+dhdcdc_ioctl_resp_wait(dhd_pub_t *dhd, int *ioctl_received)
+{
+	dhd_prot_t *prot = dhd->prot;
+	int timeleft = 0;
+
+	timeleft = dhd_os_ioctl_resp_wait(dhd, &prot->ioctl_received);
+	*ioctl_received = prot->ioctl_received;
+
+	return timeleft;
 }

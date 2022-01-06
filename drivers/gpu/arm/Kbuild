@@ -28,4 +28,7 @@ ifeq ($(CONFIG_MALI_DDK_VERSION),y)
 	ifeq ($(CONFIG_MALI_BIFROST_R26P0),y)
 		obj-y += b_r26p0/
 	endif
+	ifeq ($(CONFIG_MALI_BIFROST_R32P1),y)
+		obj-y += bv_r32p1/
+	endif
 endif

@@ -314,7 +314,7 @@ int max77705_get_apdo_max_power(unsigned int *pdo_pos, unsigned int *taMaxVol, u
 		if (!(pd_noti.sink_status.power_list[i].apdo)) {
 			max_voltage = pd_noti.sink_status.power_list[i].max_voltage;
 			max_current = pd_noti.sink_status.power_list[i].max_current;
-			max_power = max_voltage*max_current;	/* uW */
+			max_power = (max_voltage * max_current > max_power) ? (max_voltage * max_current) : max_power;
 			*taMaxPwr = max_power;	/* mW */
 		}
 	}

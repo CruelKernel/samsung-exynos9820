@@ -411,6 +411,12 @@ extern char *dhd_dbg_get_system_timestamp(void);
 #define CFG80211_DEBUG_TEXT		"CFG80211-DEBUG) "
 #endif /* defined(CUSTOMER_DBG_PREFIX_ENABLE) */
 
+#ifdef DBG_PRINT_SSID
+#define SSID_DBG(_ssid_) _ssid_
+#else /* DBG_PNO_SSID */
+#define SSID_DBG(_ssid_) "*****"
+#endif /* DBG_PRINT_SSID */
+
 #ifdef DHD_DEBUG
 #ifdef DHD_LOG_DUMP
 #define	WL_ERR(args)	\
@@ -1930,6 +1936,11 @@ struct bcm_cfg80211 {
 #ifdef DHD_CLEANUP_KEEP_ALIVE
 	uint8 mkeep_alive_avail;
 #endif /* DHD_CLEANUP_KEEP_ALIVE */
+#ifdef CUSTOM_EVENT_PM_WAKE
+	uint32 dpm_prev_pmdur;          /* pm_dur value at previous dpm event */
+	uint32 dpm_cont_evt_cnt;        /* continuous repeated dpm count */
+	uint32 dpm_total_pkts;          /* total tx/rx packet count */
+#endif /* CUSTOM_EVENT_PM_WAKE */
 };
 
 /* Max auth timeout allowed in case of EAP is 70sec, additional 5 sec for
@@ -2843,9 +2854,7 @@ extern int wl_cfg80211_get_fbt_key(struct net_device *dev, uint8 *key, int total
 extern u8 wl_get_action_category(void *frame, u32 frame_len);
 extern int wl_get_public_action(void *frame, u32 frame_len, u8 *ret_action);
 
-#ifdef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
 struct net_device *wl_cfg80211_get_remain_on_channel_ndev(struct bcm_cfg80211 *cfg);
-#endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
 
 #ifdef WL_SUPPORT_ACS
 #define ACS_MSRMNT_DELAY 1000 /* dump_obss delay in ms */

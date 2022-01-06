@@ -2,6 +2,8 @@
  * fslog internals
  */
 
+/* @fs.sec -- cf53dae646d2c791b55906aa2fb074365c9b6a14 -- */
+
 #ifndef _LINUX_FSLOG_H
 #define  _LINUX_FSLOG_H
 

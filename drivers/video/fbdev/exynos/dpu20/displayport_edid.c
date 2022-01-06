@@ -279,6 +279,12 @@ void edid_parse_hdmi14_vsdb(unsigned char *edid_ext_blk,
 				&& edid_ext_blk[i + IEEE_OUI_0_BYTE_NUM] == HDMI14_IEEE_OUI_0
 				&& edid_ext_blk[i + IEEE_OUI_1_BYTE_NUM] == HDMI14_IEEE_OUI_1
 				&& edid_ext_blk[i + IEEE_OUI_2_BYTE_NUM] == HDMI14_IEEE_OUI_2) {
+			int vsdb_len = edid_ext_blk[i] & 0x1F;
+
+			/* check the length of vsdb */
+			if (vsdb_len < 8)
+				break;
+
 			displayport_dbg("EDID: find VSDB for HDMI 1.4\n");
 
 			if (edid_ext_blk[i + 8] & VSDB_HDMI_VIDEO_PRESETNT_MASK) {
@@ -293,6 +299,10 @@ void edid_parse_hdmi14_vsdb(unsigned char *edid_ext_blk,
 					vsdb_offset_calc = vsdb_offset_calc - 2;
 					displayport_dbg("EDID: Not support I_LATENCY_FILEDS_PRESETNT in VSDB\n");
 				}
+
+				/* check if vsdb length is enough for vic data */
+				if (vsdb_len < vsdb_offset_calc)
+					break;
 
 				hdmi_vic_len = (edid_ext_blk[i + vsdb_offset_calc]
 						& VSDB_VIC_LENGTH_MASK) >> VSDB_VIC_LENGTH_BIT_POSITION;

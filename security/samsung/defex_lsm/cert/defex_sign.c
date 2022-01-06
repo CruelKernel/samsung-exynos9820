@@ -22,16 +22,14 @@
 #include <kunit/mock.h>
 #endif
 
-#define SIGN_SIZE		256
 #define SHA256_DIGEST_SIZE	32
-#define MAX_DATA_LEN		300
 
 extern char defex_public_key_start[];
 extern char defex_public_key_end[];
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0)
 
-__visible_for_testing int __init defex_public_key_verify_signature(unsigned char *pub_key,
+__visible_for_testing int defex_public_key_verify_signature(unsigned char *pub_key,
 					int pub_key_size,
 					unsigned char *signature,
 					unsigned char *hash_sha256)
@@ -51,7 +49,7 @@ __visible_for_testing int __init defex_public_key_verify_signature(unsigned char
 
 static struct key *defex_keyring;
 
-__visible_for_testing struct key* __init defex_keyring_alloc(const char *description,
+__visible_for_testing struct key *defex_keyring_alloc(const char *description,
 					      kuid_t uid, kgid_t gid,
 					      const struct cred *cred,
 					      unsigned long flags)
@@ -67,7 +65,7 @@ __visible_for_testing struct key* __init defex_keyring_alloc(const char *descrip
 #endif
 }
 
-__visible_for_testing int __init defex_keyring_init(void)
+__visible_for_testing int defex_keyring_init(void)
 {
 	int err = 0;
 	const struct cred *cred = current_cred();
@@ -86,7 +84,7 @@ __visible_for_testing int __init defex_keyring_init(void)
 	return err;
 }
 
-__visible_for_testing int __init defex_public_key_verify_signature(unsigned char *pub_key,
+__visible_for_testing int defex_public_key_verify_signature(unsigned char *pub_key,
 					int pub_key_size,
 					unsigned char *signature,
 					unsigned char *hash_sha256)
@@ -144,47 +142,7 @@ __visible_for_testing int __init defex_public_key_verify_signature(unsigned char
 }
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0) */
 
-#ifdef DEFEX_DEBUG_ENABLE
-void __init blob(const char *buffer, const size_t bufLen, const int lineSize)
-{
-	size_t i = 0, line;
-	size_t j = 0, len = bufLen;
-	int offset = 0;
-	char c, stringToPrint[MAX_DATA_LEN];
-
-	do {
-		line = (len > lineSize)?lineSize:len;
-		offset  = 0;
-		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "| 0x%0*zx | ", PR_HEX(i));
-
-		for(j = 0; j < line; j++)
-			offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "%02X ", (unsigned char)buffer[i + j]);
-		if (line < lineSize) {
-			for(j = 0; j < lineSize - line; j++)
-				offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "   ");
-		}
-		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "| ");
-
-		for(j = 0; j < line; j++) {
-			c = buffer[i + j];
-			c = (c < 0x20)||(c >= 0x7F)?'.':c;
-			offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, "%c", c);
-		}
-		if (line < lineSize) {
-			for(j = 0; j < lineSize - line; j++)
-				offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " ");
-		}
-
-		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " |");
-		printk(KERN_INFO "%s\n", stringToPrint);
-		memset(stringToPrint, 0, MAX_DATA_LEN);
-		i += line;
-		len -= line;
-	} while(len);
-}
-#endif
-
-int __init defex_calc_hash(const char *data, unsigned int size, unsigned char *hash)
+int defex_calc_hash(const char *data, unsigned int size, unsigned char *hash)
 {
 	struct crypto_shash *handle;
 	struct shash_desc* shash;
@@ -222,7 +180,7 @@ clean_handle:
 	return err;
 }
 
-int __init defex_rules_signature_check(const char *rules_buffer, unsigned int rules_data_size, unsigned int *rules_size)
+int defex_rules_signature_check(const char *rules_buffer, unsigned int rules_data_size, unsigned int *rules_size)
 {
 	int res = -1;
 	unsigned int defex_public_key_size = (unsigned int)((defex_public_key_end - defex_public_key_start) & 0xffffffff);

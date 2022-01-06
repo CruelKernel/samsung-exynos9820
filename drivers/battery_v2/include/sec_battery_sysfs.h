@@ -257,6 +257,7 @@ enum {
 	BATT_FACTORY_MODE,
 #endif
 	BOOT_COMPLETED,
+	BATT_FULL_CAPACITY,
 };
 
 enum {

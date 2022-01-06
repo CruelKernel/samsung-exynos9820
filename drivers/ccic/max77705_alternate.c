@@ -185,6 +185,7 @@ static uint8_t DP_Pin_Assignment_Data[7] = {
 	DP_PIN_ASSIGNMENT_C,
 	DP_PIN_ASSIGNMENT_D,
 	DP_PIN_ASSIGNMENT_E,
+	DP_PIN_ASSIGNMENT_F,
 };
 
 int max77705_process_check_accessory(void *data)

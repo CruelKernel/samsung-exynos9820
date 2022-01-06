@@ -12,6 +12,8 @@
 #ifndef FIMC_IS_CIS_H
 #define FIMC_IS_CIS_H
 
+#include "fimc-is-metadata.h"
+
 /* if you need color-bar, change a below macro to 2 */
 #define CIS_TEST_PATTERN_MODE 0
 #define CIS_STREAM_OFF_WAIT_TIME 2000	/* 2ms */
@@ -75,5 +77,6 @@ int sensor_cis_wait_streamoff(struct v4l2_subdev *subdev);
 int sensor_cis_wait_streamon(struct v4l2_subdev *subdev);
 
 int sensor_cis_set_initial_exposure(struct v4l2_subdev *subdev);
+int sensor_cis_set_test_pattern(struct v4l2_subdev *subdev, camera2_sensor_ctl_t *sensor_ctl);
 
 #endif

@@ -13,12 +13,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <linux/dsms.h>
+
 #include <linux/workqueue.h>
 #include <linux/string.h>
 #include <linux/crc16.h>
 #include "five.h"
+
+#include "five_testing.h"
+#ifndef FIVE_KUNIT_ENABLED
+#include <linux/dsms.h>
 #include "five_dsms.h"
+#endif
 
 #define MESSAGE_BUFFER_SIZE    600
 #define MESSAGE_FIVE_INIT_SIZE 32
@@ -61,11 +66,17 @@ static int __init verifiedboot_state_setup(char *str)
 
 __setup("androidboot.verifiedbootstate=", verifiedboot_state_setup);
 
+// proxy to call kernel func
+u16 __mockable call_crc16(u16 crc, u8 const *buffer, size_t len)
+{
+	return crc16(crc, buffer, len);
+}
+
 /*`noinline` is required by DSMS.
  * Don't rename this function. File_name/function_name
  * is used by DSMS in dsms_whitelist as an access rule.
  */
-noinline void five_dsms_msg(const char *tag, const char *msg)
+noinline void __mockable five_dsms_msg(const char *tag, const char *msg)
 {
 	int ret;
 
@@ -138,7 +149,18 @@ void five_dsms_reset_integrity(const char *task_name, int result,
 
 	msg_size = snprintf(dsms_msg, MESSAGE_BUFFER_SIZE, "%s|%d|%s",
 		task_name, result, file_name ? kbasename(file_name) : "");
-	crc = crc16(0, dsms_msg, msg_size) % MAX_FIV2_NUM;
+
+	if (unlikely(msg_size < 0)) {
+		pr_err("FIVE: unable to create dsms message from task_name: %s, result: %d, file_name: %s\n",
+			task_name, result, file_name);
+		return;
+	}
+	if (unlikely(msg_size >= MESSAGE_BUFFER_SIZE)) {
+		pr_warn("FIVE: dsms message size: %d exceeds max buffer size: %d. The tail was truncated! Resulting message is: %s\n",
+			msg_size, MESSAGE_BUFFER_SIZE, dsms_msg);
+		msg_size = MESSAGE_BUFFER_SIZE - 1;
+	}
+	crc = call_crc16(0, dsms_msg, msg_size) % MAX_FIV2_NUM;
 
 	spin_lock(&five_dsms_lock);
 	if (!test_bit(crc, mask)) {
@@ -159,4 +181,3 @@ void five_dsms_init(const char *version, int result)
 	INIT_DELAYED_WORK(&context.work, five_dsms_init_report);
 	schedule_delayed_work(&context.work, msecs_to_jiffies(DEFERRED_TIME));
 }
-

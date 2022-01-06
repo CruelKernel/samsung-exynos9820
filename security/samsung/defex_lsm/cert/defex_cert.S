@@ -22,7 +22,7 @@
 	.globl VMLINUX_SYMBOL(name);	\
 	VMLINUX_SYMBOL(name):
 
-	.section ".init.data","aw"
+	.section ".ref.data", "aw"
 
 GLOBAL(defex_public_key_start)
 #ifdef DEFEX_DEBUG_ENABLE

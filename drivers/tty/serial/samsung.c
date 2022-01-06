@@ -48,6 +48,7 @@
 #include <linux/of.h>
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
+#include <linux/sched/signal.h>
 
 #include <asm/irq.h>
 
@@ -519,6 +520,31 @@ static void s3c24xx_serial_start_tx(struct uart_port *port)
 	}
 }
 
+/* Throttle is called in n_tty_receive_buf_common */
+static void s3c24xx_serial_throttle(struct uart_port *port)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	__set_bit(S3C64XX_UINTM_RXD, portaddrl(port, S3C64XX_UINTM));
+	wr_regl(port, S3C64XX_UINTP, S3C64XX_UINTM_RXD_MSK);
+
+	spin_unlock_irqrestore(&port->lock, flags);
+}
+
+/* Unthrottle is called in n_tty_read */
+static void s3c24xx_serial_unthrottle(struct uart_port *port)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&port->lock, flags);
+
+	__clear_bit(S3C64XX_UINTM_RXD, portaddrl(port, S3C64XX_UINTM));
+
+	spin_unlock_irqrestore(&port->lock, flags);
+}
+
 static void s3c24xx_serial_stop_rx(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
@@ -695,7 +721,6 @@ s3c24xx_serial_rx_chars(int irq, void *dev_id)
 	spin_unlock_irqrestore(&port->lock, flags);
 	tty_insert_flip_string(&port->state->port, insert_buf, insert_cnt);
 	tty_flip_buffer_push(&port->state->port);
-	flush_workqueue(system_unbound_wq);
 
  out:
 	if (ourport->port.line == BLUETOOTH_UART_PORT_LINE) {
@@ -779,6 +804,11 @@ out:
 
 
 	spin_unlock_irqrestore(&port->lock, flags);
+
+	if ((ourport->port.line == BLUETOOTH_UART_PORT_LINE) &&
+			signal_pending(current))
+		clear_thread_flag(TIF_SIGPENDING);
+
 	return IRQ_HANDLED;
 }
 
@@ -929,6 +959,8 @@ static int s3c24xx_serial_startup(struct uart_port *port)
 
 	ourport->cfg->wake_peer[port->line] =
 				s3c2410_serial_wake_peer[port->line];
+	ourport->wake_peer_en = 1;
+	ourport->wake_peer_pended = 0;
 
 	rx_enabled(port) = 1;
 
@@ -979,6 +1011,7 @@ static int s3c64xx_serial_startup(struct uart_port *port)
 
 	ourport->cfg->wake_peer[port->line] =
 				s3c2410_serial_wake_peer[port->line];
+	ourport->wake_peer_en = 1;
 
 	spin_lock_irqsave(&port->lock, flags);
 	wr_regl(port, S3C64XX_UINTM, 0xf);
@@ -1392,6 +1425,12 @@ s3c24xx_serial_verify_port(struct uart_port *port, struct serial_struct *ser)
 static void s3c24xx_serial_wake_peer(struct uart_port *port)
 {
 	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
+	struct s3c24xx_uart_port *ourport = to_ourport(port);
+
+	if (!ourport->wake_peer_en) {
+		ourport->wake_peer_pended = 1;
+		return ;
+	}
 
 	if (cfg->wake_peer[port->line])
 		cfg->wake_peer[port->line](port);
@@ -1448,6 +1487,8 @@ static struct uart_ops s3c24xx_serial_ops = {
 	.set_mctrl	= s3c24xx_serial_set_mctrl,
 	.stop_tx	= s3c24xx_serial_stop_tx,
 	.start_tx	= s3c24xx_serial_start_tx,
+	.throttle       = s3c24xx_serial_throttle,
+	.unthrottle     = s3c24xx_serial_unthrottle,
 	.stop_rx	= s3c24xx_serial_stop_rx,
 	.break_ctl	= s3c24xx_serial_break_ctl,
 	.startup	= s3c24xx_serial_startup,
@@ -1782,6 +1823,38 @@ static ssize_t s3c24xx_serial_show_clksrc(struct device *dev,
 
 static DEVICE_ATTR(clock_source, S_IRUGO, s3c24xx_serial_show_clksrc, NULL);
 #endif
+
+static int exynos_s3c64xx_pm_notifier(struct notifier_block *notifier,
+				       unsigned long pm_event, void *v)
+{
+	struct s3c24xx_uart_port *ourport;
+
+	list_for_each_entry(ourport, &drvdata_list, node) {
+		if (ourport->port.line != BLUETOOTH_UART_PORT_LINE)
+			continue;
+
+		switch (pm_event) {
+		case PM_SUSPEND_PREPARE:
+			dev_info(&ourport->pdev->dev, "SUSPEND_PREPARE : Turn off BT wake_peer\n");
+			ourport->wake_peer_en = 0;
+			break;
+		case PM_POST_SUSPEND:
+			dev_info(&ourport->pdev->dev, "PM_POST_SUSPEND : Turn on BT wake_peer\n");
+			ourport->wake_peer_en = 1;
+			if (ourport->wake_peer_pended) {
+			      ourport->wake_peer_pended = 0;
+			      s3c24xx_serial_wake_peer(&ourport->port);
+			}
+			break;
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block exynos_s3c64xx_nb = {
+	.notifier_call = exynos_s3c64xx_pm_notifier,
+};
 
 /* Device driver serial port probe */
 
@@ -2363,6 +2436,8 @@ static int s3c24xx_serial_suspend(struct device *dev)
 	unsigned int ucon;
 #endif
 
+	dev_err(dev, "%s %d\n", __func__, __LINE__);
+
 	if (port) {
 		/*
 		 * If rts line must be protected while suspending
@@ -2389,6 +2464,23 @@ static int s3c24xx_serial_suspend(struct device *dev)
 #endif
 		if (ourport->dbg_mode & UART_DBG_MODE)
 			dev_err(dev, "UART suspend notification for tty framework.\n");
+	}
+
+	return 0;
+}
+
+static int s3c24xx_serial_prepare(struct device *dev)
+{
+	struct uart_port *port = s3c24xx_dev_to_port(dev);
+	struct s3c24xx_uart_port *ourport = to_ourport(port);
+
+	if (ourport->port.line == BLUETOOTH_UART_PORT_LINE) {
+		dev_info(&ourport->pdev->dev, "PREPARE : Turn on BT wake_peer\n");
+		ourport->wake_peer_en = 1;
+		if (ourport->wake_peer_pended) {
+			ourport->wake_peer_pended = 0;
+			s3c24xx_serial_wake_peer(&ourport->port);
+		}
 	}
 
 	return 0;
@@ -2440,6 +2532,7 @@ static const struct dev_pm_ops s3c24xx_serial_pm_ops = {
 	.suspend = s3c24xx_serial_suspend,
 	.resume = s3c24xx_serial_resume,
 	.resume_noirq = s3c24xx_serial_resume_noirq,
+	.prepare = s3c24xx_serial_prepare,
 };
 #define SERIAL_SAMSUNG_PM_OPS	(&s3c24xx_serial_pm_ops)
 
@@ -2915,6 +3008,7 @@ static int __init s3c24xx_serial_modinit(void)
 #ifdef CONFIG_CPU_IDLE
 	exynos_pm_register_notifier(&s3c24xx_serial_notifier_block);
 #endif
+	register_pm_notifier(&exynos_s3c64xx_nb);
 
 	return platform_driver_register(&samsung_serial_driver);
 }

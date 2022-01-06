@@ -102,24 +102,7 @@
 		(ids_ptr)->egid = egid; \
 		(cred_data_ptr)->cred_flags |= cred_flags; } while(0)
 
-struct defex_privesc {
-	struct kobject kobj;
-	unsigned int status;
-};
-#define to_privesc_obj(obj) container_of(obj, struct defex_privesc, kobj)
-
-struct privesc_attribute {
-	struct attribute attr;
-	ssize_t (*show)(struct defex_privesc *privesc, struct privesc_attribute *attr, char *buf);
-	ssize_t (*store)(struct defex_privesc *foo, struct privesc_attribute *attr, const char *buf, size_t count);
-};
-#define to_privesc_attr(obj) container_of(obj, struct privesc_attribute, attr)
-
-struct defex_privesc *task_defex_create_privesc_obj(struct kset *defex_kset);
-void task_defex_destroy_privesc_obj(struct defex_privesc *privesc);
-extern struct defex_privesc *global_privesc_obj;
-ssize_t task_defex_privesc_store_status(struct defex_privesc *privesc_obj,
-		struct privesc_attribute *attr, const char *buf, size_t count);
+extern unsigned char global_privesc_status;
 
 void get_task_creds(struct task_struct *p, unsigned int *uid_ptr, unsigned int *fsuid_ptr, unsigned int *egid_ptr, unsigned short *cred_flags_ptr);
 int set_task_creds(struct task_struct *p, unsigned int uid, unsigned int fsuid, unsigned int egid, unsigned short cred_flags);
@@ -130,47 +113,13 @@ int is_task_creds_ready(void);
 /* SafePlace feature */
 /* -------------------------------------------------------------------------- */
 
-struct defex_safeplace {
-	struct kobject kobj;
-	unsigned int status;
-};
-#define to_safeplace_obj(obj) container_of(obj, struct defex_safeplace, kobj)
-
-struct safeplace_attribute {
-	struct attribute attr;
-	ssize_t (*show)(struct defex_safeplace *safeplace, struct safeplace_attribute *attr, char *buf);
-	ssize_t (*store)(struct defex_safeplace *foo, struct safeplace_attribute *attr, const char *buf, size_t count);
-};
-#define to_safeplace_attr(obj) container_of(obj, struct safeplace_attribute, attr)
-
-struct defex_safeplace *task_defex_create_safeplace_obj(struct kset *defex_kset);
-extern void task_defex_destroy_safeplace_obj(struct defex_safeplace *safeplace);
-extern struct defex_safeplace *global_safeplace_obj;
-ssize_t safeplace_status_store(struct defex_safeplace *safeplace_obj,
-		struct safeplace_attribute *attr, const char *buf, size_t count);
+extern unsigned char global_safeplace_status;
 
 /* -------------------------------------------------------------------------- */
 /* Immutable feature */
 /* -------------------------------------------------------------------------- */
 
-struct defex_immutable {
-	struct kobject kobj;
-	unsigned int status;
-};
-#define to_immutable_obj(obj) container_of(obj, struct defex_immutable, kobj)
-
-struct immutable_attribute {
-	struct attribute attr;
-	ssize_t (*show)(struct defex_immutable *immutable, struct immutable_attribute *attr, char *buf);
-	ssize_t (*store)(struct defex_immutable *foo, struct immutable_attribute *attr, const char *buf, size_t count);
-};
-#define to_immutable_attr(obj) container_of(obj, struct immutable_attribute, attr)
-
-struct defex_immutable *task_defex_create_immutable_obj(struct kset *defex_kset);
-extern void task_defex_destroy_immutable_obj(struct defex_immutable *immutable);
-extern struct defex_immutable *global_immutable_obj;
-ssize_t immutable_status_store(struct defex_immutable *immutable_obj,
-		struct immutable_attribute *attr, const char *buf, size_t count);
+extern unsigned char global_immutable_status;
 
 /* -------------------------------------------------------------------------- */
 /* Common Helper API */
@@ -187,6 +136,8 @@ struct defex_context {
 	char *target_name;
 	char *target_name_buff;
 	char *process_name_buff;
+
+	/* NB: cred must be the last field */
 	struct cred cred;
 };
 
@@ -194,7 +145,7 @@ extern const char unknown_file[];
 
 struct file *local_fopen(const char *fname, int flags, umode_t mode);
 int local_fread(struct file *f, loff_t offset, void *ptr, unsigned long bytes);
-void init_defex_context(struct defex_context *dc, int syscall, struct task_struct *p, struct file *f);
+int init_defex_context(struct defex_context *dc, int syscall, struct task_struct *p, struct file *f);
 void release_defex_context(struct defex_context *dc);
 struct file *get_dc_process_file(struct defex_context *dc);
 const struct path *get_dc_process_dpath(struct defex_context *dc);
@@ -216,8 +167,7 @@ static inline void safe_str_free(void *ptr)
 /* Defex lookup API */
 /* -------------------------------------------------------------------------- */
 
-int rules_lookup(const struct path *dpath, int attribute, struct file *f);
-int rules_lookup2(const char *target_file, int attribute, struct file *f);
+int rules_lookup(const char *target_file, int attribute, struct file *f);
 
 /* -------------------------------------------------------------------------- */
 /* Defex init API */
@@ -225,9 +175,23 @@ int rules_lookup2(const char *target_file, int attribute, struct file *f);
 
 int __init defex_init_sysfs(void);
 void __init creds_fast_hash_init(void);
+int __init do_load_rules(void);
 
+/* -------------------------------------------------------------------------- */
+/* Defex debug API */
+/* -------------------------------------------------------------------------- */
+
+int immutable_status_store(const char *status_str);
+int privesc_status_store(const char *status_str);
+int safeplace_status_store(const char *status_str);
+
+extern bool boot_state_recovery __ro_after_init;
 #ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
 extern bool boot_state_unlocked __ro_after_init;
+extern int warranty_bit __ro_after_init;
+#else
+#define boot_state_unlocked	(0)
+#define warranty_bit		(0)
 #endif /* DEFEX_DEPENDING_ON_OEMUNLOCK */
 
 #endif /* CONFIG_SECURITY_DEFEX_INTERNAL_H */

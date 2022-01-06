@@ -553,6 +553,7 @@ void wifi_ctrlfunc_unregister_drv(void)
 	}
 #ifdef BCMDHD_MODULAR
 	dhd_wlan_deinit();
+	osl_static_mem_deinit(NULL, NULL);
 #ifdef WBRC
 	wbrc_exit();
 #endif /* WBRC */

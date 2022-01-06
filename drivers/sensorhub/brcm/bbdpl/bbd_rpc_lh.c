@@ -284,8 +284,10 @@ static int BbdBridge_OnRpcReceived(unsigned short usRpcId, unsigned char *pRpcPa
 
 		size |= *pRpcPayload++ << 8;
 		result = bbd_sensor_write(pRpcPayload, size);
-		WARN_ON(size != usRpcLen - 2);
-		WARN_ON((short) result != size);
+
+		if (size != usRpcLen - 2 || (short) result != size)
+			pr_err("%s: size error(%d)", __func__, size);
+
 		return 1;
 	}
 	return 0;
@@ -360,7 +362,7 @@ static int BbdBridge_OnPacketReceived(unsigned char *pucData, unsigned short usS
 			lSize -= usRpcLen;
 		}
 	} else {
-		WARN_ON(1);
+		pr_err("[SSPBBD] BbdBridge_CheckPacketSanity check fail\n");
 	}
 	//pr_info("[SSPBBD]: %s sensor:%d, gnss:%d\n", __func__, sensor, gnss);
 	return (sensor > 0);

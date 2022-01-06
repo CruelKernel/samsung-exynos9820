@@ -77,6 +77,10 @@
 #include <linux/defex.h>
 #endif
 
+#if 0 /*def CONFIG_RKP_NS_PROT */
+#include "mount.h"
+#endif
+
 #ifdef CONFIG_RKP_KDP
 #define rkp_is_nonroot(x) ((x->cred->type)>>1 & 1)
 #ifdef CONFIG_LOD_SEC
@@ -1256,7 +1260,7 @@ void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec)
 	perf_event_comm(tsk, exec);
 }
 
-#ifdef CONFIG_RKP_NS_PROT
+#if 0 /*def CONFIG_RKP_NS_PROT*/
 extern struct super_block *sys_sb;
 extern struct super_block *odm_sb;
 extern struct super_block *vendor_sb;
@@ -1281,6 +1285,45 @@ static int kdp_check_sb_mismatch(struct super_block *sb)
 	return 0;
 }
 
+static int kdp_check_path_mismatch(struct vfsmount *vfsmnt)
+{
+	int i = 0;
+	int ret = -1;
+	char *buf = NULL;
+	char *path_name = NULL;
+	const char* skip_path[] = {
+		"/com.android.runtime",
+		"/com.android.conscrypt",
+		"/com.android.art",
+		"/com.android.adbd",
+		"/com.android.sdkext",
+	};
+
+	if (!vfsmnt->bp_mount) {
+		printk(KERN_ERR "vfsmnt->bp_mount is NULL");
+		return -ENOMEM;
+	}
+
+	buf = kzalloc(PATH_MAX, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	path_name = dentry_path_raw(vfsmnt->bp_mount->mnt_mountpoint, buf, PATH_MAX);
+	if (IS_ERR(path_name))
+		goto out;
+
+	for (; i < ARRAY_SIZE(skip_path); ++i) {
+		if (!strncmp(path_name, skip_path[i], strlen(skip_path[i]))) {
+			ret = 0;
+			break;
+		}
+	}
+out:
+	kfree(buf);
+
+	return ret;
+}
+
 static int invalid_drive(struct linux_binprm * bprm)
 {
 	struct super_block *sb =  NULL;
@@ -1292,6 +1335,11 @@ static int invalid_drive(struct linux_binprm * bprm)
 		printk("\nInvalid Drive #%s# #%p#\n",bprm->filename, vfsmnt);
 		return 1;
 	}
+
+	if (!kdp_check_path_mismatch(vfsmnt)) {
+		return 0;
+	}
+
 	sb = vfsmnt->mnt_sb;
 
 	if(kdp_check_sb_mismatch(sb)) {
@@ -1351,7 +1399,7 @@ int flush_old_exec(struct linux_binprm * bprm)
 	 * Release all of the old mmap stuff
 	 */
 	acct_arg_size(bprm, 0);
-#ifdef CONFIG_RKP_NS_PROT
+#if 0 /*def CONFIG_RKP_NS_PROT*/
 	if(rkp_cred_enable &&
 		is_rkp_priv_task() && 
 		invalid_drive(bprm)) {

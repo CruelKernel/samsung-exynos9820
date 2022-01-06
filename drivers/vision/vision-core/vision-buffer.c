@@ -232,6 +232,7 @@ p_err:
 }
 #endif
 
+#ifndef CONFIG_ION_EXYNOS
 static int __vb_unmap_virtptr(struct vb_queue *q, struct vb_buffer *buffer)
 {
 	int ret = 0;
@@ -255,6 +256,7 @@ static int __vb_unmap_virtptr(struct vb_queue *q, struct vb_buffer *buffer)
 p_err:
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_ION_EXYNOS
 static int __vb_map_dmabuf(
@@ -263,22 +265,26 @@ static int __vb_map_dmabuf(
 	int ret = 0;
 	bool complete_suc = false;
 
+	struct dma_buf *dma_buf;
 	struct dma_buf_attachment *attachment;
 	struct sg_table *sgt;
 	dma_addr_t daddr;
 	void *vaddr;
 
+	buffer->dma_buf = NULL;
 	buffer->attachment = NULL;
 	buffer->sgt = NULL;
 	buffer->daddr = 0;
 	buffer->vaddr = NULL;
 
-	buffer->dma_buf = dma_buf_get(buffer->m.fd);
-	if (IS_ERR_OR_NULL(buffer->dma_buf)) {
-		vision_err("dma_buf_get is fail(0x%08x)\n", buffer->dma_buf);
+	dma_buf = dma_buf_get(buffer->m.fd);
+	if (IS_ERR_OR_NULL(dma_buf)) {
+		vision_err("dma_buf_get is fail(%p)\n", dma_buf);
 		ret = -EINVAL;
 		goto p_err;
 	}
+	buffer->dma_buf = dma_buf;
+
 
 	attachment = dma_buf_attach(buffer->dma_buf, q->alloc_ctx);
 	if (IS_ERR(attachment)) {
@@ -321,6 +327,7 @@ p_err:
 }
 #endif
 
+#ifndef CONFIG_ION_EXYNOS
 static int __vb_map_virtptr(
 	struct vb_queue *q, struct vb_buffer *buffer, u32 size)
 {
@@ -350,6 +357,7 @@ static int __vb_map_virtptr(
 p_err:
 	return ret;
 }
+#endif
 
 static int __vb_queue_alloc(struct vb_queue *q,
 	struct vs4l_container_list *c)
@@ -607,7 +615,7 @@ static int __vb_buf_prepare(struct vb_queue *q, struct vb_bundle *bundle)
 				}
 			}
 			break;
-#endif
+#else
 		case VS4L_MEMORY_VIRTPTR:
 			for (j = 0; j < k; ++j) {
 				buffer = &container->buffers[j];
@@ -627,6 +635,7 @@ static int __vb_buf_prepare(struct vb_queue *q, struct vb_bundle *bundle)
 				}
 			}
 			break;
+#endif
 		default:
 			vision_err("unsupported container memory type\n");
 			ret = -EINVAL;
@@ -693,7 +702,7 @@ static int __vb_buf_unprepare(struct vb_queue *q, struct vb_bundle *bundle)
 				}
 			}
 			break;
-#endif
+#else
 		case VS4L_MEMORY_VIRTPTR:
 			for (j = 0; j < k; ++j) {
 				buffer = &container->buffers[j];
@@ -705,6 +714,7 @@ static int __vb_buf_unprepare(struct vb_queue *q, struct vb_bundle *bundle)
 				}
 			}
 			break;
+#endif
 		default:
 			vision_err("unsupported container memory type\n");
 			ret = -EINVAL;
@@ -887,7 +897,9 @@ int vb_queue_s_format(struct vb_queue *q, struct vs4l_format_list *flist)
 	if (q->format.count > VB_MAX_BUFFER) {
 			vision_err("flist->count(%d) cannot be greater to VB_MAX_BUFFER(%d)\n", flist->count, VB_MAX_BUFFER);
 			ret = -EINVAL;
-			kfree(q->format.formats);
+			if (q->format.formats)
+				kfree(q->format.formats);
+			q->format.formats = NULL;
 			goto p_err;
 		}
 
@@ -897,7 +909,9 @@ int vb_queue_s_format(struct vb_queue *q, struct vs4l_format_list *flist)
 		fmt = __vb_find_format(f->format);
 		if (!fmt) {
 			vision_err("__vb_find_format is fail\n");
-			kfree(q->format.formats);
+			if (q->format.formats)
+				kfree(q->format.formats);
+			q->format.formats = NULL;
 			ret = -EINVAL;
 			goto p_err;
 		}
@@ -918,7 +932,9 @@ int vb_queue_s_format(struct vb_queue *q, struct vs4l_format_list *flist)
 
 		if (q->format.formats[i].plane >= VB_MAX_PLANES) {
 			vision_err("f->plane(%d) cannot be greater or equal to VB_MAX_PLANES(%d)\n", q->format.formats[i].plane, VB_MAX_PLANES);
-			kfree(q->format.formats);
+			if (q->format.formats)
+				kfree(q->format.formats);
+			q->format.formats = NULL;
 			ret = -EINVAL;
 			goto p_err;
 		}
@@ -926,7 +942,10 @@ int vb_queue_s_format(struct vb_queue *q, struct vs4l_format_list *flist)
 		ret = __vb_plane_size(&q->format.formats[i]);
 		if (ret) {
 			vision_err("__vb_plane_size is fail(%d)\n", ret);
-			kfree(q->format.formats);
+			if (q->format.formats)
+				kfree(q->format.formats);
+			q->format.formats = NULL;
+			ret = -EINVAL;
 			goto p_err;
 		}
 	}

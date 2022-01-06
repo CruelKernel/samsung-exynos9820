@@ -24,8 +24,9 @@ static enum power_supply_property max77705_fuelgauge_props[] = {
 
 bool max77705_fg_fuelalert_init(struct max77705_fuelgauge_data *fuelgauge,
 				int soc);
-static void max77705_fg_periodic_read_power(
-				struct max77705_fuelgauge_data *fuelgauge);
+
+static void max77705_fg_periodic_read_power(struct max77705_fuelgauge_data *fuelgauge);
+static int max77705_fg_read_vfsoc(struct max77705_fuelgauge_data *fuelgauge);
 
 static struct device_attribute max77705_fg_attrs[] = {
 	MAX77705_FG_ATTR(fg_data),
@@ -35,9 +36,10 @@ static struct device_attribute max77705_fg_attrs[] = {
 static void max77705_fg_adaptation_wa(struct max77705_fuelgauge_data *fuelgauge)
 {
 	u32 rcomp0;
-	u32 fullcapnom;
+	u32 fullcapnom, fullcaprep, designcap;
 	u32 temp;
 	u8 data[2];
+	int vfsoc;
 	struct fg_reset_wa *fg_reset_data = fuelgauge->fg_reset_data;
 
 	if (!fg_reset_data)
@@ -56,7 +58,7 @@ static void max77705_fg_adaptation_wa(struct max77705_fuelgauge_data *fuelgauge)
 		pr_err("%s: Failed to read TEMPCO\n", __func__);
 		return;
 	}
-	/* tempcohot = data[1]; 	tempcocold = data[0]; */
+	/* tempcohot = data[1]; tempcocold = data[0]; */
 	temp = (fg_reset_data->tempco & 0xFF00) >> 8;
 	if ((data[1] > (temp * 14 / 10)) || (data[1] < (temp * 7 / 10))) {
 		pr_err("%s: abnormal TempCoHot (0x%x / 0x%x)\n", __func__, data[1], temp);
@@ -69,22 +71,27 @@ static void max77705_fg_adaptation_wa(struct max77705_fuelgauge_data *fuelgauge)
 		goto set_default_value;
 	}
 
+	/* get DESIGNCAP */
+	designcap = max77705_read_word(fuelgauge->i2c, DESIGNCAP_REG);
+
 	/* check FULLCAPNOM */
 	fullcapnom = max77705_read_word(fuelgauge->i2c, FULLCAP_NOM_REG);
-	temp = max77705_read_word(fuelgauge->i2c, DESIGNCAP_REG);
-	if (fullcapnom > (temp * 11 / 10)) {
-		pr_err("%s: abnormal fullcapnom (0x%x / 0x%x)\n", __func__, fullcapnom, temp);
-		goto re_calculation;
+	if (fullcapnom > (designcap * 11 / 10)) {
+		pr_err("%s: abnormal fullcapnom (0x%x / 0x%x)\n", __func__, fullcapnom, designcap);
+		goto re_calculation_fullcap_nom;
+	}
+
+	/* check FULLCAPREP */
+	fullcaprep = max77705_read_word(fuelgauge->i2c, FULLCAP_REP_REG);
+	if (fullcaprep > (designcap * 115 / 100)) {
+		pr_err("%s: abnormal fullcaprep (0x%x / 0x%x)\n", __func__, fullcaprep, designcap);
+		goto re_calculation_fullcap_rep;
 	}
 
 	return;
 
-set_default_value:
-	pr_err("%s: enter set_default_value\n", __func__);
-	max77705_write_word(fuelgauge->i2c, RCOMP_REG, fg_reset_data->rcomp0);
-	max77705_write_word(fuelgauge->i2c, TEMPCO_REG, fg_reset_data->tempco);
-re_calculation:
-	pr_err("%s: enter re_calculation\n", __func__);
+re_calculation_fullcap_nom:
+	pr_err("%s: enter re_calculation fullcapnom\n", __func__);
 	max77705_write_word(fuelgauge->i2c, DPACC_REG, fg_reset_data->dPacc);
 	max77705_write_word(fuelgauge->i2c, DQACC_REG, fg_reset_data->dQacc);
 	max77705_write_word(fuelgauge->i2c, FULLCAP_NOM_REG, fg_reset_data->fullcapnom);
@@ -92,6 +99,17 @@ re_calculation:
 	temp &= 0xFF0F;
 	max77705_write_word(fuelgauge->i2c, LEARN_CFG_REG, temp);
 	max77705_write_word(fuelgauge->i2c, CYCLES_REG, 0);
+re_calculation_fullcap_rep:
+	pr_err("%s: enter re_calculation fullcaprep\n", __func__);
+	vfsoc = max77705_fg_read_vfsoc(fuelgauge);
+	max77705_write_word(fuelgauge->i2c, REMCAP_REP_REG, vfsoc * fg_reset_data->fullcapnom / 1000);
+	msleep(200);
+	max77705_write_word(fuelgauge->i2c, FULLCAP_REP_REG, fg_reset_data->fullcapnom);
+	fuelgauge->err_cnt++;
+set_default_value:
+	pr_err("%s: enter set_default_value\n", __func__);
+	max77705_write_word(fuelgauge->i2c, RCOMP_REG, fg_reset_data->rcomp0);
+	max77705_write_word(fuelgauge->i2c, TEMPCO_REG, fg_reset_data->tempco);
 
 	return;
 }
@@ -1069,8 +1087,8 @@ static void max77705_fg_periodic_read_power(
 	vbyp = max77705_get_fuelgauge_value(fuelgauge, FG_VBYP);
 	qh = max77705_get_fuelgauge_value(fuelgauge, FG_QH);
 
-	pr_info("[FG power] ISYS(%dmA),ISYSAVG(%dmA),VSYS(%dmV),IIN(%dmA),VBYP(%dmV) QH(%d uah)\n",
-		isys, isys_avg, vsys, iin, vbyp, qh);
+	pr_info("[FG power] ISYS(%dmA),ISYSAVG(%dmA),VSYS(%dmV),IIN(%dmA),VBYP(%dmV),QH(%d uah),WA(%d)\n",
+		isys, isys_avg, vsys, iin, vbyp, qh, fuelgauge->err_cnt);
 }
 
 static void max77705_fg_read_power_log(
@@ -1607,6 +1625,52 @@ static void max77705_set_full_value(struct max77705_fuelgauge_data *fuelgauge,
 }
 #endif
 
+#define FULL_CAPACITY 850
+static int calc_ttf_to_full_capacity(struct max77705_fuelgauge_data *fuelgauge,
+		    union power_supply_propval *val)
+{
+	struct cv_slope *cv_data = fuelgauge->cv_data;
+	int i, cc_time = 0, cv_time = 0;
+	int soc = FULL_CAPACITY;
+	int charge_current = val->intval;
+	int design_cap = fuelgauge->ttf_capacity;
+
+	if (!cv_data || (val->intval <= 0)) {
+		pr_info("%s: no cv_data or val: %d\n", __func__, val->intval);
+		return -1;
+	}
+	for (i = 0; i < fuelgauge->cv_data_length; i++) {
+		if (charge_current >= cv_data[i].fg_current)
+			break;
+	}
+	i = i >= fuelgauge->cv_data_length ? fuelgauge->cv_data_length - 1 : i;
+	if (cv_data[i].soc < soc) {
+		for (i = 0; i < fuelgauge->cv_data_length; i++) {
+			if (soc <= cv_data[i].soc)
+				break;
+		}
+		cv_time =
+		    ((cv_data[i - 1].time - cv_data[i].time) * (cv_data[i].soc - soc)
+		     / (cv_data[i].soc - cv_data[i - 1].soc)) + cv_data[i].time;
+	} else {		/* CC mode || NONE */
+		cv_time = cv_data[i].time;
+		cc_time =
+			design_cap * (cv_data[i].soc - soc) / val->intval * 3600 / 1000;
+		pr_debug("%s: cc_time: %d\n", __func__, cc_time);
+		if (cc_time < 0)
+			cc_time = 0;
+	}
+
+	pr_debug("%s: cap: %d, soc: %4d, T: %6d, avg: %4d, cv soc: %4d, i: %4d, val: %d\n",
+	     __func__, design_cap, soc, cv_time + cc_time,
+	     fuelgauge->current_avg, cv_data[i].soc, i, val->intval);
+
+	if (cv_time + cc_time >= 0)
+		return cv_time + cc_time;
+	else
+		return 0;
+}
+
 static int calc_ttf(struct max77705_fuelgauge_data *fuelgauge,
 		    union power_supply_propval *val)
 {
@@ -2045,6 +2109,9 @@ static int max77705_fg_get_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_JIG_GPIO:
 			val->intval = gpio_get_value(fuelgauge->pdata->jig_gpio);
 			pr_info("%s: jig gpio = %d \n", __func__, val->intval);
+			break;
+		case POWER_SUPPLY_EXT_PROP_TTF_FULL_CAPACITY:
+			val->intval = calc_ttf_to_full_capacity(fuelgauge, val);
 			break;
 		default:
 			return -EINVAL;
@@ -2670,6 +2737,7 @@ static int max77705_fuelgauge_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+	fuelgauge->err_cnt = 0;
 	fuelgauge->sleep_initial_update_of_soc = false;
 	fuelgauge->initial_update_of_soc = true;
 #if defined(CONFIG_BATTERY_CISD)

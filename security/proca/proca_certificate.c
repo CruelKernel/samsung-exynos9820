@@ -14,16 +14,18 @@
  * GNU General Public License for more details.
  */
 
-#include "proca_log.h"
-#include "proca_certificate.h"
-
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/err.h>
 #include <crypto/hash.h>
+#include <crypto/hash_info.h>
 #include <crypto/sha.h>
 #include <linux/version.h>
 #include <linux/file.h>
+
+#include "proca_log.h"
+#include "proca_certificate.h"
+#include "five_crypto.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 42)
 #include "proca_certificate.asn1.h"
@@ -140,7 +142,12 @@ int compare_with_five_signature(const struct proca_certificate *certificate,
 	}
 
 	sdesc->tfm = g_validation_shash;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
+/*
+ * flags was deleted from struct shash_desc in Android Kernel v5.2.0
+ */
 	sdesc->flags = 0;
+#endif
 
 	rc = crypto_shash_init(sdesc);
 	if (rc != 0) {
@@ -270,4 +277,25 @@ bool is_certificate_relevant_to_task(
 	}
 
 	return true;
+}
+
+#define PROCA_MAX_DIGEST_SIZE 64
+
+bool is_certificate_relevant_to_file(
+			const struct proca_certificate *parsed_cert,
+			struct file *file)
+{
+	int result = 0;
+	u8 stored_file_hash[PROCA_MAX_DIGEST_SIZE] = {0};
+	size_t hash_len = sizeof(stored_file_hash);
+
+	BUG_ON(!file || !parsed_cert);
+
+	result = five_calc_file_hash(file, HASH_ALGO_SHA1, stored_file_hash, &hash_len);
+	if (result) {
+		PROCA_WARN_LOG("File hash calculation is failed");
+		return false;
+	}
+
+	return compare_with_five_signature(parsed_cert, stored_file_hash, hash_len);
 }

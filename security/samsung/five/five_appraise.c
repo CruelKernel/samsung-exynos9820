@@ -20,7 +20,6 @@
 #include <linux/module.h>
 #include <linux/file.h>
 #include <linux/fs.h>
-#include <linux/xattr.h>
 #include <linux/magic.h>
 #include <crypto/hash_info.h>
 
@@ -291,7 +290,7 @@ int five_appraise_measurement(struct task_struct *task, int func,
 
 	BUG_ON(!task || !iint || !file);
 
-	prev_integrity = task_integrity_read(task->integrity);
+	prev_integrity = task_integrity_read(TASK_INTEGRITY(task));
 	dentry = file->f_path.dentry;
 	inode = d_backing_inode(dentry);
 
@@ -439,7 +438,8 @@ int five_appraise_measurement(struct task_struct *task, int func,
 
 out:
 	if (status == FIVE_FILE_FAIL || status == FIVE_FILE_UNKNOWN) {
-		task_integrity_set_reset_reason(task->integrity, cause, file);
+		task_integrity_set_reset_reason(TASK_INTEGRITY(task),
+						cause, file);
 		five_audit_verbose(task, file, five_get_string_fn(func),
 				prev_integrity, prev_integrity,
 				tint_reset_cause_to_string(cause), rc);
@@ -513,7 +513,7 @@ static int five_update_xattr(struct task_struct *task,
 	if (rc)
 		goto exit;
 
-	if (task_integrity_allow_sign(task->integrity)) {
+	if (task_integrity_allow_sign(TASK_INTEGRITY(task))) {
 		rc = five_fix_xattr(task, dentry, file,
 			(void **)&raw_cert, &raw_cert_len, iint, label);
 		if (rc)
@@ -732,7 +732,7 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 		return -EROFS;
 	}
 
-	if (task_integrity_allow_sign(current->integrity)) {
+	if (task_integrity_allow_sign(TASK_INTEGRITY(current))) {
 		rc = copy_label(label, &l);
 		if (rc) {
 			pr_err("FIVE: Can't copy integrity label\n");
@@ -740,7 +740,7 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 		}
 	} else {
 		enum task_integrity_value tint =
-				    task_integrity_read(current->integrity);
+			task_integrity_read(TASK_INTEGRITY(current));
 
 		five_audit_err(current, file, "fcntl_sign", tint, tint,
 				"sign:no-perm", -EPERM);
@@ -798,7 +798,7 @@ int five_fcntl_edit(struct file *file)
 	if (rc)
 		return rc;
 
-	if (!task_integrity_allow_sign(current->integrity))
+	if (!task_integrity_allow_sign(TASK_INTEGRITY(current)))
 		return -EPERM;
 
 	inode_lock(inode);

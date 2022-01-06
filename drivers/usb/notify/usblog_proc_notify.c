@@ -1165,8 +1165,8 @@ void mode_store_usblog_notify(int type, char *param1)
 				continue;
 			if (USBLOG_MAX_STRING_SIZE
 				- strlen(md_buffer->usbmode_str) < 5) {
-				strncpy(md_buffer->usbmode_str, "overflow",
-					sizeof(md_buffer->usbmode_str)-1);
+				memset(md_buffer->usbmode_str + (USBLOG_MAX_STRING_SIZE-2), 0, 2);
+				strncat(md_buffer->usbmode_str, ".", 1);
 				b = NULL;
 			} else {
 				strncat(md_buffer->usbmode_str, ",", 1);

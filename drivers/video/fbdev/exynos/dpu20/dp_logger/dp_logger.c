@@ -99,7 +99,7 @@ void dp_logger_print(const char *fmt, ...)
 void dp_print_hex_dump(void *buf, void *pref, size_t size)
 {
 	uint8_t *ptr = buf;
-	uint32_t i;
+	size_t i;
 	char tmp[128] = {0x0, };
 	char *ptmp = tmp;
 	int len;

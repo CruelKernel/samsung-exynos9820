@@ -100,15 +100,17 @@ config PROC_UID
 config PROC_FSLOG
 	bool "Enable FS logs for improving filesystem debug"
 	depends on PROC_FS
-	select PROC_STLOG
-	select PROC_DLOG
 	default y
 
 config PROC_STLOG
 	bool "Enable Storage log"
+	depends on PROC_FSLOG
+	default y
 
 config PROC_DLOG
 	bool "Enable delete logs for improving filesystem debug"
+	depends on PROC_FSLOG
+	default y
 
 config PROC_PARSE_OPTION_ON_MOUNT
 	bool "Parsing mount option on mount"

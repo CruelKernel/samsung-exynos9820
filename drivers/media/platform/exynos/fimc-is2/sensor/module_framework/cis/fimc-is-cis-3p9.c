@@ -258,6 +258,7 @@ int sensor_3p9_cis_init(struct v4l2_subdev *subdev)
 	cis->cis_data->dual_slave = false;
 	cis->long_term_mode.sen_strm_off_on_step = 0;
 	cis->long_term_mode.sen_strm_off_on_enable = false;
+	cis->cis_data->cur_pattern_mode = SENSOR_TEST_PATTERN_MODE_OFF;
 
 	sensor_3p9_cis_data_calculation(sensor_3p9_pllinfos[setfile_index], cis->cis_data);
 
@@ -1889,6 +1890,7 @@ static struct fimc_is_cis_ops cis_ops = {
 	.cis_wait_streamoff = sensor_cis_wait_streamoff,
 	.cis_wait_streamon = sensor_cis_wait_streamon,
 	.cis_check_rev_on_init = sensor_cis_check_rev_on_init,
+	.cis_set_test_pattern = sensor_cis_set_test_pattern,
 	.cis_set_initial_exposure = sensor_cis_set_initial_exposure,
 	.cis_recover_stream_on = sensor_3p9_cis_recover_stream_on,
 	.cis_set_factory_control = sensor_3p9_cis_set_factory_control,

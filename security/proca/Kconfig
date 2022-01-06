@@ -9,6 +9,21 @@ config PROCA
 	help
 	   Enable Process Authenticator
 
+config PROCA_GKI_10
+	bool "GKI 1.0 compatible version of PROCA"
+	depends on PROCA
+	default y if FIVE_GKI_10
+	default n
+	help
+	   Build GKI 1.0 compatible version of PROCA
+
+config PROCA_S_OS
+	bool "S OS compatible version of PROCA"
+	depends on PROCA
+	default n
+	help
+	   Build S OS compatible version of PROCA
+
 config PROCA_DEBUG
 	bool "PROCA Debug mode"
 	depends on PROCA && !SAMSUNG_PRODUCT_SHIP

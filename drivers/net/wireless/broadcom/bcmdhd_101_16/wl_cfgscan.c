@@ -2530,6 +2530,15 @@ static void _wl_cfgscan_cancel_scan(struct bcm_cfg80211 *cfg)
 	struct wireless_dev *wdev = NULL;
 	struct net_device *ndev = NULL;
 
+	ndev = wl_cfg80211_get_remain_on_channel_ndev(cfg);
+	if (wl_get_drv_status(cfg, REMAINING_ON_CHANNEL, ndev)) {
+		/* Cancel P2P listen */
+		if (cfg->p2p_supported && cfg->p2p) {
+			wl_cfgp2p_set_p2p_mode(cfg, WL_P2P_DISC_ST_SCAN, 0, 0,
+					wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE));
+		}
+	}
+
 	if (!cfg->scan_request && !cfg->sched_scan_req) {
 		/* No scans in progress */
 		WL_INFORM_MEM(("No scan in progress\n"));
@@ -4090,8 +4099,9 @@ wl_cfgscan_update_v3_schedscan_results(struct bcm_cfg80211 *cfg, struct net_devi
 			(void)memcpy_s(ssid_buf, IEEE80211_MAX_SSID_LEN,
 				ssid[i].ssid, ssid_len);
 			ssid_buf[ssid_len] = '\0';
-			WL_INFORM_MEM(("[PNO] SSID:%s chanspec:0x%x freq:%d band:%d\n",
-				ssid_buf, netinfo->pfnsubnet.chanspec,
+			WL_INFORM_MEM(("[PNO] SSID:%s SSID length:%d"
+				" chanspec:0x%x freq:%d band:%d\n",
+				SSID_DBG(ssid_buf), ssid_len, netinfo->pfnsubnet.chanspec,
 				channel[i].center_freq, channel[i].band));
 			if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) {
 				payload_len = sizeof(log_conn_event_t);
@@ -4968,6 +4978,11 @@ wl_cfgscan_remain_on_channel(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 		return -EINVAL;
 	}
 
+	if (wl_get_drv_status(cfg, AP_CREATING, ndev)) {
+		err = BCME_BADARG;
+		goto exit;
+	}
+
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
 	target_channel = ieee80211_frequency_to_channel(channel->center_freq);
 
@@ -5215,6 +5230,98 @@ wl_android_get_roam_scan_chanlist(struct bcm_cfg80211 *cfg)
 
 	err = nla_put(skb, RCC_ATTRIBUTE_CHANNEL_LIST,
 		sizeof(uint16) * MAX_ROAM_CHANNEL, channels);
+	if (unlikely(err)) {
+		WL_ERR(("nla_put RCC_ATTRIBUTE_CHANNEL_LIST failed\n"));
+		goto fail;
+	}
+
+	cfg80211_vendor_event(skb, kflags);
+
+	return err;
+
+fail:
+	if (skb) {
+		nlmsg_free(skb);
+	}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0) */
+	return err;
+}
+
+int
+wl_android_get_roam_scan_freqlist(struct bcm_cfg80211 *cfg)
+{
+	s32 err = BCME_OK;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0))
+	struct sk_buff *skb;
+	gfp_t kflags;
+	struct net_device *ndev;
+	struct wiphy *wiphy;
+	wlc_ssid_t *ssid = NULL;
+	wl_roam_channel_list_t channel_list;
+	uint16 frequencies[MAX_ROAM_CHANNEL] = {0};
+	int i = 0;
+
+	ndev = bcmcfg_to_prmry_ndev(cfg);
+	wiphy = bcmcfg_to_wiphy(cfg);
+
+	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
+	skb = CFG80211_VENDOR_EVENT_ALLOC(wiphy, ndev_to_wdev(ndev),
+		BRCM_VENDOR_GET_RCC_EVENT_BUF_LEN, BRCM_VENDOR_EVENT_RCC_FREQ_INFO, kflags);
+
+	if (!skb) {
+		WL_ERR(("skb alloc failed"));
+		return BCME_NOMEM;
+	}
+
+	/* Get Current SSID */
+	ssid = (struct wlc_ssid *)wl_read_prof(cfg, ndev, WL_PROF_SSID);
+	if (!ssid) {
+		WL_ERR(("No SSID found in the saved profile\n"));
+		err = BCME_ERROR;
+		goto fail;
+	}
+
+	/* Get Current RCC List */
+	err = wldev_iovar_getbuf(ndev, "roamscan_channels", 0, 0,
+		(void *)&channel_list, sizeof(channel_list), NULL);
+	if (err) {
+		WL_ERR(("Failed to get roamscan channels, err = %d\n", err));
+		goto fail;
+	}
+	if (channel_list.n > MAX_ROAM_CHANNEL) {
+		WL_ERR(("Invalid roamscan channels count(%d)\n", channel_list.n));
+		err = BCME_ERROR;
+		goto fail;
+	}
+
+	WL_DBG(("SSID %s(%d), RCC(%d)\n", ssid->SSID, ssid->SSID_len, channel_list.n));
+	for (i = 0; i < channel_list.n; i++) {
+		chanspec_t chsp = channel_list.channels[i];
+		u32 freq = wl_channel_to_frequency(wf_chspec_ctlchan(chsp), CHSPEC_BAND(chsp));
+		WL_DBG(("  [%d] Freq: %d (0x%04x)\n", i, freq, channel_list.channels[i]));
+		frequencies[i] = (uint16)freq;
+	}
+
+	err = nla_put_string(skb, RCC_ATTRIBUTE_SSID, ssid->SSID);
+	if (unlikely(err)) {
+		WL_ERR(("nla_put_string RCC_ATTRIBUTE_SSID failed\n"));
+		goto fail;
+	}
+
+	err = nla_put_u32(skb, RCC_ATTRIBUTE_SSID_LEN, ssid->SSID_len);
+	if (unlikely(err)) {
+		WL_ERR(("nla_put_u32 RCC_ATTRIBUTE_SSID_LEN failed\n"));
+		goto fail;
+	}
+
+	err = nla_put_u32(skb, RCC_ATTRIBUTE_NUM_CHANNELS, channel_list.n);
+	if (unlikely(err)) {
+		WL_ERR(("nla_put_u32 RCC_ATTRIBUTE_NUM_CHANNELS failed\n"));
+		goto fail;
+	}
+
+	err = nla_put(skb, RCC_ATTRIBUTE_CHANNEL_LIST,
+		sizeof(uint16) * MAX_ROAM_CHANNEL, frequencies);
 	if (unlikely(err)) {
 		WL_ERR(("nla_put RCC_ATTRIBUTE_CHANNEL_LIST failed\n"));
 		goto fail;

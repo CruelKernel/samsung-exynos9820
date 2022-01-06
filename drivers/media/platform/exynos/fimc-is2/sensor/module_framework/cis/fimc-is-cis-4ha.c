@@ -233,6 +233,7 @@ int sensor_4ha_cis_init(struct v4l2_subdev *subdev)
 	cis->cis_data->cur_height = SENSOR_4HA_MAX_HEIGHT;
 	cis->cis_data->low_expo_start = 33000;
 	cis->need_mode_change = false;
+	cis->cis_data->cur_pattern_mode = SENSOR_TEST_PATTERN_MODE_OFF;
 #ifdef USE_CAMERA_MIPI_CLOCK_VARIATION
 	cis->mipi_clock_index_cur = CAM_MIPI_NOT_INITIALIZED;
 	cis->mipi_clock_index_new = CAM_MIPI_NOT_INITIALIZED;
@@ -1943,6 +1944,7 @@ static struct fimc_is_cis_ops cis_ops = {
 	.cis_compensate_gain_for_extremely_br = sensor_4ha_cis_compensate_gain_for_extremely_br,
 	.cis_wait_streamoff = sensor_cis_wait_streamoff,
 	.cis_wait_streamon = sensor_cis_wait_streamon,
+	.cis_set_test_pattern = sensor_cis_set_test_pattern,
 #ifdef USE_CAMERA_MIPI_CLOCK_VARIATION
 	.cis_update_mipi_info = sensor_4ha_cis_update_mipi_info,
 	.cis_get_mipi_clock_string = sensor_4ha_cis_get_mipi_clock_string,

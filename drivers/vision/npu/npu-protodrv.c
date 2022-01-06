@@ -2569,13 +2569,17 @@ static const struct file_operations npu_proto_drv_dump_debug_fops = {
  */
 int proto_drv_probe(struct npu_device *npu_device)
 {
+	int ret = 0;
+
 	probe_info("start in proto_drv_probe\n");
 	if (!IS_TRANSITABLE(PROTO_DRV_STATE_PROBED))	{
 		return -EBADR;
 	}
 
 	/* Registre dump function on debugfs */
-	npu_debug_register("proto-drv-dump", &npu_proto_drv_dump_debug_fops);
+	ret = npu_debug_register("proto-drv-dump", &npu_proto_drv_dump_debug_fops);
+	if (ret)
+		probe_err("fail(%d) in npu_debug_register\n", ret);
 
 	/* Pass reference of npu_proto_drv via npu_device */
 	npu_device->proto_drv = &npu_proto_drv;
@@ -2588,7 +2592,7 @@ int proto_drv_probe(struct npu_device *npu_device)
 
 	state_transition(PROTO_DRV_STATE_PROBED);
 	probe_info("complete in proto_drv_probe\n");
-	return 0;
+	return ret;
 }
 
 int proto_drv_release(void)

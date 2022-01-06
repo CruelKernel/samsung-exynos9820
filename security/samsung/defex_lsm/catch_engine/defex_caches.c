@@ -12,7 +12,7 @@
 #include <linux/spinlock.h>
 #include "include/defex_caches.h"
 
-static struct defex_file_cache_list file_cache;
+__visible_for_testing struct defex_file_cache_list file_cache;
 
 DEFINE_SPINLOCK(defex_caches_lock);
 

@@ -42,7 +42,6 @@
 
 static void dump_ap_stadata(wl_ap_sta_data_t *ap_sta_data);
 static inline void copy_ap_stadata(wl_ap_sta_data_t *dest, wl_ap_sta_data_t *src);
-static void wg_rate_dot11mode(uint32 *rate, uint8 *channel, uint32 *mode_80211);
 static void wg_ht_mimo_ant(uint32 *nss, wl_rateset_args_t *rateset);
 static void wg_vht_mimo_ant(uint32 *nss, wl_rateset_args_t *rateset);
 #if defined(WL11AX)
@@ -135,22 +134,6 @@ get_copy_ptr_stadata(struct ether_addr *sta_mac, wl_ap_sta_data_t *sta_data,
 		WL_AP_BIGDATA_LOG(("empty idx %d \n", empty_idx));
 		*data = (wl_ap_sta_data_t *)&sta_data[empty_idx];
 		return;
-	}
-}
-
-static void
-wg_rate_dot11mode(uint32 *rate, uint8 *channel, uint32 *mode_80211)
-{
-	if (*rate <= DOT11_11B_MAX_RATE) {
-		/* 11b maximum rate is 11Mbps. 11b mode */
-		*mode_80211 = BIGDATA_DOT11_11B_MODE;
-	} else {
-		/* It's not HT Capable case. */
-		if (*channel > DOT11_2GHZ_MAX_CH_NUM) {
-			*mode_80211 = BIGDATA_DOT11_11A_MODE; /* 11a mode */
-		} else {
-			*mode_80211 = BIGDATA_DOT11_11G_MODE; /* 11g mode */
-		}
 	}
 }
 
@@ -251,15 +234,13 @@ wg_parse_ap_stadata(struct net_device *dev, struct ether_addr *sta_mac,
 	ap_sta_data->rate =
 		(sta_v4->rateset.rates[sta_v4->rateset.count - 1] & DOT11_RATE_MASK) / 2;
 
+	ap_sta_data->mode_80211 = BIGDATA_DOT11_11BGN_BIT;
+
 	if (sta_v4->vht_flags) {
-		ap_sta_data->mode_80211 = BIGDATA_DOT11_11AC_MODE;
+		ap_sta_data->mode_80211 |= BIGDATA_DOT11_11AC_BIT;
 		wg_vht_mimo_ant(&ap_sta_data->nss, rateset_adv);
 	} else if (sta_v4->ht_capabilities) {
-		ap_sta_data->mode_80211 = BIGDATA_DOT11_11N_MODE;
 		wg_ht_mimo_ant(&ap_sta_data->nss, rateset_adv);
-	} else {
-		wg_rate_dot11mode(&ap_sta_data->rate, &ap_sta_data->channel,
-				&ap_sta_data->mode_80211);
 	}
 
 #if defined(WL11AX)
@@ -279,7 +260,7 @@ wg_parse_ap_stadata(struct net_device *dev, struct ether_addr *sta_mac,
 
 			if (rateset_adv_v2->he_mcs[0]) {
 				WL_AP_BIGDATA_LOG(("there is he mcs rate\n"));
-				ap_sta_data->mode_80211 = BIGDATA_DOT11_11AX_MODE;
+				ap_sta_data->mode_80211 |= BIGDATA_DOT11_11AX_BIT;
 				wg_he_mimo_ant(&ap_sta_data->nss, &rateset_adv_v2->he_mcs[0]);
 			}
 		}

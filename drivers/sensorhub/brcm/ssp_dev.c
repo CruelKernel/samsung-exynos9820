@@ -442,7 +442,14 @@ irqreturn_t ssp_shub_int_handler(int irq, void *device)
 	data->ts_stacked_cnt = (data->ts_stacked_cnt + 1) % SIZE_TIMESTAMP_BUFFER;
 	data->ts_index_buffer[data->ts_stacked_cnt] = timestamp;
 
+#if defined(CONFIG_SENSORS_SSP_BEYOND) || defined(CONFIG_SENSORS_SSP_DAVINCI)
+	
 	ssp_debug_time("[SSP_IRQ] ts_stacked_cnt %d timestamp %llu\n", data->ts_stacked_cnt, timestamp);
+	
+	gpio_set_value(data->pin_ap_sleep, 0);
+	udelay(10);
+	gpio_set_value(data->pin_ap_sleep, 1);
+#endif
 	return IRQ_HANDLED;
 }
 #endif

@@ -21,28 +21,11 @@
 #include <linux/types.h>
 #include <five_tee_interface.h>
 
-#ifdef CONFIG_FIVE_TEE_DRIVER
 int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		const void *signature, size_t signature_len);
 int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
 		const void *label, size_t label_len,
 		void *signature, size_t *signature_len);
-#else
-int verify_hash(enum hash_algo algo, const void *hash, size_t hash_len,
-		const void *label, size_t label_len,
-		const void *signature, size_t signature_len)
-{
-	return -ENODEV;
-}
-
-int sign_hash(enum hash_algo algo, const void *hash, size_t hash_len,
-		const void *label, size_t label_len,
-		void *signature, size_t *signature_len)
-{
-	return -ENODEV;
-}
-
-#endif /* CONFIG_FIVE_TEE_DRIVER */
 
 #endif /* __LINUX_FIVE_TEE_API_H */

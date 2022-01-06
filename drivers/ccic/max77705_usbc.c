@@ -2561,7 +2561,9 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 		max77705_write_reg(usbc_data->muic, REG_PD_INT_M, REG_PD_INT_M_INIT);
 		max77705_write_reg(usbc_data->muic, REG_VDM_INT_M, REG_VDM_INT_M_INIT);
 		/* clear UIC_INT to prevent infinite sysmsg irq*/
+		g_usbc_data->max77705->enable_nested_irq = 1;
 		max77705_read_reg(usbc_data->muic, MAX77705_USBC_REG_UIC_INT, &interrupt);
+		g_usbc_data->max77705->usbc_irq = interrupt & 0xBF; //clear the USBC SYSTEM IRQ
 		max77705_usbc_clear_queue(usbc_data);
 		usbc_data->is_first_booting = 1;
 		max77705_init_opcode(usbc_data, 1);
@@ -2590,7 +2592,9 @@ void max77705_usbc_check_sysmsg(struct max77705_usbc_platform_data *usbc_data, u
 		max77705_write_reg(usbc_data->muic, REG_PD_INT_M, REG_PD_INT_M_INIT);
 		max77705_write_reg(usbc_data->muic, REG_VDM_INT_M, REG_VDM_INT_M_INIT);
 		/* clear UIC_INT to prevent infinite sysmsg irq */
+		g_usbc_data->max77705->enable_nested_irq = 1;
 		max77705_read_reg(usbc_data->muic, MAX77705_USBC_REG_UIC_INT, &interrupt);
+		g_usbc_data->max77705->usbc_irq = interrupt & 0xBF; //clear the USBC SYSTEM IRQ
 		msg_maxim("SYSERROR_BOOT_POR: %d, UIC_INT:0x%02x", usbc_data->por_count, interrupt);
 		max77705_usbc_clear_queue(usbc_data);
 		usbc_data->is_first_booting = 1;

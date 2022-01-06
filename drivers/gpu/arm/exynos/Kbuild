@@ -1,0 +1,236 @@
+#
+# (C) COPYRIGHT 2012 ARM Limited. All rights reserved.
+#
+# This program is free software and is provided to you under the terms of the
+# GNU General Public License version 2 as published by the Free Software
+# Foundation, and any use by you of this program is subject to the terms
+# of such GNU licence.
+#
+# A copy of the licence is included with the program, and can also be obtained
+# from Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA	02110-1301, USA.
+#
+#
+
+MALI_CUSTOMER_RELEASE = 1
+
+# Enable this option when running TEM coverage tests
+# export GCOV_PROFILE := y
+
+KBASE_PATH = $(src)
+PLATFORM_INCLUDE_PATH = $(srctree)/drivers/gpu/arm/exynos/include
+PLATFORM_IF_INCLUDE_PATH = $(srctree)/drivers/gpu/arm/exynos/include
+PLATFORM_BE_INCLUDE_PATH = $(srctree)/drivers/gpu/arm/exynos/include
+PLATFORM_TESTS_INCLUDE_PATH = $(srctree)/drivers/gpu/arm/exynos/include/tests
+UAPI_INCLUDE_PATH = $(srctree)/include/uapi/gpu/arm/exynos
+
+ccflags-y += $(DEFINES)
+ccflags-y += -I$(PLATFORM_INCLUDE_PATH)
+ccflags-y += -I$(PLATFORM_IF_INCLUDE_PATH)
+ccflags-y += -I$(PLATFORM_BE_INCLUDE_PATH)
+ccflags-y += -I$(PLATFORM_TESTS_INCLUDE_PATH)
+ccflags-y += -I$(UAPI_INCLUDE_PATH)
+
+subdir-ccflags-y += $(DEFINES)
+subdir-ccflags-y += -I$(PLATFORM_INCLUDE_PATH)
+subdir-ccflags-y += -I$(PLATFORM_IF_INCLUDE_PATH)
+subdir-ccflags-y += -I$(PLATFORM_BE_INCLUDE_PATH)
+subdir-ccflags-y += -I$(PLATFORM_TESTS_INCLUDE_PATH)
+subdir-ccflags-y += -I$(UAPI_INCLUDE_PATH)
+
+soc_name := $(shell echo $(CONFIG_EXYNOS_SOC_NAME))
+
+PLATFORM_DIR := ../exynos
+FRONTEND_DIR := $(PLATFORM_DIR)/frontend
+COMMON_DIR := $(PLATFORM_DIR)/common
+BACKEND_DIR := $(PLATFORM_DIR)/backend
+WA_DIR := $(PLATFORM_DIR)/workarounds
+TESTS_DIR := $(PLATFORM_DIR)/tests
+
+mali_kbase-y += $(PLATFORM_DIR)/mali_exynos_kbase_entrypoint.o
+
+mali_kbase-y += $(FRONTEND_DIR)/gpex_platform.o
+
+ifneq ($(CONFIG_OF), y)
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_platform_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_DEVICETREE), y)
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_devicetree.o
+else
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_devicetree_dummy.o
+endif
+
+mali_kbase-y += $(COMMON_DIR)/gpex_utils.o
+
+ifeq ($(CONFIG_MALI_EXYNOS_CLOCK), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_clock.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_clock_sysfs.o
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_clock.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_clock_dummy.o
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_clock_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_DVFS), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpu_dvfs_governor.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_dvfs.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_dvfs_sysfs.o
+# TODO: only build this file for SOCs that need it
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_dvfs_external.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_dvfs_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_TSG), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_tsg.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_tsg_sysfs.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_tsg_external.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_tsg_dummy.o
+endif
+
+ifneq (,$(filter y m,$(CONFIG_EXYNOS_CONTENT_PATH_PROTECTION)))
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_smc.o
+else
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_smc_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_SECURE_RENDERING_LEGACY), y)
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_secure_legacy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_SECURE_RENDERING_ARM), y)
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_secure.o
+endif
+
+ifeq (,$(findstring y, \
+	$(CONFIG_MALI_EXYNOS_SECURE_RENDERING_LEGACY) \
+	$(CONFIG_MALI_EXYNOS_SECURE_RENDERING_ARM)))
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_secure_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_QOS), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_qos.o
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_qos.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9810) += $(BACKEND_DIR)/gpexbe_qos_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9610) += $(BACKEND_DIR)/gpexbe_qos_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9820) += $(BACKEND_DIR)/gpexbe_qos_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(BACKEND_DIR)/gpexbe_qos_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9630) += $(BACKEND_DIR)/gpexbe_qos_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS3830) += $(BACKEND_DIR)/gpexbe_qos_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS2100) += $(BACKEND_DIR)/gpexbe_qos_v3.o
+	mali_kbase-$(CONFIG_SOC_S5E8825) += $(BACKEND_DIR)/gpexbe_qos_v3_8825.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_qos_dummy.o
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_qos_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_BTS_MO), y)
+	mali_kbase-$(CONFIG_SOC_EXYNOS9810) += $(BACKEND_DIR)/gpexbe_bts_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9820) += $(BACKEND_DIR)/gpexbe_bts_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9610) += $(BACKEND_DIR)/gpexbe_bts_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(BACKEND_DIR)/gpexbe_bts_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9630) += $(BACKEND_DIR)/gpexbe_bts_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS3830) += $(BACKEND_DIR)/gpexbe_bts_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS2100) += $(BACKEND_DIR)/gpexbe_bts_v2.o
+	mali_kbase-$(CONFIG_SOC_S5E8825) += $(BACKEND_DIR)/gpexbe_bts_v2.o
+else
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_bts_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_DEBUG), y)
+	mali_kbase-$(CONFIG_SOC_EXYNOS9810) += $(BACKEND_DIR)/gpexbe_debug_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9820) += $(BACKEND_DIR)/gpexbe_debug_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(BACKEND_DIR)/gpexbe_debug_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9610) += $(BACKEND_DIR)/gpexbe_debug_v2_9611.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9630) += $(BACKEND_DIR)/gpexbe_debug_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS3830) += $(BACKEND_DIR)/gpexbe_debug_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS2100) += $(BACKEND_DIR)/gpexbe_debug_v3.o
+	mali_kbase-$(CONFIG_SOC_S5E8825) += $(BACKEND_DIR)/gpexbe_debug_v3.o
+else
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_debug_dummy.o
+endif
+
+mali_kbase-$(CONFIG_SOC_EXYNOS9810) += $(BACKEND_DIR)/gpexbe_dmabuf_v1.o
+mali_kbase-$(CONFIG_SOC_EXYNOS9820) += $(BACKEND_DIR)/gpexbe_dmabuf_v2.o
+mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(BACKEND_DIR)/gpexbe_dmabuf_v2.o
+mali_kbase-$(CONFIG_SOC_EXYNOS9610) += $(BACKEND_DIR)/gpexbe_dmabuf_v2.o
+mali_kbase-$(CONFIG_SOC_EXYNOS9630) += $(BACKEND_DIR)/gpexbe_dmabuf_v2.o
+mali_kbase-$(CONFIG_SOC_EXYNOS3830) += $(BACKEND_DIR)/gpexbe_dmabuf_v2.o
+mali_kbase-$(CONFIG_SOC_EXYNOS2100) += $(BACKEND_DIR)/dummy/gpexbe_dmabuf_dummy.o
+mali_kbase-$(CONFIG_SOC_S5E8825) += $(BACKEND_DIR)/dummy/gpexbe_dmabuf_dummy.o
+
+ifeq ($(CONFIG_MALI_EXYNOS_LLC), y)
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_llc_coherency.o
+else
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_llc_coherency_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_THERMAL), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_thermal.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_thermal_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_GTS), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_gts.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_gts_dummy.o
+endif
+
+mali_kbase-y += $(BACKEND_DIR)/gpexbe_notifier.o
+
+ifeq (y,$(findstring y,$(CONFIG_KUNIT)$(CONFIG_SEC_KUNIT)))
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_notifier_dummy.o
+else
+	mali_kbase-$(CONFIG_SOC_EXYNOS9810) += $(BACKEND_DIR)/gpexbe_notifier_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9610) += $(BACKEND_DIR)/gpexbe_notifier_v1.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9820) += $(BACKEND_DIR)/gpexbe_notifier_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(BACKEND_DIR)/gpexbe_notifier_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS9630) += $(BACKEND_DIR)/gpexbe_notifier_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS3830) += $(BACKEND_DIR)/gpexbe_notifier_v2.o
+	mali_kbase-$(CONFIG_SOC_EXYNOS2100) += $(BACKEND_DIR)/gpexbe_notifier_v3.o
+	mali_kbase-$(CONFIG_SOC_S5E8825) += $(BACKEND_DIR)/gpexbe_notifier_v3.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_PM), y)
+	mali_kbase-y += $(BACKEND_DIR)/gpexbe_pm.o
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_pm.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_pm_dummy.o
+	mali_kbase-y += $(BACKEND_DIR)/dummy/gpexbe_pm_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_IFPO), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_ifpo.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_ifpo_dummy.o
+endif
+
+mali_kbase-y += $(BACKEND_DIR)/gpexbe_utilization.o
+mali_kbase-y += $(BACKEND_DIR)/gpexbe_mem_usage.o
+
+ifeq ($(CONFIG_MALI_EXYNOS_UNIT_TESTS), y)
+	mali_kbase-y += $(TESTS_DIR)/runtime_test_runner.o
+	mali_kbase-y += $(TESTS_DIR)/clock_runtime_tests.o
+	mali_kbase-y += $(TESTS_DIR)/pm_state_runtime_tests.o
+	mali_kbase-y += $(TESTS_DIR)/clock_sysfs_tests.o
+else
+	mali_kbase-y += $(TESTS_DIR)/runtime_test_runner_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_WAKEUP_CLOCK_WA), y)
+	mali_kbase-$(CONFIG_SOC_EXYNOS9830) += $(WA_DIR)/gpexwa_wakeup_clock_9830.o
+else
+	mali_kbase-y += $(WA_DIR)/dummy/gpexwa_wakeup_clock_dummy.o
+endif
+
+ifeq ($(CONFIG_MALI_EXYNOS_CL_BOOST), y)
+	mali_kbase-y += $(FRONTEND_DIR)/gpex_clboost.o
+else
+	mali_kbase-y += $(FRONTEND_DIR)/dummy/gpex_clboost_dummy.o
+endif
+
+mali_kbase-y += $(FRONTEND_DIR)/gpex_cmar_boost.o
+mali_kbase-$(CONFIG_MALI_SEC_G3D_PEAK_NOTI) += $(WA_DIR)/gpexwa_peak_notify.o

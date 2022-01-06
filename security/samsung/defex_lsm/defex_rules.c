@@ -6,14 +6,7 @@
  * as published by the Free Software Foundation.
  */
 
-#include "include/defex_rules.h"
-
-const struct static_rule defex_static_rules[] = {
-	{feature_ped_path,"/"},
-	{feature_safeplace_status,"1"},
-	{feature_immutable_status,"1"},
-	{feature_ped_status,"1"},
-#ifndef DEFEX_USE_PACKED_RULES
+#if 0
 	{feature_ped_exception,"/system/bin/run-as"},	/* DEFAULT */
 	{feature_ped_exception,"/system/bin/dumpstate"},	/* DEFAULT */
 	{feature_safeplace_path,"/init"},
@@ -106,6 +99,7 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/vendor/bin/init.class_main.sh"},
 	{feature_safeplace_path,"/vendor/bin/time_daemon"},
 	{feature_safeplace_path,"/vendor/bin/thermal-engine"},
+	{feature_safeplace_path,"/vendor/bin/thermal-engine-v2"},
 	{feature_safeplace_path,"/system/bin/sec_diag_uart_log"},
 	{feature_safeplace_path,"/vendor/bin/init.qcom.sh"},
 	{feature_safeplace_path,"/system/bin/usbd"},
@@ -156,9 +150,14 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/vendor/bin/shsusrd"},
 	{feature_safeplace_path,"/system/bin/defrag_f2fs"},
 	{feature_safeplace_path,"/system/bin/fastbootd"},
+	{feature_safeplace_path,"/system/bin/sbm"},
 	{feature_safeplace_path,"/vendor/bin/hw/vendor.qti.hardware.perf@2.1-service"},
 	{feature_safeplace_path,"/vendor/bin/hw/vendor.qti.hardware.perf@2.2-service"},
 	{feature_safeplace_path,"/vendor/bin/grep"},
+	{feature_safeplace_path,"/vendor/bin/memlogd"},
+	{feature_safeplace_path,"/vendor/bin/init.insmod.sh"},
+	{feature_safeplace_path,"/vendor/bin/hw/android.hardware.usb@1.3-service.coral"},
+	{feature_safeplace_path,"/vendor/bin/hw/vendor.qti.hardware.perf-hal-service"},
 	{feature_safeplace_path,"/system/bin/rdxd"},
 	{feature_safeplace_path,"/system/system_ext/bin/dpmd"},
 	{feature_safeplace_path,"/vendor/bin/init.qti.dcvs.sh"},
@@ -171,6 +170,9 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/vendor/bin/init.kernel.post_boot.sh"},
 	{feature_safeplace_path,"/vendor/bin/init.kernel.post_boot-lahaina.sh"},
 	{feature_safeplace_path,"/vendor/bin/init.qti.keymaster.sh"},
+	{feature_safeplace_path,"/vendor/bin/init.qti.write.sh"},
+	{feature_safeplace_path,"/product/bin/qvirtmgr"},
+	{feature_safeplace_path,"/system_ext/bin/qcrosvm"},
 	{feature_safeplace_path,"/vendor/bin/thermal_manager"},
 	{feature_safeplace_path,"/system/bin/linkerconfig"},
 	{feature_safeplace_path,"/system/bin/snapshotctl"},
@@ -194,12 +196,26 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/system/bin/procrank"},
 	{feature_safeplace_path,"/system/bin/showmap"},
 	{feature_safeplace_path,"/product/bin/dmabuf_dump"},
+	{feature_safeplace_path,"/system/bin/dmabuf_dump"},
 	{feature_safeplace_path,"/apex/com.android.runtime/bin/spqr"},
 	{feature_safeplace_path,"/system/bin/perfetto"},
-	{feature_safeplace_path,"/tmp/update_binary"},
+	{feature_safeplace_path,"/system/bin/update_verifier"},
+	{feature_safeplace_path,"/system/bin/bootstrap/linkerconfig"},
+	{feature_safeplace_path,"/apex/com.android.runtime/bin/linkerconfig"},
+	{feature_safeplace_path,"/system/bin/otapreopt_slot"},
+	{feature_safeplace_path,"/apex/com.android.art/bin/dex2oat32"},
+	{feature_safeplace_path,"/apex/com.android.art/bin/dex2oat64"},
+	{feature_safeplace_path,"/system/bin/incident"},
+	{feature_safeplace_path,"/system/bin/odsign"},
+	{feature_safeplace_path,"/apex/com.android.art/bin/odrefresh"},
+	{feature_safeplace_path,"/apex/com.android.art/bin/artd"},
+	{feature_safeplace_path,"/apex/com.android.runtime/bin/crash_dump32"},
+	{feature_safeplace_path,"/apex/com.android.runtime/bin/crash_dump64"},
+	{feature_safeplace_path,"/tmp/update_binary;updater_intermediates/updater;obj/EXECUTABLES"},
 	{feature_safeplace_path,"/tmp/update-binary"},
 	{feature_safeplace_path,"/system/bin/install-recovery.sh"},	/* DEFAULT */
 	{feature_safeplace_path,"/vendor/bin/install-recovery.sh"},	/* DEFAULT */
+	{feature_safeplace_path,"/system/bin/bpfloader"},	/* DEFAULT */
 	{feature_immutable_path_write,"/system/"},	/* DEFAULT */
 	{feature_immutable_path_write,"/vendor/"},	/* DEFAULT */
 	{feature_immutable_path_open,"/system/bin/"},	/* DEFAULT */
@@ -211,6 +227,8 @@ const struct static_rule defex_static_rules[] = {
 	{feature_immutable_src_exception,"/system/bin/app_process64"},
 	{feature_immutable_src_exception,"/system/bin/crash_dump32"},
 	{feature_immutable_src_exception,"/system/bin/crash_dump64"},
+	{feature_immutable_src_exception,"/system/apex/com.android.runtime/bin/crash_dump32"},
+	{feature_immutable_src_exception,"/system/apex/com.android.runtime/bin/crash_dump64"},
 	{feature_immutable_src_exception,"/system/bin/mediaextractor"},
 	{feature_immutable_src_exception,"/system/bin/surfaceflinger"},
 	{feature_immutable_src_exception,"/vendor/bin/sh"},
@@ -221,9 +239,7 @@ const struct static_rule defex_static_rules[] = {
 	{feature_immutable_src_exception,"/vendor/bin/iof_vendor"},
 	{feature_immutable_src_exception,"/init"},
 	{feature_immutable_src_exception,"/system/bin/init"},
+	{feature_immutable_src_exception,"/system/bin/lshal"},
 	/* Rules will be added here */
 	/* Never modify the above line. Rules will be added for buildtime */
-#endif /* DEFEX_USE_PACKED_RULES */
-};
-
-const int static_rule_count = sizeof(defex_static_rules) / sizeof(defex_static_rules[0]);
+#endif /* if 0 */

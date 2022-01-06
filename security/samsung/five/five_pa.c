@@ -18,43 +18,93 @@
 #include <linux/module.h>
 #include <linux/task_integrity.h>
 #include <linux/proca.h>
-#include <linux/xattr.h>
+#include <linux/version.h>
 
 #include "five.h"
 #include "five_pa.h"
 #include "five_hooks.h"
 #include "five_lv.h"
 #include "five_porting.h"
+#include "five_testing.h"
 
-static void process_file(struct task_struct *task, struct file *file)
+__visible_for_testing __mockable
+int call_five_read_xattr(struct dentry *dentry, char **xattr_value)
+{
+	return five_read_xattr(dentry, xattr_value);
+}
+
+__visible_for_testing __mockable
+int call_vfs_setxattr_noperm(struct dentry *dentry, const char *name,
+		const void *value, size_t size, int flags)
+{
+	return __vfs_setxattr_noperm(dentry, name, value, size, flags);
+}
+
+__visible_for_testing __mockable
+bool call_task_integrity_allow_sign(struct task_integrity *intg)
+{
+	return task_integrity_allow_sign(intg);
+}
+
+#ifdef CONFIG_FIVE_GKI_10
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+#define F_SIGNATURE(file) ((void *)((file)->android_oem_data1))
+
+static inline void f_signature_assign(struct file *file, void *f_signature)
+{
+	file->android_oem_data1 = (u64)f_signature;
+}
+#else
+#define F_SIGNATURE(file) ((void *)((file)->android_vendor_data1))
+
+static inline void f_signature_assign(struct file *file, void *f_signature)
+{
+	file->android_vendor_data1 = (u64)f_signature;
+}
+#endif
+
+#else
+#define F_SIGNATURE(file) ((file)->f_signature)
+
+static inline void f_signature_assign(struct file *file, void *f_signature)
+{
+	file->f_signature = f_signature;
+}
+#endif
+
+__visible_for_testing
+void pa_process_file(struct task_struct *task, struct file *file)
 {
 	char *xattr_value = NULL;
-
-	if (file->f_signature)
-		return;
 
 	if (five_check_params(task, file))
 		return;
 
-	five_read_xattr(d_real_comp(file->f_path.dentry), &xattr_value);
-	file->f_signature = xattr_value;
+	if (F_SIGNATURE(file))
+		return;
+
+	call_five_read_xattr(d_real_comp(file->f_path.dentry), &xattr_value);
+	f_signature_assign(file, xattr_value);
 }
 
 void fivepa_fsignature_free(struct file *file)
 {
-	kfree(file->f_signature);
-	file->f_signature = NULL;
+	kfree(F_SIGNATURE(file));
+	f_signature_assign(file, NULL);
 }
 
 int proca_fcntl_setxattr(struct file *file, void __user *lv_xattr)
 {
-	struct inode *inode = file_inode(file);
+	struct inode *inode;
 	struct lv lv_hdr = {0};
 	int rc = -EPERM;
 	void *x = NULL;
 
 	if (unlikely(!file || !lv_xattr))
 		return -EINVAL;
+
+	inode = file_inode(file);
 
 	if (unlikely(copy_from_user(&lv_hdr, lv_xattr, sizeof(lv_hdr))))
 		return -EFAULT;
@@ -80,8 +130,8 @@ int proca_fcntl_setxattr(struct file *file, void __user *lv_xattr)
 
 	inode_lock(inode);
 
-	if (task_integrity_allow_sign(current->integrity)) {
-		rc = __vfs_setxattr_noperm(d_real_comp(file->f_path.dentry),
+	if (call_task_integrity_allow_sign(TASK_INTEGRITY(current))) {
+		rc = call_vfs_setxattr_noperm(d_real_comp(file->f_path.dentry),
 						XATTR_NAME_PA,
 						x,
 						lv_hdr.length,
@@ -114,14 +164,14 @@ static void proca_hook_file_processed(struct task_struct *task,
 				struct file *file, void *xattr,
 				size_t xattr_size, int result)
 {
-	process_file(task, file);
+	pa_process_file(task, file);
 }
 
 static void proca_hook_file_skipped(struct task_struct *task,
 				enum task_integrity_value tint_value,
 				struct file *file)
 {
-	process_file(task, file);
+	pa_process_file(task, file);
 }
 
 static __init int proca_module_init(void)

@@ -4055,12 +4055,6 @@ static void mfc_wpc_det_work(struct work_struct *work)
 		}
 	}
 
-	if (delayed_work_pending(&charger->wpc_vrect_check_work)) {
-		wake_unlock(&charger->wpc_vrect_check_lock);
-		cancel_delayed_work(&charger->wpc_vrect_check_work);
-		charger->initial_vrect = false;
-	}
-
 	wc_w_state = gpio_get_value(charger->pdata->wpc_det);
 	if (charger->wc_w_state == wc_w_state)
 		return;
@@ -4180,7 +4174,6 @@ static void mfc_wpc_det_work(struct work_struct *work)
 		charger->adt_transfer_status = WIRELESS_AUTH_WAIT;
 		charger->current_rx_power = TX_RX_POWER_0W;
 		charger->tx_id_cnt = 0;
-		charger->initial_vrect = false;
 		charger->wc_ldo_status = MFC_LDO_ON;
 		charger->tx_id_done = false;
 
@@ -4215,6 +4208,12 @@ static void mfc_wpc_det_work(struct work_struct *work)
 		wake_unlock(&charger->wpc_tx_id_lock);
 	}
 	wake_unlock(&charger->wpc_wake_lock);
+
+	/* cancel vrect check work */
+	wake_unlock(&charger->wpc_vrect_check_lock);
+	cancel_delayed_work(&charger->wpc_vrect_check_work);
+	charger->initial_vrect = false;
+
 	pr_info("%s : end\n", __func__);
 }
 
@@ -4627,26 +4626,45 @@ static void mfc_vrect_check_work(struct work_struct *work)
 	vrect = mfc_get_adc(charger, MFC_ADC_VRECT);
 	pr_info("%s: vrect: %dmV\n", __func__, vrect);
 
-	if (vrect >= 2700 && !charger->initial_vrect)
-		pr_info("%s: Temporary UVLO, hold on wireless charging\n", __func__);
-	else {
-		pr_info("%s: Vrect IRQ! wireless charging pad was removed!!\n", __func__);
-		/* clear intterupt */
-		if (charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE &&
-			!gpio_get_value(charger->pdata->wpc_int)) {
-			charger->pdata->cable_type = SEC_WIRELESS_PAD_NONE;
-			mfc_reg_read(charger->client, MFC_INT_A_L_REG, &irq_src[0]);
-			mfc_reg_read(charger->client, MFC_INT_A_H_REG, &irq_src[1]);
-			mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
-			mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
-			mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
-			pr_info("%s wc_w_state_irq = %d\n", __func__, gpio_get_value(charger->pdata->wpc_int));
+	if (!charger->initial_vrect) {
+		if (charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE) {
+			/* Attach case */
+			charger->pdata->cable_type = value.intval = SEC_WIRELESS_PAD_FAKE;
+			psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
+
+			/* To make sure forced detach if VOUT_GD is not rising within 3 seconds */
+			charger->initial_vrect = true;
+			queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(3000));
+			return;
+		} else if (vrect >= 2700 && !charger->is_mst_on) {
+			if (charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE) {
+				pr_info("%s: Temporary UVLO, FAKE. check again.\n", __func__);
+				queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(300));
+			} else {
+				pr_info("%s: Temporary UVLO, hold on wireless charging\n", __func__);
+				wake_unlock(&charger->wpc_vrect_check_lock);
+			}
+			return;
 		}
-		charger->pdata->cable_type = SEC_WIRELESS_PAD_NONE;
-		charger->initial_vrect = false;
-		value.intval = SEC_WIRELESS_PAD_NONE;
-		psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
 	}
+
+	/* Detach case */
+	pr_info("%s: Vrect IRQ! wireless charging pad was removed!!\n", __func__);
+	/* clear intterupt */
+	if (charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE &&
+		!gpio_get_value(charger->pdata->wpc_int)) {
+		charger->pdata->cable_type = SEC_WIRELESS_PAD_NONE;
+		mfc_reg_read(charger->client, MFC_INT_A_L_REG, &irq_src[0]);
+		mfc_reg_read(charger->client, MFC_INT_A_H_REG, &irq_src[1]);
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_L_REG, irq_src[0]); // clear int
+		mfc_reg_write(charger->client, MFC_INT_A_CLEAR_H_REG, irq_src[1]); // clear int
+		mfc_set_cmd_l_reg(charger, 0x20, MFC_CMD_CLEAR_INT_MASK); // command
+		pr_info("%s wc_w_state_irq = %d\n", __func__, gpio_get_value(charger->pdata->wpc_int));
+	}
+	charger->pdata->cable_type = SEC_WIRELESS_PAD_NONE;
+	charger->initial_vrect = false;
+	value.intval = SEC_WIRELESS_PAD_NONE;
+	psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
 	wake_unlock(&charger->wpc_vrect_check_lock);
 }
 
@@ -4831,6 +4849,7 @@ static irqreturn_t mfc_wpc_irq_thread(int irq, void *irq_data)
 	u8 reg_data = 0;
 	int isr_rerun_cnt = 0;	
 	bool end_irq = false;
+	bool clear_irq = true;
 	union power_supply_propval value;
 
 	if (charger->mst_off_lock == 1) {
@@ -4914,16 +4933,12 @@ INT_RE:
 				end_irq = true;
 				goto INT_END;
 			}
-		} else if(charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE ||
+		} else if (charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE ||
 			charger->pdata->cable_type == SEC_WIRELESS_PAD_FAKE) {
-			if (charger->pdata->cable_type == SEC_WIRELESS_PAD_NONE) {
-				/* To make sure forced detach if VOUT_GD is not rising within 3 seconds */
-				charger->initial_vrect = true;
-				wake_lock(&charger->wpc_vrect_check_lock);
-				queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(3000));
-			}
-			charger->pdata->cable_type = value.intval = SEC_WIRELESS_PAD_FAKE;
-			psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
+
+			clear_irq = (charger->pdata->cable_type != SEC_WIRELESS_PAD_NONE);
+			wake_lock(&charger->wpc_vrect_check_lock);
+			queue_delayed_work(charger->wqueue, &charger->wpc_vrect_check_work, msecs_to_jiffies(0));
 		} else
 			pr_info("%s: undefined Vrect IRQ scenario! \n", __func__);
 	}
@@ -5015,7 +5030,7 @@ INT_RE:
 	}
 
 INT_END:
-	if (charger->pdata->cable_type != SEC_WIRELESS_PAD_FAKE) {
+	if (clear_irq) {
 		/* clear intterupt */
 		if(!mfc_clear_irq(charger, &irq_src_l, &irq_src_h, &status_l, &status_h) && isr_rerun_cnt < ISR_CNT)
 			goto INT_RE;

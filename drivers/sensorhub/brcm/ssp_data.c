@@ -18,6 +18,7 @@
 
 /* SSP -> AP Instruction */
 #define MSG2AP_INST_BYPASS_DATA			0x37
+#define MSG2AP_INST_VDIS_DATA			0x38
 #define MSG2AP_INST_LIBRARY_DATA		0x01
 #define MSG2AP_INST_DEBUG_DATA			0x03
 #define MSG2AP_INST_BIG_DATA			0x04
@@ -98,7 +99,7 @@ exit_current:
 
 static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 		int *iDataIdx, struct sensor_value *sensorsdata,
-		u16 batch_mode, int sensor_type)
+		u16 batch_mode, char msg_inst, int sensor_type)
 {
 	u64 time_delta_ns = 0;
 	u64 update_timestamp = 0;
@@ -111,7 +112,7 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 #endif
 	u16 ts_cnt = 5;
 
-	if (data->IsVDIS_Enabled == true && sensor_type == GYROSCOPE_SENSOR) {
+	if (msg_inst == MSG2AP_INST_VDIS_DATA) {
 		u64 prev_index = 0;
 
 		memcpy(&ts_index, pchRcvDataFrame + *iDataIdx, 4);
@@ -142,8 +143,8 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 
 			if (time_delta_ns > current_timestamp) {
 				time_delta_ns = current_timestamp;
-				pr_err("[SSP_DEBUG_TIME] timestamp_error, ts_index: %d ts_index_cnt: %d timestamp: %llu\n",
-					       	ts_index, ts_index_cnt[ts_index], time_delta_ns);
+				pr_err("[SSP_DEBUG_TIME] timestamp_error, ts_index: %d ts_cnt: %d ts_index_cnt: %d timestamp: %llu\n",
+					       	ts_index, ts_cnt, ts_index_cnt[ts_index], time_delta_ns);
 			}
 		} else if (ts_flag == VDIS_TIMESTAMP_FORMAT) {
 			if (data->ts_index_buffer[ts_index] < data->ts_index_buffer[prev_index]) {
@@ -169,8 +170,8 @@ normal_parse:
 	update_timestamp = time_delta_ns;
 
 	if (ts_flag == VDIS_TIMESTAMP_FORMAT || ts_flag == SUPER_VDIS_FORMAT) {
-		ssp_debug_time("[SSP_DEBUG_TIME] ts_index: %u stacked_cnt: %u ts_flag: 0x%x ts_cnt: %d current_ts: %lld update_ts: %llu latency: %lld",
-			       	ts_index, data->ts_stacked_cnt, ts_flag, ts_cnt, current_timestamp, update_timestamp, current_timestamp - time_delta_ns);
+		ssp_debug_time("[SSP_DEBUG_TIME] ts_index: %u ts_index_cnt: %d stacked_cnt: %u ts_flag: 0x%x ts_cnt: %d current_ts: %lld update_ts: %llu latency: %lld",
+			       	ts_index, ts_index_cnt[ts_index], data->ts_stacked_cnt, ts_flag, ts_cnt, current_timestamp, update_timestamp, current_timestamp - time_delta_ns);
 	} else { 
 		ssp_debug_time("[SSP_DEBUG_TIME] sensor_type: %2d update_ts: %lld current_ts: %lld diff: %lld latency: %lld\n",
 			sensor_type, update_timestamp, current_timestamp,
@@ -652,7 +653,7 @@ void ssp_batch_report(struct ssp_data *data)
 		//ssp_dbg("[SSP_BAT] cnt %d\n", count);
 		data->get_sensor_data[sensor_type](data->batch_event.batch_data, &idx_data, &sensor_data);
 
-		get_timestamp(data, data->batch_event.batch_data, &idx_data, &sensor_data, BATCH_MODE_RUN, sensor_type);
+		get_timestamp(data, data->batch_event.batch_data, &idx_data, &sensor_data, BATCH_MODE_RUN, MSG2AP_INST_BYPASS_DATA, sensor_type);
 		ssp_debug_time("[SSP_BAT]: sensor %d, AP %lld MCU %lld, diff %lld, count: %d\n",
 			sensor_type, timestamp, sensor_data.timestamp, timestamp - sensor_data.timestamp, count);
 
@@ -811,6 +812,7 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 			complete(&data->hub_data->mcu_init_done);
 			break;
 // HIFI batch
+		case MSG2AP_INST_VDIS_DATA:			
 		case MSG2AP_INST_BYPASS_DATA:
 			sensor_type = pchRcvDataFrame[iDataIdx++];
 			if ((sensor_type < 0) || (sensor_type >= SENSOR_MAX)) {
@@ -828,7 +830,7 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 			data->get_sensor_data[sensor_type](pchRcvDataFrame, &iDataIdx, &sensorsdata);
 			data->skipEventReport = false;
 
-			get_timestamp(data, pchRcvDataFrame, &iDataIdx, &sensorsdata, 0, sensor_type);
+			get_timestamp(data, pchRcvDataFrame, &iDataIdx, &sensorsdata, 0, msg_inst, sensor_type);
 			if (data->skipEventReport == false) {
 				//Check sensor is enabled, before report sensordata
 				u64 AddedSensorState = (u64)atomic64_read(&data->aSensorEnable);

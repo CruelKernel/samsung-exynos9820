@@ -714,6 +714,13 @@ static int npu_vertex_streamoff(struct file *file)
 		goto p_err;
 	}
 
+	if (!(vctx->state & BIT(NPU_VERTEX_FORMAT))
+	    || !(vctx->state & BIT(NPU_VERTEX_GRAPH))) {
+		npu_ierr("invalid state(%X)\n", vctx, vctx->state);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
 	ret = npu_queue_streamoff(queue);
 	if (ret) {
 		npu_ierr("fail(%d) in npu_queue_streamoff\n", vctx, ret);

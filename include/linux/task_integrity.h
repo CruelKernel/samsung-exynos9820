@@ -112,6 +112,25 @@ struct task_integrity {
 
 #ifdef CONFIG_FIVE
 
+#ifdef CONFIG_FIVE_GKI_10
+#define TASK_INTEGRITY(task) \
+	((struct task_integrity *)((task)->android_vendor_data1[2]))
+
+static inline void task_integrity_assign(struct task_struct *task,
+					 struct task_integrity *tint)
+{
+	task->android_vendor_data1[2] = (u64)tint;
+}
+#else
+#define TASK_INTEGRITY(task) ((task)->integrity)
+
+static inline void task_integrity_assign(struct task_struct *task,
+					 struct task_integrity *tint)
+{
+	task->integrity = tint;
+}
+#endif
+
 extern void task_integrity_set_reset_reason(struct task_integrity *intg,
 	enum task_integrity_reset_cause cause, struct file *file);
 
@@ -239,6 +258,13 @@ extern int five_process_vm_rw(struct task_struct *task, int write);
 extern char const * const tint_reset_cause_to_string(
 	enum task_integrity_reset_cause cause);
 #else
+#define TASK_INTEGRITY(task) (NULL)
+
+static inline void task_integrity_assign(struct task_struct *task,
+					 struct task_integrity *tint)
+{
+}
+
 static inline struct task_integrity *task_integrity_alloc(void)
 {
 	return NULL;

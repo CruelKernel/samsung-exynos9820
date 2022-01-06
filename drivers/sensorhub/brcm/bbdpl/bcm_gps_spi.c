@@ -376,8 +376,11 @@ static ssize_t bcm_spi_read(struct file *filp, char __user *buf, size_t size, lo
 	do {
 		size_t cnt_to_end = CIRC_CNT_TO_END(circ->head, circ->tail, BCM_SPI_READ_BUF_SIZE);
 		size_t copied = min(cnt_to_end, size);
+		int ret = copy_to_user(buf + rd_size, (void *) circ->buf + circ->tail, copied);
 
-		WARN_ON(copy_to_user(buf + rd_size, (void *) circ->buf + circ->tail, copied));
+		if (ret < 0)
+			pr_err("[SSPBBD] %s: copy_to_user error(%d)", __func__, ret);
+
 		size -= copied;
 		rd_size += copied;
 		circ->tail = (circ->tail + copied) & (BCM_SPI_READ_BUF_SIZE-1);
@@ -408,9 +411,11 @@ static ssize_t bcm_spi_write(struct file *filp, const char __user *buf, size_t s
 	do {
 		size_t space_to_end = CIRC_SPACE_TO_END(circ->head, circ->tail, BCM_SPI_WRITE_BUF_SIZE);
 		size_t copied = min(space_to_end, size);
+		int ret = copy_from_user((void *) circ->buf + circ->head, buf + wr_size, copied);
 
+		if (ret < 0)
+			pr_err("[SSPBBD] %s: copy_from_user error(%d)", __func__, ret);
 
-		WARN_ON(copy_from_user((void *) circ->buf + circ->head, buf + wr_size, copied));
 		size -= copied;
 		wr_size += copied;
 		circ->head = (circ->head + copied) & (BCM_SPI_WRITE_BUF_SIZE - 1);
@@ -1213,7 +1218,7 @@ static int bcm_spi_probe(struct spi_device *spi)
 	gps_dev = sec_device_create(NULL, "gps");	
 
 	if (gpio_request(gps_pwr_en, "GPS_PWR_EN")) {
-		WARN(1, "fail to request gpio(GPS_PWR_EN)\n");
+		pr_err("fail to request gpio(GPS_PWR_EN)\n");
 	}
 	ret = gpio_direction_output(gps_pwr_en, 0);
 	if (ret) {

@@ -83,7 +83,7 @@ struct rule_item_struct *create_file_item(const char *name, int l)
 	offset = packfiles_size;
 	packfiles_size += (sizeof(struct rule_item_struct) + l);
 	packfiles_count++;
-	item = GET_ITEM_PTR(offset);
+	item = GET_ITEM_PTR(offset, defex_packed_rules);
 	item->next_file = 0;
 	item->next_level = 0;
 	item->feature_type = 0;
@@ -107,9 +107,9 @@ struct rule_item_struct *add_file_item(struct rule_item_struct *base, const char
 	if (!base->next_level) {
 		base->next_level = GET_ITEM_OFFSET(new_item);
 	} else {
-		item = GET_ITEM_PTR(base->next_level);
+		item = GET_ITEM_PTR(base->next_level, defex_packed_rules);
 		while(item->next_file) {
-			item = GET_ITEM_PTR(item->next_file);
+			item = GET_ITEM_PTR(item->next_file, defex_packed_rules);
 		}
 		item->next_file = GET_ITEM_OFFSET(new_item);
 	}
@@ -123,14 +123,14 @@ struct rule_item_struct *lookup_dir(struct rule_item_struct *base, const char *n
 
 	if (!base || !base->next_level)
 		return item;
-	item = GET_ITEM_PTR(base->next_level);
+	item = GET_ITEM_PTR(base->next_level, defex_packed_rules);
 	do {
 		if ((!(item->feature_type & feature_is_file)
 			|| (!!(item->feature_type & feature_for_recovery)) == for_recovery)
 			&& item->size == l
 			&& !memcmp(name, item->name, l)) return item;
 		offset = item->next_file;
-		item = GET_ITEM_PTR(offset);
+		item = GET_ITEM_PTR(offset, defex_packed_rules);
 	} while(offset);
 	return NULL;
 }
@@ -397,6 +397,7 @@ int load_file_list(const char *name)
 	int found;
 	char *str;
 	FILE *lst_file = NULL;
+	struct file_list_item *file_list_new;
 	static char work_str[PATH_MAX*2];
 
 	lst_file = fopen(name, "r");
@@ -417,11 +418,18 @@ int load_file_list(const char *name)
 #if defined(DEFEX_FACTORY_ENABLE)
 				!strncmp(str, "/data/", 6) ||
 #endif
-				!strncmp(str, "/apex/", 6))) {
+				!strncmp(str, "/apex/", 6) ||
+				!strncmp(str, "/system_ext/", 12))) {
 			remove_substr(str, "/root/");
 			found = remove_substr(str, "/recovery/");
 			file_list_count++;
-			file_list = realloc(file_list, sizeof(struct file_list_item) * file_list_count);
+			file_list_new = realloc(file_list, sizeof(struct file_list_item) * file_list_count);
+			if (!file_list_new) {
+				free(file_list);
+				printf("WARNING: Can not allocate the filelist item!\n");
+				exit(-1);
+			}
+			file_list = file_list_new;
 #ifdef DEFEX_INTEGRITY_ENABLE
 			strncpy(file_list[file_list_count - 1].integrity, work_str, INTEGRITY_LENGTH * 2);
 			file_list[file_list_count - 1].integrity[INTEGRITY_LENGTH * 2] = 0;
@@ -544,9 +552,11 @@ int reduce_rules(const char *source_rules_file, const char *reduced_rules_file, 
 
 			/* Add hash vale after each file path */
 			if (found_normal || (!found_normal && !found_recovery))
-				printf("remained rule: %s, %s %s\n", rule, integrity_normal, (line_end != NULL)?line_end:"");
+				printf("remained rule: %s, %s %s\n",
+					rule, integrity_normal, (line_end != NULL)?line_end:"");
 			if (found_recovery)
-				printf("remained rule: %s, %s %s\n", rule, integrity_recovery, (line_end != NULL)?line_end:"");
+				printf("remained rule: %s, %s %s (R)\n",
+					rule, integrity_recovery, (line_end != NULL)?line_end:"");
 
 			fprintf(dst_file, "%s,\"", work_str);
 			if (found_normal)

@@ -1,0 +1,232 @@
+#
+# (C) COPYRIGHT 2021 Samsung Electronics Inc. All rights reserved.
+#
+# This program is free software and is provided to you under the terms of the
+# GNU General Public License version 2 as published by the Free Software
+# Foundation, and any use by you of this program is subject to the terms
+# of such GNU licence.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, you can access it online at
+# http://www.gnu.org/licenses/gpl-2.0.html.
+#
+# SPDX-License-Identifier: GPL-2.0
+#
+# /* SPDX-License-Identifier: GPL-2.0 */
+
+config MALI_EXYNOS_CLOCK
+    bool "Enable EXYNOS CLOCK"
+    depends on MALI_MIDGARD && CAL_IF
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable frequency setting Mali DDK.
+
+config MALI_EXYNOS_DVFS
+    bool "Enable EXYNOS DVFS"
+    depends on MALI_MIDGARD && MALI_EXYNOS_CLOCK
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable DVFS in the Mali Midgard DDK.
+
+config MALI_DVFS
+    bool "Enable EXYNOS DVFS"
+    depends on MALI_MIDGARD && MALI_EXYNOS_DVFS
+    default y
+    help
+      Choose this option to enable DVFS in the Mali Midgard DDK.
+
+config MALI_EXYNOS_PM
+    bool "Enable EXYNOS Power Management"
+    depends on MALI_MIDGARD
+    depends on PM
+    depends on EXYNOS_PD
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable runtime power management in the Mali Midgard DDK.
+
+config MALI_EXYNOS_RTPM
+    bool "Enable EXYNOS Power Management"
+    depends on MALI_EXYNOS_PM
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable runtime power management in the Mali Midgard DDK.
+
+config MALI_EXYNOS_IFPO
+    bool "Enable IFPO(Inter-Frame Power Off)"
+    depends on MALI_MIDGARD && MALI_EXYNOS_PM && REGULATOR
+    default y if SOC_EXYNOS9830
+    default n
+    help
+      choose this option to enable IFPO Option in the Mali tBEx DDK.
+
+config MALI_DEBUG_SYS
+    bool "Enable sysfs for the Mali Midgard DDK "
+    depends on MALI_MIDGARD && SYSFS
+    default y
+    help
+      Enables sysfs for the Mali Midgard DDK. Set/Monitor the Mali Midgard DDK
+
+config MALI_DEBUG_KERNEL_SYSFS
+    bool "Support Kernel Group Debug SysFS"
+    depends on MALI_MIDGARD && MALI_DEBUG_SYS
+    default y
+    help
+      Support Support Kernel Group Debug SysFS on /sys/kernel/gpu
+
+config MALI_EXYNOS_QOS
+    bool "Enable CPU & MIF PMQOS from Mali"
+    depends on MALI_MIDGARD && PM_DEVFREQ && CPU_FREQ
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable PM_QOS in the Mali tTRx DDK.
+
+config MALI_EXYNOS_THERMAL
+    bool "Enable Mali thermal throttling"
+    depends on MALI_MIDGARD && MALI_EXYNOS_CLOCK && GPU_THERMAL
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable Mali thermal throttling
+
+config MALI_EXYNOS_BTS_MO
+    bool "Enable GPU BTS MO Optimization through PMQOS"
+    depends on MALI_EXYNOS_QOS
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Choose this option to enable BTS in the Mali tTRx DDK.
+
+config MALI_EXYNOS_SECURE_RENDERING_ARM
+    bool "Enable Secure Rendering support"
+    depends on MALI_MIDGARD && EXYNOS_CONTENT_PATH_PROTECTION
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default n
+    help
+      Support Secure Rendering on Exynos SoC (New ARM method)
+
+config MALI_EXYNOS_SECURE_RENDERING_LEGACY
+    bool "Enable Secure Rendering support (Legacy mode)"
+    depends on MALI_MIDGARD && EXYNOS_CONTENT_PATH_PROTECTION
+    default y if SOC_EXYNOS9830
+    default n
+    help
+      Support Secure Rendering on Exynos SoC (Legacy)
+
+config MALI_EXYNOS_DEBUG
+    bool "Enable Mali Exynos integration debug features"
+    depends on MALI_MIDGARD
+    depends on !KUNIT && !SEC_KUNIT
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+    help
+      Mali Exynos integration debug features
+
+config MALI_EXYNOS_DEVICETREE
+    bool "Read GPU information from OF device tree"
+    depends on MALI_MIDGARD && OF
+    default y
+    help
+      Read GPU info from device tree
+
+config MALI_EXYNOS_LLC
+    bool "Allocate Last Level Cache for Mali"
+    depends on MALI_MIDGARD && MALI_EXYNOS_QOS
+    default n
+
+config MALI_EXYNOS_CL_BOOST
+    bool "Frequency boost for compute only jobs"
+    depends on MALI_MIDGARD
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default y
+
+config MALI_NOTIFY_UTILISATION
+    bool "Added frag utilisation notifier"
+    depends on MALI_MIDGARD
+    depends on !KUNIT && !SEC_KUNIT
+    default y if SOC_EXYNOS2100
+    default n
+    help
+      Get Fragment Utilisation.
+
+config MALI_EXYNOS_GTS
+    bool "Exynos GPU Task Scheduler support"
+    depends on MALI_MIDGARD && MALI_NOTIFY_UTILISATION
+    default y if SOC_EXYNOS2100
+    default n
+    help
+      Enable Exynos GPU Task Scheduler support
+
+config MALI_TSG
+    bool "Enable Sustainable optimize"
+    depends on MALI_MIDGARD && MALI_EXYNOS_RTPM && MALI_EXYNOS_DVFS
+    default y if SOC_EXYNOS9830
+    default y if SOC_EXYNOS2100
+    default n
+    help
+      Choose this option to enable integrated samsung governor in the Mali tBEx DDK.
+
+config MALI_EXYNOS_SECURE_SMC_NOTIFY_GPU
+    bool "Enable SMC Notify calls when GPU is Power up and down"
+    depends on MALI_MIDGARD && EXYNOS_CONTENT_PATH_PROTECTION
+    default n
+    help
+      Support SMC Notify calls when GPU is power up and down
+
+config MALI_EXYNOS_WAKEUP_CLOCK_WA
+    bool "Enable wakeup clock wa"
+    depends on MALI_MIDGARD && MALI_EXYNOS_CLOCK
+    default y if SOC_EXYNOS9830
+    default n
+    help
+      Set GPU to middle dvfs clock before power off, and keep current clock
+      and then it used as restore clock when power on if its higher than
+      middle dvfs clock. middle dvfs clock here is NOT middle cpu clock.
+
+config MALI_EXYNOS_BLOCK_RPM_WHILE_SUSPEND_RESUME
+    bool "Block calling Runtime PM while suspend/resume"
+    depends on MALI_EXYNOS_PM
+    default n
+    help
+      Exynos kernel 4.19 less version not allow calling Runtime PM while suspend/resume.
+
+# This 9830 WA config is used outside the DDK by EMS, so don't change it
+config MALI_SEC_G3D_PEAK_NOTI
+    bool "Enable GPU SEC_G3D_PEAK_NOTI"
+    default y if SOC_EXYNOS9830
+    default n
+    help
+      Choose this option to enable SEC_G3D_PEAK_NOTI in the Mali tTRx DDK.
+
+# This is a legacy config that's unfortunately used by the other drivers... Need to find a better
+# place to put this.
+config EXYNOS_SOC_NAME
+    depends on MALI_MIDGARD
+    string "Third party soc name"
+    help
+      soc name.
+
+config MALI_EXYNOS_UNIT_TESTS
+    bool "Build unit tests for Mali Unified Driver vendor code"
+    default n
+    help
+      Choose this option to build unit tests for Mali LSI vendor code

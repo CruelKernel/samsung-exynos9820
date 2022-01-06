@@ -87,7 +87,7 @@ static struct npu_memory_buffer fw_report_buf = {
 
 int npu_system_alloc_fw_dram_log_buf(struct npu_system *system)
 {
-	int ret;
+	int ret = 0;
 	BUG_ON(!system);
 
 	npu_info("start: initialization.\n");

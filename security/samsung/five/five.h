@@ -26,9 +26,16 @@
 #include <linux/hash.h>
 #include <linux/audit.h>
 #include <linux/workqueue.h>
+#include <linux/xattr.h>
 
 #include "five_cert.h"
 #include "five_crypto.h"
+
+#define XATTR_FIVE_SUFFIX "five"
+#define XATTR_NAME_FIVE (XATTR_SECURITY_PREFIX XATTR_FIVE_SUFFIX)
+
+#define XATTR_PA_SUFFIX "pa"
+#define XATTR_NAME_PA (XATTR_USER_PREFIX XATTR_PA_SUFFIX)
 
 /* set during initialization */
 extern int five_hash_algo;

@@ -19,10 +19,10 @@
 #include <linux/slab.h>
 #include <linux/kthread.h>
 #include <linux/firmware.h>
-#include <five_tee_interface.h>
+
 #include "tee_client_api.h"
 #include "five_ta_uuid.h"
-#include "five_audit.h"
+#include "five_tee_interface.h"
 #include "teec_operation.h"
 
 #ifdef CONFIG_TEE_DRIVER_DEBUG
@@ -209,8 +209,7 @@ static int send_cmd(unsigned int cmd,
 	rc = TEEC_AllocateSharedMemory(context, &shmem);
 	if (rc != TEEC_SUCCESS || shmem.buffer == NULL) {
 		mutex_unlock(&itee_driver_lock);
-		five_audit_tee_msg("send_cmd",
-			"TEEC_AllocateSharedMemory is failed", rc, 0);
+		pr_err("FIVE: TEEC_AllocateSharedMemory is failed rc=%d\n", rc);
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -235,12 +234,12 @@ static int send_cmd(unsigned int cmd,
 	if (rc == TEEC_SUCCESS) {
 		if (origin != TEEC_ORIGIN_TRUSTED_APP) {
 			rc = -EIO;
-			five_audit_tee_msg("send_cmd",
-				"TEEC_InvokeCommand is failed", rc, origin);
+			pr_err("FIVE: TEEC_InvokeCommand is failed rc=%d origin=%u\n",
+								rc, origin);
 		}
 	} else {
-		five_audit_tee_msg("send_cmd", "TEEC_InvokeCommand is failed.",
-								 rc, origin);
+		pr_err("FIVE: TEEC_InvokeCommand is failed rc=%d origin=%u\n",
+								rc, origin);
 	}
 
 	if (rc == TEEC_SUCCESS && cmd == CMD_SIGN) {
@@ -318,10 +317,8 @@ static int send_cmd_with_retry(unsigned int cmd,
 		}
 	} while (retry_num--);
 
-	if (rc == TEEC_ERROR_ACCESS_DENIED) {
-		five_audit_tee_msg("send_cmd_with_retry",
-		"TA got TEEC_ERROR_ACCESS_DENIED", rc, 0);
-	}
+	if (rc == TEEC_ERROR_ACCESS_DENIED)
+		pr_err("FIVE: TA got TEEC_ERROR_ACCESS_DENIED rc=%d\n", rc);
 
 	return rc;
 }
@@ -357,8 +354,7 @@ static int load_trusted_app(void)
 
 	rc = TEEC_InitializeContext(NULL, context);
 	if (rc) {
-		five_audit_tee_msg("load_trusted_app", "Can't initialize context",
-									rc, 0);
+		pr_err("FIVE: Can't initialize context rc=%d\n", rc);
 		goto error;
 	}
 
@@ -371,7 +367,7 @@ static int load_trusted_app(void)
 	rc = TEEC_OpenSession(context, session,
 				&five_ta_uuid, 0, NULL, NULL, &origin);
 	if (rc) {
-		five_audit_tee_msg("load_trusted_app", "Can't open session",
+		pr_err("FIVE: Can't open session rc=%d origin=%u\n",
 								rc, origin);
 		goto error;
 	}
@@ -546,6 +542,9 @@ static void __exit tee_driver_exit(void)
 	unregister_tee_driver();
 	kthread_stop(tee_msg_task);
 }
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("FIVE TEE Driver");
 
 module_init(tee_driver_init);
 module_exit(tee_driver_exit);

@@ -186,7 +186,7 @@ static void sec_reboot(enum reboot_mode reboot_mode, const char *cmd)
 
 	if (cmd) {
 		unsigned long value;
-		if (!strcmp(cmd, "fota"))
+		if (!strcmp(cmd, "recovery-update"))
 			exynos_pmu_write(SEC_DEBUG_PANIC_INFORM, SEC_RESET_REASON_FOTA);
 		else if (!strcmp(cmd, "fota_bl"))
 			exynos_pmu_write(SEC_DEBUG_PANIC_INFORM, SEC_RESET_REASON_FOTA_BL);

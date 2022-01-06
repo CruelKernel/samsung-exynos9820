@@ -136,10 +136,13 @@ void sec_bootstat_add_initcall(const char *s)
 	}
 }
 
+static DEFINE_RAW_SPINLOCK(ebs_list_lock);
 void sec_enhanced_boot_stat_record(const char *buf)
 {
 	unsigned long long t = 0;
 	struct enhanced_boot_time *entry;
+	unsigned long flags;
+
 	entry = kmalloc(sizeof(*entry), GFP_KERNEL);
 	if (!entry)
 		return;
@@ -149,8 +152,12 @@ void sec_enhanced_boot_stat_record(const char *buf)
 	do_div(t, 1000000);
 	entry->time = (unsigned int)t;
 	sec_bootstat_get_cpuinfo(entry->freq, &entry->online);
+
+	raw_spin_lock_irqsave(&ebs_list_lock, flags);
 	list_add(&entry->next, &enhanced_boot_time_list);
 	events_ebs++;
+
+	raw_spin_unlock_irqrestore(&ebs_list_lock, flags);
 }
 
 static int prev;

@@ -2046,6 +2046,14 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	if (enabled && !dev->enabled) {
 		pr_info("usb: %s: Connect gadget: enabled=%d, dev->enabled=%d\n",
 				__func__, enabled, dev->enabled);
+
+		if (!dev->composite.gadget_driver.udc_name) {
+			pr_info("usb: %s: UDC is NULL\n", __func__);
+			dev->enabled = true;
+			mutex_unlock(&dev->lock);
+			return -ENODEV;
+		}
+
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 		store_usblog_notify(NOTIFY_USBMODE_EXTRA, "enable 1", NULL);
 #endif

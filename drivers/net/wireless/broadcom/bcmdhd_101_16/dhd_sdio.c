@@ -751,6 +751,8 @@ static int dhdsdio_download_btfw(struct dhd_bus *bus, osl_t *osh, void *sdh);
 static int _dhdsdio_download_btfw(struct dhd_bus *bus);
 #endif /* defined (BT_OVER_SDIO) */
 
+int dhdcdc_ioctl_resp_wait(dhd_pub_t *dhd, int *ioctl_received);
+
 /*
  * PR 114233: [4335] Sdio 3.0 overflow due to spur mode PLL change
  */
@@ -2920,6 +2922,7 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 {
 	int timeleft;
 	uint rxlen = 0;
+	int ioctl_received = IOCTL_WAIT;
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -2927,7 +2930,7 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 		return -EIO;
 
 	/* Wait until control frame is available */
-	timeleft = dhd_os_ioctl_resp_wait(bus->dhd, &bus->rxlen);
+	timeleft = dhdcdc_ioctl_resp_wait(bus->dhd, &ioctl_received);
 
 	dhd_os_sdlock(bus->dhd);
 	rxlen = bus->rxlen;
@@ -2935,11 +2938,14 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 	bus->rxlen = 0;
 	dhd_os_sdunlock(bus->dhd);
 
-	if (rxlen) {
-		DHD_CTL(("%s: resumed on rxctl frame, got %d expected %d\n",
-			__FUNCTION__, rxlen, msglen));
-	} else {
-		if (timeleft == 0) {
+	/* timeout elapsed but ioctl_recelived is non-zero */
+	if (timeleft == 1 && rxlen == 0) {
+		ioctl_received = IOCTL_WAIT;
+	}
+
+	switch (ioctl_received) {
+		case IOCTL_WAIT: /* timeout */
+		{
 #ifdef DHD_DEBUG
 			uint32 status, retry = 0;
 			R_SDREG(status, &bus->regs->intstatus, retry);
@@ -2947,46 +2953,43 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 				__FUNCTION__, status));
 #else
 			DHD_ERROR(("%s: resumed on timeout\n", __FUNCTION__));
+
 #endif /* DHD_DEBUG */
-			if (!bus->dhd->dongle_trap_occured) {
+			if (!dhd_query_bus_erros(bus->dhd)) {
 #ifdef DHD_FW_COREDUMP
-				bus->dhd->memdump_type = DUMP_TYPE_RESUMED_ON_TIMEOUT;
+				if (timeleft == 0) {
+					bus->dhd->memdump_type = DUMP_TYPE_RESUMED_ON_TIMEOUT_RX;
+					bus->dhd->rxcnt_timeout++;
+					DHD_ERROR(("%s: rxcnt_timeout=%d, rxlen=%d\n",
+						__FUNCTION__, bus->dhd->rxcnt_timeout,
+						rxlen));
+				} else {
+					bus->dhd->memdump_type = DUMP_TYPE_RESUMED_UNKNOWN;
+				}
 #endif /* DHD_FW_COREDUMP */
 				dhd_os_sdlock(bus->dhd);
 				dhdsdio_checkdied(bus, NULL, 0);
 				dhd_os_sdunlock(bus->dhd);
-			}
-		} else {
-			DHD_CTL(("%s: resumed for unknown reason?\n", __FUNCTION__));
-			if (!bus->dhd->dongle_trap_occured) {
-#ifdef DHD_FW_COREDUMP
-				bus->dhd->memdump_type = DUMP_TYPE_RESUMED_UNKNOWN;
-#endif /* DHD_FW_COREDUMP */
-				dhd_os_sdlock(bus->dhd);
-				dhdsdio_checkdied(bus, NULL, 0);
-				dhd_os_sdunlock(bus->dhd);
+
+				if (bus->dhd->memdump_enabled) {
+					dhd_bus_mem_dump(bus->dhd);
+				}
 			}
 		}
-#ifdef DHD_FW_COREDUMP
-		/* Dump the ram image */
-		if (bus->dhd->memdump_enabled && !bus->dhd->dongle_trap_occured)
-			dhd_bus_mem_dump(bus->dhd);
-#endif /* DHD_FW_COREDUMP */
-	}
-	if (timeleft == 0) {
-		if (rxlen == 0)
-			bus->dhd->rxcnt_timeout++;
-		DHD_ERROR(("%s: rxcnt_timeout=%d, rxlen=%d\n", __FUNCTION__,
-			bus->dhd->rxcnt_timeout, rxlen));
-#ifdef DHD_FW_COREDUMP
-		/* collect socram dump */
-		if (bus->dhd->memdump_enabled) {
-			bus->dhd->memdump_type = DUMP_TYPE_RESUMED_ON_TIMEOUT_RX;
-			dhd_bus_mem_dump(bus->dhd);
-		}
-#endif /* DHD_FW_COREDUMP */
-	} else {
-		bus->dhd->rxcnt_timeout = 0;
+			break;
+
+		case IOCTL_RETURN_ON_SUCCESS:
+			DHD_CTL(("%s: resumed on rxctl frame, got %d expected %d\n",
+				__FUNCTION__, rxlen, msglen));
+			bus->dhd->rxcnt_timeout = 0;
+			break;
+
+		default:
+			DHD_ERROR(("%s: IOCTL failure due to ioctl_received = %d\n",
+				__FUNCTION__, ioctl_received));
+			DHD_ERROR(("%s: setting iovar_timeout_occured\n", __FUNCTION__));
+			bus->dhd->iovar_timeout_occured = TRUE;
+			break;
 	}
 
 	if (rxlen)
@@ -3743,6 +3746,10 @@ printbuf:
 	}
 #endif /* #if defined(DHD_FW_COREDUMP) */
 
+	if (l_sdpcm_shared.flags & SDPCM_SHARED_TRAP)  {
+		dhd_wakeup_ioctl_event(bus->dhd, IOCTL_RETURN_ON_TRAP);
+	}
+
 done:
 	if (mbuffer)
 		MFREE(bus->dhd->osh, mbuffer, msize);
@@ -3785,18 +3792,29 @@ dhdsdio_get_mem_dump(dhd_bus_t *bus)
 	uint32 start = bus->dongle_ram_base;	/* Start address */
 	uint read_size = 0;			/* Read size of each iteration */
 	uint8 *p_buf = NULL, *databuf = NULL;
+#ifdef DHD_FILE_DUMP_EVENT
+	dhd_dongledump_status_t dump_status;
+#endif /* DHD_FILE_DUMP_EVENT */
 
 	/* Get full mem size */
 	p_buf = dhd_get_fwdump_buf(bus->dhd, size);
 	if (!p_buf) {
 		DHD_ERROR(("%s: Out of memory (%d bytes)\n",
 			__FUNCTION__, size));
-		return BCME_ERROR;
+		ret = BCME_ERROR;
+		goto exit;
 	}
 
 	dhd_os_sdlock(bus->dhd);
 	BUS_WAKE(bus);
 	dhdsdio_clkctl(bus, CLK_AVAIL, FALSE);
+
+#ifdef DHD_FILE_DUMP_EVENT
+	dump_status = dhd_get_dump_status(bus->dhd);
+	if (dump_status != DUMP_IN_PROGRESS) {
+		dhd_set_dump_status(bus->dhd, DUMP_IN_PROGRESS);
+	}
+#endif /* DHD_FILE_DUMP_EVENT */
 
 	/* Read mem content */
 	DHD_ERROR(("Dump dongle memory\n"));
@@ -3820,6 +3838,13 @@ dhdsdio_get_mem_dump(dhd_bus_t *bus)
 		bus->activity = FALSE;
 		dhdsdio_clkctl(bus, CLK_NONE, TRUE);
 	}
+
+exit:
+#ifdef DHD_FILE_DUMP_EVENT
+	if (ret != BCME_OK) {
+		dhd_set_dump_status(bus->dhd, DUMP_FAILURE);
+	}
+#endif /* DHD_FILE_DUMP_EVENT */
 
 	dhd_os_sdunlock(bus->dhd);
 
@@ -4978,7 +5003,7 @@ dhd_bus_stop(struct dhd_bus *bus, bool enforce_mutex)
 	/* Clear rx control and wake any waiters */
 	/* XXX More important in disconnect, but no context? */
 	bus->rxlen = 0;
-	dhd_os_ioctl_resp_wake(bus->dhd);
+	dhd_wakeup_ioctl_event(bus->dhd, IOCTL_RETURN_ON_BUS_STOP);
 
 	/* Reset some F2 state stuff */
 	bus->rxskip = FALSE;
@@ -5399,6 +5424,7 @@ gotpkt:
 	/* Point to valid data and indicate its length */
 	bus->rxctl += doff;
 	bus->rxlen = len - doff;
+	dhd_wakeup_ioctl_event(bus->dhd, IOCTL_RETURN_ON_SUCCESS);
 
 done:
 	/* Awake any waiters */

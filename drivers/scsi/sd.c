@@ -3173,6 +3173,9 @@ static int sd_revalidate_disk(struct gendisk *disk)
 		rw_max = min_not_zero(logical_to_sectors(sdp, dev_max),
 				      (sector_t)BLK_DEF_MAX_SECTORS);
 
+	/* IOPP-max_sectors-v1.0.4.14 */
+	rw_max = max(rw_max, (unsigned int)BLK_DEF_MAX_SECTORS);
+
 	/* Do not exceed controller limit */
 	rw_max = min(rw_max, queue_max_hw_sectors(q));
 
@@ -3491,6 +3494,7 @@ static void sd_probe_async(void *data, async_cookie_t cookie)
 static int sd_probe(struct device *dev)
 {
 	struct scsi_device *sdp = to_scsi_device(dev);
+	struct scsi_host_template *sht = sdp->host->hostt;
 	struct scsi_disk *sdkp;
 	struct gendisk *gd;
 	int index;
@@ -3560,19 +3564,16 @@ static int sd_probe(struct device *dev)
 					     SD_UFS_TIMEOUT);
 	}
 
-#ifdef CONFIG_SCSI_UFSHCD
-	if (!sdp->host->by_ufs) {
-#else
-	if (1) { /* apply to all SCSI devices on non-UFS system */
-#endif
+	if (strncmp(sht->name, "ufshcd", 6)) {
 		struct request_queue *q = sdp->request_queue;
 
-		/* decrease max # of requests to 32. The goal of this tunning is
+		/* decrease max # of requests to 32. The goal of this tuning is
 		 * reducing the time for draining elevator when elevator_switch
 		 * function is called. It is effective for slow USB memory.
 		 */
 		q->nr_requests = BLKDEV_MAX_RQ / 8;
-		if (q->nr_requests < 32) q->nr_requests = 32;
+		if (q->nr_requests < 32)
+			q->nr_requests = 32;
 #ifdef CONFIG_LARGE_DIRTY_BUFFER
 		/* apply more throttle on non-ufs scsi device */
 		q->backing_dev_info->capabilities |= BDI_CAP_STRICTLIMIT;
@@ -3580,15 +3581,13 @@ static int sd_probe(struct device *dev)
 		bdi_set_max_ratio(q->backing_dev_info, 60);
 #endif
 		pr_info("Parameters for SCSI-dev(%s): min/max_ratio: %u/%u "
-				"strictlimit: on nr_requests: %lu read_ahead_kb: %lu\n",
-				gd->disk_name,
-				q->backing_dev_info->min_ratio,
-				q->backing_dev_info->max_ratio,
-				q->nr_requests,
-				q->backing_dev_info->ra_pages * 4);
+			"strictlimit: on nr_requests: %lu read_ahead_kb: %lu\n",
+			gd->disk_name,
+			q->backing_dev_info->min_ratio,
+			q->backing_dev_info->max_ratio,
+			q->nr_requests,
+			q->backing_dev_info->ra_pages * 4);
 	}
-
-
 
 	device_initialize(&sdkp->dev);
 	sdkp->dev.parent = dev;

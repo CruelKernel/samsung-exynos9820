@@ -185,7 +185,7 @@ err_exit:
 
 int npu_debug_release(void)
 {
-	int ret;
+	int ret = 0;
 	struct npu_device	*npu_device;
 	struct device		*dev;
 
@@ -213,7 +213,7 @@ int npu_debug_release(void)
 
 	clear_state_bit(FS_READY);
 	npu_info("complete in unloading npu_debug\n");
-	return 0;
+	return ret;
 }
 
 int npu_debug_open(struct npu_device *npu_device)

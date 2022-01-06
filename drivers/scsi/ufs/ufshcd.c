@@ -1291,32 +1291,6 @@ static inline void ufshcd_hba_start(struct ufs_hba *hba)
 	ufshcd_writel(hba, CONTROLLER_ENABLE, REG_CONTROLLER_ENABLE);
 }
 
-#ifdef CUSTOMIZE_UPIU_FLAGS
-SIO_PATCH_VERSION(UPIU_customize, 1, 1, "");
-
-/* IOPP-ufs_cp-v1.0.4.9 */
-static void set_customized_upiu_flags(struct ufshcd_lrb *lrbp, u32 *upiu_flags)
-{
-	if (lrbp->command_type == UTP_CMD_TYPE_SCSI) {
-		switch (req_op(lrbp->cmd->request)) {
-		case REQ_OP_READ:
-			*upiu_flags |= UPIU_COMMAND_PRIORITY_HIGH;
-			break;
-		case REQ_OP_WRITE:
-			if (lrbp->cmd->request->cmd_flags & REQ_SYNC)
-				*upiu_flags |= UPIU_COMMAND_PRIORITY_HIGH;
-			break;
-		case REQ_OP_FLUSH:
-			*upiu_flags |= UPIU_TASK_ATTR_HEADQ;
-			break;
-		case REQ_OP_DISCARD:
-			*upiu_flags |= UPIU_TASK_ATTR_ORDERED;
-			break;
-		}
-	}
-}
-#endif
-
 /**
  * ufshcd_is_hba_active - Get controller state
  * @hba: per adapter instance
@@ -2713,6 +2687,29 @@ static void ufshcd_disable_intr(struct ufs_hba *hba, u32 intrs)
 	}
 
 	ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+}
+
+/* IOPP-upiu_flags-v1.2.k5.4 */
+static void set_customized_upiu_flags(struct ufshcd_lrb *lrbp, u32 *upiu_flags)
+{
+	if (!lrbp->cmd || !lrbp->cmd->request)
+		return;
+
+	switch (req_op(lrbp->cmd->request)) {
+	case REQ_OP_READ:
+		*upiu_flags |= UPIU_CMD_PRIO_HIGH;
+		break;
+	case REQ_OP_WRITE:
+		if (lrbp->cmd->request->cmd_flags & REQ_SYNC)
+			*upiu_flags |= UPIU_CMD_PRIO_HIGH;
+		break;
+	case REQ_OP_FLUSH:
+		*upiu_flags |= UPIU_TASK_ATTR_HEADQ;
+		break;
+	case REQ_OP_DISCARD:
+		*upiu_flags |= UPIU_TASK_ATTR_ORDERED;
+		break;
+	}
 }
 
 /**

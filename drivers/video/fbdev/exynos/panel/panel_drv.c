@@ -2006,13 +2006,14 @@ do_exit:
 #endif /* CONFIG_EXYNOS_MULTIRESOLUTION */
 #endif /* CONFIG_SUPPORT_DSU */
 
+#define MAX_DSIM_CNT_FOR_PANEL (MAX_DSIM_CNT)
 static int panel_ioctl_dsim_probe(struct v4l2_subdev *sd, void *arg)
 {
 	int *param = (int *)arg;
 	struct panel_device *panel = container_of(sd, struct panel_device, sd);
 
 	panel_info("PANEL:INFO:%s:PANEL_IOC_DSIM_PROBE\n", __func__);
-	if (param == NULL) {
+	if (param == NULL || *param >= MAX_DSIM_CNT_FOR_PANEL) {
 		panel_err("PANEL:ERR:%s:invalid arg\n", __func__);
 		return -EINVAL;
 	}

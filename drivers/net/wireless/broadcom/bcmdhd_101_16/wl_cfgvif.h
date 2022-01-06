@@ -135,6 +135,10 @@ extern int wl_set_ap_suspend(struct net_device *dev, bool enable, char *ifname);
 int wl_set_softap_elna_bypass(struct net_device *dev, char *ifname, int enable);
 int wl_get_softap_elna_bypass(struct net_device *dev, char *ifname, void *param);
 #endif /* SUPPORT_SOFTAP_ELNA_BYPASS */
+#ifdef CUSTOM_SOFTAP_SET_ANT
+int wl_set_softap_antenna(struct net_device *dev, char *ifname, int set_chain);
+int wl_get_softap_antenna(struct net_device *dev, char *ifname, void *param);
+#endif /* CUSTOM_SOFTAP_SET_ANT */
 #ifdef SUPPORT_AP_BWCTRL
 extern int wl_set_ap_bw(struct net_device *dev, u32 bw, char *ifname);
 extern int wl_get_ap_bw(struct net_device *dev, char* command, char *ifname, int total_len);

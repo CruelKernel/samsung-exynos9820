@@ -124,6 +124,12 @@ enum {
 	UPIU_CMD_FLAGS_READ	= 0x40,
 };
 
+/* UPIU Command Priority flags */
+enum {
+	UPIU_CMD_PRIO_NONE	= 0x00,
+	UPIU_CMD_PRIO_HIGH	= 0x04,
+};
+
 /* UPIU Task Attributes */
 enum {
 	UPIU_TASK_ATTR_SIMPLE	= 0x00,

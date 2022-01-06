@@ -1533,25 +1533,59 @@ static struct dhd_attr dhd_attr_wl_dbg_level =
 __ATTR(wl_dbg_level, 0660, show_wl_debug_level, set_wl_debug_level);
 
 #ifdef DHD_FILE_DUMP_EVENT
+#define DUMP_TRIGGER	1
+
 static ssize_t
-show_dhd_dump_done(struct dhd_info *dhd, char *buf)
+show_dhd_dump_in_progress(struct dhd_info *dhd, char *buf)
 {
-	ssize_t ret = 0;
-	bool dump_done;
+	size_t ret = 0;
+	dhd_dongledump_status_t dump_status;
 
 	if (!dhd) {
 		DHD_ERROR(("%s: dhd is NULL\n", __FUNCTION__));
-		return ret;
+		return BCME_ERROR;
 	}
 
-	dump_done = DHD_BUS_BUSY_CHECK_IN_HALDUMP(&dhd->pub) ? TRUE : FALSE;
-	ret = scnprintf(buf, PAGE_SIZE - 1, "%d \n", dump_done);
+	dump_status = dhd_get_dump_status(&dhd->pub);
+	ret = scnprintf(buf, PAGE_SIZE - 1, "%d \n", dump_status);
 
 	return ret;
 }
 
-static struct dhd_attr dhd_attr_dump_done =
-__ATTR(dump_done, 0660, show_dhd_dump_done, NULL);
+static ssize_t
+set_dhd_dump_in_progress(struct dhd_info *dhd, const char *buf, size_t count)
+{
+	uint32 input;
+	dhd_dongledump_status_t dump_status;
+
+	if (!dhd) {
+		DHD_ERROR(("%s: dhd is NULL\n", __FUNCTION__));
+		return count;
+	}
+
+	dump_status = dhd_get_dump_status(&dhd->pub);
+	if (dump_status == DUMP_NOT_READY || dump_status == DUMP_IN_PROGRESS) {
+		DHD_ERROR(("%s: Could not start dongle dump: %d\n",
+			__FUNCTION__, dump_status));
+		goto exit;
+	}
+
+	input = bcm_atoi(buf);
+	if (input == DUMP_TRIGGER) {
+		DHD_INFO(("%s: Trigger dongle dump\n", __FUNCTION__));
+		dhd_set_dump_status(&dhd->pub, DUMP_IN_PROGRESS);
+		schedule_work(&dhd->dhd_dump_proc_work);
+	}
+	else {
+		DHD_ERROR(("%s: Invalid value %d\n", __FUNCTION__, input));
+	}
+
+exit:
+	return count;
+}
+
+static struct dhd_attr dhd_attr_dump_in_progress =
+__ATTR(dump_in_progress, 0660, show_dhd_dump_in_progress, set_dhd_dump_in_progress);
 #endif /* DHD_FILE_DUMP_EVENT */
 #endif /* WL_CFG80211 */
 
@@ -1633,7 +1667,7 @@ static struct attribute *default_file_attrs[] = {
 #if defined(WL_CFG80211)
 	&dhd_attr_wl_dbg_level.attr,
 #if defined(DHD_FILE_DUMP_EVENT)
-	&dhd_attr_dump_done.attr,
+	&dhd_attr_dump_in_progress.attr,
 #endif /* DHD_FILE_DUMP_EVENT */
 #endif /* WL_CFG80211 */
 	&dhd_attr_dhd_debug_data.attr,

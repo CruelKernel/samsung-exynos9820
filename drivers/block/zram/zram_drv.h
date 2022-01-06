@@ -18,24 +18,9 @@
 #include <linux/rwsem.h>
 #include <linux/zsmalloc.h>
 #include <linux/crypto.h>
+#include <linux/mm.h>
 
 #include "zcomp.h"
-
-/*-- Configurable parameters */
-
-/*
- * Pages that compress to size greater than this are stored
- * uncompressed in memory.
- */
-static const size_t max_zpage_size = PAGE_SIZE / 4 * 3;
-
-/*
- * NOTE: max_zpage_size must be less than or equal to:
- *   ZS_MAX_ALLOC_SIZE. Otherwise, zs_malloc() would
- * always return failure.
- */
-
-/*-- End of configurable params */
 
 #define SECTOR_SHIFT		9
 #define SECTORS_PER_PAGE_SHIFT	(PAGE_SHIFT - SECTOR_SHIFT)
@@ -47,7 +32,7 @@ static const size_t max_zpage_size = PAGE_SIZE / 4 * 3;
 
 
 /*
- * The lower ZRAM_FLAG_SHIFT bits of table.value is for
+ * The lower ZRAM_FLAG_SHIFT bits of table.flags is for
  * object size (excluding header), the higher bits is for
  * zram_pageflags.
  *
@@ -58,12 +43,19 @@ static const size_t max_zpage_size = PAGE_SIZE / 4 * 3;
  */
 #define ZRAM_FLAG_SHIFT 24
 
-/* Flags for zram pages (table[page_no].value) */
+/* Flags for zram pages (table[page_no].flags) */
 enum zram_pageflags {
-	/* Page consists the same element */
-	ZRAM_SAME = ZRAM_FLAG_SHIFT,
-	ZRAM_ACCESS,	/* page is now accessed */
+	/* zram slot is locked */
+	ZRAM_LOCK = ZRAM_FLAG_SHIFT,
+	ZRAM_SAME,	/* Page consists the same element */
 	ZRAM_WB,	/* page is stored on backing_device */
+	ZRAM_UNDER_WB,	/* page is under writeback */
+	ZRAM_HUGE,	/* Incompressible page */
+	ZRAM_IDLE,	/* not accessed page since last idle marking */
+	ZRAM_EXPIRE,
+	ZRAM_READ_BDEV,
+	ZRAM_PPR,
+	ZRAM_UNDER_PPR,
 
 	__NR_ZRAM_PAGEFLAGS,
 };
@@ -76,7 +68,13 @@ struct zram_table_entry {
 		unsigned long handle;
 		unsigned long element;
 	};
-	unsigned long value;
+	unsigned long flags;
+#ifdef CONFIG_ZRAM_MEMORY_TRACKING
+	ktime_t ac_time;
+#endif
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
+	struct list_head lru_list;
+#endif
 };
 
 struct zram_stats {
@@ -88,10 +86,73 @@ struct zram_stats {
 	atomic64_t invalid_io;	/* non-page-aligned I/O requests */
 	atomic64_t notify_free;	/* no. of swap slot free notifications */
 	atomic64_t same_pages;		/* no. of same element filled pages */
+	atomic64_t huge_pages;		/* no. of huge pages */
 	atomic64_t pages_stored;	/* no. of pages currently stored */
 	atomic_long_t max_used_pages;	/* no. of maximum pages stored */
 	atomic64_t writestall;		/* no. of write slow paths */
+	atomic64_t miss_free;		/* no. of missed free */
+#ifdef	CONFIG_ZRAM_WRITEBACK
+	atomic64_t bd_count;		/* no. of pages in backing device */
+	atomic64_t bd_reads;		/* no. of reads from backing device */
+	atomic64_t bd_writes;		/* no. of writes from backing device */
+#endif
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
+	atomic64_t bd_expire;
+	atomic64_t bd_objcnt;
+	atomic64_t bd_size;
+	atomic64_t bd_max_count;
+	atomic64_t bd_max_size;
+	atomic64_t bd_ppr_count;
+	atomic64_t bd_ppr_reads;
+	atomic64_t bd_ppr_writes;
+	atomic64_t bd_ppr_objcnt;
+	atomic64_t bd_ppr_size;
+	atomic64_t bd_ppr_max_count;
+	atomic64_t bd_ppr_max_size;
+	atomic64_t bd_objreads;
+	atomic64_t bd_objwrites;
+#endif
 };
+
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
+#define ZRAM_WB_THRESHOLD 32
+#define NR_ZWBS 16
+#define NR_FALLOC_PAGES 512
+#define FALLOC_ALIGN_MASK (~(NR_FALLOC_PAGES - 1))
+struct zram_wb_header {
+	u32 index;
+	u32 size;
+};
+
+struct zram_wb_work {
+	struct work_struct work;
+	struct page *src_page;
+	struct page *dst_page;
+	struct bio *bio;
+	struct zram *zram;
+	unsigned long handle;
+};
+
+struct zram_wb_entry {
+	unsigned long index;
+	unsigned int offset;
+	unsigned int size;
+};
+
+struct zwbs {
+	struct zram_wb_entry entry[ZRAM_WB_THRESHOLD];
+	struct page *page;
+	u32 cnt;
+	u32 off;
+};
+
+void free_zwbs(struct zwbs **);
+int alloc_zwbs(struct zwbs **);
+bool zram_is_app_launch(void);
+int is_writeback_entry(swp_entry_t);
+void swap_add_to_list(struct list_head *, swp_entry_t);
+void swap_writeback_list(struct zwbs **, struct list_head *);
+#endif
 
 struct zram {
 	struct zram_table_entry *table;
@@ -116,13 +177,32 @@ struct zram {
 	 * zram is claimed so open request will be failed
 	 */
 	bool claim; /* Protected by bdev->bd_mutex */
-#ifdef CONFIG_ZRAM_WRITEBACK
 	struct file *backing_dev;
+#ifdef CONFIG_ZRAM_WRITEBACK
+	spinlock_t wb_limit_lock;
+	bool wb_limit_enable;
+	u64 bd_wb_limit;
 	struct block_device *bdev;
 	unsigned int old_block_size;
 	unsigned long *bitmap;
 	unsigned long nr_pages;
+#endif
+#ifdef CONFIG_ZRAM_MEMORY_TRACKING
+	struct dentry *debugfs_dir;
+#endif
+#ifdef CONFIG_ZRAM_LRU_WRITEBACK
+	struct task_struct *wbd;
+	wait_queue_head_t wbd_wait;
+	u8 *wb_table;
+	unsigned long *chunk_bitmap;
+	bool wbd_running;
+	bool io_complete;
+	struct list_head list;
+	spinlock_t list_lock;
+	spinlock_t wb_table_lock;
 	spinlock_t bitmap_lock;
+	unsigned long *blk_bitmap;
+	struct mutex blk_bitmap_lock;
 #endif
 };
 #endif

@@ -1345,8 +1345,10 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 
 	dev = ndev_to_wlc_ndev(dev, cfg);
 	chspec = wl_freq_to_chanspec(chan->center_freq);
-	WL_ERR(("netdev_ifidx(%d), chan_type(%d) target channel(%d) chan->center_freq (%d)\n",
-		dev->ifindex, channel_type, CHSPEC_CHANNEL(chspec), chan->center_freq));
+	WL_ERR(("netdev_ifidx(%d) chspec(%x) chan_type(%d) "
+		" target channel(%d) chan->center_freq (%d)\n",
+		dev->ifindex, chspec, channel_type,
+		CHSPEC_CHANNEL(chspec), chan->center_freq));
 
 		if (IS_P2P_GO(dev->ieee80211_ptr) && (CHSPEC_IS6G(chspec))) {
 			WL_ERR(("P2P GO not allowed on 6G\n"));
@@ -1417,6 +1419,7 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 		bw = WL_CHANSPEC_BW_80;
 	}
 set_channel:
+	WL_DBG(("bw = %x, chspec =%x, chspec band = %x\n", bw, chspec, CHSPEC_BAND(chspec)));
 	cur_chspec = wf_create_chspec_from_primary(wf_chspec_primary20_chan(chspec),
 		bw, CHSPEC_BAND(chspec));
 #ifdef WL_6G_BAND
@@ -6162,3 +6165,93 @@ wl_restore_ap_bw(struct bcm_cfg80211 *cfg)
 	}
 }
 #endif /* SUPPORT_AP_BWCTRL */
+
+#ifdef CUSTOM_SOFTAP_SET_ANT
+int
+wl_set_softap_antenna(struct net_device *dev, char *ifname, int set_chain)
+{
+	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
+	struct net_device *ifdev = NULL;
+	char iobuf[WLC_IOCTL_SMLEN];
+	int err = BCME_OK;
+	int iftype = 0;
+	s32 val = 1;
+
+	memset(iobuf, 0, WLC_IOCTL_SMLEN);
+
+	/* Check the interface type */
+	ifdev = wl_get_netdev_by_name(cfg, ifname);
+	if (ifdev == NULL) {
+		WL_ERR(("%s: Could not find net_device for ifname:%s\n",
+			__FUNCTION__, ifname));
+		err = BCME_BADARG;
+		goto fail;
+	}
+
+	iftype = ifdev->ieee80211_ptr->iftype;
+	if (iftype == NL80211_IFTYPE_AP) {
+		err = wldev_ioctl_set(dev, WLC_DOWN, &val, sizeof(s32));
+		if (err) {
+			WL_ERR(("WLC_DOWN error %d\n", err));
+			goto fail;
+		} else {
+			err = wldev_iovar_setint(ifdev, "txchain", set_chain);
+			if (unlikely(err)) {
+				WL_ERR(("%s: Failed to set txchain[%d], err=%d\n",
+					__FUNCTION__, set_chain, err));
+			}
+			err = wldev_iovar_setint(ifdev, "rxchain", set_chain);
+			if (unlikely(err)) {
+				WL_ERR(("%s: Failed to set rxchain[%d], err=%d\n",
+					__FUNCTION__, set_chain, err));
+			}
+			err = wldev_ioctl_set(dev, WLC_UP, &val, sizeof(s32));
+			if (err < 0) {
+				WL_ERR(("WLC_UP error %d\n", err));
+			}
+		}
+	} else {
+		WL_ERR(("%s: Chain set should control in SoftAP mode only\n",
+			__FUNCTION__));
+		err = BCME_BADARG;
+	}
+fail:
+	return err;
+}
+
+int
+wl_get_softap_antenna(struct net_device *dev, char *ifname, void *param)
+{
+	struct bcm_cfg80211 *cfg = wl_get_cfg(dev);
+	uint32 *cur_rxchain = (uint32*)param;
+	struct net_device *ifdev = NULL;
+	char iobuf[WLC_IOCTL_SMLEN];
+	int err = BCME_OK;
+	int iftype = 0;
+
+	memset(iobuf, 0, WLC_IOCTL_SMLEN);
+
+	/* Check the interface type */
+	ifdev = wl_get_netdev_by_name(cfg, ifname);
+	if (ifdev == NULL) {
+		WL_ERR(("%s: Could not find net_device for ifname:%s\n", __FUNCTION__, ifname));
+		err = BCME_BADARG;
+		goto fail;
+	}
+
+	iftype = ifdev->ieee80211_ptr->iftype;
+	if (iftype == NL80211_IFTYPE_AP) {
+		err = wldev_iovar_getint(ifdev, "rxchain", cur_rxchain);
+		if (unlikely(err)) {
+			WL_ERR(("%s: Failed to get rxchain, err=%d\n",
+				__FUNCTION__, err));
+		}
+	} else {
+		WL_ERR(("%s: rxchain should control in SoftAP mode only\n",
+			__FUNCTION__));
+		err = BCME_BADARG;
+	}
+fail:
+	return err;
+}
+#endif /* CUSTOM_SOFTAP_SET_ANT */

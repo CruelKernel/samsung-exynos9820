@@ -470,6 +470,7 @@ static int __mfc_force_close_inst(struct mfc_dev *dev, struct mfc_ctx *ctx)
 	}
 
 	/* Free resources */
+	ctx->inst_no = MFC_NO_INSTANCE_SET;
 	mfc_release_instance_context(ctx);
 	mfc_change_state(ctx, MFCINST_INIT);
 

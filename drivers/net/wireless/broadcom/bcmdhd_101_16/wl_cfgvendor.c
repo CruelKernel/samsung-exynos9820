@@ -1589,6 +1589,7 @@ wl_cfgvendor_notify_dump_completion(struct wiphy *wiphy,
 	/* call wmb() to synchronize with the previous memory operations */
 	OSL_SMP_WMB();
 	DHD_BUS_BUSY_CLEAR_IN_HALDUMP(dhd_pub);
+	dhd_set_dump_status(dhd_pub, DUMP_READY);
 	/* Call another wmb() to make sure wait_for_dump_completion value
 	 * gets updated before waking up waiting context.
 	 */
@@ -1671,6 +1672,9 @@ wl_cfgvendor_set_hal_started(struct wiphy *wiphy,
 	WL_INFORM(("%s,[DUMP] HAL STARTED\n", __FUNCTION__));
 
 	cfg->hal_started = true;
+#ifdef DHD_FILE_DUMP_EVENT
+	dhd_set_dump_status(dhd, DUMP_READY);
+#endif /* DHD_FILE_DUMP_EVENT */
 #ifdef WL_STA_ASSOC_RAND
 	/* If mac randomization is enabled and primary macaddress is not
 	 * randomized, randomize it from HAL init context
@@ -1694,9 +1698,16 @@ wl_cfgvendor_stop_hal(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+#ifdef DHD_FILE_DUMP_EVENT
+	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
+#endif /* DHD_FILE_DUMP_EVENT */
+
 	WL_INFORM(("%s,[DUMP] HAL STOPPED\n", __FUNCTION__));
 
 	cfg->hal_started = false;
+#ifdef DHD_FILE_DUMP_EVENT
+	dhd_set_dump_status(dhd, DUMP_NOT_READY);
+#endif /* DHD_FILE_DUMP_EVENT */
 	return BCME_OK;
 }
 #endif /* WL_CFG80211 */
@@ -5537,6 +5548,27 @@ fail:
 }
 
 static int
+wl_cfgvendor_nan_match_expiry_event_filler(struct sk_buff *msg,
+		nan_event_data_t *event_data) {
+	int ret = BCME_OK;
+
+	WL_DBG(("sub id (local id)=%d, pub id (remote id)=%d\n",
+		event_data->sub_id, event_data->pub_id));
+	ret = nla_put_u16(msg, NAN_ATTRIBUTE_SUBSCRIBE_ID, event_data->sub_id);
+	if (unlikely(ret)) {
+		WL_ERR(("Failed to put Sub Id, ret=%d\n", ret));
+		goto fail;
+	}
+	ret = nla_put_u32(msg, NAN_ATTRIBUTE_PUBLISH_ID, event_data->pub_id);
+	if (unlikely(ret)) {
+		WL_ERR(("Failed to put pub id, ret=%d\n", ret));
+		goto fail;
+	}
+fail:
+	return ret;
+}
+
+static int
 wl_cfgvendor_nan_tx_followup_event_filler(struct sk_buff *msg,
 		nan_event_data_t *event_data) {
 	int ret = BCME_OK;
@@ -5886,6 +5918,7 @@ wl_cfgvendor_send_nan_event(struct wiphy *wiphy, struct net_device *dev,
 		break;
 	}
 	case GOOGLE_NAN_EVENT_SUBSCRIBE_MATCH:
+	case GOOGLE_NAN_EVENT_MATCH_EXPIRY:
 	case GOOGLE_NAN_EVENT_FOLLOWUP: {
 		if (event_id == GOOGLE_NAN_EVENT_SUBSCRIBE_MATCH) {
 			WL_DBG(("GOOGLE_NAN_EVENT_SUBSCRIBE_MATCH\n"));
@@ -5898,10 +5931,18 @@ wl_cfgvendor_send_nan_event(struct wiphy *wiphy, struct net_device *dev,
 			WL_DBG(("GOOGLE_NAN_EVENT_FOLLOWUP\n"));
 			ret = wl_cfgvendor_nan_tx_followup_event_filler(msg, event_data);
 			if (unlikely(ret)) {
-				WL_ERR(("Failed to fill sub match event data, ret=%d\n", ret));
+				WL_ERR(("Failed to fill tx follow up event data, ret=%d\n", ret));
+				goto fail;
+			}
+		} else if (event_id == GOOGLE_NAN_EVENT_MATCH_EXPIRY) {
+			WL_DBG(("GOOGLE_NAN_EVENT_MATCH_EXPIRY\n"));
+			ret = wl_cfgvendor_nan_match_expiry_event_filler(msg, event_data);
+			if (unlikely(ret)) {
+				WL_ERR(("Failed to fill match expiry event data, ret=%d\n", ret));
 				goto fail;
 			}
 		}
+
 		ret = wl_cfgvendor_nan_opt_params_filler(msg, event_data);
 		if (unlikely(ret)) {
 			WL_ERR(("Failed to fill sub match event data, ret=%d\n", ret));
@@ -10764,6 +10805,8 @@ static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
 		{ OUI_BRCM, BRCM_VENDOR_EVENT_ACS},
 		{ OUI_BRCM, BRCM_VENDOR_EVENT_TWT},
 		{ OUI_GOOGLE, BRCM_VENDOR_EVENT_TPUT_DUMP},
+		{ OUI_GOOGLE, GOOGLE_NAN_EVENT_MATCH_EXPIRY},
+		{ OUI_BRCM, BRCM_VENDOR_EVENT_RCC_FREQ_INFO},
 };
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))

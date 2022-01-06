@@ -459,6 +459,7 @@ static int tsmux_release(struct inode *inode, struct file *filp)
 	clk_disable(tsmux_dev->tsmux_clock);
 #endif
 	spin_lock_irqsave(&tsmux_dev->device_spinlock, flags);
+	g_tsmux_dev = NULL;
 
 	if (tsmux_dev->ctx_cnt == 1)
 		del_timer(&tsmux_dev->watchdog_timer);
@@ -474,8 +475,6 @@ static int tsmux_release(struct inode *inode, struct file *filp)
 		print_tsmux(TSMUX_ERR, "pm_runtime_put_sync err(%d)\n", ret);
 		return ret;
 	}
-
-	g_tsmux_dev = NULL;
 
 	print_tsmux(TSMUX_COMMON, "%s--\n", __func__);
 	return ret;

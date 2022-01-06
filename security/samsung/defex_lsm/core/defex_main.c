@@ -41,32 +41,12 @@
 #include <linux/sched/task.h>
 #endif
 
-#ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
-bool boot_state_unlocked __ro_after_init;
-__visible_for_testing int __init verifiedboot_state_setup(char *str)
-{
-	static const char unlocked[] = "orange";
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+#define is_task_used(tsk)	refcount_read(&(tsk)->usage)
+#else
+#define is_task_used(tsk)	atomic_read(&(tsk)->usage)
+#endif
 
-	boot_state_unlocked = !strncmp(str, unlocked, sizeof(unlocked));
-
-	if(boot_state_unlocked)
-		pr_crit("Device is unlocked and DEFEX will be disabled.");
-
-	return 0;
-}
-
-__setup("androidboot.verifiedbootstate=", verifiedboot_state_setup);
-
-int warranty_bit __ro_after_init;
-__visible_for_testing int __init get_warranty_bit(char *str)
-{
-	get_option(&str, &warranty_bit);
-
-	return 0;
-}
-
-__setup("androidboot.warranty_bit=", get_warranty_bit);
-#endif /* DEFEX_DEPENDING_ON_OEMUNLOCK */
 
 __visible_for_testing struct task_struct *get_parent_task(const struct task_struct *p)
 {
@@ -120,16 +100,10 @@ __visible_for_testing void defex_report_violation(const char *violation, uint64_
 		snprintf(stored_creds, sizeof(stored_creds), "[%ld, %ld, %ld]", (long)stored_uid, (long)stored_fsuid, (long)stored_egid);
 		stored_creds[sizeof(stored_creds) - 1] = 0;
 	}
-#ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
-	snprintf(message, sizeof(message), "%d, %d, sc=%d, tsk=%s(%s), %s(%s), [%ld %ld %ld %ld], %s%s, %d", warranty_bit, boot_state_unlocked, dc->syscall_no, process_name, program_path, prt_process_name,
+	snprintf(message, sizeof(message), "%d, %d, sc=%d, tsk=%s(%s), %s(%s), [%ld %ld %ld %ld], %s%s, %d",
+		warranty_bit, boot_state_unlocked, dc->syscall_no, process_name, program_path, prt_process_name,
 		prt_program_path, (long)uid, (long)euid, (long)fsuid, (long)egid,
 		(file_path ? "file=" : "stored "), (file_path ? file_path : stored_creds), case_num);
-#else
-	snprintf(message, sizeof(message), "sc=%d, tsk=%s(%s), %s(%s), [%ld %ld %ld %ld], %s%s, %d",
-		dc->syscall_no, process_name, program_path, prt_process_name,
-		prt_program_path, (long)uid, (long)euid, (long)fsuid, (long)egid,
-		(file_path ? "file=" : "stored "), (file_path ? file_path : stored_creds), case_num);
-#endif
 	message[sizeof(message) - 1] = 0;
 
 	usermode_result = dsms_send_message(violation, message, counter);
@@ -180,12 +154,11 @@ __visible_for_testing int task_defex_is_secured(struct defex_context *dc)
 		return DEFEX_ALLOW;
 	}
 
-	if (!strncmp(p->comm, "ding:background", strlen(p->comm)) \
-		|| !strncmp(p->comm, "android.vending", strlen(p->comm))) {
+	if (!strncmp(p->comm, "ding:background", strlen(p->comm))) {
 		return DEFEX_ALLOW;
 	}
 
-	is_secured = !rules_lookup2(proc_name, feature_ped_exception, exe_file);
+	is_secured = !rules_lookup(proc_name, feature_ped_exception, exe_file);
 	return is_secured;
 }
 
@@ -406,7 +379,7 @@ __visible_for_testing int task_defex_safeplace(struct defex_context *dc)
 		goto out;
 
 	new_file = get_dc_target_name(dc);
-	is_violation = rules_lookup2(new_file, feature_safeplace_path, dc->target_file);
+	is_violation = rules_lookup(new_file, feature_safeplace_path, dc->target_file);
 #ifdef DEFEX_INTEGRITY_ENABLE
 	if (is_violation != DEFEX_INTEGRITY_FAIL)
 #endif /* DEFEX_INTEGRITY_ENABLE */
@@ -457,7 +430,7 @@ __visible_for_testing int task_defex_src_exception(struct defex_context *dc)
 		return allow;
 
 	exe_file = get_dc_process_file(dc);
-	allow = rules_lookup2(proc_name, feature_immutable_src_exception, exe_file);
+	allow = rules_lookup(proc_name, feature_immutable_src_exception, exe_file);
 	return allow;
 }
 
@@ -472,7 +445,7 @@ __visible_for_testing int task_defex_immutable(struct defex_context *dc, int att
 		goto out;
 
 	new_file = get_dc_target_name(dc);
-	is_violation = rules_lookup2(new_file, attribute, dc->target_file);
+	is_violation = rules_lookup(new_file, attribute, dc->target_file);
 
 	if (is_violation) {
 		/* Check the Source exception and self-access */
@@ -502,12 +475,13 @@ int task_defex_enforce(struct task_struct *p, struct file *f, int syscall)
 	const struct local_syscall_struct *item;
 	struct defex_context dc;
 
-#ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
-	if(boot_state_unlocked)
+	if (boot_state_unlocked)
 		return ret;
-#endif /* DEFEX_DEPENDING_ON_OEMUNLOCK */
 
-	if (!p || p->pid == 1 || !p->mm)
+	if (!p || p->pid == 1 || !p->mm || !is_task_used(p))
+		return ret;
+
+	if ((p->state & (__TASK_STOPPED | TASK_DEAD)) || (p->exit_state & (EXIT_ZOMBIE | EXIT_DEAD)))
 		return ret;
 
 	if (syscall < 0) {
@@ -519,7 +493,8 @@ int task_defex_enforce(struct task_struct *p, struct file *f, int syscall)
 
 	feature_flag = defex_get_features();
 	get_task_struct(p);
-	init_defex_context(&dc, syscall, p, f);
+	if (!init_defex_context(&dc, syscall, p, f))
+		goto do_allow;
 
 #ifdef DEFEX_PED_ENABLE
 	/* Credential escalation feature */
@@ -527,8 +502,10 @@ int task_defex_enforce(struct task_struct *p, struct file *f, int syscall)
 		ret = task_defex_check_creds(&dc);
 		if (ret) {
 			if (!(feature_flag & FEATURE_CHECK_CREDS_SOFT)) {
+				release_defex_context(&dc);
+				put_task_struct(p);
 				kill_process_group(p, p->tgid, p->pid);
-				goto do_deny;
+				return -DEFEX_DENY;
 			}
 		}
 	}
@@ -541,8 +518,10 @@ int task_defex_enforce(struct task_struct *p, struct file *f, int syscall)
 			ret = task_defex_safeplace(&dc);
 			if (ret == -DEFEX_DENY) {
 				if (!(feature_flag & FEATURE_SAFEPLACE_SOFT)) {
+					release_defex_context(&dc);
+					put_task_struct(p);
 					kill_process(p);
-					goto do_deny;
+					return -DEFEX_DENY;
 				}
 			}
 		}
@@ -563,6 +542,7 @@ int task_defex_enforce(struct task_struct *p, struct file *f, int syscall)
 		}
 	}
 #endif /* DEFEX_IMMUTABLE_ENABLE */
+do_allow:
 	release_defex_context(&dc);
 	put_task_struct(p);
 	return DEFEX_ALLOW;
@@ -576,13 +556,11 @@ do_deny:
 int task_defex_zero_creds(struct task_struct *tsk)
 {
 	int is_fork = -1;
-	get_task_struct(tsk);
 	if (tsk->flags & (PF_KTHREAD | PF_WQ_WORKER)) {
-		put_task_struct(tsk);
 		return 0;
 	}
 	if (is_task_creds_ready()) {
-		is_fork = ((tsk->flags & PF_FORKNOEXEC) && (!READ_ONCE(tsk->on_rq)));
+		is_fork = ((tsk->flags & PF_FORKNOEXEC) && (!tsk->on_rq));
 #ifdef TASK_NEW
 		if (!is_fork && (tsk->state & TASK_NEW))
 			is_fork = 1;
@@ -593,7 +571,6 @@ int task_defex_zero_creds(struct task_struct *tsk)
 #ifdef DEFEX_CACHES_ENABLE
 	defex_file_cache_delete(tsk->pid);
 #endif /* DEFEX_CACHES_ENABLE */
-	put_task_struct(tsk);
 	return 0;
 }
 
@@ -604,10 +581,8 @@ int task_defex_user_exec(const char *new_file)
 	int res = DEFEX_DENY, is_violation = DEFEX_DENY;
 	struct file *fp = NULL;
 
-#ifdef DEFEX_DEPENDING_ON_OEMUNLOCK
-	if(boot_state_unlocked)
+	if (boot_state_unlocked)
 		return DEFEX_ALLOW;
-#endif /* DEFEX_DEPENDING_ON_OEMUNLOCK */
 
 	if (!check_rules_ready()) {
 		if (rules_load_cnt++%100 == 0)
@@ -626,7 +601,7 @@ int task_defex_user_exec(const char *new_file)
 		filp_close(fp, NULL);
 	}
 
-	is_violation = !rules_lookup2(new_file, feature_umhbin_path, NULL);
+	is_violation = !rules_lookup(new_file, feature_umhbin_path, NULL);
 	if (is_violation) {
 		printk("[DEFEX] UMH Exec Denied: %s\n", new_file);
 		goto umh_out;
