@@ -482,8 +482,8 @@ def parse_args():
                 if value not in toolchain:
                     fatal('Unknown toolchain: ' + value)
             elif key == 'magisk':
-                if value != 'canary' and not re.match('^v\d+\.\d+', value):
-                    fatal('Unknown magisk version: ' + value + ' (example: canary, v20.4, v19.4, ...)')
+                if value != 'canary' and value != 'alpha' and not re.match('^v\d+\.\d+', value):
+                    fatal('Unknown magisk version: ' + value + ' (example: canary, alpha, v20.4, v19.4, ...)')
                 configs['kernel']['magisk']['version'] = value
         else:
             switch = arg[0:1]
