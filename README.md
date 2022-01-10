@@ -161,7 +161,7 @@ Only the *.conf files prefixed with "cruel" are meaningful.
 Presets list (+ means enabled by default, use NODEFAULTS=1 env var to drop them):
 * +magisk - integrates magisk into the kernel. This allows to have root without
   booting from recovery. Enabled by default. It's possible to specify magisk version,
-  e.g. +magisk=canary or +magisk=v20.4 or +magisk=v19.4
+  e.g. +magisk=canary or +magisk=alpha or +magisk=v20.4 or +magisk=v19.4
 * dtb - build dtb/dtbo images
 * empty\_vbmeta - include empty vbmeta img in installer and flash it
 * always\_permit - pin SELinux to always use permissive mode. Required on LOS rom.
