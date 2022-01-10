@@ -479,8 +479,8 @@
 				mres_dsc_en = <0x0 0x0>;
 				mres_partial_width = <0x168>;
 				mres_partial_height = <0xe4>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -522,8 +522,8 @@
 				mres_dsc_en = <0x0 0x0>;
 				mres_partial_width = <0x168>;
 				mres_partial_height = <0xe4>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -563,8 +563,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x1e 0x4a>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -601,8 +601,8 @@
 				mres_dsc_width = <0x21c>;
 				mres_dsc_height = <0x28>;
 				mres_dsc_en = <0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -677,8 +677,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -715,8 +715,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -753,8 +753,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -791,8 +791,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -830,8 +830,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -1483,6 +1483,7 @@
 				max77705,fw_product_id = <0x3>;
 				support_pd_role_swap;
 				max77705,support-audio;
+				max77705,bc1p2_retry_count = <0x2>;
 
 				regulators {
 
@@ -7632,6 +7633,24 @@
 				linux,phandle = <0xe4>;
 				phandle = <0xe4>;
 			};
+
+			ext-bin@12 {
+				status = "okay";
+				samsung,name = "txse3.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x1b33800>;
+				linux,phandle = <0xe5>;
+				phandle = <0xe5>;
+			};
+
+			ext-bin@13 {
+				status = "okay";
+				samsung,name = "APTV_AUDIO_SLSI.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x15f5000>;
+				linux,phandle = <0xe6>;
+				phandle = <0xe6>;
+			};
 		};
 	};
 
@@ -7649,7 +7668,7 @@
 		target = <0xffffffff>;
 
 		__overlay__ {
-			size = <0x3c00000>;
+			size = <0x4000000>;
 		};
 	};
 
@@ -8672,8 +8691,8 @@
 				s2dos05,s2dos05_int = <0xffffffff 0x4 0x0>;
 				adc_mode = <0x2>;
 				adc_sync_mode = <0x2>;
-				linux,phandle = <0xe5>;
-				phandle = <0xe5>;
+				linux,phandle = <0xe7>;
+				phandle = <0xe7>;
 
 				regulators {
 
@@ -9041,6 +9060,8 @@
 		ext_bin_15 = "/fragment@108/__overlay__/ext-bin@f";
 		ext_bin_16 = "/fragment@108/__overlay__/ext-bin@10";
 		ext_bin_17 = "/fragment@108/__overlay__/ext-bin@11";
+		ext_bin_18 = "/fragment@108/__overlay__/ext-bin@12";
+		ext_bin_19 = "/fragment@108/__overlay__/ext-bin@13";
 		btp_ipc = "/fragment@111/__overlay__/btp-ipc";
 		btp_wuhb = "/fragment@111/__overlay__/btp-wuhb";
 		initial0 = "/fragment@113/__overlay__/initial-state";
