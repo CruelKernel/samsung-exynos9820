@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: cruel
+  TOOLCHAIN: samsung
   INSTALLER: yes
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F,G977B", "N970F,N975F" ]
+        model: [ "G970F,G973F,G975F,G977B", "N970F,N975F,N976B" ]
 
     steps:
       - uses: actions/checkout@v2
@@ -26,7 +26,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="VN-CruelKernel-v5.0"     \
+                       name="VN-CruelKernel-v5.0-A3"     \
                        toolchain=$TOOLCHAIN      \
                        +magisk=alpha                    \
                        +nohardening              \
