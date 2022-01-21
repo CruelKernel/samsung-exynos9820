@@ -42,7 +42,18 @@ toolchain = {
     'google': {
         'CROSS_COMPILE': 'toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-',
         'CLANG_TRIPLE': 'toolchain/llvm/bin/aarch64-linux-android-',
-        'CC': 'toolchain/llvm/bin/clang'
+        'CC': 'toolchain/llvm/bin/clang',
+        'LD': 'toolchain/llvm/bin/ld.lld',
+        'AR': 'toolchain/llvm/bin/llvm-ar',
+        'NM': 'toolchain/llvm/bin/llvm-nm',
+        'OBJCOPY': 'toolchain/llvm/bin/llvm-objcopy',
+        'OBJDUMP': 'toolchain/llvm/bin/llvm-objdump',
+        'READELF': 'toolchain/llvm/bin/llvm-readelf',
+        'OBJSIZE': 'toolchain/llvm/bin/llvm-size',
+        'STRIP': 'toolchain/llvm/bin/llvm-strip',
+        'LDGOLD': 'toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-ld.gold',
+        'LLVM_AR': 'toolchain/llvm/bin/llvm-ar',
+        'LLVM_DIS': 'toolchain/llvm/bin/llvm-dis'
     },
     'proton': {
         'CROSS_COMPILE': 'toolchain/bin/aarch64-linux-gnu-',
