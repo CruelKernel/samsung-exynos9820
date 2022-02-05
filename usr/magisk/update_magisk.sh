@@ -40,11 +40,11 @@ then
 		mv -f "$DIR/lib/armeabi-v7a/libmagisk64.so" "$DIR/magisk64"
 		xz --force --check=crc32 "$DIR/magisk32" "$DIR/magisk64"
 	else
-		unzip -o "$DIR/magisk.zip" lib/arm64-v8a/libmagisk64.so lib/arm64-v8a/libmagiskinit.so -d "$DIR"
+		unzip -o "$DIR/magisk.zip" lib/arm64-v8a/libmagiskinit.so lib/armeabi-v7a/libmagisk32.so lib/arm64-v8a/libmagisk64.so -d "$DIR"
 		mv -f "$DIR/lib/arm64-v8a/libmagiskinit.so" "$DIR/magiskinit"
+		mv -f "$DIR/lib/armeabi-v7a/libmagisk32.so" "$DIR/magisk32"
 		mv -f "$DIR/lib/arm64-v8a/libmagisk64.so" "$DIR/magisk64"
-		: > "$DIR/magisk32.xz"
-		xz --force --check=crc32 "$DIR/magisk64"
+		xz --force --check=crc32 "$DIR/magisk32" "$DIR/magisk64"
 	fi
 	echo -n "$nver" > "$DIR/magisk_version"
 	rm "$DIR/magisk.zip"
