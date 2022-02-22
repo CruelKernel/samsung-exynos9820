@@ -478,8 +478,8 @@
 				mres_dsc_en = <0x0 0x0>;
 				mres_partial_width = <0x168>;
 				mres_partial_height = <0xe4>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -521,8 +521,8 @@
 				mres_dsc_en = <0x0 0x0>;
 				mres_partial_width = <0x168>;
 				mres_partial_height = <0xe4>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -562,8 +562,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x1e 0x4a>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -600,8 +600,8 @@
 				mres_dsc_width = <0x21c>;
 				mres_dsc_height = <0x28>;
 				mres_dsc_en = <0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -676,8 +676,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -714,8 +714,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -752,8 +752,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -790,8 +790,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -829,8 +829,8 @@
 				mres_dsc_width = <0x2d0 0x21c 0x168>;
 				mres_dsc_height = <0x28 0x28 0x4c>;
 				mres_dsc_en = <0x1 0x1 0x1>;
-				hdr_num = <0x2>;
-				hdr_type = <0x2 0x3 0x0 0x0>;
+				hdr_num = <0x3>;
+				hdr_type = <0x2 0x3 0x4 0x0>;
 				hdr_max_luma = <0x3d0900>;
 				hdr_max_avg_luma = <0x124f80>;
 				hdr_min_luma = <0x5>;
@@ -1089,7 +1089,7 @@
 				fuelgauge,capacity_max = <0x3e8>;
 				fuelgauge,capacity_max_margin = <0x12c>;
 				fuelgauge,capacity_min = <0x0>;
-				fuelgauge,capacity_calculation_type = <0x1c>;
+				fuelgauge,capacity_calculation_type = <0x5c>;
 				fuelgauge,repeated_fuelalert;
 				fuelgauge,using_temp_compensation;
 				fuelgauge,low_temp_limit = <0x64>;
@@ -1104,6 +1104,11 @@
 				fuelgauge,fg_reset_wa_data = <0x1130 0x3200 0x431 0x32 0x1725>;
 				fuelgauge,discharge_temp_threshold = <0x258>;
 				fuelgauge,discharge_volt_threshold = <0x1068>;
+				fuelgauge,lost_soc_trig_soc = <0x3e8>;
+				fuelgauge,lost_soc_trig_d_soc = <0x14>;
+				fuelgauge,lost_soc_trig_scale = <0x2>;
+				fuelgauge,lost_soc_guarantee_soc = <0x1e>;
+				fuelgauge,lost_soc_min_vol = <0xc80>;
 				fuelgauge,ttf_capacity = <0xef6>;
 				fuelgauge,cv_data = <0xb88 0x2e3 0xa5b 0xb34 0x2ee 0xa28 0xa10 0x307 0x9b8 0x938 0x316 0x947 0x854 0x32a 0x8c2 0x76a 0x343 0x828 0x5a3 0x366 0x6cd 0x4c7 0x384 0x571 0x35c 0x398 0x448 0x2ab 0x3ac 0x2cb 0x223 0x3c0 0x147 0x1d4 0x3d5 0xa3 0x1b4 0x3e8 0x0>;
 			};
@@ -7665,7 +7670,7 @@
 
 			ext-bin@10 {
 				status = "okay";
-				samsung,name = "APDVTX_AUDIO_SLSI.bin";
+				samsung,name = "APTV_AUDIO_SLSI.bin";
 				samsung,area = <0x1>;
 				samsung,offset = <0x7b6000>;
 				linux,phandle = <0xe9>;
@@ -7679,6 +7684,15 @@
 				samsung,offset = <0x7bc000>;
 				linux,phandle = <0xea>;
 				phandle = <0xea>;
+			};
+
+			ext-bin@12 {
+				status = "okay";
+				samsung,name = "txse3.bin";
+				samsung,area = <0x1>;
+				samsung,offset = <0x1800000>;
+				linux,phandle = <0xeb>;
+				phandle = <0xeb>;
 			};
 		};
 	};
@@ -8397,8 +8411,8 @@
 				samsung,pin-function = <0x0>;
 				samsung,pin-pud = <0x1>;
 				samsung,pin-drv = <0x0>;
-				linux,phandle = <0xeb>;
-				phandle = <0xeb>;
+				linux,phandle = <0xec>;
+				phandle = <0xec>;
 			};
 		};
 	};
@@ -9029,6 +9043,7 @@
 		ext_bin_15 = "/fragment@102/__overlay__/ext-bin@f";
 		ext_bin_16 = "/fragment@102/__overlay__/ext-bin@10";
 		ext_bin_17 = "/fragment@102/__overlay__/ext-bin@11";
+		ext_bin_18 = "/fragment@102/__overlay__/ext-bin@12";
 		btp_ipc = "/fragment@105/__overlay__/btp-ipc";
 		btp_wuhb = "/fragment@105/__overlay__/btp-wuhb";
 		btp_ldo = "/fragment@106/__overlay__/btp-ldo";
