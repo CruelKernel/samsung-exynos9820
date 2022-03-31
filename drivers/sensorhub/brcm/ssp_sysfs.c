@@ -58,6 +58,7 @@ s32 SettingVDIS_Support(struct ssp_data *data, int64_t *dNewDelay)
 	} else if (NewDelay == CAMERA_GYROSCOPE_VDIS_SYNC) {
 		*dNewDelay = CAMERA_GYROSCOPE_VDIS_SYNC_DELAY;
 		data->cameraGyroSyncMode = true;
+		initialize_super_vdis_setting();
 	} else if (NewDelay == CAMERA_GYROSCOPE_SUPER_VDIS_SYNC) {
 		*dNewDelay = CAMERA_GYROSCOPE_SUPER_VDIS_SYNC_DELAY;
 		data->cameraGyroSyncMode = true;
@@ -623,6 +624,31 @@ static ssize_t set_ssp_control(struct device *dev,
 		pr_info("[SSP] %s HALL IC ON/OFF, %d enabled %d\n",
 			__func__, iRet, data->hall_ic_status);
 
+	} else if (strstr(buf, SSP_AUTO_ROTATION_ORIENTATION)) {
+		int len = strlen(SSP_AUTO_ROTATION_ORIENTATION);
+		int iRet = 0;
+		struct ssp_msg *msg = kzalloc(sizeof(*msg), GFP_KERNEL);
+
+		if (msg == NULL) {
+			iRet = -ENOMEM;
+			pr_err("[SSP] %s, failed to alloc memory for ssp_msg\n",
+				__func__);
+			return iRet;
+		}
+		msg->cmd = MSG2SSP_AUTO_ROTATION_ORIENTATION;
+		msg->length = 1;
+		msg->options = AP2HUB_WRITE;
+		msg->buffer = (char *)(buf + len);
+		msg->free_buffer = 0;
+
+		iRet = ssp_spi_async(data, msg);
+
+		if (iRet != SUCCESS) {
+			pr_err("[SSP]: %s - i2c fail %d\n", __func__, iRet);
+			return size;
+		} else {
+			pr_err("[SSP] %s, AUTO_ROTATION_ORIENTATION send success\n", __func__);
+		}
 	}
 	
 	return size;

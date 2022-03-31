@@ -62,6 +62,29 @@ void mfc_set_aso_slice_order_h264(struct mfc_ctx *ctx)
 	}
 }
 
+void mfc_set_enc_ts_delta(struct mfc_ctx *ctx)
+{
+	struct mfc_dev *dev = ctx->dev;
+	struct mfc_enc *enc = ctx->enc_priv;
+	struct mfc_enc_params *p = &enc->params;
+	unsigned int reg = 0;
+	int ts_delta;
+
+	ts_delta = mfc_enc_get_ts_delta(ctx);
+
+	reg = MFC_RAW_READL(MFC_REG_E_TIME_STAMP_DELTA);
+	reg &= ~(0xFFFF);
+	reg |= (ts_delta & 0xFFFF);
+	MFC_RAW_WRITEL(reg, MFC_REG_E_TIME_STAMP_DELTA);
+	if (ctx->ts_last_interval)
+		mfc_debug(3, "[DFR] fps %d -> %ld, delta: %d, reg: %#x\n",
+				p->rc_framerate, USEC_PER_SEC / ctx->ts_last_interval,
+				ts_delta, reg);
+	else
+		mfc_debug(3, "[DFR] fps %d -> 0, delta: %d, reg: %#x\n",
+				p->rc_framerate, ts_delta, reg);
+}
+
 static void __mfc_set_gop_size(struct mfc_ctx *ctx, int ctrl_mode)
 {
 	struct mfc_dev *dev = ctx->dev;
@@ -222,6 +245,8 @@ static void __mfc_set_enc_params(struct mfc_ctx *ctx)
 	mfc_clear_set_bits(reg, 0x1, 9, p->rc_frame);
 	/* drop control */
 	mfc_clear_set_bits(reg, 0x1, 10, p->drop_control);
+	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->enc_ts_delta))
+		mfc_clear_set_bits(reg, 0x1, 20, 1);
 	MFC_RAW_WRITEL(reg, MFC_REG_E_RC_CONFIG);
 
 	/*

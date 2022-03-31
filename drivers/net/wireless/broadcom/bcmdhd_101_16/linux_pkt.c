@@ -120,11 +120,11 @@ int osl_static_mem_deinit(osl_t *osh, void *adapter)
 	if (bcm_static_buf) {
 		bcm_static_buf = 0;
 	}
-#ifdef BCMSDIO
+#if defined(BCMSDIO) || defined(DHD_USE_STATIC_CTRLBUF)
 	if (bcm_static_skb) {
 		bcm_static_skb = 0;
 	}
-#endif /* BCMSDIO */
+#endif /* BCMSDIO || DHD_USE_STATIC_CTRLBUF */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 	return 0;
 }

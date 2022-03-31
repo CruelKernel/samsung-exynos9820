@@ -1152,15 +1152,7 @@ static void __mfc_enc_set_buf_ctrls_exception(struct mfc_ctx *ctx,
 
 	/* set drop control */
 	if (buf_ctrl->id == V4L2_CID_MPEG_VIDEO_DROP_CONTROL) {
-		if (!ctx->ts_last_interval) {
-			p->rc_frame_delta = p->rc_framerate_res / p->rc_framerate;
-			mfc_debug(3, "[DROPCTRL] default delta: %d\n", p->rc_frame_delta);
-		} else {
-			if (IS_H263_ENC(ctx))
-				p->rc_frame_delta = (ctx->ts_last_interval / 100) / p->rc_framerate_res;
-			else
-				p->rc_frame_delta = ctx->ts_last_interval / p->rc_framerate_res;
-		}
+		p->rc_frame_delta = mfc_enc_get_ts_delta(ctx);
 		value = MFC_READL(MFC_REG_E_RC_FRAME_RATE);
 		value &= ~(0xFFFF);
 		value |= (p->rc_frame_delta & 0xFFFF);

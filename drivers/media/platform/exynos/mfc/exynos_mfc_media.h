@@ -141,6 +141,8 @@ enum v4l2_mpeg_video_hevc_hierarchical_coding_type {
 					(V4L2_CID_MPEG_MFC_BASE + 27)
 #define V4L2_CID_MPEG_MFC51_VIDEO_CRC_DATA_2BIT_CHROMA	\
 					(V4L2_CID_MPEG_MFC_BASE + 28)
+#define V4L2_CID_MPEG_VIDEO_PRIORITY			\
+					(V4L2_CID_MPEG_MFC_BASE + 36)
 
 #define V4L2_CID_MPEG_VIDEO_DROP_CONTROL			\
 					(V4L2_CID_MPEG_MFC_BASE + 41)

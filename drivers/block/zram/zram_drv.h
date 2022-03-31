@@ -56,6 +56,7 @@ enum zram_pageflags {
 	ZRAM_READ_BDEV,
 	ZRAM_PPR,
 	ZRAM_UNDER_PPR,
+	ZRAM_LRU,
 
 	__NR_ZRAM_PAGEFLAGS,
 };
@@ -111,6 +112,7 @@ struct zram_stats {
 	atomic64_t bd_ppr_max_size;
 	atomic64_t bd_objreads;
 	atomic64_t bd_objwrites;
+	atomic64_t lru_pages;
 #endif
 };
 

@@ -36,7 +36,7 @@ enum hdcp_result hdcp_unwrap_key(char *wkey)
 	int rval = TX_AUTH_SUCCESS;
 
 	rval = teei_wrapped_key(wkey, UNWRAP, HDCP_STATIC_KEY);
-	if (rval < 0) {
+	if (rval) {
 		hdcp_err("Wrap(%d) key failed (0x%08x)\n", UNWRAP, rval);
 		return HDCP_ERROR_UNWRAP_FAIL;
 	}
@@ -226,7 +226,7 @@ enum hdcp_result hdcp_link_stream_manage(struct hdcp_stream_info *stream_info)
 enum hdcp_result hdcp_wrap_key(struct hdcp_wrapped_key *key_info)
 {
 	int rval = TX_AUTH_SUCCESS;
-	char key_str[HDCP_WRAP_MAX_SIZE];
+	char key_str[HDCP_WRAP_MAX_SIZE] = {0};
 
 	if (key_info->key_len <= HDCP_WRAP_KEY)
 		memcpy(key_str, key_info->key, HDCP_WRAP_KEY);
@@ -234,7 +234,7 @@ enum hdcp_result hdcp_wrap_key(struct hdcp_wrapped_key *key_info)
 		return HDCP_ERROR_WRONG_SIZE;
 
 	rval = teei_wrapped_key(key_str, key_info->wrapped, key_info->key_len);
-	if (rval < 0) {
+	if (rval) {
 		hdcp_err("Wrap(%d) key failed (0x%08x)\n",key_info->wrapped, rval);
 		return HDCP_ERROR_WRAP_FAIL;
 	}

@@ -291,6 +291,7 @@ void dd_evict_master_key(int userid) {
 	struct dd_master_key *mk = NULL;
 	struct list_head *entry;
 
+	spin_lock(&dd_master_key_lock);
 	list_for_each(entry, &dd_master_key_head) {
 		struct dd_master_key *k = list_entry(entry, struct dd_master_key, list);
 
@@ -300,12 +301,11 @@ void dd_evict_master_key(int userid) {
 	}
 
 	if (mk) {
-		spin_lock(&dd_master_key_lock);
 		secure_zeroout("dd_evict_master_key", mk->key.raw, mk->key.size);
 		list_del(&mk->list);
-		spin_unlock(&dd_master_key_lock);
 		kzfree(mk);
 	}
+	spin_unlock(&dd_master_key_lock);
 }
 
 int get_dd_master_key(int userid, void *key) {

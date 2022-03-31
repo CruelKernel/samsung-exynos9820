@@ -658,6 +658,7 @@ struct sec_battery_info {
 
 	bool support_unknown_wpcthm;
 	int batt_full_capacity;
+	bool usb_slow_chg;
 };
 
 /* event check */

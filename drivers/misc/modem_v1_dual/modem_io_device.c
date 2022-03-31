@@ -699,7 +699,8 @@ static unsigned int misc_poll(struct file *filp, struct poll_table_struct *wait)
 		break;
 
 	case STATE_OFFLINE:
-		/* fall through */
+		if (iod->id == SIPC_CH_ID_CASS)
+			return POLLHUP;
 	default:
 		break;
 	}

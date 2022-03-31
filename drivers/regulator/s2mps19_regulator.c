@@ -86,6 +86,8 @@ struct s2mps19_info {
 	struct delayed_work hqm_pmtp_work;
 	struct delayed_work hqm_bocp_work;
 #endif
+	struct pmic_qos_setting *qos_setting;
+	struct delayed_work qos_delayed_work;
 };
 
 static unsigned int s2mps19_of_map_mode(unsigned int val) {
@@ -791,10 +793,76 @@ void send_hqm_bocp_work(struct work_struct *work)
 }
 #endif /* CONFIG_SEC_PM_BIGDATA */
 
+static void pmic_qos_start(struct pmic_qos_setting *qos_setting)
+{
+	BUG_ON(!qos_setting);
+
+	mutex_lock(&qos_setting->pmic_qos_lock);
+
+	qos_setting->working = true;
+	pm_qos_update_request(&qos_setting->req_little_CPUs, qos_setting->request_freq);
+
+	mutex_unlock(&qos_setting->pmic_qos_lock);
+
+	pr_info("[PMIC] %s: pmic_qos_rate(%d)\n", __func__, qos_setting->request_freq);
+}
+
+static void pmic_qos_stop(struct pmic_qos_setting *qos_setting)
+{
+	BUG_ON(!qos_setting);
+
+	mutex_lock(&qos_setting->pmic_qos_lock);
+
+	qos_setting->working = false;
+	pm_qos_update_request(&qos_setting->req_little_CPUs, qos_setting->max_freq);
+
+	mutex_unlock(&qos_setting->pmic_qos_lock);
+
+	pr_info("[PMIC] %s: pmic_qos_rate(%d)\n", __func__, qos_setting->max_freq);
+}
+
+static void pmic_qos_work_func(struct work_struct *work)
+{
+	struct s2mps19_info *s2mps19 = container_of(work, struct s2mps19_info,
+			qos_delayed_work.work);
+
+	pmic_qos_stop(s2mps19->qos_setting);
+}
+
+static int pmic_qos_init(struct device *dev, struct s2mps19_info *s2mps19)
+{
+	struct pmic_qos_setting *qos_setting;
+
+	s2mps19->qos_setting = devm_kzalloc(dev,
+					sizeof(struct pmic_qos_setting), GFP_KERNEL);
+	qos_setting = s2mps19->qos_setting;
+
+	if (!qos_setting)
+		return -ENOMEM;
+
+	qos_setting->stop_duration = 2000;
+	qos_setting->request_freq = 1586000;
+	qos_setting->max_freq = PM_QOS_CLUSTER0_FREQ_MAX_DEFAULT_VALUE;
+
+	mutex_init(&qos_setting->pmic_qos_lock);
+
+	pm_qos_add_request(&qos_setting->req_little_CPUs, PM_QOS_CLUSTER0_FREQ_MAX, qos_setting->max_freq);
+	INIT_DELAYED_WORK(&s2mps19->qos_delayed_work, pmic_qos_work_func);
+
+	return 0;
+}
+
 static irqreturn_t s2mps19_buck_ocp_irq(int irq, void *data)
 {
 	struct s2mps19_info *s2mps19 = data;
+	struct pmic_qos_setting *qos_setting = s2mps19->qos_setting;
 	int i;
+
+#ifdef CONFIG_SEC_PM_DEBUG
+	pr_info("BUCK OCP%d: BIG: %u kHz, MID: %u kHz, LITTLE: %u kHz\n",
+			irq - s2mps19_static_info->buck_ocp_irq[0] + 1,
+			cpufreq_get(6), cpufreq_get(4), cpufreq_get(0));
+#endif /* CONFIG_SEC_PM_DEBUG */
 
 	mutex_lock(&s2mps19->lock);
 
@@ -806,17 +874,20 @@ static irqreturn_t s2mps19_buck_ocp_irq(int irq, void *data)
 #endif
 			pr_info("%s : BUCK[%d] OCP IRQ : %d, %d\n",
 				__func__, i+1, s2mps19_buck_ocp_cnt[i], irq);
+
+			/* Control limit frequency BUCK4 only */
+			if (i == 3) {
+				cancel_delayed_work_sync(&s2mps19->qos_delayed_work);
+				if (!qos_setting->working)
+					pmic_qos_start(qos_setting);
+				schedule_delayed_work(&s2mps19->qos_delayed_work,
+						msecs_to_jiffies(qos_setting->stop_duration));
+			}
 			break;
 		}
 	}
 
 	mutex_unlock(&s2mps19->lock);
-
-#ifdef CONFIG_SEC_PM_DEBUG
-	pr_info("BUCK OCP%d: BIG: %u kHz, MID: %u kHz, LITTLE: %u kHz\n",
-			irq - s2mps19_static_info->buck_ocp_irq[0] + 1,
-			cpufreq_get(6), cpufreq_get(4), cpufreq_get(0));
-#endif /* CONFIG_SEC_PM_DEBUG */
 
 #ifdef CONFIG_SEC_PM_BIGDATA
 	cancel_delayed_work(&s2mps19->hqm_bocp_work);
@@ -1093,7 +1164,6 @@ void s2mps19_oi_function(struct s2mps19_dev *iodev)
 	pr_info("\n");
 }
 
-
 static int s2mps19_pmic_probe(struct platform_device *pdev)
 {
 	struct s2mps19_dev *iodev = dev_get_drvdata(pdev->dev.parent);
@@ -1336,6 +1406,10 @@ static int s2mps19_pmic_probe(struct platform_device *pdev)
 
 	if (iodev->adc_mode > 0)
 		s2mps19_powermeter_init(iodev);
+
+	ret = pmic_qos_init(&pdev->dev, s2mps19);
+	if (ret < 0)
+		goto err;
 
 	return 0;
 err:

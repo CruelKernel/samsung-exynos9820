@@ -1165,8 +1165,6 @@ static int set_debug_reset_rwc_proc_show(struct seq_file *m, void *v)
 	else
 		seq_printf(m, "%s", rstcnt);
 
-	seq_printf(m, "%s", rstcnt);
-
 	return 0;
 }
 

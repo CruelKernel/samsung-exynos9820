@@ -27,6 +27,7 @@
 #include <linux/types.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
+#include <linux/swap.h>
 
 /*
  * rbincache: a cleancache API implementation
@@ -365,6 +366,9 @@ static void rc_store_page(int pool_id, struct cleancache_filekey key,
 	struct rr_handle *handle;
 	int ret;
 	bool zero;
+
+	if (!current_is_kswapd())
+		return;
 
 	atomic_inc(&rc_num_puts);
 	zero = is_zero_page(src);
