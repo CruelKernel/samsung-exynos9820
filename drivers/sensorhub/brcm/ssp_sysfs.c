@@ -649,6 +649,31 @@ static ssize_t set_ssp_control(struct device *dev,
 		} else {
 			pr_err("[SSP] %s, AUTO_ROTATION_ORIENTATION send success\n", __func__);
 		}
+	} else if (strstr(buf, SSP_SAR_BACKOFF_MOTION_NOTI)) {
+		int len = strlen(SSP_SAR_BACKOFF_MOTION_NOTI);
+		int iRet = 0;
+		struct ssp_msg *msg = kzalloc(sizeof(*msg), GFP_KERNEL);
+
+		if (msg == NULL) {
+			iRet = -ENOMEM;
+			pr_err("[SSP] %s, failed to alloc memory for ssp_msg\n",
+				__func__);
+			return iRet;
+		}
+		msg->cmd = MSG2SSP_AP_SAR_BACKOFF_MOTION_NOTI;
+		msg->length = 4;
+		msg->options = AP2HUB_WRITE;
+		msg->buffer = (char *)(buf + len);
+		msg->free_buffer = 0;
+
+		iRet = ssp_spi_async(data, msg);
+
+		if (iRet != SUCCESS) {
+			pr_err("[SSP]: %s - i2c fail %d\n", __func__, iRet);
+			return size;
+		} else {
+			pr_err("[SSP] %s, SSP_SAR_BACKOFF_MOTION_NOTI send success\n", __func__);
+		}
 	}
 	
 	return size;

@@ -65,6 +65,7 @@ static struct sensor_info info_table[] = {
 	SENSOR_INFO_POCKET_MODE,
 	SENSOR_INFO_LED_COVER_EVENT,
 	SENSOR_INFO_AUTO_ROTATION,
+	SENSOR_INFO_SAR_BACKOFF_MOTION,
 };
 
 #define IIO_ST(si, rb, sb, sh)	\
@@ -528,6 +529,15 @@ void report_auto_rotation_data(struct ssp_data *data, int sensor_type,
 	wake_lock_timeout(&data->ssp_wake_lock, 0.3*HZ);
 	pr_err("[SSP]: %s: %d ts: %llu", __func__, auto_rotation_data->auto_rotation_event, auto_rotation_data->timestamp);
 }
+
+void report_sar_backoff_motion_data(struct ssp_data *data, int sensor_type,
+		struct sensor_value *auto_rotation_data)
+{
+	report_iio_data(data, SAR_BACKOFF_MOTION, auto_rotation_data);
+	wake_lock_timeout(&data->ssp_wake_lock, 0.3*HZ);
+	pr_err("[SSP]: %s: %d ts: %llu", __func__, auto_rotation_data->auto_rotation_event, auto_rotation_data->timestamp);
+}
+
 #define THM_UP		0
 #define THM_SUB		1
 short thermistor_rawToTemperature(struct ssp_data *data, int type, s16 raw)

@@ -43,6 +43,8 @@
 #include <linux/vbus_notifier.h>
 #endif
 
+//#define DEBUG_FACTORY_APP_ENABLE
+
 #define VENDOR_NAME              "SEMTECH"
 #define MODEL_NAME               "SX9360"
 #define MODULE_NAME              "grip_sensor"
@@ -67,6 +69,9 @@
 #define IRQ_PROCESS_CONDITION   (SX9360_IRQSTAT_TOUCH_FLAG	\
 				| SX9360_IRQSTAT_RELEASE_FLAG	\
 				| SX9360_IRQSTAT_COMPDONE_FLAG)
+
+#define UNKNOWN_ON  1
+#define UNKNOWN_OFF 2
 
 #if defined(CONFIG_FOLDER_HALL)
 #define HALLIC_PATH		"/sys/class/sec/sec_flip/flipStatus"
@@ -121,6 +126,10 @@ struct sx9360_p {
 
 	int debug_count;
 	char hall_ic[6];
+	int is_unknown_mode;
+	int motion;
+	bool first_working;
+
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 	int mcc;
 	u8 default_threshold;
@@ -297,6 +306,8 @@ static void sx9360_send_event(struct sx9360_p *data, u8 state)
 	else
 		input_report_rel(data->input, REL_MISC, 2);
 
+	input_report_rel(data->input, REL_X, data->is_unknown_mode);
+
 	input_sync(data->input);
 }
 
@@ -444,6 +455,7 @@ static void sx9360_check_status(struct sx9360_p *data)
 
 	if (data->skip_data == true) {
 		input_report_rel(data->input, REL_MISC, 2);
+		input_report_rel(data->input, REL_X, UNKNOWN_OFF);
 		input_sync(data->input);
 		return;
 	}
@@ -505,6 +517,22 @@ static void sx9360_set_debug_work(struct sx9360_p *data, u8 enable,
 			msecs_to_jiffies(time_ms));
 	} else {
 		cancel_delayed_work_sync(&data->debug_work);
+	}
+}
+
+static void sx9360_enter_unknown_mode(struct sx9360_p *data)
+{
+	data->motion = 0;
+	data->first_working = false;
+	if (data->is_unknown_mode == UNKNOWN_OFF) {
+		data->is_unknown_mode = UNKNOWN_ON;
+		if (!data->skip_data) {
+			input_report_rel(data->input, REL_X, UNKNOWN_ON);
+			input_sync(data->input);
+		}
+		pr_info("[SX9360]: %s UNKNOWN Re-enter\n", __func__);
+	} else {
+		pr_info("[SX9360]: %s already UNKNOWN \n", __func__);
 	}
 }
 
@@ -637,9 +665,17 @@ static ssize_t sx9360_raw_data_show(struct device *dev,
 		data->useful_avg = sum_useful / DIFF_READ_NUM;
 		data->diff_cnt = 0;
 	}
-
-	return snprintf(buf, PAGE_SIZE, "%ld,%ld,%u,%d,%d\n", (long int)data->capMain,
+#ifdef DEBUG_FACTORY_APP_ENABLE
+	return snprintf(buf, PAGE_SIZE, "%ld/%s/%s,%ld,%u,%d,%d\n",
+		(long int)data->capMain,
+		data->is_unknown_mode == UNKNOWN_ON ? "unknown_enter" : "unknown_exit",
+		data->motion == 1 ? "smd_detect" : "smd_non_detect",
 		(long int)data->useful, data->offset, data->diff, data->avg);
+#else
+	return snprintf(buf, PAGE_SIZE, "%ld,%ld,%u,%d,%d\n",
+		(long int)data->capMain,
+		(long int)data->useful, data->offset, data->diff, data->avg);
+#endif
 }
 
 static ssize_t sx9360_diff_avg_show(struct device *dev,
@@ -952,6 +988,7 @@ static ssize_t sx9360_onoff_store(struct device *dev,
 		if (atomic_read(&data->enable) == ON) {
 			data->state = IDLE;
 			input_report_rel(data->input, REL_MISC, 2);
+			input_report_rel(data->input, REL_X, UNKNOWN_OFF);
 			input_sync(data->input);
 		}		
 	} else {
@@ -962,6 +999,62 @@ static ssize_t sx9360_onoff_store(struct device *dev,
 	return count;
 }
 
+static ssize_t sx9360_motion_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sx9360_p *data = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+		data->motion == 1 ? "smd_detect" : "smd_non_detect");
+}
+
+static ssize_t sx9360_motion_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	u8 val;
+	int ret;
+	struct sx9360_p *data = dev_get_drvdata(dev);
+
+	ret = kstrtou8(buf, 2, &val);
+	if (ret) {
+		pr_err("[SX9360]: %s - Invalid Argument\n", __func__);
+		return ret;
+	}
+
+	data->motion = val;
+
+	pr_info("[SX9360]: %s - %u\n", __func__, val);
+	return count;
+}
+static ssize_t sx9360_unknown_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sx9360_p *data = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+		(data->is_unknown_mode == UNKNOWN_ON) ? \
+		"unknown_enter" : "unknown_exit");
+}
+
+static ssize_t sx9360_unknown_state_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	u8 val;
+	int ret;
+	struct sx9360_p *data = dev_get_drvdata(dev);
+
+	ret = kstrtou8(buf, 2, &val);
+	if (ret) {
+		pr_err("[SX9360]: %s - Invalid Argument\n", __func__);
+		return ret;
+	}
+
+	data->is_unknown_mode = val > 0 ? UNKNOWN_ON : UNKNOWN_OFF;
+
+	pr_info("[SX9360]: %s - %u\n", __func__, val);
+
+	return count;
+}
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 static ssize_t sx9360_mcc_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1045,6 +1138,10 @@ static DEVICE_ATTR(irq_count, S_IRUGO | S_IWUSR | S_IWGRP,
 static DEVICE_ATTR(resolution, S_IRUGO, sx9360_resolution_show, NULL);
 static DEVICE_ATTR(adc_filt, S_IRUGO, sx9360_adc_filt_show, NULL);
 static DEVICE_ATTR(useful_filt, S_IRUGO, sx9360_useful_filt_show, NULL);
+static DEVICE_ATTR(motion, S_IRUGO | S_IWUSR | S_IWGRP,
+	sx9360_motion_show, sx9360_motion_store);
+static DEVICE_ATTR(unknown_state, S_IRUGO | S_IWUSR | S_IWGRP,
+	sx9360_unknown_state_show, sx9360_unknown_state_store);
 
 static struct device_attribute *sensor_attrs[] = {
 	&dev_attr_menual_calibrate,
@@ -1075,6 +1172,8 @@ static struct device_attribute *sensor_attrs[] = {
 	&dev_attr_resolution,
 	&dev_attr_adc_filt,
 	&dev_attr_useful_filt,
+	&dev_attr_motion,
+	&dev_attr_unknown_state,
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 	&dev_attr_mcc,
 #endif
@@ -1138,13 +1237,21 @@ static void sx9360_touch_process(struct sx9360_p *data)
 	}
 
 	if (data->state == IDLE) {
-		if (status & CSX_STATUS_REG)
+		if (status & CSX_STATUS_REG) {
+			if (data->is_unknown_mode == UNKNOWN_ON && data->motion)
+					data->first_working = true;
 			sx9360_send_event(data, ACTIVE);
-		else
+		} else {
 			pr_info("[SX9360]: %s - 0x%x already released.\n",
 				__func__, status);
+		}
 	} else { /* User released button */
 		if (!(status & CSX_STATUS_REG)) {
+			if (data->is_unknown_mode == UNKNOWN_ON && data->motion) {
+				pr_info("[SX9360]: %s - unknown mode off\n",
+					__func__);
+				data->is_unknown_mode = UNKNOWN_OFF;
+			}
 			sx9360_send_event(data, IDLE);
 		} else {
 			pr_info("[SX9360]: %s - 0x%x still touched\n",
@@ -1212,6 +1319,19 @@ static void sx9360_irq_work_func(struct work_struct *work)
 			__func__, sx9360_get_nirq_state(data));
 }
 
+static void sx9360_check_first_working(struct sx9360_p *data)
+{
+	if (data->detect_threshold < data->diff) {
+		data->first_working = true;
+		pr_info("[SX9360]: %s - first working detected %d\n", __func__, data->diff);
+	} else {
+		if(data->first_working) {
+			data->is_unknown_mode = UNKNOWN_OFF;
+			pr_info("[SX9360]: %s - Release detected %d, unknown mode off\n", __func__, data->diff);
+		}
+	}
+}
+
 static void sx9360_debug_work_func(struct work_struct *work)
 {
 	struct sx9360_p *data = container_of((struct delayed_work *)work,
@@ -1243,14 +1363,26 @@ static void sx9360_debug_work_func(struct work_struct *work)
 			sx9360_get_data(data);
 			if (data->max_normal_diff < data->diff)
 				data->max_normal_diff = data->diff;
-		} else {
+/*		} else {
 			if (data->debug_count >= GRIP_LOG_TIME) {
 				sx9360_get_data(data);
 				data->debug_count = 0;
 			} else {
 				data->debug_count++;
-			}
+			}*/
 		}
+	}
+	if (data->debug_count >= GRIP_LOG_TIME) {
+		sx9360_get_data(data);
+		if (data->is_unknown_mode == UNKNOWN_ON && data->motion)
+			sx9360_check_first_working(data);
+		data->debug_count = 0;
+	} else {
+		if (data->is_unknown_mode == UNKNOWN_ON && data->motion) {
+			sx9360_get_data(data);
+			sx9360_check_first_working(data);
+		}
+		data->debug_count++;
 	}
 
 	schedule_delayed_work(&data->debug_work, msecs_to_jiffies(2000));
@@ -1280,6 +1412,7 @@ static int sx9360_input_init(struct sx9360_p *data)
 	dev->id.bustype = BUS_I2C;
 
 	input_set_capability(dev, EV_REL, REL_MISC);
+	input_set_capability(dev, EV_REL, REL_X);
 	input_set_drvdata(dev, data);
 
 	ret = input_register_device(dev);
@@ -1334,7 +1467,9 @@ static void sx9360_initialize_variable(struct sx9360_p *data)
 	data->init_done = OFF;
 	data->skip_data = false;
 	data->state = IDLE;
-
+	data->is_unknown_mode = UNKNOWN_ON;
+	data->motion = 0;
+	data->first_working = false;
 	atomic_set(&data->enable, OFF);
 }
 
@@ -1422,6 +1557,7 @@ static int sx9360_ccic_handle_notification(struct notifier_block *nb,
 		case USB_STATUS_NOTIFY_DETACH:
 			pr_info("[SX9360]: %s accept attach = %d\n",
 				__func__, usb_status.drp);
+			sx9360_enter_unknown_mode(pdata);
 			sx9360_set_offset_calibration(pdata);
 			break;
 		default:
@@ -1454,6 +1590,7 @@ static int sx9360_vbus_handle_notification(struct notifier_block *nb,
 		case STATUS_VBUS_LOW:
 			pr_info("[SX9360]: %s accept attach = %d\n",
 				__func__, vbus_type);
+			sx9360_enter_unknown_mode(pdata);
 			sx9360_set_offset_calibration(pdata);
 			break;
 		default:
