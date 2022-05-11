@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G977B" ]
+        model: [ "G977N,G977B" ]
 
     steps:
       - uses: actions/checkout@v2
@@ -28,7 +28,7 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-v5.1"         \
                        toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       +magisk=v24.3             \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
@@ -38,6 +38,14 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +noaudit                  \
+                       +noksm                    \
+                       +nomodules                \
+                       +fake_config              \
+                       +usb_serial               \
+                       +sched_powersave          \
+                       +sched_performance        \
+                       +dtb                      \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
