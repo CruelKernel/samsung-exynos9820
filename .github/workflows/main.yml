@@ -38,11 +38,6 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
-                       +noaudit                  \
-                       +noksm                    \
-                       +nomodules                \
-                       +fake_config              \
-                       +usb_serial               \
                        +sched_powersave          \
                        +sched_performance        \
                        +dtb                      \
