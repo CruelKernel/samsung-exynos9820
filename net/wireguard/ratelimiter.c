@@ -188,12 +188,20 @@ int wg_ratelimiter_init(void)
 			(1U << 14) / sizeof(struct hlist_head)));
 	max_entries = table_size * 8;
 
+<<<<<<< HEAD
 	table_v4 = kvcalloc(table_size, sizeof(*table_v4), GFP_KERNEL);
+=======
+	table_v4 = kvzalloc(table_size * sizeof(*table_v4), GFP_KERNEL);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 	if (unlikely(!table_v4))
 		goto err_kmemcache;
 
 #if IS_ENABLED(CONFIG_IPV6)
+<<<<<<< HEAD
 	table_v6 = kvcalloc(table_size, sizeof(*table_v6), GFP_KERNEL);
+=======
+	table_v6 = kvzalloc(table_size * sizeof(*table_v6), GFP_KERNEL);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 	if (unlikely(!table_v6)) {
 		kvfree(table_v4);
 		goto err_kmemcache;

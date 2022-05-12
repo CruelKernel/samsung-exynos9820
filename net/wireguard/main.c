@@ -17,7 +17,11 @@
 #include <linux/genetlink.h>
 #include <net/rtnetlink.h>
 
+<<<<<<< HEAD
 static int __init wg_mod_init(void)
+=======
+static int __init mod_init(void)
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 {
 	int ret;
 
@@ -65,7 +69,11 @@ err_allowedips:
 	return ret;
 }
 
+<<<<<<< HEAD
 static void __exit wg_mod_exit(void)
+=======
+static void __exit mod_exit(void)
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 {
 	wg_genetlink_uninit();
 	wg_device_uninit();
@@ -73,8 +81,13 @@ static void __exit wg_mod_exit(void)
 	wg_allowedips_slab_uninit();
 }
 
+<<<<<<< HEAD
 module_init(wg_mod_init);
 module_exit(wg_mod_exit);
+=======
+module_init(mod_init);
+module_exit(mod_exit);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("WireGuard secure network tunnel");
 MODULE_AUTHOR("Jason A. Donenfeld <Jason@zx2c4.com>");

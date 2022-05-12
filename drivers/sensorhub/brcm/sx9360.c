@@ -125,11 +125,17 @@ struct sx9360_p {
 	s16 max_normal_diff;
 
 	int debug_count;
+<<<<<<< HEAD
 #define HALL_IC_LEN 6
 	char hall_ic[HALL_IC_LEN];
 	int is_unknown_mode;
 	int motion;
 	bool first_working;
+=======
+
+#define HALL_IC_LEN 6
+	char hall_ic[HALL_IC_LEN];
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 
 #if !defined(CONFIG_SEC_FACTORY) && defined(CONFIG_SUPPORT_MCC_THRESHOLD_CHANGE)
 	int mcc;
