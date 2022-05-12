@@ -316,7 +316,7 @@ static int gdc_v4l2_try_fmt_mplane(struct file *file, void *fh,
 	struct v4l2_pix_format_mplane *pixm = &f->fmt.pix_mp;
 	const struct gdc_size_limit *limit;
 	struct gdc_frame *frame;
-	int i;
+	int i, num_planes;
 	int h_align = 0;
 	int w_align = 0;
 
@@ -351,8 +351,8 @@ static int gdc_v4l2_try_fmt_mplane(struct file *file, void *fh,
 			w_align, &pixm->height, limit->min_h,
 			limit->max_h, h_align, 0);
 /**/
-
-	for (i = 0; i < pixm->num_planes; ++i) {
+	num_planes = pixm->num_planes < GDC_MAX_PLANES ? pixm->num_planes : GDC_MAX_PLANES;
+	for (i = 0; i < num_planes; ++i) {
 		/* The pixm->plane_fmt[i].sizeimage for the plane which
 		 * contains the src blend data has to be calculated as per the
 		 * size of the actual width and actual height of the src blend

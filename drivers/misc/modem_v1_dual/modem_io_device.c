@@ -699,7 +699,8 @@ static unsigned int misc_poll(struct file *filp, struct poll_table_struct *wait)
 		break;
 
 	case STATE_OFFLINE:
-		/* fall through */
+		if (iod->id == SIPC_CH_ID_CASS)
+			return POLLHUP;
 	default:
 		break;
 	}
@@ -1506,7 +1507,7 @@ static struct net_device_ops vnet_ops = {
 static void vnet_setup(struct net_device *ndev)
 {
 	ndev->netdev_ops = &vnet_ops;
-	ndev->type = ARPHRD_PPP;
+	ndev->type = ARPHRD_RAWIP;
 	ndev->flags = IFF_POINTOPOINT | IFF_NOARP | IFF_MULTICAST;
 	ndev->addr_len = 0;
 	ndev->hard_header_len = 0;

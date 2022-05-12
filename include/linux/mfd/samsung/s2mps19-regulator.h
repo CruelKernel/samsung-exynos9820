@@ -21,6 +21,7 @@
 #ifndef __LINUX_MFD_S2MPS19_REGULATOR_H
 #define __LINUX_MFD_S2MPS19_REGULATOR_H
 #include <linux/i2c.h>
+#include <linux/pm_qos.h>
 
 #define S2MPS19_REG_INVALID             (0xFF)
 #define S2MPS19_IRQSRC_PMIC				(1 << 0)
@@ -400,6 +401,17 @@ struct s2mps19_dev {
 
 enum s2mps19_types {
 	TYPE_S2MPS19,
+};
+
+struct pmic_qos_setting {
+	struct pm_qos_request req_little_CPUs;
+	struct mutex pmic_qos_lock;
+
+	s32 max_freq;
+	s32 request_freq;
+	bool working;
+
+	unsigned int stop_duration;
 };
 
 extern int s2mps19_irq_init(struct s2mps19_dev *s2mps19);

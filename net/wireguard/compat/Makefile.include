@@ -12,6 +12,13 @@ ifeq ($(wildcard $(srctree)/include/linux/ptr_ring.h),)
 ccflags-y += -I$(kbuild-dir)/compat/ptr_ring/include
 endif
 
+<<<<<<< HEAD
+ifeq ($(wildcard $(srctree)/include/linux/skb_array.h),)
+ccflags-y += -I$(kbuild-dir)/compat/skb_array/include
+endif
+
+=======
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 ifeq ($(wildcard $(srctree)/include/linux/siphash.h),)
 ccflags-y += -I$(kbuild-dir)/compat/siphash/include
 wireguard-y += compat/siphash/siphash.o
@@ -65,6 +72,13 @@ ifeq ($(wildcard $(srctree)/arch/arm64/include/asm/neon.h)$(CONFIG_ARM64),y)
 ccflags-y += -I$(kbuild-dir)/compat/neon-arm/include
 endif
 
+<<<<<<< HEAD
+ifeq ($(wildcard $(srctree)/include/net/dst_metadata.h),)
+ccflags-y += -I$(kbuild-dir)/compat/dstmetadata/include
+endif
+
+=======
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 ifeq ($(CONFIG_X86_64),y)
 	ifeq ($(ssse3_instr),)
 		ssse3_instr := $(call as-instr,pshufb %xmm0$(comma)%xmm0,-DCONFIG_AS_SSSE3=1)

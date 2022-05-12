@@ -55,6 +55,8 @@
 static int wl_cfgnan_cache_disc_result(struct bcm_cfg80211 *cfg, void * data,
 	u16 *disc_cache_update_flags);
 static int wl_cfgnan_remove_disc_result(struct bcm_cfg80211 * cfg, uint8 local_subid);
+static int wl_cfgnan_reset_disc_result(struct bcm_cfg80211 *cfg,
+	nan_disc_result_cache *disc_res);
 static nan_disc_result_cache * wl_cfgnan_get_disc_result(struct bcm_cfg80211 *cfg,
 	uint8 remote_pubid, struct ether_addr *peer);
 #endif /* WL_NAN_DISC_CACHE */
@@ -8877,20 +8879,16 @@ wl_cfgnan_cache_disc_result(struct bcm_cfg80211 *cfg, void * data,
 	u16 *disc_cache_update_flags)
 {
 	nan_event_data_t* disc = (nan_event_data_t*)data;
-	int i, add_index = 0;
+	int i, add_index = NAN_MAX_CACHE_DISC_RESULT;
 	int ret = BCME_OK;
 	wl_nancfg_t *nancfg = cfg->nancfg;
 	nan_disc_result_cache *disc_res = nancfg->nan_disc_cache;
-	*disc_cache_update_flags = 0;
+	bool new_entry = TRUE;
 
+	*disc_cache_update_flags = 0;
 	if (!nancfg->nan_enable) {
 		WL_DBG(("nan not enabled"));
 		return BCME_NOTENABLED;
-	}
-	if (nancfg->nan_disc_count == NAN_MAX_CACHE_DISC_RESULT) {
-		WL_DBG(("cache full"));
-		ret = BCME_NORESOURCE;
-		goto done;
 	}
 
 	for (i = 0; i < NAN_MAX_CACHE_DISC_RESULT; i++) {
@@ -8899,76 +8897,103 @@ wl_cfgnan_cache_disc_result(struct bcm_cfg80211 *cfg, void * data,
 			continue;
 		}
 		if (!memcmp(&disc_res[i].peer, &disc->remote_nmi, ETHER_ADDR_LEN) &&
-			!memcmp(disc_res[i].svc_hash, disc->svc_name, WL_NAN_SVC_HASH_LEN)) {
+			!memcmp(disc_res[i].svc_hash, disc->svc_name, WL_NAN_SVC_HASH_LEN) &&
+			(disc_res[i].pub_id == disc->pub_id) &&
+			(disc_res[i].sub_id == disc->sub_id)) {
 			WL_DBG(("cache entry already present, i = %d", i));
 			/* Update needed parameters here */
 			if (disc_res[i].sde_control_flag != disc->sde_control_flag) {
-				disc_res[i].sde_control_flag = disc->sde_control_flag;
 				*disc_cache_update_flags |= NAN_DISC_CACHE_PARAM_SDE_CONTROL;
 			}
-			ret = BCME_OK; /* entry already present */
-			goto done;
+			add_index = i;
+			new_entry = FALSE;
+			break;
 		}
 	}
-	WL_DBG(("adding cache entry: add_index = %d\n", add_index));
-	disc_res[add_index].valid = 1;
-	disc_res[add_index].pub_id = disc->pub_id;
-	disc_res[add_index].sub_id = disc->sub_id;
-	disc_res[add_index].publish_rssi = disc->publish_rssi;
-	disc_res[add_index].peer_cipher_suite = disc->peer_cipher_suite;
-	disc_res[add_index].sde_control_flag = disc->sde_control_flag;
-	ret = memcpy_s(&disc_res[add_index].peer, ETHER_ADDR_LEN,
-			&disc->remote_nmi, ETHER_ADDR_LEN);
-	if (ret != BCME_OK) {
-		WL_ERR(("Failed to copy remote nmi\n"));
-		goto done;
-	}
-	ret = memcpy_s(disc_res[add_index].svc_hash, WL_NAN_SVC_HASH_LEN,
-			disc->svc_name, WL_NAN_SVC_HASH_LEN);
-	if (ret != BCME_OK) {
-		WL_ERR(("Failed to copy svc hash\n"));
+
+	if (add_index == NAN_MAX_CACHE_DISC_RESULT) {
+		WL_DBG(("cache full"));
+		ret = BCME_NORESOURCE;
 		goto done;
 	}
 
+	if (new_entry) {
+		WL_DBG(("adding cache entry: add_index = %d\n", add_index));
+		disc_res[add_index].valid = 1;
+		disc_res[add_index].pub_id = disc->pub_id;
+		disc_res[add_index].sub_id = disc->sub_id;
+
+		eacopy(&disc->remote_nmi, &disc_res[add_index].peer);
+		eacopy(disc->svc_name, disc_res[add_index].svc_hash);
+	}
+
+	disc_res[add_index].publish_rssi = disc->publish_rssi;
+	disc_res[add_index].peer_cipher_suite = disc->peer_cipher_suite;
+	disc_res[add_index].sde_control_flag = disc->sde_control_flag;
 	if (disc->svc_info.dlen && disc->svc_info.data) {
-		disc_res[add_index].svc_info.dlen = disc->svc_info.dlen;
-		disc_res[add_index].svc_info.data =
-			MALLOCZ(cfg->osh, disc_res[add_index].svc_info.dlen);
+		if (disc_res[add_index].svc_info.dlen != disc->svc_info.dlen) {
+			if (disc_res[add_index].svc_info.data) {
+				MFREE(cfg->osh, disc_res[add_index].svc_info.data,
+					disc_res[add_index].svc_info.dlen);
+			}
+			disc_res[add_index].svc_info.dlen = disc->svc_info.dlen;
+			disc_res[add_index].svc_info.data =
+				MALLOCZ(cfg->osh, disc_res[add_index].svc_info.dlen);
+		}
 		if (!disc_res[add_index].svc_info.data) {
 			WL_ERR(("%s: memory allocation failed\n", __FUNCTION__));
 			disc_res[add_index].svc_info.dlen = 0;
 			ret = BCME_NOMEM;
-			goto done;
+			goto reset_entry;
 		}
 		ret = memcpy_s(disc_res[add_index].svc_info.data, disc_res[add_index].svc_info.dlen,
 				disc->svc_info.data, disc->svc_info.dlen);
 		if (ret != BCME_OK) {
 			WL_ERR(("Failed to copy svc info\n"));
-			goto done;
+			goto reset_entry;
 		}
 	}
 	if (disc->tx_match_filter.dlen && disc->tx_match_filter.data) {
-		disc_res[add_index].tx_match_filter.dlen = disc->tx_match_filter.dlen;
-		disc_res[add_index].tx_match_filter.data =
-			MALLOCZ(cfg->osh, disc_res[add_index].tx_match_filter.dlen);
+		if (disc_res[add_index].tx_match_filter.dlen != disc->tx_match_filter.dlen) {
+			if (disc_res[add_index].tx_match_filter.data) {
+				MFREE(cfg->osh, disc_res[add_index].tx_match_filter.data,
+					disc_res[add_index].tx_match_filter.dlen);
+			}
+			disc_res[add_index].tx_match_filter.dlen = disc->tx_match_filter.dlen;
+			disc_res[add_index].tx_match_filter.data =
+				MALLOCZ(cfg->osh, disc_res[add_index].tx_match_filter.dlen);
+		}
 		if (!disc_res[add_index].tx_match_filter.data) {
 			WL_ERR(("%s: memory allocation failed\n", __FUNCTION__));
 			disc_res[add_index].tx_match_filter.dlen = 0;
 			ret = BCME_NOMEM;
-			goto done;
+			goto reset_entry;
 		}
 		ret = memcpy_s(disc_res[add_index].tx_match_filter.data,
 			disc_res[add_index].tx_match_filter.dlen,
 			disc->tx_match_filter.data, disc->tx_match_filter.dlen);
 		if (ret != BCME_OK) {
 			WL_ERR(("Failed to copy tx match filter\n"));
-			goto done;
+			goto reset_entry;
 		}
 	}
-	nancfg->nan_disc_count++;
+	if (new_entry) {
+		nancfg->nan_disc_count++;
+	}
 	WL_DBG(("cfg->nan_disc_count = %d\n", nancfg->nan_disc_count));
 
 done:
+	return ret;
+
+reset_entry:
+	if (!new_entry) {
+		nancfg->nan_disc_count--;
+		*disc_cache_update_flags = 0;
+	}
+	WL_ERR(("resetting cache entry: %d, cfg->nan_disc_count = %d\n", add_index,
+			nancfg->nan_disc_count));
+	wl_cfgnan_reset_disc_result(cfg, &disc_res[add_index]);
+
 	return ret;
 }
 
@@ -9060,6 +9085,31 @@ static int wl_cfgnan_remove_disc_result(struct bcm_cfg80211 *cfg,
 		}
 	}
 	WL_DBG(("couldn't find entry\n"));
+done:
+	return ret;
+}
+
+static int wl_cfgnan_reset_disc_result(struct bcm_cfg80211 *cfg,
+		nan_disc_result_cache *disc_res)
+{
+	int ret = BCME_OK;
+
+	if (!cfg->nancfg->nan_enable) {
+		WL_DBG(("nan not enabled\n"));
+		ret = BCME_NOTENABLED;
+		goto done;
+	}
+
+	if (disc_res->tx_match_filter.data) {
+		MFREE(cfg->osh, disc_res->tx_match_filter.data,
+				disc_res->tx_match_filter.dlen);
+	}
+	if (disc_res->svc_info.data) {
+		MFREE(cfg->osh, disc_res->svc_info.data,
+				disc_res->svc_info.dlen);
+	}
+	bzero(disc_res, sizeof(*disc_res));
+
 done:
 	return ret;
 }

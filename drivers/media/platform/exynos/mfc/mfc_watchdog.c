@@ -321,9 +321,9 @@ static void __mfc_dump_state(struct mfc_dev *dev)
 			dev->hwlock.bits, dev->hwlock.dev,
 			dev->curr_ctx, dev->curr_ctx_is_drm,
 			dev->preempt_ctx, mfc_get_bits(&dev->work_bits));
-	pr_err("has 2sysmmu:%d, has hwfc:%d, has mmcache:%d, shutdown:%d, sleep:%d, itmon_notified:%d\n",
+	pr_err("has 2sysmmu:%d, has hwfc:%d, has mmcache:%d, shutdown:%d, sleep:%d, QoS level: %d, itmon_notified:%d\n",
 			dev->has_2sysmmu, dev->has_hwfc, dev->has_mmcache,
-			dev->shutdown, dev->sleep, dev->itmon_notified);
+			dev->shutdown, dev->sleep, atomic_read(&dev->qos_req_cur) - 1, dev->itmon_notified);
 	pr_err("options debug_level:%d, debug_mode:%d, mmcache:%d, perf_boost:%d\n",
 			debug_level, dev->pdata->debug_mode, dev->mmcache.is_on_status, perf_boost_mode);
 	if (nal_q_handle)
@@ -334,14 +334,21 @@ static void __mfc_dump_state(struct mfc_dev *dev)
 
 	curr_ctx = __mfc_get_curr_ctx(dev);
 	for (i = 0; i < MFC_NUM_CONTEXTS; i++)
-		if (dev->ctx[i])
-			pr_err("MFC ctx[%d] %s(%scodec_type:%d) %s, state:%d, queue_cnt(src:%d, dst:%d, ref:%d, qsrc:%d, qdst:%d), interrupt(cond:%d, type:%d, err:%d)\n",
+		if (dev->ctx[i]) {
+			pr_err("- MFC ctx[%d] %s %s%s, %s, %s, size: %dx%d@%ldfps(op: %ldfps), crop: %d %d %d %d, state:%d\n",
 				dev->ctx[i]->num,
 				dev->ctx[i]->type == MFCINST_DECODER ? "DEC" : "ENC",
-				curr_ctx == i ? "curr_ctx! " : "",
-				dev->ctx[i]->codec_mode,
-				dev->ctx[i]->is_drm ? "DRM" : "Normal",
-				dev->ctx[i]->state,
+				dev->ctx[i]->is_drm ? "Secure" : "Normal",
+				curr_ctx == i ? "(curr_ctx!)" : "",
+				dev->ctx[i]->state > MFCINST_INIT ? dev->ctx[i]->src_fmt->name : "undefined src fmt",
+				dev->ctx[i]->state > MFCINST_INIT ? dev->ctx[i]->dst_fmt->name : "undefined dst fmt",
+				dev->ctx[i]->img_width, dev->ctx[i]->img_height,
+				dev->ctx[i]->last_framerate / 1000,
+				dev->ctx[i]->operating_framerate,
+				dev->ctx[i]->crop_width, dev->ctx[i]->crop_height,
+				dev->ctx[i]->crop_left, dev->ctx[i]->crop_top, dev->ctx[i]->state);
+			pr_err("	prio %d, rt %d, queue_cnt(src:%d, dst:%d, ref:%d, qsrc:%d, qdst:%d), interrupt(cond:%d, type:%d, err:%d)\n",
+				dev->ctx[i]->prio, dev->ctx[i]->rt,
 				mfc_get_queue_count(&dev->ctx[i]->buf_queue_lock, &dev->ctx[i]->src_buf_queue),
 				mfc_get_queue_count(&dev->ctx[i]->buf_queue_lock, &dev->ctx[i]->dst_buf_queue),
 				mfc_get_queue_count(&dev->ctx[i]->buf_queue_lock, &dev->ctx[i]->ref_buf_queue),
@@ -349,6 +356,7 @@ static void __mfc_dump_state(struct mfc_dev *dev)
 				mfc_get_queue_count(&dev->ctx[i]->buf_queue_lock, &dev->ctx[i]->dst_buf_nal_queue),
 				dev->ctx[i]->int_condition, dev->ctx[i]->int_reason,
 				dev->ctx[i]->int_err);
+		}
 }
 
 static void __mfc_dump_trace(struct mfc_dev *dev)

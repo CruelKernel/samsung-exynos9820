@@ -758,6 +758,7 @@ static void __mfc_handle_frame(struct mfc_ctx *ctx,
 			ctx->ts_is_full = 0;
 			mfc_qos_reset_last_framerate(ctx);
 			mfc_qos_set_framerate(ctx, DEC_DEFAULT_FPS);
+			mfc_qos_on(ctx);
 
 			goto leave_handle_frame;
 		} else {

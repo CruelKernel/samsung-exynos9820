@@ -27,6 +27,10 @@ static inline u32 rt6_get_cookie(const struct rt6_info *rt)
 #endif
 #include <uapi/linux/in.h>
 
+<<<<<<< HEAD
+#ifndef COMPAT_HAS_DEFINED_DST_CACHE_PCPU
+=======
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 struct dst_cache_pcpu {
 	unsigned long refresh_ts;
 	struct dst_entry *dst;
@@ -36,6 +40,10 @@ struct dst_cache_pcpu {
 		struct in6_addr in6_saddr;
 	};
 };
+<<<<<<< HEAD
+#endif
+=======
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 
 static void dst_cache_per_cpu_dst_set(struct dst_cache_pcpu *dst_cache,
 				      struct dst_entry *dst, u32 cookie)

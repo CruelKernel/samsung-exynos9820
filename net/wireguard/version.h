@@ -1,3 +1,7 @@
 #ifndef WIREGUARD_VERSION
+<<<<<<< HEAD
+#define WIREGUARD_VERSION "1.0.20211208"
+=======
 #define WIREGUARD_VERSION "1.0.20210606"
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 #endif

@@ -2257,6 +2257,7 @@ static int ipv6_generate_eui64(u8 *eui, struct net_device *dev)
 	case ARPHRD_TUNNEL6:
 	case ARPHRD_IP6GRE:
 		return addrconf_ifid_ip6tnl(eui, dev);
+	case ARPHRD_RAWIP:
 	case ARPHRD_PPP: {
 		struct in6_addr lladdr;
 		if (ipv6_get_lladdr(dev, &lladdr, IFA_F_TENTATIVE))
@@ -3296,6 +3297,7 @@ static void addrconf_dev_config(struct net_device *dev)
 	    (dev->type != ARPHRD_IPGRE) &&
 	    (dev->type != ARPHRD_TUNNEL) &&
 	    (dev->type != ARPHRD_NONE) &&
+	    (dev->type != ARPHRD_RAWIP) &&
 	    (dev->type != ARPHRD_PPP)) {
 		/* Alas, we support only Ethernet autoconfiguration. */
 		return;

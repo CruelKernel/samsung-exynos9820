@@ -101,23 +101,33 @@ models = {
         'config': 'exynos9820-beyondx_defconfig'
     },
     'G977N': {
+<<<<<<< HEAD
+        'config': 'exynos9820-beyondx_defconfig'
+=======
         'config': 'exynos9820-beyondxks_defconfig'
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
     },
     'N970F': {
         'config': 'exynos9820-d1_defconfig'
     },
+<<<<<<< HEAD
+=======
     'N971N': {
         'config': 'exynos9820-d1xks_defconfig'
     },
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
     'N975F': {
         'config': 'exynos9820-d2s_defconfig'
     },
     'N976B': {
         'config': 'exynos9820-d2x_defconfig'
     },
+<<<<<<< HEAD
+=======
     'N976N': {
         'config': 'exynos9820-d2xks_defconfig'
     }
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 }
 
 OBJTREE_SIZE_GB = 3

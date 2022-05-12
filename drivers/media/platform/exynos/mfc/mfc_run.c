@@ -573,6 +573,7 @@ int mfc_run_enc_frame(struct mfc_ctx *ctx)
 
 	if (!reg_test)
 		mfc_set_slice_mode(ctx);
+	mfc_set_enc_ts_delta(ctx);
 
 	mfc_cmd_enc_one_frame(ctx, last_frame);
 

@@ -5022,6 +5022,7 @@
 		static_info_enc = <0x1 0x180314>;
 		hdr10_plus = <0x1 0x180709>;
 		P010_decoding = <0x1>;
+		enc_ts_delta = <0x1 0x211208>;
 		support_10bit = <0x1>;
 		support_422 = <0x1>;
 		support_rgb = <0x0>;

@@ -513,6 +513,9 @@ struct binder_priority {
  * @files                 files_struct for process
  *                        (protected by @files_lock)
  * @files_lock            mutex to protect @files
+ * @cred                  struct cred associated with the `struct file`
+ *                        in binder_open()
+ *                        (invariant after initialized)
  * @deferred_work_node:   element for binder_deferred_list
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
@@ -559,6 +562,7 @@ struct binder_proc {
 	struct task_struct *tsk;
 	struct files_struct *files;
 	struct mutex files_lock;
+	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
 	bool is_dead;
@@ -2602,7 +2606,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2648,7 +2652,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, proc->tsk->comm, thread->task->comm, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2732,7 +2736,7 @@ static int binder_translate_fd(int fd,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(proc->tsk, target_proc->tsk, file);
+	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -3017,15 +3021,18 @@ static struct binder_node *binder_get_node_refs_for_txn(
 }
 
 #ifdef CONFIG_SAMSUNG_FREECESS
-// 1) Skip first 8 bytes (useless data)
+// 1) Skip first 8(P)/12(Q) bytes (useless data)
 // 2) Make sure that the invalid address issue is not occuring (j=9, j+=2)
 // 3) Java layer uses 2 bytes char. And only the first byte has the data. (p+=2)
+// 4) Parcel::writeInterfaceToken() in frameworks/native/libs/binder/Parcel.cpp
 static void freecess_async_binder_report(struct binder_proc *proc,
-								struct binder_proc *target_proc,
-								struct binder_transaction_data *tr,
-								struct binder_transaction *t)
+						struct binder_proc *target_proc,
+						struct binder_transaction_data *tr,
+						struct binder_transaction *t)
 {
+	char buf_user[INTERFACETOKEN_BUFF_SIZE] = {0};
 	char buf[INTERFACETOKEN_BUFF_SIZE] = {0};
+	char *p = NULL;
 	int i = 0;
 	int j = 0;
 	int skip_bytes = 8;
@@ -3038,23 +3045,28 @@ static void freecess_async_binder_report(struct binder_proc *proc,
 		skip_bytes = 8;
 	else if (freecess_fw_version == 1)
 		skip_bytes = 12;
+	else if (freecess_fw_version == 2)
+		skip_bytes = 16;
 
 	if ((tr->flags & TF_ONE_WAY) && target_proc
-		&& target_proc->tsk && target_proc->tsk->cred
-		&& (target_proc->tsk->cred->euid.val > 10000)
+		&& target_proc->tsk && task_euid(target_proc->tsk).val > 10000
 		&& (proc->pid != target_proc->pid)) {
 		if (thread_group_is_frozen(target_proc->tsk)) {
 			if (t->buffer->data_size > skip_bytes) {
-				char *p = (char *)(t->buffer->data) + skip_bytes;
-				j = skip_bytes + 1;
-				while (i < INTERFACETOKEN_BUFF_SIZE && j < t->buffer->data_size && *p != '\0') {
-					buf[i++] = *p;
-					j+=2;
-					p+=2;
+				if (0 == copy_from_user(buf_user, (const void __user *)(uintptr_t)tr->data.ptr.buffer,
+					min_t(binder_size_t, tr->data_size, INTERFACETOKEN_BUFF_SIZE - 2))) {
+					p = &buf_user[skip_bytes];
+					i = 0;
+					j = skip_bytes + 1;
+					while (i < INTERFACETOKEN_BUFF_SIZE && j < t->buffer->data_size && *p != '\0') {
+						buf[i++] = *p;
+						j += 2;
+						p += 2;
+					}
+					if (i == INTERFACETOKEN_BUFF_SIZE) buf[i-1] = '\0';
 				}
-				if (i == INTERFACETOKEN_BUFF_SIZE) buf[i-1] = '\0';
+				binder_report(target_proc->tsk, tr->code, buf, tr->flags & TF_ONE_WAY);
 			}
-			binder_report(target_proc->tsk, tr->code, buf, tr->flags & TF_ONE_WAY);
 		}
 	}
 }
@@ -3067,8 +3079,7 @@ static void freecess_sync_binder_report(struct binder_proc *proc,
 		return;
 
 	if ((!(tr->flags & TF_ONE_WAY)) && target_proc
-		&& target_proc->tsk && target_proc->tsk->cred
-		&& (target_proc->tsk->cred->euid.val > 10000)
+		&& target_proc->tsk && task_euid(target_proc->tsk).val > 10000
 		&& (proc->pid != target_proc->pid) 
 		&& thread_group_is_frozen(target_proc->tsk)) {
 		//if sync binder, we don't need detecting info, so set code and interfacename as default value.
@@ -3228,8 +3239,9 @@ static void binder_transaction(struct binder_proc *proc,
 #ifdef CONFIG_SAMSUNG_FREECESS
 		freecess_sync_binder_report(proc, target_proc, tr);
 #endif
-		if (security_binder_transaction(proc->tsk,
-						target_proc->tsk) < 0) {
+
+		if (security_binder_transaction(proc->cred,
+						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3451,7 +3463,8 @@ static void binder_transaction(struct binder_proc *proc,
 
 	off_end = (void *)off_start + tr->offsets_size;
 	sg_bufp = (u8 *)(PTR_ALIGN(off_end, sizeof(void *)));
-	sg_buf_end = sg_bufp + extra_buffers_size;
+	sg_buf_end = sg_bufp + extra_buffers_size -
+		ALIGN(secctx_sz, sizeof(u64));
 	off_min = 0;
 	for (; offp < off_end; offp++) {
 		struct binder_object_header *hdr;
@@ -3935,10 +3948,12 @@ static int binder_thread_write(struct binder_proc *proc,
 				     buffer->debug_id,
 				     buffer->transaction ? "active" : "finished");
 
+			binder_inner_proc_lock(proc);
 			if (buffer->transaction) {
 				buffer->transaction->buffer = NULL;
 				buffer->transaction = NULL;
 			}
+			binder_inner_proc_unlock(proc);
 			if (buffer->async_transaction && buffer->target_node) {
 				struct binder_node *buf_node;
 				struct binder_work *w;
@@ -4793,6 +4808,7 @@ static void binder_free_proc(struct binder_proc *proc)
 	BUG_ON(!list_empty(&proc->delivered_death));
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
+	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	kfree(proc);
 }
@@ -4864,23 +4880,20 @@ static int binder_thread_release(struct binder_proc *proc,
 	}
 
 	/*
-	 * If this thread used poll, make sure we remove the waitqueue
-	 * from any epoll data structures holding it with POLLFREE.
-	 * waitqueue_active() is safe to use here because we're holding
-	 * the inner lock.
+	 * If this thread used poll, make sure we remove the waitqueue from any
+	 * poll data structures holding it.
 	 */
-	if ((thread->looper & BINDER_LOOPER_STATE_POLL) &&
-	    waitqueue_active(&thread->wait)) {
-		wake_up_poll(&thread->wait, POLLHUP | POLLFREE);
-	}
+	if (thread->looper & BINDER_LOOPER_STATE_POLL)
+		wake_up_pollfree(&thread->wait);
 
 	binder_inner_proc_unlock(thread->proc);
 
 	/*
-	 * This is needed to avoid races between wake_up_poll() above and
-	 * and ep_remove_waitqueue() called for other reasons (eg the epoll file
-	 * descriptor being closed); ep_remove_waitqueue() holds an RCU read
-	 * lock, so we can be sure it's done after calling synchronize_rcu().
+	 * This is needed to avoid races between wake_up_pollfree() above and
+	 * someone else removing the last entry from the queue for other reasons
+	 * (e.g. ep_remove_wait_queue() being called due to an epoll file
+	 * descriptor being closed).  Such other users hold an RCU read lock, so
+	 * we can be sure they're done after we call synchronize_rcu().
 	 */
 	if (thread->looper & BINDER_LOOPER_STATE_POLL)
 		synchronize_rcu();
@@ -4998,7 +5011,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(proc->tsk);
+	ret = security_binder_set_context_mgr(proc->cred);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -5333,6 +5346,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
 	mutex_init(&proc->files_lock);
+	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
 	if (binder_supported_policy(current->policy)) {
 		proc->default_priority.sched_policy = current->policy;
@@ -5861,13 +5875,12 @@ static void print_binder_proc(struct seq_file *m,
 }
 
 #ifdef CONFIG_SAMSUNG_FREECESS
-static void binder_in_transaction(struct binder_proc *proc)
+static void binder_in_transaction(struct binder_proc *proc, int uid)
 {
 	struct rb_node *n = NULL;
 	struct binder_thread *thread = NULL;
-	int uid = -1;
-	struct task_struct *tsk = NULL;
 	struct binder_transaction *t = NULL;
+	struct binder_work *w = NULL;
 	bool empty = true;
 	bool found = false;
 
@@ -5876,49 +5889,100 @@ static void binder_in_transaction(struct binder_proc *proc)
 	for (n = rb_first(&proc->threads); n != NULL; n = rb_next(n)) {
 		thread = rb_entry(n, struct binder_thread, rb_node);
 		empty = binder_worklist_empty_ilocked(&thread->todo);
-		tsk = thread->task;
+		if (!empty) {
+			list_for_each_entry(w, &thread->todo, entry) {
+				if (w->type == BINDER_WORK_TRANSACTION) {
+					t = container_of(w, struct binder_transaction, work);
+					if (!(t->flags & TF_ONE_WAY)) {
+						found = true;
+						break;
+					}
+				}
+				else if (w->type != BINDER_WORK_TRANSACTION_COMPLETE && w->type != BINDER_WORK_NODE) {
+					found = true;
+					break;
+				}
+			}
 
-		if (tsk != NULL) {
-			//have some binders to do
-			if (!empty) {
-				//report uid to FW, only report one time
-				uid = tsk->cred->euid.val;
+			if (found == true) {
 				binder_inner_proc_unlock(proc);
 				cfb_report(uid, "thread");
 				return;
 			}
+		}
 
-			//processing one binder call
-			t = thread->transaction_stack;
-			if (t) {
-				spin_lock(&t->lock);
-				if (t->to_thread == thread) {
-					//check incoming, it has one
-					found = true;
-					uid = tsk->cred->euid.val;
-				}
-				spin_unlock(&t->lock);
-				if (found == true){
-					//report uid to FW, only report one time
-					binder_inner_proc_unlock(proc);
-					cfb_report(uid, "transaction_stack");
-					return;
-				}
+		//processing one binder call
+		t = thread->transaction_stack;
+		if (t) {
+			if (t->to_thread == thread) {
+				binder_inner_proc_unlock(proc);
+				cfb_report(uid, "transaction_stack");
+				return;
 			}
 		}
 	}
 
 	//check binder proc todo list
-	empty = binder_worklist_empty_ilocked(&proc->todo);
-	tsk = proc->tsk;
-	if (tsk != NULL && !empty) {
-		//report uid to FW
-		uid = tsk->cred->euid.val;
-		binder_inner_proc_unlock(proc);
-		cfb_report(uid, "proc");
+#ifdef CONFIG_FAST_TRACK
+        empty = binder_proc_worklist_empty_ilocked(proc);
+	if (!empty) {
+		list_for_each_entry(w, &proc->todo, entry) {
+			if (w->type == BINDER_WORK_TRANSACTION) {
+				t = container_of(w, struct binder_transaction, work);
+				if (!(t->flags & TF_ONE_WAY)) {
+					found = true;
+					break;
+				}
+			}
+			else if (w->type != BINDER_WORK_TRANSACTION_COMPLETE && w->type != BINDER_WORK_NODE) {
+				found = true;
+				break;
+			}
+		}
+		list_for_each_entry(w, &proc->fg_todo, entry) {
+			if (w->type == BINDER_WORK_TRANSACTION) {
+				t = container_of(w, struct binder_transaction, work);
+				if (!(t->flags & TF_ONE_WAY)) {
+					found = true;
+					break;
+				}
+			}
+			else if (w->type != BINDER_WORK_TRANSACTION_COMPLETE && w->type != BINDER_WORK_NODE) {
+				found = true;
+				break;
+			}
+		}
+		if (found == true) {
+			binder_inner_proc_unlock(proc);
+			cfb_report(uid, "proc");
+			return;
+		}
 	}
-	else
-		binder_inner_proc_unlock(proc);
+#else
+	empty = binder_worklist_empty_ilocked(&proc->todo);
+	if (!empty) {
+		list_for_each_entry(w, &proc->todo, entry) {
+			if (w->type == BINDER_WORK_TRANSACTION) {
+				t = container_of(w, struct binder_transaction, work);
+				if (!(t->flags & TF_ONE_WAY)) {
+					found = true;
+					break;
+				}
+			}
+			else if (w->type != BINDER_WORK_TRANSACTION_COMPLETE && w->type != BINDER_WORK_NODE) {
+				found = true;
+				break;
+			}
+		}
+
+		if (found == true) {
+			binder_inner_proc_unlock(proc);
+			cfb_report(uid, "proc");
+			return;
+		}
+	}
+#endif
+	binder_inner_proc_unlock(proc);
 }
 
 void binders_in_transcation(int uid)
@@ -5927,8 +5991,8 @@ void binders_in_transcation(int uid)
 
 	mutex_lock(&binder_procs_lock);
 	hlist_for_each_entry(itr, &binder_procs, proc_node) {
-		if (itr != NULL && (itr->tsk->cred->euid.val == uid)) {
-			binder_in_transaction(itr);
+		if (itr != NULL && task_euid(itr->tsk).val == uid) {
+			binder_in_transaction(itr, uid);
 		}
 	}
 	mutex_unlock(&binder_procs_lock);

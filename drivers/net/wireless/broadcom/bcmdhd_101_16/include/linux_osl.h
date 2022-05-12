@@ -225,6 +225,12 @@ extern void * osl_virt_to_phys(void * va);
 
 #define OSL_SMP_WMB()	smp_wmb()
 
+#if defined(__aarch64__)
+#define OSL_ISB()	isb()
+#else
+#define OSL_ISB()	do { /* noop */ } while (0)
+#endif /* __aarch64__ */
+
 /* API for CPU relax */
 extern void osl_cpu_relax(void);
 #define OSL_CPU_RELAX() osl_cpu_relax()

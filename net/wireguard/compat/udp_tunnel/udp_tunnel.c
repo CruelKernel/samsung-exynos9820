@@ -38,9 +38,16 @@ int udp_sock_create4(struct net *net, struct udp_port_cfg *cfg,
 	struct socket *sock = NULL;
 	struct sockaddr_in udp_addr;
 
+<<<<<<< HEAD
+	err = sock_create_kern(AF_INET, SOCK_DGRAM, 0, &sock);
+	if (err < 0)
+		goto error;
+	sk_change_net(sock->sk, net);
+=======
 	err = __sock_create(net, AF_INET, SOCK_DGRAM, 0, &sock, 1);
 	if (err < 0)
 		goto error;
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 
 	udp_addr.sin_family = AF_INET;
 	udp_addr.sin_addr = cfg->local_ip;
@@ -72,7 +79,11 @@ int udp_sock_create4(struct net *net, struct udp_port_cfg *cfg,
 error:
 	if (sock) {
 		kernel_sock_shutdown(sock, SHUT_RDWR);
+<<<<<<< HEAD
+		sk_release_kernel(sock->sk);
+=======
 		sock_release(sock);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 	}
 	*sockp = NULL;
 	return err;
@@ -229,7 +240,11 @@ void udp_tunnel_sock_release(struct socket *sock)
 {
 	rcu_assign_sk_user_data(sock->sk, NULL);
 	kernel_sock_shutdown(sock, SHUT_RDWR);
+<<<<<<< HEAD
+	sk_release_kernel(sock->sk);
+=======
 	sock_release(sock);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -254,9 +269,16 @@ int udp_sock_create6(struct net *net, struct udp_port_cfg *cfg,
 	int err;
 	struct socket *sock = NULL;
 
+<<<<<<< HEAD
+	err = sock_create_kern(AF_INET6, SOCK_DGRAM, 0, &sock);
+	if (err < 0)
+		goto error;
+	sk_change_net(sock->sk, net);
+=======
 	err = __sock_create(net, AF_INET6, SOCK_DGRAM, 0, &sock, 1);
 	if (err < 0)
 		goto error;
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 
 	if (cfg->ipv6_v6only) {
 		int val = 1;
@@ -301,7 +323,11 @@ int udp_sock_create6(struct net *net, struct udp_port_cfg *cfg,
 error:
 	if (sock) {
 		kernel_sock_shutdown(sock, SHUT_RDWR);
+<<<<<<< HEAD
+		sk_release_kernel(sock->sk);
+=======
 		sock_release(sock);
+>>>>>>> 8615a8bcfae6039b0d1be5972ec648251df81f75
 	}
 	*sockp = NULL;
 	return err;

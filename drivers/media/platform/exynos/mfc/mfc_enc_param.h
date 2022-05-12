@@ -17,6 +17,7 @@
 
 void mfc_set_slice_mode(struct mfc_ctx *ctx);
 void mfc_set_aso_slice_order_h264(struct mfc_ctx *ctx);
+void mfc_set_enc_ts_delta(struct mfc_ctx *ctx);
 int mfc_set_enc_params(struct mfc_ctx *ctx);
 void mfc_set_test_params(struct mfc_dev *dev);
 

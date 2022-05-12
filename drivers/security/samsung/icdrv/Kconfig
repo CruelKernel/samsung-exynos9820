@@ -4,7 +4,7 @@
 
 config ICD
     bool "IC Driver"
-    depends on FIVE
+    depends on FIVE && !PROCA_S_OS
     default y
     ---help---
       Enable Integrity Check Driver support.

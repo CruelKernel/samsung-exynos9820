@@ -179,6 +179,8 @@
 #define	DEC_SET_LAST_FRAME_INFO		(1 << 2)
 #define	DEC_SET_SKYPE_FLAG		(1 << 3)
 #define	DEC_SET_HDR10_PLUS		(1 << 4)
+#define	DEC_SET_OPERATING_FPS		(1 << 8)
+#define	DEC_SET_PRIORITY		(1 << 23)
 
 /* Extra information for Encoder */
 #define	ENC_SET_RGB_INPUT		(1 << 0)
@@ -196,6 +198,8 @@
 #define	ENC_SET_HDR10_PLUS		(1 << 12)
 #define	ENC_SET_VP9_PROFILE_LEVEL	(1 << 13)
 #define	ENC_SET_DROP_CONTROL		(1 << 14)
+#define	ENC_SET_OPERATING_FPS		(1 << 18)
+#define	ENC_SET_PRIORITY		(1 << 23)
 
 #define MFC_VER_MAJOR(dev)	((dev->pdata->ip_ver >> 8) & 0xFF)
 #define MFC_VER_MINOR(dev)	(dev->pdata->ip_ver & 0xFF)

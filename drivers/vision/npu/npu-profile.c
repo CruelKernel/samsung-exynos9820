@@ -829,6 +829,7 @@ int npu_profile_release(void)
 		npu_info("profiling is GATHERING state. stopping it first.");
 		ret = npu_profile_stop(profile_ctl);
 		if (ret) {
+			mutex_unlock(&profile_ctl->lock);
 			npu_err("fail(%d) in npu_profile_stop\n", ret);
 			goto err_exit;
 		}

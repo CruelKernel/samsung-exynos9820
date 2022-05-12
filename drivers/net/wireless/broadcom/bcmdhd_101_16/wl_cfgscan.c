@@ -573,6 +573,7 @@ wl_cfg80211_add_iw_ie(struct bcm_cfg80211 *cfg, struct net_device *ndev, s32 bss
 
 	buf_len = sizeof(ie_setbuf_t) + data_len - 1;
 
+	(void)memset_s(&ie_getbufp, sizeof(ie_getbufp), 0, sizeof(ie_getbufp));
 	ie_getbufp.id = DOT11_MNG_INTERWORKING_ID;
 	if (wldev_iovar_getbuf_bsscfg(ndev, "ie", (void *)&ie_getbufp,
 			sizeof(ie_getbufp), getbuf, WLC_IOCTL_SMLEN, bssidx, &cfg->ioctl_buf_sync)

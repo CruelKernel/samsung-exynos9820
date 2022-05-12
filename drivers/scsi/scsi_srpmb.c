@@ -353,7 +353,7 @@ int init_wsm(struct device *dev)
 		ret = register_pm_notifier(&rpmb_ctx->pm_notifier);
 		if (ret) {
 			dev_err(&sr_pdev->dev, "Failed to setup pm notifier\n");
-			goto out_srpmb_init_fail;
+			goto out_srpmb_free_irq_req;
 		}
 
 		ret = exynos_smc(SMC_SRPMB_WSM, rpmb_ctx->phy_addr, hwirq, 0);
@@ -375,6 +375,8 @@ int init_wsm(struct device *dev)
 
 out_srpmb_unregister_pm:
 	unregister_pm_notifier(&rpmb_ctx->pm_notifier);
+out_srpmb_free_irq_req:
+	free_irq(rpmb_ctx->irq, rpmb_ctx);
 out_srpmb_init_fail:
 	if (rpmb_ctx->srpmb_queue)
 		destroy_workqueue(rpmb_ctx->srpmb_queue);

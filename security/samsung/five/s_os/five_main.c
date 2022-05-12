@@ -42,6 +42,12 @@
 #include "five_dsms.h"
 #include "five_testing.h"
 
+/* crash_dump in Android 12 uses this request even if Kernel doesn't
+ * support it */
+#ifndef PTRACE_PEEKMTETAGS
+#define PTRACE_PEEKMTETAGS 33
+#endif
+
 static const bool check_memfd_file = true;
 
 static struct file *memfd_file __ro_after_init;
@@ -859,6 +865,7 @@ int five_ptrace(struct task_struct *task, long request)
 	case PTRACE_PEEKSIGINFO:
 	case PTRACE_GETSIGMASK:
 	case PTRACE_GETEVENTMSG:
+	case PTRACE_PEEKMTETAGS:
 #if defined(CONFIG_ARM64) || defined(KUNIT_UML)
 	case COMPAT_PTRACE_GETREGS:
 	case COMPAT_PTRACE_GET_THREAD_AREA:
