@@ -4198,9 +4198,7 @@ int abox_cmpnt_adjust_sbank(struct snd_soc_component *cmpnt,
 
 	time = hw_param_interval_c(params, SNDRV_PCM_HW_PARAM_PERIOD_TIME)->min;
 	time /= 1000;
-	if (time <= 4)
-		size = SZ_32;
-	else if (time <= 10)
+	if (time <= 10)
 		size = SZ_128;
 	else
 		size = SZ_512;

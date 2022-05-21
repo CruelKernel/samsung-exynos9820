@@ -303,33 +303,20 @@ p_err:
 static struct dma_buf *__score_mmu_get_dma_buf_from_file(struct file *filp)
 {
 	int ret;
-	int fd;
 	struct dma_buf *dbuf;
 
 	score_enter();
 	get_file(filp);
-	fd = get_unused_fd_flags(O_CLOEXEC);
-	if (fd < 0) {
-		ret = fd;
-		score_err("Failed to get unused fd (%d)\n", ret);
-		goto p_err_fd;
-	}
 
-	fd_install(fd, filp);
-
-	dbuf = dma_buf_get(fd);
+	dbuf = (struct dma_buf *) filp->private_data;
 	if (IS_ERR(dbuf)) {
 		ret = IS_ERR(dbuf);
 		score_err("Failed to get dma_buf from file (%d)\n", ret);
-		goto p_err_dbuf;
+		goto p_err_fd;
 	}
-
-	__close_fd(current->files, fd);
 
 	score_leave();
 	return dbuf;
-p_err_dbuf:
-	__close_fd(current->files, fd);
 p_err_fd:
 	fput(filp);
 	return ERR_PTR(ret);

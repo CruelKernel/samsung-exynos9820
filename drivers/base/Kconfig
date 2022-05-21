@@ -350,4 +350,10 @@ config GENERIC_ARCH_TOPOLOGY
 	  appropriate scaling, sysfs interface for changing capacity values at
 	  runtime.
 
+config CPU_CAPACITY_FIXUP
+	bool
+	default y
+	help
+     Enable to avoid that unity set cpuset of its client task to big core only.
+
 endmenu

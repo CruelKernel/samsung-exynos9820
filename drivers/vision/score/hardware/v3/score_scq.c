@@ -453,6 +453,7 @@ static int __score_scq_translate_packet(struct score_frame *frame)
 	struct score_host_buffer *buffers;
 	unsigned char *target_packet;
 	size_t size;
+	unsigned int buf_count, valid_size, packet_offset;
 
 	score_enter();
 	packet = frame->packet;
@@ -485,7 +486,8 @@ static int __score_scq_translate_packet(struct score_frame *frame)
 	 */
 
 	/* host buffers size */
-	size = packet_info->buf_count * sizeof(struct score_host_buffer);
+	buf_count = packet_info->buf_count;
+	size = buf_count * sizeof(struct score_host_buffer);
 	if (size > packet_size - MIN_PACKET_SIZE) {
 		ret = -EINVAL;
 		score_err("size of host buffers is too large (%zu/%zu)\n",
@@ -499,34 +501,36 @@ static int __score_scq_translate_packet(struct score_frame *frame)
 	 * sizeof(struct sc_host_packet_info) + host buffers size
 	 */
 	size = sizeof(struct score_host_packet_info) +
-		packet_info->buf_count * sizeof(struct score_host_buffer);
-	if (packet->packet_offset != size) {
+		buf_count * sizeof(struct score_host_buffer);
+	packet_offset = packet->packet_offset;
+	if (packet_offset != size) {
 		ret = -EINVAL;
 		score_err("packet_offset is invalid (%u != %zu)\n",
-				packet->packet_offset, size);
+				packet_offset, size);
 		goto p_err;
 	}
 
 	buffers = (struct score_host_buffer *)&packet_info->payload[0];
-	target_packet = (unsigned char *)packet_info + packet->packet_offset;
+	target_packet = (unsigned char *)packet_info + packet_offset;
 
 	/*
 	 * packet_info->valid_size is size of packet which is being
 	 * send to target.
 	 */
+	valid_size = packet_info->valid_size;
 	size = packet_size - (sizeof(struct score_host_packet) +
 		sizeof(struct score_host_packet_info) +
-		packet_info->buf_count * sizeof(struct score_host_buffer));
-	if (packet_info->valid_size != size) {
+		buf_count * sizeof(struct score_host_buffer));
+	if (valid_size != size) {
 		ret = -EINVAL;
 		score_err("size of target packet is invalid (%u != %zu)\n",
-				packet_info->valid_size, size);
+				valid_size, size);
 		goto p_err;
 	}
 
 	ret = __score_scq_translate_buffer(frame, buffers,
-			packet_info->buf_count, target_packet,
-			packet_info->valid_size);
+			buf_count, target_packet,
+			valid_size);
 	if (ret)
 		goto p_err;
 
