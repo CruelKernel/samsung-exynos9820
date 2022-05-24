@@ -1832,31 +1832,24 @@ ifeq ($(CONFIG_ARCH_SDM845),y)
 endif
 ifeq ($(CONFIG_SOC_EXYNOS9820),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_SOC_EXYNOS9830),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_SOC_EXYNOS2100),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_SOC_EXYNOS1000),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_ARCH_SM8150),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_ARCH_KONA),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_ARCH_LAHAINA),y)
   DHDCFLAGS += -Wno-date-time
-  DHDCFLAGS += -Wno-sometimes-uninitialized
 endif
 ifeq ($(CONFIG_SOC_EXYNOS9110),y)
   DHDCFLAGS += -Wno-unused-const-variable
