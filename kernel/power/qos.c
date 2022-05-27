@@ -632,6 +632,75 @@ static inline void pm_qos_set_value(struct pm_qos_constraints *c, s32 value)
 	c->target_value = value;
 }
 
+#ifdef CONFIG_SEC_PM_DEBUG
+int pm_qos_show_requests(int pm_qos_class)
+{
+	struct pm_qos_object *qos;
+	struct pm_qos_constraints *c;
+	struct pm_qos_request *req;
+	char *type;
+	unsigned long flags;
+	int tot_reqs = 0;
+	int active_reqs = 0;
+
+	if (pm_qos_class < 0 || pm_qos_class >= PM_QOS_NUM_CLASSES) {
+		pr_err("%s: bad param!(%d)\n", __func__, pm_qos_class);
+		return -EINVAL;
+	}
+
+	qos = pm_qos_array[pm_qos_class];
+
+	c = qos->constraints;
+	if (IS_ERR_OR_NULL(c)) {
+		pr_err("%s: Bad constraints on qos\n", __func__);
+		return -EINVAL;
+	}
+ 
+	pr_info("%s\n", qos->name);
+
+	/* Lock to ensure we have a snapshot */
+	spin_lock_irqsave(&pm_qos_lock, flags);
+	if (plist_head_empty(&c->list)) {
+		pr_info("Empty!\n");
+		goto out;
+	}
+
+	switch (c->type) {
+	case PM_QOS_MIN:
+		type = "Minimum";
+		break;
+	case PM_QOS_MAX:
+		type = "Maximum";
+		break;
+	case PM_QOS_SUM:
+		type = "Sum";
+		break;
+	default:
+		type = "Unknown";
+	}
+
+	plist_for_each_entry(req, &c->list, node) {
+		char *state = "Default";
+
+		if ((req->node).prio != c->default_value) {
+			active_reqs++;
+			state = "Active";
+		}
+		tot_reqs++;
+		pr_info("%d: %d: %s(%s:%d)\n", tot_reqs, (req->node).prio,
+				state, req->func, req->line);
+	}
+
+	pr_info("Type=%s, Value=%d, Requests: active=%d / total=%d\n", type,
+			pm_qos_get_value(c), active_reqs, tot_reqs);
+
+out:
+	spin_unlock_irqrestore(&pm_qos_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pm_qos_show_requests);
+#endif /* CONFIG_SEC_PM_DEBUG */
+
 static inline int pm_qos_get_value(struct pm_qos_constraints *c);
 static int pm_qos_dbg_show_requests(struct seq_file *s, void *unused)
 {

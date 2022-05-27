@@ -310,4 +310,10 @@ static inline s32 dev_pm_qos_requested_flags(struct device *dev) { return 0; }
 static inline s32 dev_pm_qos_raw_read_value(struct device *dev) { return 0; }
 #endif
 
+#ifdef CONFIG_SEC_PM_DEBUG
+int pm_qos_show_requests(int pm_qos_class);
+#else
+static inline int pm_qos_show_requests(int pm_qos_class) { return 0; }
+#endif
+
 #endif

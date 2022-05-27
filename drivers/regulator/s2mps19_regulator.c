@@ -882,6 +882,9 @@ static irqreturn_t s2mps19_buck_ocp_irq(int irq, void *data)
 					pmic_qos_start(qos_setting);
 				schedule_delayed_work(&s2mps19->qos_delayed_work,
 						msecs_to_jiffies(qos_setting->stop_duration));
+
+				pm_qos_show_requests(PM_QOS_CLUSTER0_FREQ_MIN);
+				pr_info("LITTLE: %u kHz\n", cpufreq_get(0));
 			}
 			break;
 		}
