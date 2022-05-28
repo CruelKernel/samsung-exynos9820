@@ -502,6 +502,7 @@ def parse_args():
 
 def setup_env(features, configs, model):
     set_env(ARCH='arm64', PLATFORM_VERSION='11', ANDROID_MAJOR_VERSION='r')
+    set_env(KBUILD_BUILD_TIMESTAMP='')
     if features['fake_config']:
         defconfig = os.path.join('arch/arm64/configs', models[model]['config'])
         set_env(KCONFIG_BUILTINCONFIG=defconfig)
@@ -598,10 +599,13 @@ def switch_toolchain(compiler):
 def build(compiler, objtree='.'):
     env = {}
 
+    toolchain[compiler]['CC'] = get_toolchain_cc(compiler)
     if compiler in ['system-gcc', 'system-clang']:
         env = toolchain[compiler]
     else:
         env = { k: os.path.abspath(v) for k, v in toolchain[compiler].items() }
+    if tool_exists('ccache'):
+        env['CC'] = 'ccache ' + env['CC']
 
     if objtree != '.':
         env['O'] = objtree
