@@ -17,11 +17,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install libtinfo5
-      if: env.TOOLCHAIN == 'default'
+    - name: Install dependencies
       env:
         DEBIAN_FRONTEND: noninteractive
-      run: sudo apt-get install -y -qq libtinfo5
+      run: sudo apt-get install -y -qq libtinfo5 ccache
 
     - name: Kernel Configure
       run: |
