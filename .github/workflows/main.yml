@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "G970F,G973F,G975F" ]
 
     steps:
       - uses: actions/checkout@v2
@@ -60,7 +60,7 @@ jobs:
                        +magisk=v24.3             \
                        +nohardening              \
                        +ttl                      \
-                       +wireguard                \
+                       -wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
