@@ -60,13 +60,14 @@ jobs:
                        +magisk=v24.3             \
                        +nohardening              \
                        +ttl                      \
-                       -wireguard                \
+                       +wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +always_permit            \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
