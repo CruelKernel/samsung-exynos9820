@@ -55,7 +55,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-v5.0"         \
+                       name="HK89"               \
                        toolchain=$TOOLCHAIN      \
                        +magisk=v24.3             \
                        +nohardening              \
@@ -67,6 +67,8 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +dtb                      \
+                       +fp_boost                 \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
