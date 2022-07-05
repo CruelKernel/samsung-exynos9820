@@ -67,7 +67,6 @@ jobs:
                        +morosound                \
                        +boeffla_wl_blocker       \
                        +fp_boost                 \
-                       +ttl                      \
                        +performance              \
                        +force_dex_wqhd           \
           2>&1 | tee config.info
