@@ -66,8 +66,10 @@ jobs:
                        +ntfs                     \
                        +morosound                \
                        +boeffla_wl_blocker       \
-                       +io_cfq                   \
                        +fp_boost                 \
+                       +ttl                      \
+                       +performance              \
+                       +force_dex_wqhd           \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
