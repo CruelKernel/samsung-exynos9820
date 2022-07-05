@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "N971N" ]
 
     steps:
       - uses: actions/checkout@v2
@@ -55,18 +55,20 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-v5.0"         \
+                       name="HK89"               \
                        toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       +magisk=v24.3             \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
-                       +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +fp_boost                 \
+                       +performance              \
+                       +force_dex_wqhd           \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
