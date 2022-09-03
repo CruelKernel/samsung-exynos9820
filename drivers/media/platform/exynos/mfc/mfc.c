@@ -464,12 +464,12 @@ static int mfc_open(struct file *file)
 	enum mfc_node_type node;
 	struct video_device *vdev = NULL;
 
-	mfc_debug(2, "mfc driver open called\n");
-
 	if (!dev) {
 		mfc_err_dev("no mfc device to run\n");
 		goto err_no_device;
 	}
+
+	mfc_info_dev("mfc driver open called\n");
 
 	if (mutex_lock_interruptible(&dev->mfc_mutex))
 		return -ERESTARTSYS;

@@ -203,6 +203,9 @@ static struct iva_mem_map *iva_mem_ion_alloc(struct iva_proc *proc,
 		goto err_dmabuf;
 	}
 
+	/* increase file cnt. iva_mem_ion_free() required */
+	get_dma_buf(dmabuf);
+
 	/* close() should be called for full release operation*/
 	ion_shared_fd = dma_buf_fd(dmabuf, O_CLOEXEC);
 	if (ion_shared_fd < 0) {
@@ -219,8 +222,6 @@ static struct iva_mem_map *iva_mem_ion_alloc(struct iva_proc *proc,
 
 	iva_map_node->shared_fd	= ion_shared_fd;
 	iva_map_node->dmabuf	= dmabuf;
-	/* increase file cnt. iva_mem_ion_free() required */
-	get_dma_buf(dmabuf);
 	iva_map_node->attachment = NULL;
 	iva_map_node->sg_table	= NULL;
 	iva_map_node->io_va	= 0x0;

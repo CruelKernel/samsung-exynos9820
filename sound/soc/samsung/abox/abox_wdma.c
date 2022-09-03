@@ -744,8 +744,10 @@ static int abox_wdma_fio_common_ioctl(struct snd_hwdep *hw, struct file *filp,
 	switch (cmd) {
 	case SNDRV_PCM_IOCTL_MMAP_DATA_FD:
 		ret = abox_mmap_fd(data, &mmap_fd);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(dev, "%s MMAP_FD failed: %d\n", __func__, ret);
+			return ret;
+		}
 
 		if (copy_to_user(_arg, &mmap_fd, sizeof(mmap_fd)))
 			return -EFAULT;

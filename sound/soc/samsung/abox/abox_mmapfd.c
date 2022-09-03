@@ -46,8 +46,6 @@ int abox_mmap_fd(struct abox_platform_data *data,
 		} else {
 			ret = -EFAULT;
 			dev_err(dev, "%s dma_buf_fd is failed\n", __func__);
-			dma_buf_put(buf->dma_buf);
-
 			goto error_get_fd;
 		}
 

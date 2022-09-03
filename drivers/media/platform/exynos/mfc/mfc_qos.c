@@ -647,8 +647,10 @@ void mfc_qos_off(struct mfc_ctx *ctx)
 		return;
 	}
 
-	if (ON_RES_CHANGE(ctx))
+	if (ON_RES_CHANGE(ctx)) {
+		mutex_unlock(&dev->qos_mutex);
 		return;
+	}
 
 #ifdef CONFIG_EXYNOS_BTS
 	mfc_bw.peak = 0;

@@ -701,10 +701,21 @@ static int decon_enable(struct decon_device *decon)
 retry_enable:
 	DPU_EVENT_LOG(DPU_EVT_UNBLANK, &decon->sd, ktime_set(0, 0));
 	decon_info("decon-%d %s +\n", decon->id, __func__);
+
+	if (decon->dt.out_type == DECON_OUT_DP) {
 #if defined(CONFIG_SEC_DISPLAYPORT_LOGGER)
-	if (decon->dt.out_type == DECON_OUT_DP)
 		dp_logger_print("decon enable\n");
 #endif
+		if (!IS_DISPLAYPORT_HPD_PLUG_STATE()) {
+#if defined(CONFIG_SEC_DISPLAYPORT_LOGGER)
+			dp_logger_print("DP is not connected\n");
+#endif
+			decon_warn("decon-2: DP is not connected\n");
+			ret = -ENODEV;
+			goto out;
+		}
+	}
+
 	ret = _decon_enable(decon, next_state);
 	if (ret < 0) {
 		decon_err("decon-%d failed to set %s (ret %d)\n",
@@ -1131,7 +1142,7 @@ int decon_update_pwr_state(struct decon_device *decon, u32 mode)
 		}
 	}
 	if (mode == DISP_PWR_OFF && decon->dt.out_type == DECON_OUT_DP
-		&& IS_DISPLAYPORT_HPD_PLUG_STATE()) {
+		&& IS_DISPLAYPORT_SWITCH_STATE()) {
 		decon_info("skip decon-%d disable(hpd plug)\n", decon->id);
 		goto out;
 	}

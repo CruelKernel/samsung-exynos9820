@@ -88,9 +88,11 @@ int32_t sdp_mm_set_process_sensitive(unsigned int proc_id)
     struct task_struct *task = NULL;
     uid_t uid;
 
+    rcu_read_lock();
     /* current.task.sensitive = 1 */
     task = pid_task(find_vpid(proc_id), PIDTYPE_PID);
     if (task) {
+        get_task_struct(task);
         uid = from_kuid(&init_user_ns, task_uid(task));
         if (((uid/PER_USER_RANGE) <= 199)  && ((uid/PER_USER_RANGE) >= 100)) {
             if (dek_is_sdp_uid(uid)) {
@@ -109,6 +111,9 @@ int32_t sdp_mm_set_process_sensitive(unsigned int proc_id)
     }
 
 task_err:
+    if (task)
+        put_task_struct(task);
+    rcu_read_unlock();
     return ret;
 }
 
