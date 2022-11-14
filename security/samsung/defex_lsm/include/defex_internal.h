@@ -42,6 +42,10 @@
 #define FEATURE_SAFEPLACE_SOFT			(1 << 9)
 #define FEATURE_FIVE				(1 << 10) /* reserved for future use */
 #define FEATURE_FIVE_SOFT			(1 << 11) /* reserved for future use */
+#define FEATURE_TRUSTED_MAP			(1 << 12)
+#define FEATURE_TRUSTED_MAP_SOFT		(1 << 13)
+#define FEATURE_INTEGRITY			(1 << 14)
+#define FEATURE_INTEGRITY_SOFT		(1 << 15)
 
 #define FEATURE_CLEAR_ALL			(0xFF0000)
 
@@ -110,6 +114,12 @@ void set_task_creds_tcnt(struct task_struct *p, int addition);
 int is_task_creds_ready(void);
 
 /* -------------------------------------------------------------------------- */
+/* Integrity feature */
+/* -------------------------------------------------------------------------- */
+
+extern unsigned char global_integrity_status;
+
+/* -------------------------------------------------------------------------- */
 /* SafePlace feature */
 /* -------------------------------------------------------------------------- */
 
@@ -120,6 +130,28 @@ extern unsigned char global_safeplace_status;
 /* -------------------------------------------------------------------------- */
 
 extern unsigned char global_immutable_status;
+
+/* -------------------------------------------------------------------------- */
+/* Trusted Map feature */
+/* -------------------------------------------------------------------------- */
+
+extern unsigned char global_trusted_map_status;
+
+enum trusted_map_status {
+	DEFEX_TM_ENFORCING_MODE		= (1 << 0),
+	DEFEX_TM_PERMISSIVE_MODE	= (1 << 1),
+	DEFEX_TM_DEBUG_VIOLATIONS	= (1 << 2),
+	DEFEX_TM_DEBUG_CALLS		= (1 << 3),
+	DEFEX_TM_LAST_STATUS		= (1 << 4) - 1
+};
+
+static inline int defex_tm_mode_enabled(int mode_flag)
+{
+	return global_trusted_map_status & mode_flag;
+}
+
+struct defex_context;
+int defex_trusted_map_lookup(struct defex_context *dc, int argc, void *argv);
 
 /* -------------------------------------------------------------------------- */
 /* Common Helper API */
@@ -184,6 +216,7 @@ int __init do_load_rules(void);
 int immutable_status_store(const char *status_str);
 int privesc_status_store(const char *status_str);
 int safeplace_status_store(const char *status_str);
+int integrity_status_store(const char *status_str);
 
 extern bool boot_state_recovery __ro_after_init;
 #ifdef DEFEX_DEPENDING_ON_OEMUNLOCK

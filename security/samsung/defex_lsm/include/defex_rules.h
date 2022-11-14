@@ -9,6 +9,10 @@
 #ifndef __DEFEX_RULES_H
 #define __DEFEX_RULES_H
 
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+#include "ptree.h"
+#endif
+
 #define STATIC_RULES_MAX_STR 		32
 #define INTEGRITY_LENGTH 		32
 #define FEATURE_NAME_MAX_STR 		32
@@ -28,7 +32,9 @@ enum feature_types {
 	feature_immutable_path_write = 256,
 	feature_immutable_src_exception = 512,
 	feature_immutable_status = 1024,
-	feature_umhbin_path = 2048
+	feature_umhbin_path = 2048,
+	feature_trusted_map_status = 4096,
+	feature_integrity_check = 8192
 };
 
 struct feature_match_entry {
@@ -58,5 +64,10 @@ struct rule_item_struct {
 } __attribute__((packed));
 
 int check_rules_ready(void);
+
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+/* "Header" for DTM's dynamically loaded policy */
+extern struct PPTree dtm_tree;
+#endif
 
 #endif /* __DEFEX_RULES_H */

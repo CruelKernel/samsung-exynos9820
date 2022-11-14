@@ -18,6 +18,10 @@
 #include "include/defex_internal.h"
 #include "include/defex_rules.h"
 #include "include/defex_sign.h"
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+#include "include/defex_tailer.h"
+#include "include/ptree.h"
+#endif
 
 #define LOAD_FLAG_DPOLICY		0x01
 #define LOAD_FLAG_DPOLICY_SYSTEM	0x02
@@ -58,9 +62,16 @@ __visible_for_testing unsigned char packed_rules_primary[DEFEX_RULES_ARRAY_SIZE]
 __visible_for_testing unsigned char packed_rules_primary[DEFEX_RULES_ARRAY_SIZE] __ro_after_init = {0};
 #endif /* DEFEX_KERNEL_ONLY */
 static unsigned char *packed_rules_secondary;
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+struct PPTree dtm_tree;
+#endif
 
 #endif /* DEFEX_RAMDISK_ENABLE */
 
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+/* In loaded policy, title of DTM's section; set by tailer -t in buildscript/build_external/defex. */
+#define DEFEX_DTM_SECTION_NAME "dtm_rules"
+#endif
 
 #ifdef DEFEX_INTEGRITY_ENABLE
 
@@ -238,6 +249,13 @@ __visible_for_testing int defex_integrity_default(const char *file_path)
 
 #if defined(DEFEX_RAMDISK_ENABLE)
 
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+static const unsigned char *find_policy_section(const char *name, const char *data, int data_size, long *section_size)
+{
+	return data_size > 0 ? defex_tailerp_find(data, data_size, name, section_size) : 0;
+}
+#endif
+
 __visible_for_testing int load_rules_common(struct file *f, int flags)
 {
 	int res = -1, data_size, rules_size;
@@ -269,20 +287,29 @@ __visible_for_testing int load_rules_common(struct file *f, int flags)
 #endif
 
 	if (!res) {
+		const unsigned char *policy_data = NULL; /* where additional features like DTM could look for policy data */
 		if (!(load_flags & (LOAD_FLAG_DPOLICY | LOAD_FLAG_DPOLICY_SYSTEM))) {
 			if (rules_size > sizeof(packed_rules_primary)) {
 				res = -1;
 				goto do_clean;
 			}
 			memcpy(packed_rules_primary, data_buff, rules_size);
+			policy_data = packed_rules_primary;
 			if (flags & LOAD_FLAG_DPOLICY_SYSTEM)
 				load_flags |= LOAD_FLAG_SYSTEM_FIRST;
 		} else {
 			if (rules_size > 0) {
-				packed_rules_secondary = data_buff;
+				policy_data = packed_rules_secondary = data_buff;
 				data_buff = NULL;
 			}
 		}
+#ifdef DEFEX_TRUSTED_MAP_ENABLE
+		if (policy_data && !dtm_tree.data) { /* DTM not yet initialized */
+			const unsigned char *dtm_section = find_policy_section(DEFEX_DTM_SECTION_NAME, policy_data, rules_size, 0);
+			if (dtm_section)
+				pptree_set_data(&dtm_tree, dtm_section);
+		}
+#endif
 		load_flags |= flags;
 		res = rules_size;
 	}
@@ -504,7 +531,8 @@ try_not_system:
 		if (cur_item->feature_type & attribute) {
 #ifdef DEFEX_INTEGRITY_ENABLE
 			/* Integrity acceptable only for files */
-			if ((cur_item->feature_type & feature_is_file) && f) {
+			if ((cur_item->feature_type & feature_integrity_check) &&
+				(cur_item->feature_type & feature_is_file) && f) {
 				if (defex_integrity_default(file_path)
 					&& defex_check_integrity(f, cur_item->integrity))
 					return DEFEX_INTEGRITY_FAIL;

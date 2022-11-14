@@ -15,6 +15,7 @@
 #include <linux/string.h>
 #include <linux/version.h>
 #include <crypto/hash.h>
+#include <keys/asymmetric-type.h>
 #include "include/defex_debug.h"
 #include "include/defex_sign.h"
 
@@ -71,6 +72,9 @@ __visible_for_testing int defex_keyring_init(void)
 	const struct cred *cred = current_cred();
 	static const char keyring_name[] = "defex_keyring";
 
+	if (defex_keyring)
+		return err;
+
 	defex_keyring = defex_keyring_alloc(keyring_name, KUIDT_INIT(0), KGIDT_INIT(0),
 					    cred, KEY_ALLOC_NOT_IN_QUOTA);
 	if (!defex_keyring) {
@@ -93,20 +97,27 @@ __visible_for_testing int defex_public_key_verify_signature(unsigned char *pub_k
 	key_ref_t key_ref;
 	struct key *key;
 	struct public_key_signature pks;
+	static const char key_name[] = "defex_key";
 
 	if (defex_keyring_init() != 0)
 		return ret;
 
-	key_ref = key_create_or_update(make_key_ref(defex_keyring, 1),
-				       "asymmetric",
-				       NULL,
-				       pub_key,
-				       pub_key_size,
-				       ((KEY_POS_ALL & ~KEY_POS_SETATTR) | KEY_USR_VIEW | KEY_USR_READ),
-				       KEY_ALLOC_NOT_IN_QUOTA);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
+	key_ref = keyring_search(make_key_ref(defex_keyring, 1), &key_type_asymmetric, key_name);
+#else
+	key_ref = keyring_search(make_key_ref(defex_keyring, 1), &key_type_asymmetric, key_name, true);
+#endif
 	if (IS_ERR(key_ref)) {
-		printk(KERN_INFO "Invalid key reference\n");
+		key_ref = key_create_or_update(make_key_ref(defex_keyring, 1),
+			       "asymmetric",
+			       key_name,
+			       pub_key,
+			       pub_key_size,
+			       ((KEY_POS_ALL & ~KEY_POS_SETATTR) | KEY_USR_VIEW | KEY_USR_READ),
+			       KEY_ALLOC_NOT_IN_QUOTA);
+	}
+	if (IS_ERR(key_ref)) {
+		printk(KERN_INFO "Invalid key reference (%ld)\n", PTR_ERR(key_ref));
 		return ret;
 	}
 
@@ -137,7 +148,6 @@ __visible_for_testing int defex_public_key_verify_signature(unsigned char *pub_k
 	ret = verify_signature(key, &pks);
 #endif
 	key_ref_put(key_ref);
-	keyring_clear(defex_keyring);
 	return ret;
 }
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0) */

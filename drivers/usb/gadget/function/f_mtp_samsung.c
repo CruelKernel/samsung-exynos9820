@@ -596,23 +596,19 @@ static int mtp_send_signal(int value)
 	info.si_signo = SIG_SETUP;
 	info.si_code = SI_QUEUE;
 	info.si_int = value;
-	rcu_read_lock();
 
 	if  (!current->nsproxy) {
 		printk(KERN_DEBUG "process has gone\n");
-		rcu_read_unlock();
 		return -ENODEV;
 	}
 
-	t = pid_task(find_vpid(mtp_pid), PIDTYPE_PID);
+	t = get_pid_task(find_vpid(mtp_pid), PIDTYPE_PID);
 
 	if (t == NULL) {
 		printk(KERN_DEBUG "no such pid\n");
-		rcu_read_unlock();
 		return -ENODEV;
 	}
 
-	rcu_read_unlock();
 	/*send the signal*/
 	ret = send_sig_info(SIG_SETUP, &info, t);
 	if (ret < 0) {

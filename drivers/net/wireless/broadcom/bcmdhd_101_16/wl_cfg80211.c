@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -10990,7 +10990,7 @@ int wl_get_bss_info(struct bcm_cfg80211 *cfg, struct net_device *dev, const u8 *
 		if ((interworking_ie = bcm_parse_tlvs(ie, ie_len,
 				DOT11_MNG_INTERWORKING_ID)) != NULL) {
 			if ((tlv_ie = bcm_parse_tlvs(ie, ie_len, DOT11_MNG_VS_ID)) != NULL) {
-				remained_len = ie_len;
+				remained_len = ie_len - ((u8*)tlv_ie - ie);
 
 				while (tlv_ie) {
 					if (count > MAX_VNDR_IE_NUMBER)

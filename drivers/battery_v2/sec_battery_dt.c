@@ -14,6 +14,159 @@
 
 
 #ifdef CONFIG_OF
+
+#define PROPERTY_NAME_SIZE 128
+
+int sec_bat_parse_dt_lrp(
+	struct sec_battery_info *battery, struct device_node *np, int type)
+{
+	sec_battery_platform_data_t *pdata = battery->pdata;
+	int ret = 0, len = 0;
+	char prop_name[PROPERTY_NAME_SIZE];
+	int lrp_table[LRP_PROPS];
+
+	snprintf(prop_name, PROPERTY_NAME_SIZE,
+			"battery,temp_table_%s", LRP_TYPE_STRING[type]);
+	len = of_property_count_u32_elems(np, prop_name);
+	if (len != LRP_PROPS)
+		return -1;
+
+	ret = of_property_read_u32_array(np, prop_name,
+		(u32 *)lrp_table, LRP_PROPS);
+	if (ret) {
+		pr_info("%s: failed to parse %s!!, ret = %d\n",
+			__func__, LRP_TYPE_STRING[type], ret);
+		return ret;
+	}
+
+	pdata->lrp_temp[type].trig[ST2][LCD_OFF] = lrp_table[0];
+	pdata->lrp_temp[type].recov[ST2][LCD_OFF] = lrp_table[1];
+	pdata->lrp_temp[type].trig[ST1][LCD_OFF] = lrp_table[2];
+	pdata->lrp_temp[type].recov[ST1][LCD_OFF] = lrp_table[3];
+	pdata->lrp_temp[type].trig[ST2][LCD_ON] = lrp_table[4];
+	pdata->lrp_temp[type].recov[ST2][LCD_ON] = lrp_table[5];
+	pdata->lrp_temp[type].trig[ST1][LCD_ON] = lrp_table[6];
+	pdata->lrp_temp[type].recov[ST1][LCD_ON] = lrp_table[7];
+	pdata->lrp_curr[type].st_icl[ST1] = lrp_table[8];
+	pdata->lrp_curr[type].st_fcc[ST1] = lrp_table[9];
+	pdata->lrp_curr[type].st_icl[ST2] = lrp_table[10];
+	pdata->lrp_curr[type].st_fcc[ST2] = lrp_table[11];
+
+	pr_info("%s: pdata->lrp_temp[%s].trig_st1=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].trig[ST1][LCD_OFF]);
+	pr_info("%s: pdata->lrp_temp[%s].trig_st2=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].trig[ST2][LCD_OFF]);
+	pr_info("%s: pdata->lrp_temp[%s].recov_st1=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].recov[ST1][LCD_OFF]);
+	pr_info("%s: pdata->lrp_temp[%s].recov_st2=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].recov[ST2][LCD_OFF]);
+	pr_info("%s: pdata->lrp_temp[%s].trig_st1_lcdon=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].trig[ST1][LCD_ON]);
+	pr_info("%s: pdata->lrp_temp[%s].trig_st2_lcdon=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].trig[ST2][LCD_ON]);
+	pr_info("%s: pdata->lrp_temp[%s].recov_st1_lcdon=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].recov[ST1][LCD_ON]);
+	pr_info("%s: pdata->lrp_temp[%s].recov_st2_lcdon=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_temp[type].recov[ST2][LCD_ON]);
+	pr_info("%s: pdata->lrp_temp[%s].st1_icl=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_curr[type].st_icl[ST1]);
+	pr_info("%s: pdata->lrp_temp[%s].st1_fcc=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_curr[type].st_fcc[ST1]);
+	pr_info("%s: pdata->lrp_temp[%s].st2_icl=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_curr[type].st_icl[ST2]);
+	pr_info("%s: pdata->lrp_temp[%s].st2_fcc=%d\n",
+		__func__, LRP_TYPE_STRING[type], pdata->lrp_curr[type].st_fcc[ST2]);
+
+	return 0;
+}
+
+#if IS_ENABLED(CONFIG_DIRECT_CHARGING)
+static void sec_bat_parse_dc_thm(struct device_node *np, sec_battery_platform_data_t *pdata)
+{
+	int ret = 0, len = 0, i = 0;
+	const u32 *p;
+
+	/* dchg_high_temp */
+	p = of_get_property(np, "battery,dchg_high_temp", &len);
+	if (!p) {
+		pr_info("%s: failed to parse dchg_high_temp!\n", __func__);
+		return;
+	}
+	len = len / sizeof(u32);
+	if (len != 4)
+		goto failed_dchg_high_temp;
+	ret = of_property_read_u32_array(np, "battery,dchg_high_temp",
+			pdata->dchg_high_temp, len);
+	if (ret) {
+		pr_err("%s failed to read dchg_high_temp: %d\n", __func__, ret);
+		goto failed_dchg_high_temp;
+	}
+
+	/* dchg_high_temp_recovery */
+	p = of_get_property(np, "battery,dchg_high_temp_recovery", &len);
+	if (!p) {
+		pr_info("%s: failed to parse dchg_high_temp_recovery!\n", __func__);
+		goto failed_dchg_high_temp;
+	}
+	len = len / sizeof(u32);
+	if (len != 4)
+		goto failed_dchg_high_temp_recovery;
+	ret = of_property_read_u32_array(np, "battery,dchg_high_temp_recovery",
+			pdata->dchg_high_temp_recovery, len);
+	if (ret) {
+		pr_err("%s failed to read dchg_high_temp_recovery: %d\n", __func__, ret);
+		goto failed_dchg_high_temp_recovery;
+	}
+
+	/* dchg_high_batt_temp */
+	p = of_get_property(np, "battery,dchg_high_batt_temp", &len);
+	if (!p) {
+		pr_info("%s: failed to parse dchg_high_batt_temp!\n", __func__);
+		goto failed_dchg_high_temp_recovery;
+	}
+	len = len / sizeof(u32);
+	if (len != 4)
+		goto failed_dchg_high_batt_temp;
+	ret = of_property_read_u32_array(np, "battery,dchg_high_batt_temp",
+			pdata->dchg_high_batt_temp, len);
+	if (ret) {
+		pr_err("%s failed to read dchg_high_batt_temp: %d\n", __func__, ret);
+		goto failed_dchg_high_batt_temp;
+	}
+
+	/* dchg_high_batt_temp_recovery */
+	p = of_get_property(np, "battery,dchg_high_batt_temp_recovery", &len);
+	if (!p) {
+		pr_info("%s: failed to parse dchg_high_batt_temp_recovery!\n", __func__);
+		goto failed_dchg_high_batt_temp;
+	}
+	len = len / sizeof(u32);
+	if (len != 4)
+		goto failed_dchg_high_batt_temp_recovery;
+	ret = of_property_read_u32_array(np, "battery,dchg_high_batt_temp_recovery",
+			pdata->dchg_high_batt_temp_recovery, len);
+	if (ret) {
+		pr_err("%s failed to read dchg_high_batt_temp_recovery: %d\n", __func__, ret);
+		goto failed_dchg_high_batt_temp_recovery;
+	}
+
+	return;
+
+failed_dchg_high_temp:
+	for (i = 0; i < 4; i++)
+		pdata->dchg_high_temp[i] = 690;
+failed_dchg_high_temp_recovery:
+	for (i = 0; i < 4; i++)
+		pdata->dchg_high_temp_recovery[i] = 630;
+failed_dchg_high_batt_temp:
+	for (i = 0; i < 4; i++)
+		pdata->dchg_high_batt_temp[i] = 400;
+failed_dchg_high_batt_temp_recovery:
+	for (i = 0; i < 4; i++)
+		pdata->dchg_high_batt_temp_recovery[i] = 380;
+}
+#endif
+
 int sec_bat_parse_dt(struct device *dev,
 		struct sec_battery_info *battery)
 {
@@ -600,21 +753,6 @@ int sec_bat_parse_dt(struct device *dev,
 
 #if defined(CONFIG_DIRECT_CHARGING)
 		if (pdata->dchg_temp_check_type) {
-			ret = of_property_read_u32(np, "battery,dchg_high_temp",
-						   &temp);
-			pdata->dchg_high_temp = (int)temp;
-			if (ret) {
-				pr_info("%s : dchg_high_temp is Empty\n", __func__);
-				pdata->dchg_high_temp = pdata->chg_high_temp;
-			}
-			ret = of_property_read_u32(np, "battery,dchg_high_temp_recovery",
-						   &temp);
-			pdata->dchg_high_temp_recovery = (int)temp;
-			if (ret) {
-				pr_info("%s : dchg_temp_recovery is Empty\n", __func__);
-				pdata->dchg_high_temp_recovery = pdata->chg_high_temp_recovery;
-			}
-
 			ret = of_property_read_u32(np, "battery,dchg_charging_limit_current",
 						   &pdata->dchg_charging_limit_current);
 			if (ret) {
@@ -629,20 +767,8 @@ int sec_bat_parse_dt(struct device *dev,
 				pdata->dchg_input_limit_current = pdata->chg_input_limit_current;
 			}
 
-			ret = of_property_read_u32(np, "battery,dchg_high_batt_temp",
-						   &temp);
-			pdata->dchg_high_batt_temp = (int)temp;
-			if (ret) {
-				pr_info("%s : dchg_high_batt_temp is Empty\n", __func__);
-				pdata->dchg_high_batt_temp = pdata->chg_high_temp;
-			}
-			ret = of_property_read_u32(np, "battery,dchg_high_batt_temp_recovery",
-						   &temp);
-			pdata->dchg_high_batt_temp_recovery = (int)temp;
-			if (ret) {
-				pr_info("%s : dchg_high_batt_temp_recovery is Empty\n", __func__);
-				pdata->dchg_high_batt_temp_recovery = pdata->chg_high_temp_recovery;
-			}
+			/* parse dc thm info */
+			sec_bat_parse_dc_thm(np, pdata);
 		}
 #endif
 		ret = of_property_read_u32(np, "battery,mix_high_temp",
@@ -662,6 +788,30 @@ int sec_bat_parse_dt(struct device *dev,
 		pdata->mix_high_temp_recovery = (int)temp;
 		if (ret)
 			pr_info("%s : mix_high_temp_recovery is Empty\n", __func__);
+	}
+
+	ret = of_property_read_u32(np, "battery,lrp_temp_check_type",
+			&pdata->lrp_temp_check_type);
+	if (ret)
+		pr_info("%s : lrp_temp_check_type is Empty\n", __func__);
+
+	if (pdata->lrp_temp_check_type) {
+		for (i = 0; i < LRP_MAX; i++) {
+			if (sec_bat_parse_dt_lrp(battery, np, i) < 0) {
+				pdata->lrp_temp[i].trig[ST1][LCD_OFF] = 375;
+				pdata->lrp_temp[i].trig[ST2][LCD_OFF] = 375;
+				pdata->lrp_temp[i].recov[ST1][LCD_OFF] = 365;
+				pdata->lrp_temp[i].recov[ST2][LCD_OFF] = 365;
+				pdata->lrp_temp[i].trig[ST1][LCD_ON] = 375;
+				pdata->lrp_temp[i].trig[ST2][LCD_ON] = 375;
+				pdata->lrp_temp[i].recov[ST1][LCD_ON] = 365;
+				pdata->lrp_temp[i].recov[ST2][LCD_ON] = 365;
+				pdata->lrp_curr[i].st_icl[0] = pdata->default_input_current;
+				pdata->lrp_curr[i].st_fcc[0] = pdata->default_charging_current;
+				pdata->lrp_curr[i].st_icl[1] = pdata->default_input_current;
+				pdata->lrp_curr[i].st_fcc[1] = pdata->default_charging_current;
+			}
+		}
 	}
 
 	if (pdata->wpc_temp_check_type) {

@@ -16,13 +16,17 @@
 
 #include <linux/mm.h>
 #include <linux/pid.h>
+#include <asm/page.h>
 
 #include <tz_cred.h>
+
+#define OFFSET_IN_PAGE(x)	((x) & (~PAGE_MASK))
+#define NUM_PAGES(size)		(((size) >> PAGE_SHIFT) + !!OFFSET_IN_PAGE(size))
 
 typedef void (*tzdev_mem_free_func_t)(void *);
 
 struct tzdev_mem_reg {
-	struct pid *pid;
+	unsigned int is_user;
 	unsigned long nr_pages;
 	struct page **pages;
 	tzdev_mem_free_func_t free_func;
@@ -33,21 +37,11 @@ struct tzdev_mem_reg {
 
 int tzdev_mem_init(void);
 void tzdev_mem_fini(void);
-
-int tzdev_mem_register_user(void *ptr, unsigned long size, unsigned int write);
+int tzdev_mem_register_user(unsigned long size, unsigned int write);
 int tzdev_mem_release_user(unsigned int id);
-
 int tzdev_mem_register(void *ptr, unsigned long size, unsigned int write,
 		tzdev_mem_free_func_t free_func, void *free_data);
 int tzdev_mem_release(unsigned int id);
-int tzdev_get_user_pages(struct task_struct *task, struct mm_struct *mm,
-		unsigned long start, unsigned long nr_pages, int write,
-		int force, struct page **pages, struct vm_area_struct **vmas);
-int tzdev_migrate_pages(struct task_struct *task, struct mm_struct *mm,
-		unsigned long start, unsigned long nr_pages, int write,
-		int force, struct page **pages);
-void tzdev_put_user_pages(struct page **pages, unsigned long nr_pages);
-void tzdev_decrease_pinned_vm(struct mm_struct *mm, unsigned long nr_pages);
+int tzdev_mem_find(unsigned int id, struct tzdev_mem_reg **mem);
 void tzdev_mem_release_panic_handler(void);
-
 #endif /* __TZ_MEM_H__ */

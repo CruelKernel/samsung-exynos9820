@@ -236,9 +236,11 @@ struct file *defex_get_source_file(struct task_struct *p)
 			return NULL;
 		if (self)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
-			down_read(&proc_mm->mmap_sem);
+			if (!down_read_trylock(&proc_mm->mmap_sem))
+				return NULL;
 #else
-			down_read(&proc_mm->mmap_lock);
+			if (!down_read_trylock(&proc_mm->mmap_lock))
+				return NULL;
 #endif
 		if (file_addr != proc_mm->exe_file) {
 			file_addr = proc_mm->exe_file;

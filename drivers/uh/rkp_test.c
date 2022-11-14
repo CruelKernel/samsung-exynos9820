@@ -425,7 +425,7 @@ static int test_case_kernel_range_rwx(void)
 	u64 ro = 0, rw = 0;
 	u64 xn = 0, x = 0;
 	int i;
-	u64 fixmap_va = __fix_to_virt(FIX_ENTRY_TRAMP_TEXT);
+	u64 fixmap_va = __fix_to_virt(FIX_ENTRY_TRAMP_TEXT1);
 
 	struct mem_range_struct test_ranges[] = {
 		{(u64)VMALLOC_START,		((u64)_text) - ((u64)VMALLOC_START),	"VMALLOC -  STEXT", false, true},

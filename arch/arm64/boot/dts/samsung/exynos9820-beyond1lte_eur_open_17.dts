@@ -865,6 +865,7 @@
 				battery,usb_temp_check_type = <0x2>;
 				battery,chg_temp_check_type = <0x2>;
 				battery,wpc_temp_check_type = <0x2>;
+				battery,lrp_temp_check_type = <0x0>;
 				battery,thermal_source = <0x2>;
 				battery,usb_thermal_source = <0x2>;
 				battery,chg_thermal_source = <0x2>;
@@ -6524,8 +6525,8 @@
 				sx9330,afephph0_reg = <0x3fbb8548>;
 				sx9330,adcfiltph0_reg = <0x510101d>;
 				sx9330,afeparamsph1_reg = <0x82f>;
-				sx9330,adcfiltph1_reg = <0x10b115>;
-				sx9330,avgbfilt_reg = "``\f";
+				sx9330,adcfiltph1_reg = <0x104b25>;
+				sx9330,avgbfilt_reg = <0x60600e00>;
 				sx9330,avgafilt_reg = <0x0>;
 				sx9330,advdig3_reg = <0x0>;
 				sx9330,advdig4_reg = <0x0>;

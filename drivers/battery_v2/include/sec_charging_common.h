@@ -826,6 +826,50 @@ struct sec_wireless_rx_power_info {
 #define sec_wireless_rx_power_info_t \
 	struct sec_wireless_rx_power_info
 
+#define LRP_PROPS 12
+#define FOREACH_LRP_TYPE(GEN_LRP_TYPE) \
+	GEN_LRP_TYPE(LRP_NORMAL) \
+	GEN_LRP_TYPE(LRP_25W) \
+	GEN_LRP_TYPE(LRP_45W) \
+	GEN_LRP_TYPE(LRP_MAX)
+
+#define GENERATE_LRP_ENUM(ENUM) ENUM,
+#define GENERATE_LRP_STRING(STRING) #STRING,
+
+enum LRP_TYPE_ENUM {
+	FOREACH_LRP_TYPE(GENERATE_LRP_ENUM)
+};
+
+static const char * const LRP_TYPE_STRING[] = {
+	FOREACH_LRP_TYPE(GENERATE_LRP_STRING)
+};
+
+enum {
+	LRP_NONE = 0,
+	LRP_STEP1,
+	LRP_STEP2,
+};
+
+enum {
+	ST1 = 0,
+	ST2,
+};
+
+enum {
+	LCD_ON = 0,
+	LCD_OFF,
+};
+
+struct lrp_temp_t {
+	int trig[2][2];
+	int recov[2][2];
+};
+
+struct lrp_current_t {
+	int st_icl[2];
+	int st_fcc[2];
+};
+
 struct sec_battery_platform_data {
 	/* NO NEED TO BE CHANGED */
 	/* callback functions */
@@ -1016,6 +1060,7 @@ struct sec_battery_platform_data {
 #endif
 
 	sec_battery_temp_check_t temp_check_type;
+	int lrp_temp_check_type;
 	unsigned int temp_check_count;
 	sec_battery_temp_check_t usb_temp_check_type;
 	sec_battery_temp_check_t usb_temp_check_type_backup;
@@ -1058,10 +1103,15 @@ struct sec_battery_platform_data {
 	int chg_12v_high_temp;
 	int chg_high_temp;
 	int chg_high_temp_recovery;
-	int dchg_high_temp;
-	int dchg_high_temp_recovery;
-	int dchg_high_batt_temp;
-	int dchg_high_batt_temp_recovery;
+
+	int dchg_high_temp[4];
+	int dchg_high_temp_recovery[4];
+	int dchg_high_batt_temp[4];
+	int dchg_high_batt_temp_recovery[4];
+
+	struct lrp_temp_t lrp_temp[LRP_MAX];
+	struct lrp_current_t lrp_curr[LRP_MAX];
+
 	unsigned int chg_charging_limit_current;
 	unsigned int chg_input_limit_current;
 #if defined(CONFIG_DIRECT_CHARGING)

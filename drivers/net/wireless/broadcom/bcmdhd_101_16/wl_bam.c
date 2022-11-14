@@ -1,7 +1,7 @@
 /*
  * Bad AP Manager for ADPS
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -375,8 +375,12 @@ wl_bad_ap_mngr_add(wl_bad_ap_mngr_t *bad_ap_mngr, wl_bad_ap_info_t *bad_ap_info)
 	if (bad_ap_mngr->num == WL_BAD_AP_MAX_ENTRY_NUM) {
 		/* Remove the oldest entry if entry list is full */
 		spin_lock_irqsave(&bad_ap_mngr->lock, flags);
-		list_del(bad_ap_mngr->list.next);
-		bad_ap_mngr->num--;
+		entry = list_entry(bad_ap_mngr->list.next, wl_bad_ap_info_entry_t, list);
+		if (entry) {
+			list_del(&entry->list);
+			MFREE(bad_ap_mngr->osh, entry, sizeof(*entry));
+			bad_ap_mngr->num--;
+		}
 		spin_unlock_irqrestore(&bad_ap_mngr->lock, flags);
 	}
 
@@ -385,6 +389,7 @@ wl_bad_ap_mngr_add(wl_bad_ap_mngr_t *bad_ap_mngr, wl_bad_ap_info_t *bad_ap_info)
 	if (entry != NULL) {
 		spin_lock_irqsave(&bad_ap_mngr->lock, flags);
 		list_del(&entry->list);
+		MFREE(bad_ap_mngr->osh, entry, sizeof(*entry));
 		bad_ap_mngr->num--;
 		spin_unlock_irqrestore(&bad_ap_mngr->lock, flags);
 	}
@@ -412,7 +417,7 @@ wl_bad_ap_mngr_deinit(struct bcm_cfg80211 *cfg)
 	while (!list_empty(&cfg->bad_ap_mngr.list)) {
 		entry = list_entry(cfg->bad_ap_mngr.list.next, wl_bad_ap_info_entry_t, list);
 		if (entry) {
-			list_del(&cfg->bad_ap_mngr.list);
+			list_del(&entry->list);
 			MFREE(cfg->osh, entry, sizeof(*entry));
 		}
 	}

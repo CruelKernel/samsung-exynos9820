@@ -129,27 +129,6 @@ config TZTUI
 	help
 	  Enable Trusted user interface support for Samsung Secure OS.
 
-config TZDEV_PAGE_MIGRATION
-	bool "Page migration"
-	depends on MIGRATION && CMA
-	default n
-	help
-	  Enable Page migration functionality for CMA Migration.
-
-config TZ_TRANSPORT
-	bool "Transport module"
-	depends on TZDEV
-	default n
-	help
-	  Enable Transport module. It is used for transfering data from SK to NWd.
-
-config TZ_TRANSPORT_PG_CNT
-	int "TZDEV transport module per-CPU buffer size (in pages)"
-	depends on TZ_TRANSPORT
-	default 1
-	help
-	  Select TZDEV transport buffer size in pages per CPU.
-
 config TZDEV_HOTPLUG
 	bool "Core hotplug"
 	depends on HOTPLUG_CPU
@@ -200,7 +179,7 @@ config TZDEV_DEBUG
 
 config TZ_NWFS
 	bool "Normal world file system interface driver"
-	default y
+	default n
 	help
 	  Normal world file system interface driver.
 

@@ -66,9 +66,6 @@
 #define TZDEV_SMC_PROFILER_CONTROL	TZDEV_SMC_COMMAND(17)
 
 struct tzdev_fd_data {
-	struct list_head shmem_list;
-	spinlock_t shmem_list_lock;
-
 	unsigned int crypto_clk_state;
 	unsigned int boost_state;
 	struct mutex mutex;

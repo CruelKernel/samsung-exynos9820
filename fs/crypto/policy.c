@@ -72,10 +72,14 @@ static int create_encryption_context_from_policy(struct inode *inode,
 	}
 
 #if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	BUILD_BUG_ON((sizeof(ctx) - sizeof(ctx.knox_flags))
+			!= offsetof(struct fscrypt_context, knox_flags));
 	ctx.knox_flags = 0;
-#endif
-
+	return inode->i_sb->s_cop->set_context(
+			inode, &ctx, offsetof(struct fscrypt_context, knox_flags), NULL);
+#else
 	return inode->i_sb->s_cop->set_context(inode, &ctx, sizeof(ctx), NULL);
+#endif
 }
 
 int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
@@ -110,6 +114,12 @@ int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
 	inode_lock(inode);
 
 	ret = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+#if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	if (ret == offsetof(struct fscrypt_context, knox_flags)) {
+		ctx.knox_flags = 0;
+		ret = sizeof(ctx);
+	}
+#endif
 	if (ret == -ENODATA) {
 		if (!S_ISDIR(inode->i_mode))
 			ret = -ENOTDIR;
@@ -148,6 +158,12 @@ int fscrypt_ioctl_get_policy(struct file *filp, void __user *arg)
 		return -ENODATA;
 
 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+#if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	if (res == offsetof(struct fscrypt_context, knox_flags)) {
+		ctx.knox_flags = 0;
+		res = sizeof(ctx);
+	}
+#endif
 	if (res < 0 && res != -ERANGE)
 		return res;
 	if (res != sizeof(ctx))
@@ -242,10 +258,22 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
 	}
 
 	res = cops->get_context(parent, &parent_ctx, sizeof(parent_ctx));
+#if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	if (res == offsetof(struct fscrypt_context, knox_flags)) {
+		parent_ctx.knox_flags = 0;
+		res = sizeof(parent_ctx);
+	}
+#endif
 	if (res != sizeof(parent_ctx))
 		return 0;
 
 	res = cops->get_context(child, &child_ctx, sizeof(child_ctx));
+#if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	if (res == offsetof(struct fscrypt_context, knox_flags)) {
+		child_ctx.knox_flags = 0;
+		res = sizeof(child_ctx);
+	}
+#endif
 	if (res != sizeof(child_ctx))
 		return 0;
 
@@ -304,7 +332,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 
 #ifdef CONFIG_DDAR
 	res = dd_test_and_inherit_context(&ctx, parent, child, ci, fs_data);
-	if(res) {
+	if (res) {
 		dd_error("failed to inherit dd policy\n");
 		return res;
 	}
@@ -319,8 +347,18 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 	}
 #endif
 
+#if defined(CONFIG_FSCRYPT_SDP) || defined(CONFIG_DDAR)
+	if (ctx.knox_flags != 0) {
+		res = parent->i_sb->s_cop->set_context(child, &ctx,
+				sizeof(ctx), fs_data);
+	} else {
+		res = parent->i_sb->s_cop->set_context(child, &ctx,
+				offsetof(struct fscrypt_context, knox_flags), fs_data);
+	}
+#else
 	res = parent->i_sb->s_cop->set_context(child, &ctx,
 						sizeof(ctx), fs_data);
+#endif
 	if (res)
 		return res;
 	return preload ? fscrypt_get_encryption_info(child): 0;

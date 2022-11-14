@@ -48,7 +48,8 @@ static bool bad_fs(struct inode *inode)
 {
 	if (inode->i_sb->s_magic == EXT4_SUPER_MAGIC ||
 	    inode->i_sb->s_magic == F2FS_SUPER_MAGIC ||
-	    inode->i_sb->s_magic == OVERLAYFS_SUPER_MAGIC)
+	    inode->i_sb->s_magic == OVERLAYFS_SUPER_MAGIC ||
+	    inode->i_sb->s_magic == EROFS_SUPER_MAGIC_V1)
 		return false;
 
 	return true;

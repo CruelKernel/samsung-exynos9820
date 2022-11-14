@@ -50,7 +50,7 @@ void blob(const char *buffer, const size_t bufLen, const int lineSize)
 				offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " ");
 		}
 
-		snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " |");
+		offset += snprintf(stringToPrint + offset, MAX_DATA_LEN - offset, " |");
 		pr_info("%s\n", stringToPrint);
 		memset(stringToPrint, 0, MAX_DATA_LEN);
 		i += line;
@@ -137,7 +137,8 @@ __visible_for_testing ssize_t debug_store(struct kobject *kobj, struct kobj_attr
 		"gid=",
 		"pe_status=",
 		"im_status=",
-		"sp_status="
+		"sp_status=",
+		"int_status="
 	};
 
 	if (!buf || !p)
@@ -166,6 +167,9 @@ __visible_for_testing ssize_t debug_store(struct kobject *kobj, struct kobj_attr
 		break;
 	case DBG_SET_SP_STATUS:
 		safeplace_status_store(buf + l);
+		break;
+	case DBG_SET_INT_STATUS:
+		integrity_status_store(buf + l);
 		break;
 	default:
 		break;

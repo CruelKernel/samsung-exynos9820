@@ -22,7 +22,7 @@
 #ifdef CONFIG_PROCA_GKI_10
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
 #define OFFSETOF_INTEGRITY offsetof(struct task_struct, android_oem_data1[2])
-#define OFFSETOF_F_SIGNATURE offsetof(struct file, android_oem_data1)
+#define OFFSETOF_F_SIGNATURE 0
 #else
 #define OFFSETOF_INTEGRITY offsetof(struct task_struct, android_vendor_data1[2])
 #define OFFSETOF_F_SIGNATURE offsetof(struct file, android_vendor_data1)
@@ -84,7 +84,11 @@ static struct GAForensicINFO {
 } GAFINFO = {
 	.ver = 0x0600, /* by hryhorii tur 2019 10 21 */
 	.size = sizeof(GAFINFO),
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
+	.task_struct_struct_state = offsetof(struct task_struct, __state),
+#else
 	.task_struct_struct_state = offsetof(struct task_struct, state),
+#endif
 	.task_struct_struct_comm = offsetof(struct task_struct, comm),
 	.task_struct_struct_tasks = offsetof(struct task_struct, tasks),
 	.task_struct_struct_pid = offsetof(struct task_struct, pid),

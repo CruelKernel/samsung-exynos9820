@@ -3203,6 +3203,9 @@ int f2fs_inplace_write_data(struct f2fs_io_info *fio)
 	f2fs_bug_on(sbi, !IS_DATASEG(get_seg_entry(sbi,
 			GET_SEGNO(sbi, fio->new_blkaddr))->type));
 
+	invalidate_mapping_pages(META_MAPPING(sbi),
+				fio->new_blkaddr, fio->new_blkaddr);
+
 	stat_inc_inplace_blocks(fio->sbi);
 	atomic64_inc(&(sbi->sec_stat.inplace_count));
 

@@ -1,7 +1,7 @@
 /*
  * Neighbor Awareness Networking
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -656,7 +656,12 @@ typedef struct wl_nan_iov {
 
 #ifdef WL_NAN_DISC_CACHE
 
-#define NAN_MAX_CACHE_DISC_RESULT 16
+#ifndef CUSTOM_NAN_MAX_CACHE_DISC_RESULT
+#define NAN_MAX_CACHE_DISC_RESULT 40
+#else
+#define NAN_MAX_CACHE_DISC_RESULT CUSTOM_NAN_MAX_CACHE_DISC_RESULT
+#endif /* CUSTOM_NAN_MAX_CACHE_DISC_RESULT */
+
 typedef struct {
 	bool valid;
 	wl_nan_instance_id_t pub_id;

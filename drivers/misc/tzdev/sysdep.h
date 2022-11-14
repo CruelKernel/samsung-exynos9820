@@ -21,7 +21,6 @@
 #include <linux/idr.h>
 #include <linux/kernel.h>
 #include <linux/kfifo.h>
-#include <linux/migrate.h>
 #include <linux/of.h>
 #include <linux/types.h>
 #include <linux/version.h>
@@ -80,25 +79,6 @@ static inline gid_t __kgid_val(kgid_t gid)
 #define outer_inv_range(s, e)
 #else
 #define __flush_dcache_area(s, e)	__cpuc_flush_dcache_area(s, e)
-#endif
-
-#if defined(CONFIG_TZDEV_PAGE_MIGRATION)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
-#define sysdep_migrate_pages(list, alloc, free)		migrate_pages((list), (alloc), (free), 0, MIGRATE_SYNC, MR_MEMORY_FAILURE)
-#define sysdep_putback_isolated_pages(list)		putback_movable_pages(list)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-#define sysdep_migrate_pages(list, alloc, free)		({(void)free; migrate_pages((list), (alloc), 0, MIGRATE_SYNC, MR_MEMORY_FAILURE);})
-#define sysdep_putback_isolated_pages(list)		putback_lru_pages(list)
-#else
-#define sysdep_migrate_pages(list, alloc, free)		({(void)free; migrate_pages((list), (alloc), 0, false, MIGRATE_SYNC);})
-#define sysdep_putback_isolated_pages(list)		putback_lru_pages(list)
-#endif
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
-#define sysdep_kfifo_put(fifo, val) kfifo_put(fifo, val)
-#else
-#define sysdep_kfifo_put(fifo, val) kfifo_put(fifo, &val)
 #endif
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 13, 0)

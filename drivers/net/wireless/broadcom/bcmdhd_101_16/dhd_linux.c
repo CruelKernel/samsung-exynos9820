@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface.
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -6002,7 +6002,7 @@ dhd_add_monitor_if(dhd_info_t *dhd)
 	if (FW_SUPPORTED((&dhd->pub), monitor)) {
 #ifdef DHD_PCIE_RUNTIMEPM
 		/* Disable RuntimePM in monitor mode */
-		DHD_DISABLE_RUNTIME_PM(&dhd->pub);
+		DHD_STOP_RPM_TIMER(&dhd->pub);
 		DHD_ERROR(("%s : disable runtime PM in monitor mode\n", __FUNCTION__));
 #endif /* DHD_PCIE_RUNTIME_PM */
 		scan_suppress = TRUE;
@@ -6036,7 +6036,7 @@ dhd_del_monitor_if(dhd_info_t *dhd)
 	if (FW_SUPPORTED((&dhd->pub), monitor)) {
 #ifdef DHD_PCIE_RUNTIMEPM
 		/* Enable RuntimePM */
-		DHD_ENABLE_RUNTIME_PM(&dhd->pub);
+		DHD_START_RPM_TIMER(&dhd->pub);
 		DHD_ERROR(("%s : enabled runtime PM\n", __FUNCTION__));
 #endif /* DHD_PCIE_RUNTIME_PM */
 		scan_suppress = FALSE;
@@ -7189,6 +7189,11 @@ dhd_open(struct net_device *net)
 
 exit:
 	mutex_unlock(&dhd->pub.ndev_op_sync);
+
+	if (dhd_query_bus_erros(&dhd->pub)) {
+		ret = BCME_ERROR;
+	}
+
 	if (ret) {
 		dhd_stop(net);
 	}

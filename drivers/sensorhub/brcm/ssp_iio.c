@@ -531,11 +531,13 @@ void report_auto_rotation_data(struct ssp_data *data, int sensor_type,
 }
 
 void report_sar_backoff_motion_data(struct ssp_data *data, int sensor_type,
-		struct sensor_value *auto_rotation_data)
+		struct sensor_value *sar_backoff_motion_data)
 {
-	report_iio_data(data, SAR_BACKOFF_MOTION, auto_rotation_data);
+	report_iio_data(data, SAR_BACKOFF_MOTION, sar_backoff_motion_data);
 	wake_lock_timeout(&data->ssp_wake_lock, 0.3*HZ);
-	pr_err("[SSP]: %s: %d ts: %llu", __func__, auto_rotation_data->auto_rotation_event, auto_rotation_data->timestamp);
+	pr_err("[SSP]: %s: %d ts: %llu", __func__,
+	sar_backoff_motion_data->sar_backoff_motion_event,
+	sar_backoff_motion_data->timestamp);
 }
 
 #define THM_UP		0

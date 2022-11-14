@@ -1,7 +1,7 @@
 /*
  * Packet dump helper functions
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -923,16 +923,27 @@ typedef struct bootp_fmt {
 	uint8 options[BOOTP_MIN_DHCP_OPT_LEN];
 } PACKED_STRUCT bootp_fmt_t;
 
+#define MAX_DHCP_OPS_STR 3
+#define MAX_DHCP_TYPES_STR 9
+
 static const uint8 bootp_magic_cookie[4] = { 99, 130, 83, 99 };
-static char dhcp_ops[][10] = {
+static char dhcp_ops[MAX_DHCP_OPS_STR][10] = {
 	"NA", "REQUEST", "REPLY"
 };
-static char dhcp_types[][10] = {
+static char dhcp_types[MAX_DHCP_TYPES_STR][10] = {
 	"NA", "DISCOVER", "OFFER", "REQUEST", "DECLINE", "ACK", "NAK", "RELEASE", "INFORM"
 };
 
+#define DHCP_OPS_STR(ops)	((ops < MAX_DHCP_OPS_STR) ? \
+				(dhcp_ops[ops]) : "UNKNOWN_DHCP_OPS")
+#define DHCP_TYPES_STR(type)	((type < MAX_DHCP_TYPES_STR) ? \
+				(dhcp_types[type]) : "UNKNOWN_DHCP_TYPE")
+
 #ifdef DHD_STATUS_LOGGING
-static const int dhcp_types_stat[9] = {
+#define MAX_DHCP_TYPES_STAT	9
+#define DHCP_TYPES_STAT(type)	((type < MAX_DHCP_TYPES_STAT) ? \
+				(dhcp_types_stat[type]) : ST(INVALID))
+static const int dhcp_types_stat[MAX_DHCP_TYPES_STAT] = {
 	ST(INVALID), ST(DHCP_DISCOVER), ST(DHCP_OFFER), ST(DHCP_REQUEST),
 	ST(DHCP_DECLINE), ST(DHCP_ACK), ST(DHCP_NAK), ST(DHCP_RELEASE),
 	ST(DHCP_INFORM)
@@ -945,7 +956,8 @@ dhd_dhcp_dump(dhd_pub_t *dhdp, int ifidx, uint8 *pktdata, bool tx,
 {
 	bootp_fmt_t *b = (bootp_fmt_t *)&pktdata[ETHER_HDR_LEN];
 	uint8 *ptr, *opt, *end = (uint8 *) b + ntohs(b->iph.tot_len);
-	int dhcp_type = 0, len, opt_len;
+	uint8 dhcp_type = 0;
+	int len, opt_len;
 	char *ifname = NULL, *typestr = NULL, *opstr = NULL;
 	bool cond;
 
@@ -971,9 +983,9 @@ dhd_dhcp_dump(dhd_pub_t *dhdp, int ifidx, uint8 *pktdata, bool tx,
 			if (*opt == DHCP_OPT_MSGTYPE) {
 				if (opt[1]) {
 					dhcp_type = opt[2];
-					typestr = dhcp_types[dhcp_type];
-					opstr = dhcp_ops[b->op];
-					DHD_STATLOG_DATA(dhdp, dhcp_types_stat[dhcp_type],
+					typestr = DHCP_TYPES_STR(dhcp_type);
+					opstr = DHCP_OPS_STR(b->op);
+					DHD_STATLOG_DATA(dhdp, DHCP_TYPES_STAT(dhcp_type),
 						ifidx, tx, cond);
 					DHCP_PRINT("DHCP");
 					break;

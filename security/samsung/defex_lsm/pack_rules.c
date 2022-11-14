@@ -21,6 +21,7 @@ const struct feature_match_entry feature_match[] = {
 	{"feature_immutable_path_write", feature_immutable_path_write},
 	{"feature_immutable_src_exception", feature_immutable_src_exception},
 	{"feature_umhbin_path", feature_umhbin_path},
+	{"feature_integrity_check", feature_integrity_check},
 };
 
 const int feature_match_size = sizeof(feature_match) / sizeof(feature_match[0]);

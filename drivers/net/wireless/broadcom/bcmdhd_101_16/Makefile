@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2021, Broadcom.
+# Copyright (C) 2022, Broadcom.
 #
 #      Unless you and Broadcom execute a separate written software license
 # agreement governing use of this software, this software is licensed to you
@@ -517,6 +517,8 @@ endif
 
 # NAN-Ranging BW private command
   DHDCFLAGS += -DSUPPORT_NAN_RANGING_TEST_BW
+# NAN customer discovery cache nubmer
+  DHDCFLAGS += -DCUSTOM_NAN_MAX_CACHE_DISC_RESULT=160
 
 ifeq ($(CONFIG_ARCH_QCOM),y)
 # Due to GKI config, Exynos has ARCH_QCOM & ARCH_EXYNOS, MSM has ARCH_QCOM only, Temporary solution
@@ -806,6 +808,8 @@ endif
  DHDCFLAGS += -DFLOW_RING_PREALLOC
 # NAN-Ranging BW private command
  DHDCFLAGS += -DSUPPORT_NAN_RANGING_TEST_BW
+# NAN customer discovery cache nubmer
+  DHDCFLAGS += -DCUSTOM_NAN_MAX_CACHE_DISC_RESULT=40
 
 ifeq ($(CONFIG_ARCH_QCOM),y)
 # Due to GKI config, Exynos has ARCH_QCOM & ARCH_EXYNOS, MSM has ARCH_QCOM only, Temporary solution

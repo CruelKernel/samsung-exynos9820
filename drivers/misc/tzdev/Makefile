@@ -16,6 +16,7 @@ obj-$(CONFIG_TZDEV)			+= tz_platform.o
 obj-$(CONFIG_TZDEV)			+= tz_ree_time.o
 obj-$(CONFIG_TZDEV)			+= tz_uiwsock.o
 obj-$(CONFIG_TZDEV)			+= tzdev.o
+obj-$(CONFIG_TZDEV)			+= umem.o
 
 obj-$(CONFIG_TZDEV_KTHREADS_NOTIFIER)	+= tz_kthread_pool_notifier.o
 obj-$(CONFIG_TZDEV_KTHREADS_SMPBOOT)	+= tz_kthread_pool_smpboot.o

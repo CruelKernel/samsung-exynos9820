@@ -25,12 +25,9 @@
 #include <sys/types.h>
 #endif
 
-#define UINT_PTR(a)			((void *)(unsigned long)(a))
-
 #define TZ_IOC_MAGIC			'c'
 
 #define TZIO_MEM_REGISTER		_IOW(TZ_IOC_MAGIC, 120, struct tzio_mem_register)
-#define TZIO_MEM_RELEASE		_IOW(TZ_IOC_MAGIC, 121, int)
 #define TZIO_CRYPTO_CLOCK_CONTROL	_IOW(TZ_IOC_MAGIC, 123, int)
 #define TZIO_GET_SYSCONF		_IOW(TZ_IOC_MAGIC, 124, struct tzio_sysconf)
 #define TZIO_BOOST_CONTROL		_IOW(TZ_IOC_MAGIC, 125, int)
@@ -70,7 +67,6 @@ struct tzio_sysconf {
 } __attribute__((__packed__));
 
 struct tzio_mem_register {
-	const uint64_t ptr;		/* Memory region start (in) */
 	uint64_t size;			/* Memory region size (in) */
 	uint32_t write;			/* 1 - rw, 0 - ro */
 } __attribute__((__packed__));

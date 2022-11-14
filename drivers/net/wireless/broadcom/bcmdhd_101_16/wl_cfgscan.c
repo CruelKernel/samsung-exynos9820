@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver scan related code
  *
- * Copyright (C) 2021, Broadcom.
+ * Copyright (C) 2022, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -3410,6 +3410,9 @@ wl_cfg80211_scan_mac_disable(struct net_device *dev)
 #define PNO_REPEAT_MAX              100u
 #define PNO_FREQ_EXPO_MAX           2u
 #define PNO_ADAPTIVE_SCAN_LIMIT     60u
+#define PNO_SCAN_MAX_UNASSOC_SEC    PNO_SCAN_MAX_FW_SEC
+#define PNO_SCAN_MAX_ASSOC_SEC      3600
+
 static bool
 is_ssid_in_list(struct cfg80211_ssid *ssid, struct cfg80211_ssid *ssid_list, int count)
 {
@@ -3486,6 +3489,21 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	} else {
 		/* use host provided values */
 		pno_time = request->scan_plans->interval;
+	}
+
+	{
+		uint32 max_scan_freq = PNO_SCAN_MAX_UNASSOC_SEC;
+
+		if (wl_get_drv_status(cfg, CONNECTED, dev)) {
+			max_scan_freq = PNO_SCAN_MAX_ASSOC_SEC;
+		}
+
+		if (pno_time < PNO_SCAN_MIN_FW_SEC ||
+			pno_time > max_scan_freq) {
+			WL_ERR(("Invalid pno scan interval:%d, max pno scan interval:%d\n",
+				pno_time, max_scan_freq));
+			return -EINVAL;
+		}
 	}
 
 	WL_INFORM_MEM(("Enter. ssids:%d match_sets:%d pno_time:%d pno_repeat:%d "

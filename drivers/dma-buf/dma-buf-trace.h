@@ -40,18 +40,18 @@ int dmabuf_trace_untrack_buffer(struct dma_buf *dmabuf);
 #else
 static inline int dmabuf_trace_alloc(struct dma_buf *dmabuf)
 {
-	return -EINVAL;
+	return 0;
 }
 static inline void dmabuf_trace_free(struct dma_buf *dmabuf)
 {
 }
 static inline int dmabuf_trace_track_buffer(struct dma_buf *dmabuf)
 {
-	return -ENOTTY;
+	return 0;
 }
-static inline int dmabuf_trace_untrack_bufer(struct dma_buf *dmabuf)
+static inline int dmabuf_trace_untrack_buffer(struct dma_buf *dmabuf)
 {
-	return -ENOTTY;
+	return 0;
 }
 #endif
 

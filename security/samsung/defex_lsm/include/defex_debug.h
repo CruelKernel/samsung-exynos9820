@@ -16,6 +16,7 @@
 #define DBG_SET_PE_STATUS	3
 #define DBG_SET_IM_STATUS	4
 #define DBG_SET_SP_STATUS	5
+#define DBG_SET_INT_STATUS	6
 
 #define MAX_DATA_LEN		300
 

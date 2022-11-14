@@ -583,7 +583,7 @@ void mfc_qos_on(struct mfc_ctx *ctx)
 	}
 
 	start_qos_step = pdata->num_qos_steps;
-	if (enc_found)
+	if (enc_found && (dev->num_inst == 1))
 		start_qos_step = pdata->max_qos_steps;
 
 	/* search the suitable qos table */
@@ -681,7 +681,7 @@ void mfc_qos_off(struct mfc_ctx *ctx)
 		list_del(&ctx->qos_list);
 
 	start_qos_step = pdata->num_qos_steps;
-	if (enc_found)
+	if (enc_found && (dev->num_inst == 1))
 		start_qos_step = pdata->max_qos_steps;
 
 	/* search the suitable qos table */

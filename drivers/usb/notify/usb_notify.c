@@ -100,6 +100,7 @@ struct usb_notify {
 	int c_status;
 	int sec_whitelist_enable;
 	int reserve_vbus_booster;
+	int disable_state;
 #if defined(CONFIG_USB_HW_PARAM)
 	unsigned long long hw_param[USB_CCIC_HW_PARAM_MAX];
 #endif
@@ -775,8 +776,16 @@ int set_notify_disable(struct usb_notify_dev *udev, int disable)
 		goto skip;
 	}
 
-	pr_info("%s disable=%s(%d)\n", __func__,
+	pr_info("%s prev=%s(%d) => disable=%s(%d)\n", __func__,
+			block_string(u_notify->disable_state), u_notify->disable_state,
 			block_string(disable), disable);
+
+	if (u_notify->disable_state == disable) {
+		pr_err("%s duplicated state\n", __func__);
+		goto skip;
+	}
+
+	u_notify->disable_state = disable;
 
 	switch (disable) {
 	case NOTIFY_BLOCK_TYPE_ALL:

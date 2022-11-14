@@ -51,3 +51,9 @@ clean-files += proca_certificate.asn1.c proca_certificate.asn1.h
 endif
 
 subdir-ccflags-y += -Wformat
+
+# kunit tests options:
+ifeq ($(CONFIG_SEC_KUNIT)$(CONFIG_UML), yy)
+  GCOV_PROFILE := y
+  ccflags-$(CONFIG_PROCA) += -DPROCA_KUNIT_ENABLED
+endif

@@ -19,13 +19,19 @@
 #include <linux/err.h>
 #include <crypto/hash.h>
 #include <crypto/hash_info.h>
-#include <crypto/sha.h>
 #include <linux/version.h>
 #include <linux/file.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#include <crypto/sha1.h>
+#include <crypto/sha2.h>
+#else
+#include <crypto/sha.h>
+#endif
 
 #include "proca_log.h"
 #include "proca_certificate.h"
 #include "five_crypto.h"
+#include "five_testing.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 42)
 #include "proca_certificate.asn1.h"
@@ -210,8 +216,9 @@ enum PaFlagBits {
 	PaFlagBits_bitHmac = 2
 };
 
-static bool check_native_pa_id(const struct proca_certificate *parsed_cert,
-			       struct task_struct *task)
+__visible_for_testing __mockable
+bool check_native_pa_id(const struct proca_certificate *parsed_cert,
+			struct task_struct *task)
 {
 	struct file *exe;
 	char *path_buff;
@@ -252,7 +259,7 @@ bool is_certificate_relevant_to_task(
 	const char system_server_app_name[] = "/system/framework/services.jar";
 	const char system_server[] = "system_server";
 	const size_t max_app_name = 1024;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(PROCA_KUNIT_ENABLED))
 	char cmdline[1024 + 1];
 #else
 	char cmdline[max_app_name + 1];

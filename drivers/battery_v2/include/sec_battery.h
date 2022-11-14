@@ -399,6 +399,10 @@ struct sec_battery_info {
 	unsigned int mix_limit;
 	unsigned int vbus_limit;
 
+	/* lrp temperature check */
+	unsigned int lrp_limit;
+	unsigned int lrp_step;
+
 	/* temperature check */
 	int temperature;	/* battery temperature */
 #if defined(CONFIG_ENG_BATTERY_CONCEPT)
@@ -427,6 +431,8 @@ struct sec_battery_info {
 #if defined(CONFIG_DIRECT_CHARGING)
 	int dchg_temp;
 #endif
+	int lrp;
+	int lrp_test;
 
 	int temp_adc;
 	int temp_ambient_adc;
