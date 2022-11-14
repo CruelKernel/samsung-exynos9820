@@ -419,7 +419,7 @@ static int cpuhp_control(bool enable)
  * #echo mask > /sys/power/cpuhp/set_online_cpu
  */
 #define STR_LEN 6
-static inline toupper(char ch)
+static inline int toupper(int ch)
 {
 	if ('a' <= ch && ch <= 'z')
 		ch += 'A' - 'a';
