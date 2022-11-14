@@ -74,9 +74,10 @@ extern int forced_resolution;
 
 #define displayport_info(fmt, ...)						\
 	do {									\
-		if (displayport_log_level >= 6)					\
+		if (displayport_log_level >= 6) {				\
 			pr_info("Displayport: " pr_fmt(fmt), ##__VA_ARGS__);			\
 			dp_logger_print(fmt, ##__VA_ARGS__);                    \
+		}								\
 	} while (0)
 
 #define displayport_dbg(fmt, ...)						\
