@@ -857,7 +857,7 @@
 				charger,direct_charger = "pca9468-charger";
 				charger,dchg_min_current = <0x7d0>;
 				charger,dchg_temp_low_threshold = <0xb4>;
-				charger,dchg_temp_high_threshold = <0x19a>;
+				charger,dchg_temp_high_threshold = <0x1a4>;
 				charger,ta_alert_wa;
 			};
 
@@ -884,6 +884,7 @@
 				battery,chg_thermal_source = <0x2>;
 				battery,wpc_thermal_source = <0x2>;
 				battery,dchg_thermal_source = <0x3>;
+				battery,lrp_temp_check_type = <0x3>;
 				battery,polling_time = <0xa 0x1e 0x1e 0x1e 0xe10>;
 				battery,temp_table_adc = <0x125 0x157 0x194 0x1da 0x22d 0x28c 0x2fc 0x37d 0x438 0x4b7 0x56e 0x63a 0x714 0x7cb 0x8b4 0x9a0 0xa85 0xb5c 0xc1a 0xcd4 0xd6b 0xdee 0xe59>;
 				battery,temp_table_data = <0x384 0x352 0x320 0x2ee 0x2bc 0x28a 0x258 0x226 0x1f4 0x1c2 0x190 0x15e 0x12c 0xfa 0xc8 0x96 0x64 0x32 0x0 0xffffffce 0xffffff9c 0xffffff6a 0xffffff38>;
@@ -933,8 +934,8 @@
 				battery,temp_high_recovery_lpm = <0x1e0>;
 				battery,temp_low_threshold_lpm = <0x0>;
 				battery,temp_low_recovery_lpm = <0x14>;
-				battery,wpc_high_threshold_normal = <0x1c2>;
-				battery,wpc_high_recovery_normal = <0x1ae>;
+				battery,wpc_high_threshold_normal = <0x1f4>;
+				battery,wpc_high_recovery_normal = <0x1e0>;
 				battery,wpc_low_threshold_normal = <0x0>;
 				battery,wpc_low_recovery_normal = <0x14>;
 				battery,tx_high_threshold = <0x1c2>;
@@ -946,8 +947,12 @@
 				battery,full_check_count = <0x1>;
 				battery,chg_gpio_full_check = <0x0>;
 				battery,chg_polarity_full_check = <0x1>;
-				battery,chg_high_temp = <0x1cc>;
-				battery,chg_high_temp_recovery = <0x1b8>;
+				battery,chg_high_temp = <0x258>;
+				battery,chg_high_temp_recovery = <0x244>;
+				battery,dchg_high_temp = <0x3e8 0x3e8 0x23a 0x23a>;
+				battery,dchg_high_temp_recovery = <0x3e8 0x3e8 0x212 0x212>;
+				battery,dchg_high_batt_temp = <0x3e8 0x3e8 0x3e8 0x190>;
+				battery,dchg_high_batt_temp_recovery = <0x3e8 0x3e8 0x3e8 0x186>;
 				battery,chg_input_limit_current = <0x3e8>;
 				battery,chg_charging_limit_current = <0x76c>;
 				battery,dchg_input_limit_current = <0x3e8>;
@@ -962,7 +967,7 @@
 				battery,wpc_temp_lcd_on_control_source = <0x1>;
 				battery,wpc_lcd_on_high_temp = <0x190>;
 				battery,wpc_lcd_on_high_temp_rec = <0x17c>;
-				battery,wpc_lcd_on_input_limit_current = <0x1c2>;
+				battery,wpc_lcd_on_input_limit_current = <0x258>;
 				battery,wpc_store_high_temp = <0x168>;
 				battery,wpc_store_high_temp_recovery = <0x154>;
 				battery,wpc_store_lcd_on_high_temp = <0x168>;
@@ -975,6 +980,8 @@
 				battery,mix_high_temp = <0x1a4>;
 				battery,mix_high_chg_temp = <0x1f4>;
 				battery,mix_high_temp_recovery = <0x186>;
+				battery,temp_table_LRP_NORMAL = <0x384 0x17c 0x17c 0x172 0x384 0x17c 0x17c 0x168 0x0 0x0 0x0 0x0>;
+				battery,temp_table_LRP_25W = <0x190 0x186 0x17c 0x172 0x190 0x17c 0x17c 0x168 0x6a4 0xd48 0x44c 0x898>;
 				battery,full_condition_type = <0x9>;
 				battery,full_condition_soc = <0x5d>;
 				battery,full_condition_vcell = <0x10cc>;
@@ -991,8 +998,8 @@
 				battery,chg_float_voltage = <0x10fe>;
 				battery,chg_ocp_current = <0x1838>;
 				battery,chg_ocp_dtc = <0x64>;
-				battery,swelling_high_temp_block = <0x19a>;
-				battery,swelling_high_temp_recov = <0x186>;
+				battery,swelling_high_temp_block = <0x1a4>;
+				battery,swelling_high_temp_recov = <0x190>;
 				battery,swelling_wc_high_temp_block = <0x1a4>;
 				battery,swelling_wc_high_temp_recov = <0x19a>;
 				battery,swelling_low_temp_block_1st = <0x96>;
@@ -1027,9 +1034,9 @@
 				battery,siop_apdo_input_limit_current = <0x4b0>;
 				battery,siop_apdo_charging_limit_current = <0x7d0>;
 				battery,siop_wireless_input_limit_current = <0x258>;
-				battery,siop_wireless_charging_limit_current = <0x352>;
+				battery,siop_wireless_charging_limit_current = <0x3e8>;
 				battery,siop_hv_wireless_input_limit_current = <0x258>;
-				battery,siop_hv_wireless_charging_limit_current = <0x352>;
+				battery,siop_hv_wireless_charging_limit_current = <0x3e8>;
 				battery,siop_store_hv_wireless_input_limit_current = <0x1c2>;
 				battery,ttf_hv_charge_current = <0x9f6>;
 				battery,ttf_hv_wireless_charge_current = <0x4e2>;
