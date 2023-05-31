@@ -8,8 +8,8 @@ ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 
 if [ "x$1" = "xdelta" ]
 then
- 	nver="delta"
- 	magisk_link="https://github.com/HuskyDG/magisk-files/releases/download/fdac22ba-${nver}/app-release.apk"
+	nver="delta"
+	magisk_link="https://github.com/HuskyDG/magisk-files/releases/download/fdac22ba-${nver}/app-release.apk"
 elif [ "x$1" = "xalpha" ]
 then
 	nver="alpha"
@@ -23,7 +23,7 @@ else
 	magisk_link="https://github.com/topjohnwu/Magisk/releases/download/${nver}/Magisk-${nver}.apk"
 fi
 
-if [ \( -n "$nver" \) -a \( "$nver" != "$ver" \) -o ! \( -f "$DIR/magiskinit" \) -o \( "$nver" = "delta" \) -o \( "$nver" = "alpha" \) ]
+if [ \( -n "$nver" \) -a \( "$nver" != "$ver" \) -o ! \( -f "$DIR/magiskinit" \) -o \( "$nver" = "canary" \) -o \( "$nver" = "alpha" \) ]
 then
 	echo "Updating Magisk from $ver to $nver"
 	curl -s --output "$DIR/magisk.zip" -L "$magisk_link"
