@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: Samsung
+  TOOLCHAIN: samsung
   INSTALLER: yes
 
 jobs:
