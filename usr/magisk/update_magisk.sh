@@ -10,7 +10,6 @@ if [ "x$1" = "xdelta" ]
 then
 	nver="delta"
 	magisk_link="https://github.com/HuskyDG/magisk-files/releases/download/fdac22ba-${nver}/app-release.apk"
-elif [ "x$1" = "xdelta" ]
 
 if [ "x$1" = "xcanary" ]
 then
