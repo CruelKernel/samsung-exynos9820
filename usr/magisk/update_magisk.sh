@@ -8,8 +8,9 @@ ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 
 if [ "x$1" = "xdelta" ]
 then
- nver="delta"
- magisk_link="https://github.com/HuskyDG/magisk-files/releases/download/fdac22ba-${nver}/app-release.apk"
+ 	nver="delta"
+ 	magisk_link="https://github.com/HuskyDG/magisk-files/releases/download/fdac22ba-${nver}/app-release.apk"
+elif [ "x$1" = "xcanary" ]
  
 if [ "x$1" = "xcanary" ]
 then
