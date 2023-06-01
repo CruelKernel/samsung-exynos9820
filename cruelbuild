@@ -512,7 +512,7 @@ def parse_args():
                 if value not in toolchain:
                     fatal('Unknown toolchain: ' + value)
             elif key == 'magisk':
-                if value != 'canary' and value != 'alpha' and not re.match('^v\d+\.\d+', value):
+                if value not in ['canary', 'alpha', 'delta'] and not re.match('^(v\d+\.\d+)|([a-f0-9]{8}-delta)$', value):
                     fatal('Unknown magisk version: ' + value + ' (example: canary, alpha, v20.4, v19.4, ...)')
                 configs['kernel']['magisk']['version'] = value
         else:
