@@ -71,7 +71,7 @@ jobs:
                        +kvm_guest                \
                        +xen                      \
                        +docker  
-          2>&1 | tee config.info
+          2>&1 | grep -v thermal | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
         if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
