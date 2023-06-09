@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N975F" ]
+        model: [ "G973F" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -55,9 +55,9 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-devel"        \
+                       name="Cruel-dev-xdr+kvm+xen+docker" \
                        toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       +magisk=delta             \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
@@ -67,6 +67,10 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +kvm                      \
+                       +kvm_guest                \
+                       +xen                      \
+                       +docker  
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
