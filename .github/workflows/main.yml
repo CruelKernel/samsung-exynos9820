@@ -68,7 +68,6 @@ jobs:
                        +morosound                \
                        +boeffla_wl_blocker       \
                        +kvm                      \
-                       +kvm_guest                \
                        +xen                      \
                        +docker  
           2>&1 | grep -v thermal | tee config.info
