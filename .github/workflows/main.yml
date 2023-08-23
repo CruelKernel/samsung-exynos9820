@@ -60,7 +60,7 @@ jobs:
                        +magisk                   \
                        +nohardening              \
                        +ttl                      \
-                       +wireguard                \
+                       -wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
