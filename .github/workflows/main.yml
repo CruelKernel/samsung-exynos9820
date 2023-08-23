@@ -57,7 +57,6 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-MuX"          \
                        toolchain=$TOOLCHAIN      \
-                       os_patch_level="2023-04"  \
                        +magisk=alpha             \
                        +nohardening              \
                        +fp_boost                 \
