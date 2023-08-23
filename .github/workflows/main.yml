@@ -55,8 +55,9 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-devel"        \
+                       name="Cruel-MuX"        \
                        toolchain=$TOOLCHAIN      \
+                       os_patch_level=2023-4.   \
                        +magisk                   \
                        +nohardening              \
                        +ttl                      \
