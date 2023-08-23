@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N975F" ]
+        model: [ "N975F" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -55,21 +55,30 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-MuX"        \
+                       name="Cruel-MuX"          \
                        toolchain=$TOOLCHAIN      \
-                       os_patch_level="2023-04"   \
-                       +magisk                   \
+                       os_patch_level="2023-04"  \
+                       +magisk=alpha             \
                        +nohardening              \
+                       +fp_boost                 \
                        +ttl                      \
-                       -wireguard                \
+                       +wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +nodebug                  \
+                       +noaudit                  \
+                       +noksm                    \
+                       +nomodules                \
+                       +usb_serial               \
+                       +sched_powersave          \
+                       +sched_performance        \
+                       +fake_config
           2>&1 | tee config.info
-
+          
       - name: Install gcc-aarch64-linux-gnu
         if: env.TOOLCHAIN == 'system-gcc' || env.TOOLCHAIN == 'system-clang'
         env:
