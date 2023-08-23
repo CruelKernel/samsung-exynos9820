@@ -132,7 +132,7 @@ jobs:
           path: installer/*
           if-no-files-found: error
       - name: Upload Kernel Images
-        if: env.INSTALLER != 'yes'
+        if: env.INSTALLER == 'yes'
         uses: actions/upload-artifact@v2
         with:
           name: CruelKernel-${{ matrix.model }}
