@@ -8,7 +8,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -55,7 +55,7 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-MuX"          \
+                       name="VN-Cruel-MuX"       \
                        toolchain=$TOOLCHAIN      \
                        +magisk=alpha             \
                        +nohardening              \
@@ -75,7 +75,7 @@ jobs:
                        +usb_serial               \
                        +sched_powersave          \
                        +sched_performance        \
-                       +fake_config
+                       +fake_config              \
           2>&1 | tee config.info
           
       - name: Install gcc-aarch64-linux-gnu
@@ -131,13 +131,12 @@ jobs:
           path: installer/*
           if-no-files-found: error
       - name: Upload Kernel Images
-        if: env.INSTALLER == 'yes'
+        if: env.INSTALLER != 'yes'
         uses: actions/upload-artifact@v2
         with:
           name: CruelKernel-${{ matrix.model }}
           path: '*.img'
           if-no-files-found: error
-
       - name: Upload Kernel Info
         uses: actions/upload-artifact@v2
         with:
