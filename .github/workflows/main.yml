@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N975F" ]
+        model: [ "N976N" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -55,17 +55,18 @@ jobs:
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-devel"        \
-                       toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       name="Cruel-Custom"       \
+                       os_patch_level=2099-12    \
+                       toolchain=proton          \
+                       +magisk=v26.3             \
                        +nohardening              \
                        +ttl                      \
-                       +wireguard                \
+                       -wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
                        +force_dex_wqhd           \
-                       +morosound                \
+                       -morosound                \
                        +boeffla_wl_blocker       \
           2>&1 | tee config.info
 
