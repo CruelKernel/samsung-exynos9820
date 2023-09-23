@@ -3,7 +3,7 @@ name: Build
 on: [push]
 
 env:
-  TOOLCHAIN: cruel
+  TOOLCHAIN: default
   INSTALLER: yes
 
 jobs:
@@ -67,6 +67,7 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +mass_storage       \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
