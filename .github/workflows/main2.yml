@@ -1,0 +1,14 @@
+jobs:
+  example-job:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: /cruel/usr/magisk
+    steps:
+      - name: Run update_magisk.sh
+        uses: actions/checkout@v4  
+      - name: Make the script files executable
+        run: chmod +x update_magisk.sh
+      - name: Run the scripts
+        run: |
+          ./update_magisk.sh
