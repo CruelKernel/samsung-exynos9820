@@ -57,7 +57,8 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-devel"        \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=0fe46c5a-delta             \
+                       +kernelsu             \
+                       +overlayfs             \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
