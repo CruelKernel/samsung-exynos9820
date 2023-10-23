@@ -1,9 +1,9 @@
 name: Build
 
-on: [push]
+on: [push, workflow_dispatch]
 
 env:
-  TOOLCHAIN: cruel
+  TOOLCHAIN: arm
   INSTALLER: yes
 
 jobs:
@@ -50,15 +50,52 @@ jobs:
             ccache-${{ env.TOOLCHAIN }}-${{ steps.ccache_model_key.outputs.KEY }}-
             ccache-${{ env.TOOLCHAIN }}-
 
+      - name: Setup KernelSU
+        run: |
+          if [ -d "./KernelSU" ]; then
+            rm -rf "./KernelSU"
+          fi
+          if [ -d "./drivers/kernelsu" ]; then
+            rm -rf "./drivers/kernelsu"
+          fi
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+          wget -q "https://raw.githubusercontent.com/tickernelz/samsung-exynos9820/kernelsu/kernelsu.patch" -O KernelSU.patch
+          git apply ./KernelSU.patch
+          model=$(echo "${{ matrix.model }}" | cut -d ',' -f 1)
+          case $model in
+            G970F|G973F|G975F)
+              config=exynos9820-beyond0lte_defconfig
+              ;;
+            G977B)
+              config=exynos9820-beyondx_defconfig
+              ;;
+            G977N)
+              config=exynos9820-beyondxks_defconfig
+              ;;
+            N975F)
+              config=exynos9820-d2s_defconfig
+              ;;
+            N976B)
+              config=exynos9820-d2x_defconfig
+              ;;
+            N976N)
+              config=exynos9820-d2xks_defconfig
+              ;;
+          esac
+          echo -e "CONFIG_KSU=y" >> arch/arm64/configs/$config
+          echo -e "CONFIG_OVERLAY_FS=y" >> arch/arm64/configs/$config
+          echo -e "CONFIG_OVERLAYFS=y" >> arch/arm64/configs/$config
+          echo -e "CONFIG_FS_OVERLAYFS=y" >> arch/arm64/configs/$config
+
       - name: Kernel Configure
         run: |
           set -e -o pipefail
           ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-devel"        \
+                       name="Cruel-KernelSU"     \
                        toolchain=$TOOLCHAIN      \
-                       +kernelsu             \
-                       +overlayfs             \
+                       os_patch_level=2022-04    \
+                       -magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
