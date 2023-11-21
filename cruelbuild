@@ -5,6 +5,7 @@ from sys import argv, stdout, stderr
 import re
 import json
 import atexit
+import secrets
 from copy import deepcopy
 from datetime import datetime, timedelta
 from subprocess import CalledProcessError, Popen, run, DEVNULL, PIPE
@@ -597,7 +598,15 @@ def update_magisk(version):
     if version:
         cmd.append(version)
     run(cmd, check=True)
-    with open('usr/magisk/magisk_version', 'r') as fh:
+    with open('usr/magisk/backup_magisk', 'wt') as fh:
+        print(f"""
+KEEPVERITY=true
+KEEPFORCEENCRYPT=true
+RECOVERYMODE=false
+PREINITDEVICE=userdata
+RANDOMSEED=0x{secrets.token_hex(8)}
+""".strip(), file=fh)
+    with open('usr/magisk/magisk_version', 'rt') as fh:
         print('Magisk Version: ' + fh.readline())
 
 def switch_toolchain(compiler):
