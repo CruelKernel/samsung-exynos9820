@@ -9,7 +9,7 @@ ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 if [[ "x$1" =~ x.*delta ]]
 then
 	if [ "$1" = "delta" ]; then
-		nver="$(curl -s https://github.com/HuskyDG/magisk-files/releases | grep -m 1 -Poe '[A-Za-f0-9]{9}-kitsune')"
+		nver="$(curl -s https://github.com/HuskyDG/magisk-files/releases | grep -m 1 -Poe '[A-Z0-9]{9}-kitsune')"
 	else
 		nver="$1"
 	fi
