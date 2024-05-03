@@ -1,6 +1,7 @@
 name: Build
 
-on: [push]
+on:
+  workflow_dispatch:
 
 env:
   TOOLCHAIN: cruel
