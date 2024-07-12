@@ -9,11 +9,11 @@ ver="$(cat "$DIR/magisk_version" 2>/dev/null || echo -n 'none')"
 if [ "x$1" = "xcanary" ]
 then
 	nver="canary"
-	magisk_link="https://raw.githubusercontent.com/topjohnwu/magisk-files/canary/app-debug.apk"
+	magisk_link="https://raw.github.com/topjohnwu/magisk-files/e23b98f8a2ba47b5110dd3e2937231c6a42db0b6/app-release.apk"
 elif [ "x$1" = "xalpha" ]
 then
 	nver="alpha"
-	magisk_link="http://www.onefuguizu.com/27003.apk"
+	magisk_link="https://raw.github.com/topjohnwu/magisk-files/e23b98f8a2ba47b5110dd3e2937231c6a42db0b6/app-release.apk"
 else
 	if [ "x$1" = "x" ]; then
 		nver="$(curl -s https://github.com/topjohnwu/Magisk/releases | grep -m 1 -Poe 'Magisk v[\d\.]+' | cut -d ' ' -f 2)"
