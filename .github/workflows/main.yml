@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N970F,N975F" ]
+        model: [ "N976N" ]
 
     steps:
       - uses: actions/checkout@v2
@@ -57,7 +57,7 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-v5.0"         \
                        toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       +magisk=canary            \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
