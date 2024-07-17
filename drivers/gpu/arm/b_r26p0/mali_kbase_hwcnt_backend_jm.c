@@ -439,6 +439,11 @@ static int kbasep_hwcnt_backend_jm_dump_alloc(
 	u64 flags;
 	u64 nr_pages;
 
+	/* Calls to this function are inherently asynchronous, with respect to
+	 * MMU operations.
+	 */
+	const enum kbase_caller_mmu_sync_info mmu_sync_info = CALLER_MMU_ASYNC;
+
 	WARN_ON(!info);
 	WARN_ON(!kctx);
 	WARN_ON(!gpu_dump_va);
@@ -453,7 +458,7 @@ static int kbasep_hwcnt_backend_jm_dump_alloc(
 
 	nr_pages = PFN_UP(info->dump_bytes);
 
-	reg = kbase_mem_alloc(kctx, nr_pages, nr_pages, 0, &flags, gpu_dump_va);
+	reg = kbase_mem_alloc(kctx, nr_pages, nr_pages, 0, &flags, gpu_dump_va, mmu_sync_info);
 
 	if (!reg)
 		return -ENOMEM;

@@ -300,6 +300,10 @@ void kbase_job_hw_submit(struct kbase_device *kbdev,
 			&kbdev->gpu_props.props.raw_props.js_features[js],
 			"ctx_nr,atom_nr");
 	kbase_kinstr_jm_atom_hw_submit(katom);
+
+	/* Update the slot's last katom submission kctx */
+	kbdev->hwaccess.backend.slot_rb[js].last_kctx_tagged = SLOT_RB_TAG_KCTX(kctx);
+
 #if IS_ENABLED(CONFIG_GPU_TRACEPOINTS)
 	if (!kbase_backend_nr_atoms_submitted(kbdev, js)) {
 		/* If this is the only job on the slot, trace it as starting */
@@ -310,7 +314,6 @@ void kbase_job_hw_submit(struct kbase_device *kbdev,
 						sizeof(js_string)),
 				ktime_to_ns(katom->start_timestamp),
 				(u32)katom->kctx->id, 0, katom->work_id);
-		kbdev->hwaccess.backend.slot_rb[js].last_context = katom->kctx;
 	}
 #endif
 

@@ -136,6 +136,7 @@ enum tl_msg_id_aux {
 	KBASE_AUX_DEVFREQ_TARGET,
 	KBASE_AUX_PROTECTED_ENTER_START,
 	KBASE_AUX_PROTECTED_ENTER_END,
+	KBASE_AUX_MMU_COMMAND,
 	KBASE_AUX_PROTECTED_LEAVE_START,
 	KBASE_AUX_PROTECTED_LEAVE_END,
 	KBASE_AUX_JIT_STATS,
@@ -1747,6 +1748,45 @@ void __kbase_tlstream_aux_protected_enter_end(
 	pos = kbasep_serialize_timestamp(buffer, pos);
 	pos = kbasep_serialize_bytes(buffer,
 		pos, &gpu, sizeof(gpu));
+
+	kbase_tlstream_msgbuf_release(stream, acq_flags);
+}
+
+void __kbase_tlstream_aux_mmu_command(
+	struct kbase_tlstream *stream,
+	u32 kernel_ctx_id,
+	u32 mmu_cmd_id,
+	u32 mmu_synchronicity,
+	u64 mmu_lock_addr,
+	u32 mmu_lock_page_num
+)
+{
+	const u32 msg_id = KBASE_AUX_MMU_COMMAND;
+	const size_t msg_size = sizeof(msg_id) + sizeof(u64)
+		+ sizeof(kernel_ctx_id)
+		+ sizeof(mmu_cmd_id)
+		+ sizeof(mmu_synchronicity)
+		+ sizeof(mmu_lock_addr)
+		+ sizeof(mmu_lock_page_num)
+		;
+	char *buffer;
+	unsigned long acq_flags;
+	size_t pos = 0;
+
+	buffer = kbase_tlstream_msgbuf_acquire(stream, msg_size, &acq_flags);
+
+	pos = kbasep_serialize_bytes(buffer, pos, &msg_id, sizeof(msg_id));
+	pos = kbasep_serialize_timestamp(buffer, pos);
+	pos = kbasep_serialize_bytes(buffer,
+		pos, &kernel_ctx_id, sizeof(kernel_ctx_id));
+	pos = kbasep_serialize_bytes(buffer,
+		pos, &mmu_cmd_id, sizeof(mmu_cmd_id));
+	pos = kbasep_serialize_bytes(buffer,
+		pos, &mmu_synchronicity, sizeof(mmu_synchronicity));
+	pos = kbasep_serialize_bytes(buffer,
+		pos, &mmu_lock_addr, sizeof(mmu_lock_addr));
+	pos = kbasep_serialize_bytes(buffer,
+		pos, &mmu_lock_page_num, sizeof(mmu_lock_page_num));
 
 	kbase_tlstream_msgbuf_release(stream, acq_flags);
 }

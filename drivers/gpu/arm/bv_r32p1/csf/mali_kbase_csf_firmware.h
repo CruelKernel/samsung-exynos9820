@@ -23,7 +23,7 @@
 #define _KBASE_CSF_FIRMWARE_H_
 
 #include "device/mali_kbase_device.h"
-#include <uapi/gpu/arm/midgard/csf/mali_gpu_csf_registers.h>
+#include <uapi/gpu/arm/bv_r32p1/csf/mali_gpu_csf_registers.h>
 
 /*
  * PAGE_KERNEL_RO was only defined on 32bit ARM in 4.19 in:

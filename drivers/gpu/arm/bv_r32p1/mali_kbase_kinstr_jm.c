@@ -25,7 +25,7 @@
  */
 
 #include "mali_kbase_kinstr_jm.h"
-#include <uapi/gpu/arm/midgard/mali_kbase_kinstr_jm_reader.h>
+#include <uapi/gpu/arm/bv_r32p1/mali_kbase_kinstr_jm_reader.h>
 
 #include "mali_kbase.h"
 #include "mali_kbase_linux.h"

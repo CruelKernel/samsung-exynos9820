@@ -23,7 +23,7 @@
 #define _KBASE_CACHE_POLICY_BACKEND_H_
 
 #include "mali_kbase.h"
-#include <uapi/gpu/arm/midgard/mali_base_kernel.h>
+#include <uapi/gpu/arm/bv_r32p1/mali_base_kernel.h>
 
 /**
   * kbase_cache_set_coherency_mode() - Sets the system coherency mode

@@ -46,7 +46,7 @@
 #include <mali_kbase_hwaccess_instr.h>
 #endif
 #include <mali_kbase_reset_gpu.h>
-#include <uapi/gpu/arm/midgard/mali_kbase_ioctl.h>
+#include <uapi/gpu/arm/bv_r32p1/mali_kbase_ioctl.h>
 #if !MALI_USE_CSF
 #include "mali_kbase_kinstr_jm.h"
 #endif
@@ -808,16 +808,13 @@ static int kbase_api_mem_alloc(struct kbase_context *kctx,
 	u64 flags = alloc->in.flags;
 	u64 gpu_va;
 
-	rcu_read_lock();
-	/* Don't allow memory allocation until user space has set up the
-	 * tracking page (which sets kctx->process_mm). Also catches when we've
-	 * forked.
+	/* Calls to this function are inherently asynchronous, with respect to
+	 * MMU operations.
 	 */
-	if (rcu_dereference(kctx->process_mm) != current->mm) {
-		rcu_read_unlock();
+	const enum kbase_caller_mmu_sync_info mmu_sync_info = CALLER_MMU_ASYNC;
+
+	if (!kbase_mem_allow_alloc(kctx))
 		return -EINVAL;
-	}
-	rcu_read_unlock();
 
 	if (flags & BASEP_MEM_FLAGS_KERNEL_ONLY)
 		return -ENOMEM;
@@ -848,8 +845,8 @@ static int kbase_api_mem_alloc(struct kbase_context *kctx,
 	}
 #endif
 
-	reg = kbase_mem_alloc(kctx, alloc->in.va_pages, alloc->in.commit_pages,
-			      alloc->in.extension, &flags, &gpu_va);
+	reg = kbase_mem_alloc(kctx, alloc->in.va_pages, alloc->in.commit_pages, alloc->in.extension,
+			      &flags, &gpu_va, mmu_sync_info);
 
 	if (!reg)
 		return -ENOMEM;

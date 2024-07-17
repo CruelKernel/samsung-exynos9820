@@ -67,6 +67,9 @@ extern int set_hmp_boost(int enable);
 #define ENTRY_FLAGS_MASK (ENTRY_ATTR_BITS | ENTRY_RD_BIT | ENTRY_WR_BIT | \
 		ENTRY_SHARE_BITS | ENTRY_ACCESS_BIT | ENTRY_NX_BIT)
 
+#define UNUSED_BIT_POSITION_IN_PAGE_DESCRIPTOR (55)
+#define VALID_ENTRY_MASK ((u64)0xF << UNUSED_BIT_POSITION_IN_PAGE_DESCRIPTOR)
+
 /*
 * peak_flops: 100/85
 * sobel: 100/50
@@ -387,6 +390,7 @@ static phys_addr_t mmu_pte_to_phy_addr(u64 entry)
 	if (!(entry & 1))
 		return 0;
 
+	entry &= ~VALID_ENTRY_MASK;
 	return entry & ~0xFFF;
 }
 

@@ -282,6 +282,11 @@ int kbase_dummy_job_wa_load(struct kbase_device *kbdev)
 	int err;
 	struct kbase_context *kctx;
 
+	/* Calls to this function are inherently asynchronous, with respect to
+	 * MMU operations.
+	 */
+	const enum kbase_caller_mmu_sync_info mmu_sync_info = CALLER_MMU_ASYNC;
+
 	if (!wa_blob_load_needed(kbdev))
 		return 0;
 
@@ -375,7 +380,7 @@ int kbase_dummy_job_wa_load(struct kbase_device *kbdev)
 		flags = blob->map_flags | BASE_MEM_FLAG_MAP_FIXED;
 
 		va_region = kbase_mem_alloc(kctx, nr_pages, nr_pages,
-					    0, &flags, &gpu_va);
+					    0, &flags, &gpu_va, mmu_sync_info);
 
 		if (!va_region) {
 			dev_err(kbdev->dev, "Failed to allocate for blob\n");

@@ -492,6 +492,14 @@ void __kbase_tlstream_tl_kbase_csffw_reset(
 	struct kbase_tlstream *stream,
 	u64 csffw_cycle);
 
+void __kbase_tlstream_aux_mmu_command(
+	struct kbase_tlstream *stream,
+	u32 kernel_ctx_id,
+	u32 mmu_cmd_id,
+	u32 mmu_synchronicity,
+	u64 mmu_lock_addr,
+	u32 mmu_lock_page_num
+);
 struct kbase_tlstream;
 
 /**
@@ -3091,6 +3099,36 @@ struct kbase_tlstream;
 	do { } while (0)
 #endif /* MALI_USE_CSF */
 
+/**
+ * KBASE_TLSTREAM_AUX_MMU_COMMAND - mmu commands with synchronicity info
+ *
+ * @kbdev: Kbase device
+ * @kernel_ctx_id: Unique ID for the KBase Context
+ * @mmu_cmd_id: MMU Command ID (e.g AS_COMMAND_UPDATE)
+ * @mmu_synchronicity: Indicates whether the command is related to current running job that needs to be resolved to make it progress (synchronous, e.g. grow on page fault, JIT) or not (asynchronous, e.g. IOCTL calls from user-space). This param will be 0 if it is an asynchronous operation.
+ * @mmu_lock_addr: start address of regions to be locked/unlocked/invalidated
+ * @mmu_lock_page_num: number of pages to be locked/unlocked/invalidated
+ */
+#define KBASE_TLSTREAM_AUX_MMU_COMMAND(	\
+	kbdev,	\
+	kernel_ctx_id,	\
+	mmu_cmd_id,	\
+	mmu_synchronicity,	\
+	mmu_lock_addr,	\
+	mmu_lock_page_num	\
+	)	\
+	do {	\
+		int enabled = atomic_read(&kbdev->timeline_flags);	\
+		if (enabled & TLSTREAM_ENABLED)	\
+			__kbase_tlstream_aux_mmu_command(	\
+				__TL_DISPATCH_STREAM(kbdev, aux),	\
+				kernel_ctx_id,	\
+				mmu_cmd_id,	\
+				mmu_synchronicity,	\
+				mmu_lock_addr,	\
+				mmu_lock_page_num	\
+				);	\
+	} while (0)
 
 /* Gator tracepoints are hooked into TLSTREAM interface.
  * When the following tracepoints are called, corresponding

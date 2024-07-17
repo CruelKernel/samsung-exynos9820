@@ -670,7 +670,6 @@ static int __init sensor_module_2l3_probe(struct platform_device *pdev)
 	v4l2_set_subdevdata(subdev_module, module);
 	v4l2_set_subdev_hostdata(subdev_module, device);
 	snprintf(subdev_module->name, V4L2_SUBDEV_NAME_SIZE, "sensor-subdev.%d", module->sensor_id);
-	probe_info("module->cfg=%p module->cfgs=%d\n", module->cfg, module->cfgs);
 
 	s = pinctrl_lookup_state(pdata->pinctrl, "release");
 

@@ -28,7 +28,7 @@
 #include <mali_kbase_gpuprops.h>
 #include <mali_kbase_hwaccess_gpuprops.h>
 #include <mali_kbase_config_defaults.h>
-#include <uapi/gpu/arm/midgard/mali_kbase_ioctl.h>
+#include <uapi/gpu/arm/bv_r32p1/mali_kbase_ioctl.h>
 #include <linux/clk.h>
 #include <backend/gpu/mali_kbase_pm_internal.h>
 #include <linux/of_platform.h>

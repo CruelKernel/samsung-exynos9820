@@ -27,7 +27,7 @@
 #include <linux/export.h>
 #include <linux/priority_control_manager.h>
 #include <linux/shmem_fs.h>
-#include <uapi/gpu/arm/midgard/csf/mali_gpu_csf_registers.h>
+#include <uapi/gpu/arm/bv_r32p1/csf/mali_gpu_csf_registers.h>
 #include "mali_kbase_csf_tiler_heap.h"
 #include <mmu/mali_kbase_mmu.h>
 #include "mali_kbase_csf_timeout.h"

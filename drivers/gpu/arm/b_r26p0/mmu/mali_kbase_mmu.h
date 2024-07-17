@@ -23,6 +23,31 @@
 #ifndef _KBASE_MMU_H_
 #define _KBASE_MMU_H_
 
+
+#define KBASE_MMU_PAGE_ENTRIES 512
+
+struct kbase_context;
+struct kbase_mmu_table;
+
+/**
+ * enum kbase_caller_mmu_sync_info - MMU-synchronous caller info.
+ * A pointer to this type is passed down from the outer-most callers in the kbase
+ * module - where the information resides as to the synchronous / asynchronous
+ * nature of the call flow, with respect to MMU operations. ie - does the call flow relate to
+ * existing GPU work does it come from requests (like ioctl) from user-space, power management,
+ * etc.
+ *
+ * @CALLER_MMU_UNSET_SYNCHRONICITY: default value must be invalid to avoid accidental choice
+ *                                  of a 'valid' value
+ * @CALLER_MMU_SYNC: Arbitrary value for 'synchronous that isn't easy to choose by accident
+ * @CALLER_MMU_ASYNC: Also hard to choose by accident
+ */
+enum kbase_caller_mmu_sync_info {
+	CALLER_MMU_UNSET_SYNCHRONICITY,
+	CALLER_MMU_SYNC = 0x02,
+	CALLER_MMU_ASYNC
+};
+
 /**
  * kbase_mmu_init - Initialise an object representing GPU page tables
  *
@@ -80,22 +105,21 @@ void kbase_mmu_term(struct kbase_device *kbdev, struct kbase_mmu_table *mmut);
 u64 kbase_mmu_create_ate(struct kbase_device *kbdev,
 	struct tagged_addr phy, unsigned long flags, int level, int group_id);
 
-int kbase_mmu_insert_pages_no_flush(struct kbase_device *kbdev,
-				    struct kbase_mmu_table *mmut,
-				    const u64 start_vpfn,
-				    struct tagged_addr *phys, size_t nr,
-				    unsigned long flags, int group_id);
+int kbase_mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mmu_table *mmut,
+				    const u64 start_vpfn, struct tagged_addr *phys, size_t nr,
+				    unsigned long flags, int group_id, u64 *dirty_pgds);
 int kbase_mmu_insert_pages(struct kbase_device *kbdev,
 			   struct kbase_mmu_table *mmut, u64 vpfn,
 			   struct tagged_addr *phys, size_t nr,
-			   unsigned long flags, int as_nr, int group_id);
+			   unsigned long flags, int as_nr, int group_id,
+			   enum kbase_caller_mmu_sync_info mmu_sync_info);
 int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 vpfn,
-					struct tagged_addr phys, size_t nr,
-					unsigned long flags, int group_id);
+				 struct tagged_addr phys, size_t nr,
+				 unsigned long flags, int group_id,
+				 enum kbase_caller_mmu_sync_info mmu_sync_info);
 
-int kbase_mmu_teardown_pages(struct kbase_device *kbdev,
-			     struct kbase_mmu_table *mmut, u64 vpfn,
-			     size_t nr, int as_nr);
+int kbase_mmu_teardown_pages(struct kbase_device *kbdev, struct kbase_mmu_table *mmut, u64 vpfn,
+			     struct tagged_addr *phys, size_t nr, int as_nr);
 int kbase_mmu_update_pages(struct kbase_context *kctx, u64 vpfn,
 			   struct tagged_addr *phys, size_t nr,
 			   unsigned long flags, int const group_id);

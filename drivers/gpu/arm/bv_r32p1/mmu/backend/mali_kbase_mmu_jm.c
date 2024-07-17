@@ -66,7 +66,7 @@ void kbase_gpu_report_bus_fault_and_kill(struct kbase_context *kctx,
 
 	/* terminal fault, print info about the fault */
 	dev_err(kbdev->dev,
-		"GPU bus fault in AS%d at VA 0x%016llX\n"
+		"GPU bus fault in AS%d at PA 0x%016llX\n"
 		"raw fault status: 0x%X\n"
 		"exception type 0x%X: %s\n"
 		"exception data 0x%X\n"

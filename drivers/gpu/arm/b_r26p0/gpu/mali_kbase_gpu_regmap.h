@@ -27,6 +27,17 @@
 #include "mali_kbase_gpu_id.h"
 #include "backend/mali_kbase_gpu_regmap_jm.h"
 
+/* GPU_U definition */
+#ifdef __ASSEMBLER__
+#define GPU_U(x) x
+#define GPU_UL(x) x
+#define GPU_ULL(x) x
+#else
+#define GPU_U(x) x##u
+#define GPU_UL(x) x##ul
+#define GPU_ULL(x) x##ull
+#endif /* __ASSEMBLER__ */
+
 /* Begin Register Offsets */
 /* GPU control registers */
 
@@ -343,6 +354,20 @@
 #define AS_COMMAND_FLUSH_PT    0x04	/* Flush all L2 caches then issue a flush region command to all MMUs */
 #define AS_COMMAND_FLUSH_MEM   0x05	/* Wait for memory accesses to complete, flush all the L1s cache then
 					   flush all L2 caches then issue a flush region command to all MMUs */
+
+/* AS_LOCKADDR register */
+#define AS_LOCKADDR_LOCKADDR_SIZE_SHIFT GPU_U(0)
+#define AS_LOCKADDR_LOCKADDR_SIZE_MASK                                         \
+	(GPU_U(0x3F) << AS_LOCKADDR_LOCKADDR_SIZE_SHIFT)
+#define AS_LOCKADDR_LOCKADDR_SIZE_GET(reg_val)                                 \
+	(((reg_val)&AS_LOCKADDR_LOCKADDR_SIZE_MASK) >>                               \
+	 AS_LOCKADDR_LOCKADDR_SIZE_SHIFT)
+#define AS_LOCKADDR_LOCKADDR_BASE_SHIFT GPU_U(12)
+#define AS_LOCKADDR_LOCKADDR_BASE_MASK                                         \
+	(GPU_ULL(0xFFFFFFFFFFFFF) << AS_LOCKADDR_LOCKADDR_BASE_SHIFT)
+#define AS_LOCKADDR_LOCKADDR_BASE_GET(reg_val)                                 \
+	(((reg_val)&AS_LOCKADDR_LOCKADDR_BASE_MASK) >>                               \
+	 AS_LOCKADDR_LOCKADDR_BASE_SHIFT)
 
 /* GPU_STATUS values */
 #define GPU_STATUS_PRFCNT_ACTIVE            (1 << 2)    /* Set if the performance counters are active. */

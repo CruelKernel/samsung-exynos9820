@@ -293,7 +293,7 @@ struct kbase_as {
  *                        it is NULL
  */
 struct kbase_mmu_table {
-	u64 *mmu_teardown_pages;
+	u64 *mmu_teardown_pages[MIDGARD_MMU_BOTTOMLEVEL];
 	struct mutex mmu_lock;
 	phys_addr_t pgd;
 	u8 group_id;
@@ -577,8 +577,11 @@ struct kbase_devfreq_opp {
  * @entry_set_ate:    program the pte to be a valid address translation entry to
  *                    encode the physical address of the actual page being mapped.
  * @entry_set_pte:    program the pte to be a valid entry to encode the physical
- *                    address of the next lower level page table.
- * @entry_invalidate: clear out or invalidate the pte.
+ *                    address of the next lower level page table and also update
+ *                    the number of valid entries.
+ * @entries_invalidate: clear out or invalidate a range of ptes.
+ * @get_num_valid_entries: returns the number of valid entries for a specific pgd.
+ * @set_num_valid_entries: sets the number of valid entries for a specific pgd
  * @flags:            bitmask of MMU mode flags. Refer to KBASE_MMU_MODE_ constants.
  */
 struct kbase_mmu_mode {
@@ -594,7 +597,10 @@ struct kbase_mmu_mode {
 	void (*entry_set_ate)(u64 *entry, struct tagged_addr phy,
 			unsigned long flags, int level);
 	void (*entry_set_pte)(u64 *entry, phys_addr_t phy);
-	void (*entry_invalidate)(u64 *entry);
+    void (*entries_invalidate)(u64 *entry, u32 count);
+	unsigned int (*get_num_valid_entries)(u64 *pgd);
+	void (*set_num_valid_entries)(u64 *pgd,
+				      unsigned int num_of_valid_entries);
 	unsigned long flags;
 };
 
@@ -1800,8 +1806,7 @@ struct kbasep_gwt_list_element {
  */
 struct kbase_ctx_ext_res_meta {
 	struct list_head ext_res_node;
-	struct kbase_mem_phy_alloc *alloc;
-	u64 gpu_addr;
+    struct kbase_va_region *reg;
 	u32 ref;
 };
 
@@ -1829,6 +1834,24 @@ static inline bool kbase_device_is_cpu_coherent(struct kbase_device *kbdev)
 		return true;
 
 	return false;
+}
+
+/**
+ * kbase_get_lock_region_min_size_log2 - Returns the minimum size of the MMU lock
+ * region, as a logarithm
+ *
+ * @gpu_props:   GPU properties
+ *
+ * Return: the minimum size of the MMU lock region as dictated by the corresponding
+ * arch spec.
+ */
+static inline u64 kbase_get_lock_region_min_size_log2(struct kbase_gpu_props const *gpu_props)
+{
+	if (GPU_ID2_MODEL_MATCH_VALUE(gpu_props->props.core_props.product_id) >=
+	    GPU_ID2_MODEL_MAKE(12, 0))
+		return 12; /* 4 kB */
+
+	return 15; /* 32 kB */
 }
 
 /* Conversion helpers for setting up high resolution timers */

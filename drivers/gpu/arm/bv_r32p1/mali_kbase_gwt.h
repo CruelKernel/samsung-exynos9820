@@ -23,7 +23,7 @@
 #define _KBASE_GWT_H
 
 #include <mali_kbase.h>
-#include <uapi/gpu/arm/midgard/mali_kbase_ioctl.h>
+#include <uapi/gpu/arm/bv_r32p1/mali_kbase_ioctl.h>
 
 /**
  * kbase_gpu_gwt_start - Start the GPU write tracking

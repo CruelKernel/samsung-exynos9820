@@ -57,7 +57,7 @@ struct kbase_mem_phy_alloc;
  */
 struct kbase_va_region *kbase_mem_alloc(struct kbase_context *kctx,
 		u64 va_pages, u64 commit_pages, u64 extent, u64 *flags,
-		u64 *gpu_va);
+		u64 *gpu_va, enum kbase_caller_mmu_sync_info mmu_sync_info);
 
 /**
  * kbase_mem_query - Query properties of a GPU memory region
@@ -186,7 +186,8 @@ void kbase_mem_evictable_deinit(struct kbase_context *kctx);
  */
 int kbase_mem_grow_gpu_mapping(struct kbase_context *kctx,
 		struct kbase_va_region *reg,
-		u64 new_pages, u64 old_pages);
+		u64 new_pages, u64 old_pages,
+		enum kbase_caller_mmu_sync_info mmu_sync_info);
 
 /**
  * kbase_mem_evictable_make - Make a physical allocation eligible for eviction

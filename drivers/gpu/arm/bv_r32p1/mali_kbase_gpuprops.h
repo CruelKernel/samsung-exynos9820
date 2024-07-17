@@ -82,6 +82,8 @@ int kbase_gpuprops_update_l2_features(struct kbase_device *kbdev);
  * @kbdev: The kbase device
  *
  * Fills prop_buffer with the GPU properties for user space to read.
+ *
+ * Return: MALI_ERROR_NONE on success. Any other value indicates failure.
  */
 int kbase_gpuprops_populate_user_buffer(struct kbase_device *kbdev);
 
