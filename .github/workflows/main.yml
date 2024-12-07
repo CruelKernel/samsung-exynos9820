@@ -1,6 +1,7 @@
 name: Build
 
-on: [push]
+on:
+  workflow_dispatch:
 
 env:
   TOOLCHAIN: cruel
@@ -13,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [ "G970F,G973F,G975F", "N975F" ]
+        model: [ "G975F" ]
 
     steps:
       - uses: actions/checkout@v3
@@ -57,16 +58,21 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-devel"        \
                        toolchain=$TOOLCHAIN      \
-                       +magisk                   \
+                       -magisk                   \
                        +nohardening              \
                        +ttl                      \
                        +wireguard                \
                        +cifs                     \
                        +sdfat                    \
                        +ntfs                     \
-                       +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
+                       +1000hz                   \ 
+                       +performance              \
+                       +nodebug                  \
+                       +noaudit                  \
+                       +noswap                   \
+                       +mass_storage             \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
