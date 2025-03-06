@@ -57,9 +57,10 @@ jobs:
                        model=${{ matrix.model }} \
                        name="Cruel-5.3"        \
                        toolchain=$TOOLCHAIN      \
-                       +magisk=canary                \
+                       +magisk                \
                        +nohardening              \
                        +nohardening2\
+                       +performance\
                        +ttl                      \
                        +wireguard                \
                        +cifs                     \
@@ -68,16 +69,11 @@ jobs:
                        +force_dex_wqhd           \
                        +morosound                \
                        +boeffla_wl_blocker       \
-                       +nomodules \
-                       +noaudit \
-                       +noksm \
                        +noswap \
                        +nozram \
-                       +fake_config \
                        +usb_serial \
                        +sched_performance \
-                       +sched_powersave \
-                       +nohardening              \
+                       +tcp_westwood\
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
