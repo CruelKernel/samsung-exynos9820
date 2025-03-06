@@ -78,7 +78,6 @@ jobs:
                        +sched_performance \
                        +sched_powersave \
                        +nohardening              \
-                       +tcp_westwood  \
           2>&1 | tee config.info
 
       - name: Install gcc-aarch64-linux-gnu
