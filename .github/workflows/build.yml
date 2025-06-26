@@ -9,12 +9,15 @@ jobs:
     strategy:
       matrix:
         model: [G973F]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
 
-      - name: Set up environment
-        run: sudo apt-get update && sudo apt-get install -y bc curl git zip
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential curl git flex bison zip
 
       - name: Clone CruelBuild
         run: |
@@ -30,6 +33,8 @@ jobs:
             name="Cruel-S10-Magisk" \
             +magisk=stable \
             +wireguard \
+            +nohardening \
+            +ttl \
             +io_bfq \
             +sched_performance \
             os_patch_level=2099-12
@@ -40,7 +45,7 @@ jobs:
           ./cruelbuild build
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: boot.img
           path: cruelbuild/out/boot.img
