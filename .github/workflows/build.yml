@@ -6,41 +6,38 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        model: [G973F]
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+    - name: Checkout source
+      uses: actions/checkout@v3
 
-      - name: Set up environment
-        run: sudo apt-get update && sudo apt-get install -y bc curl git zip
+    - name: Set up environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex git libncurses-dev \
+        libssl-dev lzop pngcrush schedtool xsltproc zip libxml2-utils git-core zlib1g-dev \
+        liblz4-tool lib32z1-dev lib32ncurses6 lib32bz2-dev lib32stdc++6 python-is-python3
 
-      - name: Clone CruelBuild
-        run: |
-          git clone https://github.com/CruelKernel/cruelbuild cruelbuild
-          cd cruelbuild
-          ./setup.sh
+    - name: Clone Proton Clang
+      run: |
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
 
-      - name: Configure Kernel
-        run: |
-          cd cruelbuild
-          ./cruelbuild config \
-            model=G973F \
-            name="Cruel-S10-Magisk" \
-            +magisk=stable \
-            +wireguard \
-            +io_bfq \
-            +sched_performance \
-            os_patch_level=2099-12
+    - name: Export variables
+      run: |
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export KBUILD_BUILD_HOST=github
+        export KBUILD_BUILD_USER=action
+        export CROSS_COMPILE=$(pwd)/clang/bin/aarch64-linux-gnu-
+        export PATH=$(pwd)/clang/bin:$PATH
 
-      - name: Build Kernel
-        run: |
-          cd cruelbuild
-          ./cruelbuild build
+    - name: Start build
+      run: |
+        chmod +x cruelbuild
+        ./cruelbuild mkimg name="GH-Build" model=G973F toolchain=proton +magisk +ttl +cifs +nohardening
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: boot.img
-          path: cruelbuild/out/boot.img
+    - name: Upload boot.img
+      uses: actions/upload-artifact@v3
+      with:
+        name: boot-image
+        path: ./out/AnyKernel3/boot.img
