@@ -20,12 +20,12 @@ jobs:
           sudo apt-get install -y bc build-essential curl git flex bison zip
 
       - name: Clone CruelBuild
-        run: |
-          set -x
-          rm -rf cruelbuild
-          git clone https://github.com/CruelKernel/cruelbuild cruelbuild
-          cd cruelbuild
-          ./setup.sh
+  run: |
+    set -x
+    rm -rf cruelbuild
+    git clone https://github.com/cetin3565/cruelbuild cruelbuild
+    cd cruelbuild
+    ./setup.sh
 
       - name: Configure Kernel with Magisk v25.2
         run: |
