@@ -1,43 +1,92 @@
-name: Build Kernel
+name: Build
 
-on:
-  workflow_dispatch:
+on: [push]
+
+env:
+  TOOLCHAIN: cruel
+  INSTALLER: yes
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.7'
 
-    - name: Set up environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex git libncurses-dev \
-        libssl-dev lzop pngcrush schedtool xsltproc zip libxml2-utils git-core zlib1g-dev \
-        liblz4-tool lib32z1-dev lib32ncurses6 lib32bz2-dev lib32stdc++6 python-is-python3
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -y -qq libtinfo5 ccache
 
-    - name: Clone Proton Clang
-      run: |
-        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+      - name: Disable compression in ccache
+        run: ccache -o compression=false -o cache_dir=$HOME/.ccache
 
-    - name: Export variables
-      run: |
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export KBUILD_BUILD_HOST=github
-        export KBUILD_BUILD_USER=action
-        export CROSS_COMPILE=$(pwd)/clang/bin/aarch64-linux-gnu-
-        export PATH=$(pwd)/clang/bin:$PATH
+      - name: Cache ccache files
+        uses: actions/cache@v3
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.TOOLCHAIN }}-G973F-${{ github.run_id }}
 
-    - name: Start build
-      run: |
-        chmod +x cruelbuild
-        ./cruelbuild mkimg name="GH-Build" model=G973F toolchain=proton +magisk +ttl +cifs +nohardening
+      - name: Kernel Configure
+        run: |
+          ./cruelbuild config \
+            model=G973F \
+            name="Cruel-S10" \
+            toolchain=$TOOLCHAIN \
+            +magisk +nohardening +ttl +wireguard +cifs +sdfat +ntfs \
+            +force_dex_wqhd +morosound +boeffla_wl_blocker \
+          2>&1 | tee config.info
 
-    - name: Upload boot.img
-      uses: actions/upload-artifact@v3
-      with:
-        name: boot-image
-        path: ./out/AnyKernel3/boot.img
+      - name: Deploy Toolchain
+        run: git clone --depth 1 --branch $TOOLCHAIN https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
+
+      - name: Build Kernel
+        run: ./cruelbuild :build
+
+      - name: Install Tools (mkbootimg, mkdtboimg, avbtool)
+        run: |
+          wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py gki
+          chmod +x mkbootimg.py && sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+          wget -q https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master.tar.gz -O - | tar --strip-components 2 -xzf - utils/src/mkdtboimg.py
+          chmod +x mkdtboimg.py && sudo mv mkdtboimg.py /usr/local/bin/mkdtboimg
+          wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/master.tar.gz -O - | tar xzf - avbtool.py
+          chmod +x avbtool.py && sudo mv avbtool.py /usr/local/bin/avbtool
+
+      - name: Make Kernel Image
+        run: ./cruelbuild :mkimg
+
+      - name: Package Installer
+        if: env.INSTALLER == 'yes'
+        run: ./cruelbuild :pack
+
+      - name: Avoid Double Zipping
+        if: env.INSTALLER == 'yes'
+        run: |
+          mkdir -p installer && cd installer
+          unzip ../CruelKernel.zip
+
+      - name: Upload Installer
+        if: env.INSTALLER == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CruelKernel-G973F
+          path: installer/*
+          if-no-files-found: error
+
+      - name: Upload Kernel Image
+        if: env.INSTALLER != 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CruelKernel-G973F
+          path: '*.img'
+          if-no-files-found: error
+
+      - name: Upload Config Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConfigInfo-G973F
+          path: config.*
+          if-no-files-found: error
