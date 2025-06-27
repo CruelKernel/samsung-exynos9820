@@ -1,0 +1,92 @@
+name: Build
+
+on: [push]
+
+env:
+  TOOLCHAIN: cruel
+  INSTALLER: yes
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.7'
+
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -y -qq libtinfo5 ccache
+
+      - name: Disable compression in ccache
+        run: ccache -o compression=false -o cache_dir=$HOME/.ccache
+
+      - name: Cache ccache files
+        uses: actions/cache@v3
+        with:
+          path: ~/.ccache
+          key: ccache-${{ env.TOOLCHAIN }}-G973F-${{ github.run_id }}
+
+      - name: Kernel Configure
+        run: |
+          ./cruelbuild config \
+            model=G973F \
+            name="Cruel-S10" \
+            toolchain=$TOOLCHAIN \
+            +magisk +nohardening +ttl +wireguard +cifs +sdfat +ntfs \
+            +force_dex_wqhd +morosound +boeffla_wl_blocker \
+          2>&1 | tee config.info
+
+      - name: Deploy Toolchain
+        run: git clone --depth 1 --branch $TOOLCHAIN https://github.com/CruelKernel/samsung-exynos9820-toolchain toolchain
+
+      - name: Build Kernel
+        run: ./cruelbuild :build
+
+      - name: Install Tools (mkbootimg, mkdtboimg, avbtool)
+        run: |
+          wget -q https://android.googlesource.com/platform/system/tools/mkbootimg/+archive/refs/heads/master.tar.gz -O - | tar xzf - mkbootimg.py gki
+          chmod +x mkbootimg.py && sudo mv mkbootimg.py /usr/local/bin/mkbootimg
+          wget -q https://android.googlesource.com/platform/system/libufdt/+archive/refs/heads/master.tar.gz -O - | tar --strip-components 2 -xzf - utils/src/mkdtboimg.py
+          chmod +x mkdtboimg.py && sudo mv mkdtboimg.py /usr/local/bin/mkdtboimg
+          wget -q https://android.googlesource.com/platform/external/avb/+archive/refs/heads/master.tar.gz -O - | tar xzf - avbtool.py
+          chmod +x avbtool.py && sudo mv avbtool.py /usr/local/bin/avbtool
+
+      - name: Make Kernel Image
+        run: ./cruelbuild :mkimg
+
+      - name: Package Installer
+        if: env.INSTALLER == 'yes'
+        run: ./cruelbuild :pack
+
+      - name: Avoid Double Zipping
+        if: env.INSTALLER == 'yes'
+        run: |
+          mkdir -p installer && cd installer
+          unzip ../CruelKernel.zip
+
+      - name: Upload Installer
+        if: env.INSTALLER == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CruelKernel-G973F
+          path: installer/*
+          if-no-files-found: error
+
+      - name: Upload Kernel Image
+        if: env.INSTALLER != 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CruelKernel-G973F
+          path: '*.img'
+          if-no-files-found: error
+
+      - name: Upload Config Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConfigInfo-G973F
+          path: config.*
+          if-no-files-found: error
