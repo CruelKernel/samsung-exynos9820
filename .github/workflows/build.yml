@@ -1,0 +1,51 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        model: [G973F]
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential curl git flex bison zip
+
+      - name: Clone CruelBuild
+        run: |
+          git clone https://github.com/CruelKernel/cruelbuild cruelbuild
+          cd cruelbuild
+          ./setup.sh
+
+      - name: Configure Kernel with Magisk v25.2
+        run: |
+          cd cruelbuild
+          ./cruelbuild config \
+            model=G973F \
+            name="Cruel-S10-Magisk" \
+            +magisk=25.2 \
+            +wireguard \
+            +nohardening \
+            +ttl \
+            +io_bfq \
+            +sched_performance \
+            os_patch_level=2099-12
+
+      - name: Build Kernel
+        run: |
+          cd cruelbuild
+          ./cruelbuild build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: boot.img
+          path: cruelbuild/out/boot.img
