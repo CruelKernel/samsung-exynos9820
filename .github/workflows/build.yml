@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: sudo apt-get install -y -qq libtinfo5 ccache
+        run: sudo apt-get install -y -qq libtinfo5 ccache unzip
 
       - name: Disable compression in ccache
         run: ccache -o compression=false -o cache_dir=$HOME/.ccache
@@ -65,8 +65,8 @@ jobs:
       - name: Avoid Double Zipping
         if: env.INSTALLER == 'yes'
         run: |
-          mkdir -p installer && cd installer
-          unzip ../CruelKernel.zip
+          mkdir -p installer
+          if [ -f CruelKernel.zip ]; then unzip CruelKernel.zip -d installer; fi
 
       - name: Upload Installer
         if: env.INSTALLER == 'yes'
@@ -74,19 +74,19 @@ jobs:
         with:
           name: CruelKernel-G973F
           path: installer/*
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload Kernel Image
         if: env.INSTALLER != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: CruelKernel-G973F
-          path: '*.img'
-          if-no-files-found: error
+          path: ./*.img
+          if-no-files-found: warn
 
       - name: Upload Config Info
         uses: actions/upload-artifact@v4
         with:
           name: ConfigInfo-G973F
           path: config.*
-          if-no-files-found: error
+          if-no-files-found: warn
