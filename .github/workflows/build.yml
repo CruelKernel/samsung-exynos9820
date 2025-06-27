@@ -20,12 +20,11 @@ jobs:
           sudo apt-get install -y bc build-essential curl git flex bison zip
 
       - name: Clone CruelBuild
-  run: |
-    set -x
-    rm -rf cruelbuild
-    git clone https://github.com/cetin3565/cruelbuild cruelbuild
-    cd cruelbuild
-    ./setup.sh
+        run: |
+          set -x
+          git clone https://github.com/cetin3565/cruelbuild cruelbuild
+          cd cruelbuild
+          ./setup.sh
 
       - name: Configure Kernel with Magisk v25.2
         run: |
@@ -49,13 +48,13 @@ jobs:
           ./cruelbuild build 2>&1 | tee build.log
 
       - name: Upload boot.img Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: boot.img
           path: cruelbuild/out/boot.img
 
       - name: Upload Build Log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: build.log
           path: cruelbuild/build.log
