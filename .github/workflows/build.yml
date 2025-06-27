@@ -1,7 +1,7 @@
 name: Build
 
-on: [push]
-
+on:
+  workflow_dispatch:  # elle tetikleme
 env:
   TOOLCHAIN: cruel
   INSTALLER: yes
