@@ -522,7 +522,7 @@ def parse_args():
     return configs
 
 def setup_env(features, configs, model):
-    set_env(ARCH='arm64', PLATFORM_VERSION='11', ANDROID_MAJOR_VERSION='r')
+    set_env(ARCH='arm64', PLATFORM_VERSION='12', ANDROID_MAJOR_VERSION='s')
     set_env(KBUILD_BUILD_TIMESTAMP='')
     if features['fake_config']:
         defconfig = os.path.join('arch/arm64/configs', models[model]['config'])
