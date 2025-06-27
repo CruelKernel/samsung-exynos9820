@@ -1,6 +1,5 @@
 name: Build Kernel
 
-
 on: [push]
 
 jobs:
@@ -18,20 +17,13 @@ jobs:
         run: |
           set -x
           sudo apt-get update
-          sudo apt-get install -y bc build-essential curl git flex bison zip
+          sudo apt-get install -y bc build-essential curl git flex bison zip python3
 
-      - name: Clone CruelBuild
+      - name: Build Kernel
         run: |
           set -x
-          git clone https://github.com/cetin3565/cruelbuild cruelbuild
-          cd cruelbuild
-          ./setup.sh
-
-      - name: Configure Kernel with Magisk v25.2
-        run: |
-          set -x
-          cd cruelbuild
-          ./cruelbuild config \
+          chmod +x ./build.sh
+          ./build.sh \
             model=G973F \
             name="Cruel-S10-Magisk" \
             +magisk=25.2 \
@@ -40,22 +32,17 @@ jobs:
             +ttl \
             +io_bfq \
             +sched_performance \
-            os_patch_level=2099-12
+            os_patch_level=2099-12 \
+          2>&1 | tee build.log
 
-      - name: Build Kernel
-        run: |
-          set -x
-          cd cruelbuild
-          ./cruelbuild build 2>&1 | tee build.log
-
-      - name: Upload boot.img Artifact
+      - name: Upload boot.img
         uses: actions/upload-artifact@v4
         with:
           name: boot.img
-          path: cruelbuild/out/boot.img
+          path: out/boot.img
 
       - name: Upload Build Log
         uses: actions/upload-artifact@v4
         with:
           name: build.log
-          path: cruelbuild/build.log
+          path: build.log
