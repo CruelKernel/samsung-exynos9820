@@ -22,6 +22,7 @@ jobs:
       - name: Clone CruelBuild
         run: |
           set -x
+          rm -rf cruelbuild
           git clone https://github.com/CruelKernel/cruelbuild cruelbuild
           cd cruelbuild
           ./setup.sh
